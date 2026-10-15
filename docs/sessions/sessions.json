@@ -250,9 +250,9 @@
     {
       "number": 13,
       "title": "Person demographics \u2014 schema and endpoints",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-15T15:38:12.411000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-15T15:59:44.957000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
