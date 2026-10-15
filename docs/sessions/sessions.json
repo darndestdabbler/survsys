@@ -146,23 +146,31 @@
         "identityProvenance": "direct"
       },
       "verificationVerdict": "VERIFIED",
-      "startCommit": "5e605a4c11dd51de5a327f527f26a91beb6580d2",
-      "frameworkVersion": "3.21.0",
       "verification": {
         "rounds": 1,
         "verifierModel": "gpt-5.6-terra",
         "verifierProvider": "openai",
         "transport": "api"
-      }
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "5e605a4c11dd51de5a327f527f26a91beb6580d2"
     },
     {
       "number": 8,
       "title": "Release 0.1.0 (release: 0.1.0)",
-      "status": "not-started",
-      "startedAt": null,
+      "status": "cancelled",
+      "startedAt": "2026-10-15T11:28:20.931000-04:00",
       "completedAt": null,
-      "orchestrator": null,
-      "verificationVerdict": null
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": null,
+      "startCommit": "74d68d1c8d9f06ae31c4d6fd6e6dea014938c3ce",
+      "frameworkVersion": "3.21.0",
+      "preCancelStatus": "in-progress",
+      "cancelledReason": "packaging run hit EPERM: TEMP pointed at {output} and .NET's persistent build servers kept it open",
+      "cancelledAt": "2026-10-15T12:32:36-04:00"
     },
     {
       "number": 9,

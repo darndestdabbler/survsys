@@ -19,7 +19,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 5 | First vertical slice — one real table through the API | no | 2026-10-15 |
 | 6 | First MudBlazor screen and the Playwright harness | no | 2026-10-15 |
 | 7 | The first walkthrough and the documentation it lives in | no | 2026-10-15 |
-| 8 | Release 0.1.0 (release: 0.1.0) | — | not declared |
+| 8 | Release 0.1.0 (release: 0.1.0) | yes | 2026-10-15 |
 | 9 | Person demographics — schema and endpoints | — | not declared |
 | 10 | Person search and case morbidity report creation | — | not declared |
 | 11 | The case morbidity report shell and its Demographics tab | — | not declared |
@@ -111,3 +111,9 @@ Put the first MudBlazor screen in front of the operator and build the walkthroug
 **Releasable: no.**
 
 Write the first walkthrough and the documentation it lives in. docs/walkthroughs/review-the-conditions-catalogue.md becomes the repository's first walkthrough document: one user story inferred from the legacy EpiTrax administration Conditions screen and NMI's /conditions screen under ../nedss/docs/ -- a surveillance administrator reviewing the condition catalogue to see which conditions may be reported and which carry a CDC code -- written as numbered steps the reader performs, naming every control by the words the Survsys conditions screen actually shows. Survsys.E2ETests then gains the one Playwright test named after that document, ReviewTheConditionsCatalogueTests, which performs those steps in their written order, asserts the outcome the document promises, names the document and the step number in any failure, and records video of the run through the harness base class session 6 built; the placeholder screen test in SurvsysHarnessTests, whose own name said it was standing in until this walkthrough existed, goes with it. docs/ then gains the shape later phases add to: a map of the documentation, the walkthrough index, and the user and technical documentation skeletons -- with Survsys.UnitTests/WalkthroughContractTests making the contract mechanical, so that every walkthrough document from here on must have the test named after it and a line in the index, and no later session can add a document that nothing performs.
+
+### Session 8 — Release 0.1.0 (release: 0.1.0)
+
+**Releasable: yes.**
+
+Release 0.1.0: the framework packs and publishes what is on the trunk.
