@@ -14,6 +14,16 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <!-- Starts Survsys.Api in process, running Program.cs as written (the
+         startup migration gate included), so the suite drives the real host
+         rather than a copy of its wiring. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The condition rows the suite seeds. Copied rather than embedded so
+         that a failing run can be reproduced by hand against the same SQL. -->
+    <Content Include="Fixtures\conditions.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -16,7 +16,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 2 | Challenge the plan, then break it into numbered sessions | no | 2026-10-15 |
 | 3 | Skeleton — the solution, its seven projects and the architecture tests | no | 2026-10-15 |
 | 4 | Packaging — write the packaging block and nothing else | no | 2026-10-15 |
-| 5 | First vertical slice — one real table through the API | — | not declared |
+| 5 | First vertical slice — one real table through the API | no | 2026-10-15 |
 | 6 | First MudBlazor screen and the Playwright harness | — | not declared |
 | 7 | The first walkthrough and the documentation it lives in | — | not declared |
 | 8 | Release 0.1.0 (release: 0.1.0) | — | not declared |
@@ -88,3 +88,14 @@ Lay down the skeleton of the Survsys solution and nothing else. Write `global.js
 **Releasable: no.**
 
 Write the `packaging:` block in `dabbler.yaml`, replacing the commented-out example left by the bootstrap, and change nothing else in the repository. `pack` is one argv that produces exactly the three handoff artifacts the solution plan names, written into `{output}`: an IIS site package for each tier (`dotnet publish` of `Survsys.Web` and `Survsys.Api`, each compressed to a single `.zip` so one tier is one pushable artifact rather than several hundred loose files) and the database's idempotent SQL script (`dotnet ef migrations script --idempotent`). `push` is argv naming the feed and naming its credential by environment variable (`secret: DABBLER_FEED_PAT`) rather than holding its value, uploading each artifact over HTTPS. The block is rehearsed with `dabbler packaging --dry-run`, which exits 0 once the declaration loads.
+
+### Session 5 — First vertical slice — one real table through the API
+
+**Releasable: no.**
+
+Session 5 puts one real table through the API tier, end to end and no further. Survsys.Data gains the Condition entity, the SurvsysDbContext, its entity configuration and the initial EF Core migration for the conditions table -- the thinnest real table in the legacy catalogue that a screen can show, carrying the columns of EpiTrax's own condition table (name, the three lead-in prose columns, active, cdc_code, condition_group_id). Survsys.Api gains two things the module challenge turned from promises into assertions: the startup assertion that reads the pending-migration list and refuses to serve while it is non-empty, so a database below the assembly's migration level is one loud startup failure rather than a 500 on whichever request first touches a missing column; and GET /api/conditions, paged, returning the Survsys.Contracts types this session adds -- a paged-result record and a condition response -- with Problem Details on every failure and the entity-to-wire mapping living in the API tier, because the forbidden Survsys.Data -> Survsys.Contracts reference leaves it nowhere else. Survsys.IntegrationTests gains the suite that runs against a real SQL Server, failing loudly when none is reachable rather than skipping, applying the migration and reading the condition rows a fixture seeds. One correction to this session's section of the session plan, made in the open rather than quietly: it names ../nedss/docs/db-snapshots/ as the fixture source, and those snapshots carry no condition rows at all -- every one of them dumps person, person_condition, facility and their neighbours, and none dumps condition. The 186 real condition rows live in the legacy Flyway seed ../nedss/legacy/nedss-jpa/src/main/resources/db/migration/V0003__init.sql, so the fixture is a small set of rows taken from there and committed into this repository with that provenance cited in the file, rather than read out of a sibling working copy at test time.
+
+**Amended after acceptance:**
+
+- 2026-10-15 — step 'data-initial-migration': its files: EF Core names a migration file after the timestamp it generates it at, which a plan written before the work cannot state (claude-code (anthropic, claude-opus-5))
+- 2026-10-15 — step 'integration-suite-conditions': its files: The suite found a failure that was not Problem Details: a query value that will not parse into its parameter never reaches an endpoint, so the framework sets a bodiless 400 the exception handler never sees. One line in Program.cs (app.UseStatusCodePages) keeps the solution plan's promise that errors are Problem Details; the right answer was to fix the tier rather than to drop the test. (claude-code (anthropic, claude-opus-5))

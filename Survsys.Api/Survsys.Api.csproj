@@ -10,6 +10,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Design-time only, and private: `dotnet ef` needs it in the startup
+         project, which is what dabbler.yaml's packaging script makes this one
+         when it writes the idempotent migration script. It ships with
+         nothing. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Survsys.Data\Survsys.Data.csproj" />
     <ProjectReference Include="..\Survsys.Contracts\Survsys.Contracts.csproj" />
   </ItemGroup>
