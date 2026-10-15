@@ -175,9 +175,9 @@
     {
       "number": 9,
       "title": "Packaging \u2014 repair the pack block and nothing else",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-15T12:43:19.632000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-15T12:54:37.300000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
