@@ -264,6 +264,40 @@ Session 9 repairs the pack block; session 10 is the release.*
 
 ### Session 10: Release 0.1.0 (release: 0.1.0)
 
+*Cancelled, and left here as the record of why. Session 9's repair held: the
+pack produced exactly the three artifacts, with no `EPERM` and no staging left
+behind. The push is what failed — `curl` exit 6, could not resolve host, on
+`https://artifacts.example.org/survsys-handoff/`, the placeholder feed session
+4 declared and no later session replaced. `DABBLER_FEED_PAT` was set, so this
+was never a credential: the declared feed simply does not exist. Nothing was
+pushed, so 0.1.0 was never spent. Session 11 points the feed at the folder the
+handoff will actually use; session 12 is the release.*
+
+### Session 11: Packaging — point the feed at the handoff folder
+
+1. Register.
+2. Repair the `packaging:` block in `dabbler.yaml` and change no other file.
+   The feed becomes `D:/handoff/survsys`, a folder on disk: the operator wants
+   the handoff artifacts dropped in a directory, not continuous deployment to
+   a remote feed, and the `artifacts.example.org` URL session 4 declared was
+   always a placeholder. A feed that is a folder authenticates nothing, so
+   `secret` and the `--user` argument go together — `DABBLER_FEED_PAT` stops
+   being named anywhere — and `push` becomes a copy of `{artifact}` into
+   `{feed}` rather than an HTTPS upload, creating the folder when it is not
+   there yet. `pack` is session 9's and is not touched: the three artifacts
+   keep their names and their contents.
+3. Prove the push, not only that the declaration loads: run the declared push
+   argv for each of three stand-in artifacts into a scratch folder feed, and
+   assert all three arrive with their bytes intact and that a second run over
+   the same folder overwrites rather than failing. `dabbler packaging
+   --dry-run` exits 0 when the block loads, which is the weaker half of the
+   check.
+4. Cross-provider verification.
+5. Full test suite, recorded as the run of record.
+6. Close-out.
+
+### Session 12: Release 0.1.0 (release: 0.1.0)
+
 ---
 
 *Phase 1 — persons and case records → release 0.2.0. The first phase a user can
@@ -271,7 +305,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 `epitrax-cmr-workflow.md`, `phase-1.6-cross-system-data-model.md` and
 `db-snapshots/session-010/`.*
 
-### Session 11: Person demographics — schema and endpoints
+### Session 13: Person demographics — schema and endpoints
 
 1. Register.
 2. `Survsys.Data`: the person entities and their migration — name, DOB, gender,
@@ -287,7 +321,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 12: Person search and case morbidity report creation
+### Session 14: Person search and case morbidity report creation
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: person search, and the record number
@@ -302,7 +336,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 13: The case morbidity report shell and its Demographics tab
+### Session 15: The case morbidity report shell and its Demographics tab
 
 1. Register.
 2. `Survsys.Web`: the report shell with its tab strip, carrying the
@@ -313,7 +347,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 14: Phase 1 walkthroughs
+### Session 16: Phase 1 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: three documents, one user story each — find a person,
@@ -325,7 +359,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 15: Release 0.2.0 (release: 0.2.0)
+### Session 17: Release 0.2.0 (release: 0.2.0)
 
 ---
 
@@ -333,7 +367,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 `epitrax-cmr-deep-editing.md`, `CLASSIFICATION_RULES.md` and
 `db-snapshots/session-010/` and `session-011/`.*
 
-### Session 16: Clinical and laboratory data — schema and endpoints
+### Session 18: Clinical and laboratory data — schema and endpoints
 
 1. Register.
 2. `Survsys.Data`: the clinical entities, and the laboratory chain of specimen
@@ -346,7 +380,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 17: Clinical and laboratory screens
+### Session 19: Clinical and laboratory screens
 
 1. Register.
 2. `Survsys.Web`: the Clinical tab on the report shell.
@@ -356,7 +390,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 18: Case classification, status and MMWR week
+### Session 20: Case classification, status and MMWR week
 
 1. Register.
 2. `Survsys.Data`: the case status rules — Confirmed, Probable, Suspected, Not
@@ -372,7 +406,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 19: Workflow state machine, work queues and agency sharing
+### Session 21: Workflow state machine, work queues and agency sharing
 
 1. Register.
 2. `Survsys.Data` and `Survsys.UnitTests`: the workflow state machine —
@@ -386,7 +420,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 20: Phase 2 walkthroughs
+### Session 22: Phase 2 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: three documents — enter a laboratory result, assign and
@@ -397,7 +431,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 21: Release 0.3.0 (release: 0.3.0)
+### Session 23: Release 0.3.0 (release: 0.3.0)
 
 ---
 
@@ -405,7 +439,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 0.4.0. Specified by `session-012-investigation-admin-contacts-notes.md` and
 `db-snapshots/session-012/`.*
 
-### Session 22: The Investigation and Administrative tabs
+### Session 24: The Investigation and Administrative tabs
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: the investigation and administrative
@@ -418,7 +452,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 23: Contacts and exposures
+### Session 25: Contacts and exposures
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: exposure events with place and time range,
@@ -431,7 +465,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 24: Notes and tasks
+### Session 26: Notes and tasks
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: clinical and administrative notes with
@@ -444,7 +478,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 25: File attachments
+### Session 27: File attachments
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: attachments with their categories, the
@@ -455,7 +489,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 26: Phase 3 walkthroughs
+### Session 28: Phase 3 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: four documents — add a contact to a case, log an
@@ -466,7 +500,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 27: Release 0.4.0 (release: 0.4.0)
+### Session 29: Release 0.4.0 (release: 0.4.0)
 
 ---
 
@@ -474,7 +508,7 @@ do real work in. Specified by `epitrax-core-workflows.md`,
 Specified by `CT_SITE_REQUIREMENTS.md`, `phase-1.6-cross-cutting-patterns.md`
 and `db-snapshots/session-011/05-after-admin-explore.txt`.*
 
-### Session 28: Agencies, jurisdictions, facilities and conditions
+### Session 30: Agencies, jurisdictions, facilities and conditions
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: agencies and jurisdictions with
@@ -487,7 +521,7 @@ and `db-snapshots/session-011/05-after-admin-explore.txt`.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 29: Core element configuration
+### Session 31: Core element configuration
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: core element configuration — field
@@ -498,7 +532,7 @@ and `db-snapshots/session-011/05-after-admin-explore.txt`.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 30: Users, roles, privileges and access audit
+### Session 32: Users, roles, privileges and access audit
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: users, roles and privileges with their
@@ -512,7 +546,7 @@ and `db-snapshots/session-011/05-after-admin-explore.txt`.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 31: Saved views and custom exports
+### Session 33: Saved views and custom exports
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: saved views, and custom exports with
@@ -522,7 +556,7 @@ and `db-snapshots/session-011/05-after-admin-explore.txt`.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 32: Phase 4 walkthroughs
+### Session 34: Phase 4 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: four documents — configure an agency, add a facility,
@@ -533,7 +567,7 @@ and `db-snapshots/session-011/05-after-admin-explore.txt`.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 33: Release 0.5.0 (release: 0.5.0)
+### Session 35: Release 0.5.0 (release: 0.5.0)
 
 ---
 
@@ -544,7 +578,7 @@ deferred cuts session 2 decided come due. Specified by
 `MIRTH_REPLACEMENT_SPEC.md` and `db-snapshots/session-013/` and
 `session-015/`.*
 
-### Session 34: `Survsys.Messaging` and HL7 intake parsing
+### Session 36: `Survsys.Messaging` and HL7 intake parsing
 
 1. Register.
 2. Create `Survsys.Messaging`, the cut session 2 decided and left to the
@@ -560,7 +594,7 @@ deferred cuts session 2 decided come due. Specified by
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 35: Vocabulary matching
+### Session 37: Vocabulary matching
 
 1. Register.
 2. `Survsys.Data`: the vocabulary tables and their migration — LOINC to
@@ -574,7 +608,7 @@ deferred cuts session 2 decided come due. Specified by
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 36: Duplicate detection and person matching
+### Session 38: Duplicate detection and person matching
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Messaging`: graylist time-windowed duplicate
@@ -586,7 +620,7 @@ deferred cuts session 2 decided come due. Specified by
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 37: The message queue and the intake service
+### Session 39: The message queue and the intake service
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: the message queue with its review states,
@@ -599,7 +633,7 @@ deferred cuts session 2 decided come due. Specified by
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 38: ELR review screens and promotion to a case
+### Session 40: ELR review screens and promotion to a case
 
 1. Register.
 2. `Survsys.Web`: the staged-message queue and the message review screen, with
@@ -610,7 +644,7 @@ deferred cuts session 2 decided come due. Specified by
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 39: Phase 5 walkthroughs
+### Session 41: Phase 5 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: three documents — review a staged message, resolve a
@@ -621,7 +655,7 @@ deferred cuts session 2 decided come due. Specified by
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 40: Release 0.6.0 (release: 0.6.0)
+### Session 42: Release 0.6.0 (release: 0.6.0)
 
 ---
 
@@ -629,7 +663,7 @@ deferred cuts session 2 decided come due. Specified by
 by `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md` and
 `db-snapshots/session-015/nmi-*`.*
 
-### Session 41: Notification guides and PHIN variable mapping
+### Session 43: Notification guides and PHIN variable mapping
 
 1. Register.
 2. `Survsys.Data`: notification guides per condition and the PHIN variable
@@ -641,7 +675,7 @@ by `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md` and
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 42: The seven rule set types and repeating groups
+### Session 44: The seven rule set types and repeating groups
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Messaging`: the seven rule set types, with their
@@ -654,7 +688,7 @@ by `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md` and
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 43: Message generation and direct transmission
+### Session 45: Message generation and direct transmission
 
 1. Register.
 2. `Survsys.Messaging`: `ORU^R01` generation with nHapi.
@@ -667,7 +701,7 @@ by `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md` and
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 44: Auto-queue, reconciliation and the export log
+### Session 46: Auto-queue, reconciliation and the export log
 
 1. Register.
 2. `Survsys.Api` and `Survsys.Data`: auto-queue on case change as a domain
@@ -683,7 +717,7 @@ by `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md` and
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 45: Notification screens
+### Session 47: Notification screens
 
 1. Register.
 2. `Survsys.Web`: the notification queue, the generated-message review screen
@@ -693,7 +727,7 @@ by `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md` and
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 46: Phase 6 walkthroughs
+### Session 48: Phase 6 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: three documents — queue a case for notification,
@@ -704,7 +738,7 @@ by `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md` and
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 47: Release 0.7.0 (release: 0.7.0)
+### Session 49: Release 0.7.0 (release: 0.7.0)
 
 ---
 
@@ -713,7 +747,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 `phase-1.6-feature-matrix.md` sections 5, 7, 8 and 14, and
 `epitrax-table-catalog.md`.*
 
-### Session 48: Outbreak management
+### Session 50: Outbreak management
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: outbreaks with multi-agency access,
@@ -724,7 +758,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 49: The dynamic form builder
+### Session 51: The dynamic form builder
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: condition-specific supplemental forms —
@@ -736,7 +770,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 50: Treatments and vaccines
+### Session 52: Treatments and vaccines
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: treatments with condition-specific
@@ -746,7 +780,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 51: Audit by EF Core interceptors
+### Session 53: Audit by EF Core interceptors
 
 1. Register.
 2. `Survsys.Data`: audit as EF Core `SaveChanges` interceptors, in place of the
@@ -757,7 +791,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 52: IBIS integration and ad-hoc reporting
+### Session 54: IBIS integration and ad-hoc reporting
 
 1. Register.
 2. `Survsys.Api`: the IBIS integration, under a timeout.
@@ -766,7 +800,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 53: Phase 7 walkthroughs and the full walkthrough regression
+### Session 55: Phase 7 walkthroughs and the full walkthrough regression
 
 1. Register.
 2. `docs/walkthroughs/`: three documents — open an outbreak and link cases,
@@ -779,4 +813,4 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 54: Release 1.0.0 (release: 1.0.0)
+### Session 56: Release 1.0.0 (release: 1.0.0)
