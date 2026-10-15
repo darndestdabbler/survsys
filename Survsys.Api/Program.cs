@@ -7,6 +7,14 @@ using Survsys.Data;
 // one that starts with a connection string.
 const string connectionStringName = "Survsys";
 
+// Off by default, and the default is the production behaviour: a database
+// below this assembly's migration level is refused rather than altered. On,
+// this tier brings the database up to its own migration level at startup and
+// serves -- which is how the walkthrough harness gets a schema at all, since
+// this is the only tier permitted to reach the database. A deployment never
+// sets it: the handoff carries the idempotent script for that.
+const string applyMigrationsKey = "Survsys:ApplyMigrations";
+
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString(connectionStringName);
@@ -39,7 +47,15 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var database = scope.ServiceProvider.GetRequiredService<SurvsysDbContext>().Database;
-    MigrationGate.AssertNonePending(await database.GetPendingMigrationsAsync());
+
+    if (builder.Configuration.GetValue<bool>(applyMigrationsKey))
+    {
+        await database.MigrateAsync();
+    }
+    else
+    {
+        MigrationGate.AssertNonePending(await database.GetPendingMigrationsAsync());
+    }
 }
 
 app.UseExceptionHandler();
@@ -50,6 +66,12 @@ app.UseExceptionHandler();
 // above never sees. This turns those into Problem Details as well, so a
 // caller reads one error shape from this tier and not two.
 app.UseStatusCodePages();
+
+// What the walkthrough harness waits on before its first click. This tier
+// answers here only once startup has finished -- the migration gate above
+// included -- so a 200 means it is serving a database at its own migration
+// level, which is the whole of what the harness needs to know.
+app.MapGet("/health/ready", () => Results.Ok("ready"));
 
 app.MapConditions();
 

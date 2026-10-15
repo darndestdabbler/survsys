@@ -17,7 +17,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 3 | Skeleton — the solution, its seven projects and the architecture tests | no | 2026-10-15 |
 | 4 | Packaging — write the packaging block and nothing else | no | 2026-10-15 |
 | 5 | First vertical slice — one real table through the API | no | 2026-10-15 |
-| 6 | First MudBlazor screen and the Playwright harness | — | not declared |
+| 6 | First MudBlazor screen and the Playwright harness | no | 2026-10-15 |
 | 7 | The first walkthrough and the documentation it lives in | — | not declared |
 | 8 | Release 0.1.0 (release: 0.1.0) | — | not declared |
 | 9 | Person demographics — schema and endpoints | — | not declared |
@@ -99,3 +99,9 @@ Session 5 puts one real table through the API tier, end to end and no further. S
 
 - 2026-10-15 — step 'data-initial-migration': its files: EF Core names a migration file after the timestamp it generates it at, which a plan written before the work cannot state (claude-code (anthropic, claude-opus-5))
 - 2026-10-15 — step 'integration-suite-conditions': its files: The suite found a failure that was not Problem Details: a query value that will not parse into its parameter never reaches an endpoint, so the framework sets a bodiless 400 the exception handler never sees. One line in Program.cs (app.UseStatusCodePages) keeps the solution plan's promise that errors are Problem Details; the right answer was to fix the tier rather than to drop the test. (claude-code (anthropic, claude-opus-5))
+
+### Session 6 — First MudBlazor screen and the Playwright harness
+
+**Releasable: no.**
+
+Put the first MudBlazor screen in front of the operator and build the walkthrough harness it will be driven through. Survsys.Web becomes a real Blazor Server host with MudBlazor, a typed conditions client over GET /api/conditions whose failures become a message on the screen rather than an unhandled circuit exception, and a conditions list screen carrying stable element identifiers a walkthrough's wording can point at. Each tier gains a readiness endpoint at /health/ready for the harness to wait on, and Survsys.Api gains an opt-in configuration switch that applies its migrations at startup instead of refusing to serve, so the harness can bring an empty database to migration level through the only tier allowed to touch it. Survsys.E2ETests then becomes the harness the walkthrough contract rests on: Playwright with video recording on for every test, both tiers built and launched as processes on free ports under a startup timeout, readiness waited on before the first click, the condition fixture seeded, and one smoke test proving the chain end to end. No prerelease package goes into it.

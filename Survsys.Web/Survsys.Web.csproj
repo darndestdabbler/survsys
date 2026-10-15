@@ -11,6 +11,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The component library every screen the operator walks through is
+         built from. A stable release, and one whose net10.0 dependency group
+         is the one that resolves here, so this tier takes its ASP.NET
+         Components packages from the same 10.0 band as the rest of the
+         solution. It reaches nothing outside the component model: no data
+         access arrives with it, which is why the architecture fence holds
+         with it in place. -->
+    <PackageReference Include="MudBlazor" Version="9.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Survsys.Contracts\Survsys.Contracts.csproj" />
   </ItemGroup>
 

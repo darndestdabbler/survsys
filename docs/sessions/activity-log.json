@@ -52,6 +52,13 @@
       "what": "step 'integration-suite-conditions': its files",
       "reason": "The suite found a failure that was not Problem Details: a query value that will not parse into its parameter never reaches an endpoint, so the framework sets a bodiless 400 the exception handler never sees. One line in Program.cs (app.UseStatusCodePages) keeps the solution plan's promise that errors are Problem Details; the right answer was to fix the tier rather than to drop the test.",
       "by": "claude-code (anthropic, claude-opus-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 6,
+      "dateTime": "2026-10-15T10:43:46.868000-04:00",
+      "task": "Put the first MudBlazor screen in front of the operator and build the walkthrough harness it will be driven through. Survsys.Web becomes a real Blazor Server host with MudBlazor, a typed conditions client over GET /api/conditions whose failures become a message on the screen rather than an unhandled circuit exception, and a conditions list screen carrying stable element identifiers a walkthrough's wording can point at. Each tier gains a readiness endpoint at /health/ready for the harness to wait on, and Survsys.Api gains an opt-in configuration switch that applies its migrations at startup instead of refusing to serve, so the harness can bring an empty database to migration level through the only tier allowed to touch it. Survsys.E2ETests then becomes the harness the walkthrough contract rests on: Playwright with video recording on for every test, both tiers built and launched as processes on free ports under a startup timeout, readiness waited on before the first click, the condition fixture seeded, and one smoke test proving the chain end to end. No prerelease package goes into it.",
+      "releasable": false
     }
   ]
 }
