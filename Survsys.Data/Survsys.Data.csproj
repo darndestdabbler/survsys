@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Entities, the DbContext and the migrations: the schema, and nothing
+       outside this module creates or alters it. It references no sibling,
+       because persistence must not know the wire shapes. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.13" />
+    <!-- Lifts the vulnerable 9.0.x that Microsoft.Data.SqlClient brings in
+         transitively (NU1903, GHSA-846f-f764-76mx). Not a dependency of this
+         module's own, and it goes when SqlClient's graph no longer needs it. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+  </ItemGroup>
+
+</Project>
