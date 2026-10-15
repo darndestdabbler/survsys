@@ -94,6 +94,13 @@
       "dateTime": "2026-10-15T15:25:42.138000-04:00",
       "task": "Point the handoff feed at a folder on disk. The `packaging:` block in `dabbler.yaml` is the only file this session changes: `feed` becomes `D:/handoff/survsys`, because the operator wants the three handoff artifacts dropped into a directory rather than deployed continuously to a remote feed, and the `artifacts.example.org` URL session 4 declared was always a placeholder. A feed that is a folder authenticates nothing, so `secret` and the `--user` argument go together and `DABBLER_FEED_PAT` stops being named in the file at all; `push` stops being an HTTPS upload and becomes a copy of `{artifact}` into `{feed}`, creating the folder when it is not there yet and overwriting an artifact already in it. The comment above the block is rewritten to describe the push the file now declares instead of the upload it used to. `pack` is session 9's work and is not touched: the three artifacts keep their names and their contents. The declaration is proved, not merely loaded -- a check reads the push argv back out of `dabbler.yaml`, substitutes three stand-in artifacts named after the real ones and a scratch folder that does not yet exist as the feed, spawns the argv once per artifact, and asserts all three arrive with their bytes intact and that a second pass with different bytes overwrites rather than failing; `dabbler packaging --dry-run` exits 0 once the block loads, which is the weaker half.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 12,
+      "dateTime": "2026-10-15T15:37:23.847000-04:00",
+      "task": "Release 0.1.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }
