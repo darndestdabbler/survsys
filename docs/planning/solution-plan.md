@@ -164,9 +164,49 @@ Api / Web five-or-six.** The extra layers in that convention earn their keep on
 a solution with several front ends or several databases. This one has one of
 each.
 
+## Module challenge
+
+Session 2's work. Every project was held to three questions — **should it
+exist**, **is its contract a promise something can prove**, and **does the
+dependency direction hide a decision likely to change**. All four modules and
+all three test projects stand. Two contracts turned out to be promises nothing
+proved; both are now assertions, named below and written by the skeleton
+session.
+
+### `Survsys.Contracts` — stands
+
+- **Should it exist:** yes, and it is the only project here whose existence is load-bearing rather than conventional. Delete it and `Survsys.Web` needs its request and response types from somewhere; the shortest path is `Survsys.Data`, and the production split stops being provable. It earns its place by what it makes impossible.
+- **Provable:** yes, and without a test — having no behaviour it cannot fail at runtime, and a breaking change fails the build of both tiers at once.
+- **Hidden decision:** none. It is the leaf; nothing it references can change under it.
+
+### `Survsys.Data` — stands
+
+- **Should it exist:** yes. The entities, the `DbContext`, the configuration and the migrations are one concern — the schema — and nothing outside this module may create or alter it.
+- **Provable — it was not, and now is.** The contract promised that a database behind the assembly's migrations "fails at startup, not at the first query that happens to touch a missing column", and nothing in the plan made that happen. **It becomes a startup assertion in `Survsys.Api`:** on start the API tier reads the pending-migration list from the `DbContext` and refuses to serve while it is non-empty, so a database below the assembly's migration level is one loud startup failure rather than a `500` on whichever request first touches the missing column. `Survsys.Api` asserts it because `Survsys.Api` is the only thing that starts with a connection string.
+- **Hidden decision:** the forbidden `Survsys.Data` → `Survsys.Contracts` reference has a consequence the plan left unsaid — **the mapping between entities and wire shapes lives in `Survsys.Api`.** That is the right place, the tier that owns the wire owning the translation to it, but unsaid it is exactly the seam a later session would "tidy" by adding the forbidden reference.
+
+### `Survsys.Api` — stands
+
+- **Should it exist:** yes. It *is* the production split.
+- **Provable — it was not, and now is.** "Returning `Survsys.Contracts` types and never an entity type" was a review note, not a test. **It becomes a second architecture test:** no endpoint signature in `Survsys.Api` — parameter or return type, unwrapped through `Task<>`, `ActionResult<>` and collections — names a type from the `Survsys.Data` assembly. The first architecture test fences `Survsys.Web` off the database entirely, so the API tier is the only place an entity can still leak onto the wire, and this is where it is caught.
+- **Hidden decision:** authorisation arrives in phase 4 and lands here. Nothing in the direction obstructs it.
+
+### `Survsys.Web` — stands
+
+- **Should it exist:** yes.
+- **Provable:** yes — this is the one the first architecture test asserts, and the easiest wrong turn in a Blazor Server application, where the UI runs on the server and therefore *could* open a connection.
+- **Hidden decision:** the HTTP client between the tiers is the part most likely to change, and referencing `Survsys.Contracts` alone is what keeps that change inside `Survsys.Web`.
+
+### Test projects — all three stand
+
+- `Survsys.UnitTests` holds both architecture tests, so it is the one project that references every module — it has to read their reference graphs — and that is a consequence of the tests, not a licence for anything else to do the same.
+- `Survsys.IntegrationTests` failing loudly on a missing SQL Server, rather than skipping, is the whole of its value: a skipped integration suite reads as a green run.
+- `Survsys.E2ETests` **launches `Survsys.Web` and `Survsys.Api` as processes and references neither project.** A project reference from the E2E suite would make the reference graph the architecture tests read no longer the whole truth, and the suite does not need one — it drives a browser against running sites, which is what a walkthrough describes.
+
 ## Deferred cuts
 
-Named here, **decided by session 2**, not by this plan.
+Named by session 1 and **decided here, by session 2**. Each carries its
+decision, and none is deferred again.
 
 1. **A pure `Survsys.Messaging` module.** Whether nHapi HL7 parsing and
    generation, the EMSA vocabulary and rules engines, and the NMI rulesets and
@@ -175,13 +215,42 @@ Named here, **decided by session 2**, not by this plan.
    this is the one body of logic in the solution that is genuinely pure, is the
    hardest to test through a database, and is the most valuable to test
    directly. The argument against: another project before it is needed.
+
+   **Decision:** **adopted — and created by the session that first needs it.**
+   `Survsys.Messaging` will exist. A unit test of a LOINC-to-condition match
+   should not need SQL Server to run, and this is the one body of logic in the
+   solution large and pure enough for that to matter. It is **not** written by
+   the skeleton session: a project standing empty from phase 0 through phase 4
+   is dead weight. The first inbound-ELR session creates it, adds it to
+   `Survsys.sln` and references it from `Survsys.Api`. It references nHapi and
+   `Survsys.Contracts`, never EF Core — asserted the same way `Survsys.Web`'s
+   fence is asserted, by an architecture test in `Survsys.UnitTests`.
 2. **Where inbound ELR intake runs.** As an `IHostedService` inside the API
    tier — the simple answer, which adds no separately handed-over part — or as
    a Worker Service published for a service host, which adds a third handoff
    artifact and the operational question of what happens when it is down. The
    simple answer is the recommendation; the decision belongs with phase 5.
+
+   **Decision:** **an `IHostedService` inside the API tier.** It adds no third
+   handoff artifact, nothing further to install on the target server, and no
+   operational question about a service host that is down with nobody watching.
+   The API tier is already the only thing holding a connection string, which is
+   precisely what intake needs. Should intake later have to be scaled or stopped
+   independently of the API, lifting an `IHostedService` into a Worker Service
+   is a small change — and a handoff artifact is the thing not to add
+   speculatively.
 3. **A pure domain module out of `Survsys.Data`**, once the classification
    rules of phase 2 exist and the shape of the seam is visible.
+
+   **Decision:** **no.** The classification rules, the MMWR week and year
+   calculation and the `YYYYNNNNN` record-number format are pure functions, and
+   `Survsys.Data` carrying EF Core does not stop a static rule class in it from
+   being unit-tested without a database — `Survsys.UnitTests` already covers
+   exactly that. With `Survsys.Messaging` now taking the one large pure body of
+   logic, a third seam would be structure without content, which is what the
+   brief forbids twice. This supersedes the sentence in *Why these cuts* that
+   left the seam to be made when the content existed: the content arrived, and
+   the answer is that `Survsys.Data` keeps it.
 4. **Which `Dabbler.*` packages are adopted.** The operator offered them as
    helpful-if-helpful, not as a requirement. Three would plainly remove code
    from the early phases:
@@ -198,10 +267,36 @@ Named here, **decided by session 2**, not by this plan.
 
    **The risk to weigh:** every one of these is at `0.1.0-preview.1`. Adopting a
    prerelease package into the walkthrough harness means a breaking change
-   upstream can break the harness that guarantees the releases. Session 2 should
-   decide each on whether it removes more code than it adds risk, and
-   `Dabbler.Testing.Blazor` — the one that touches the non-negotiable — deserves
-   the closest look.
+   upstream can break the harness that guarantees the releases.
+
+   **Decision:** **none adopted now**, each for its own reason.
+
+   - `Dabbler.Testing.Blazor` — **refused, not deferred.** The walkthrough
+     harness is the operator's non-negotiable: a walkthrough that cannot be
+     completed as written is a failed release. Putting a `0.1.0-preview.1`
+     dependency inside the gate that guarantees that means an upstream breaking
+     change breaks the guarantee itself. What it offers is replaced by two
+     things this repository owns: a readiness endpoint on each tier that the
+     E2E suite waits on before its first click, and Playwright's own web-first
+     assertions, which retry until an element is actionable and are the
+     supported answer to render-wait flakiness.
+   - `Dabbler.Api.Querying` — **not now.** Paging is one paged-result record in
+     `Survsys.Contracts` and a `Skip`/`Take` on the query: a dozen lines,
+     against a preview dependency in the tier every screen reads through.
+   - `Dabbler.Components` — **not now.** Phase 1's screens are what will say
+     what a master/detail shell and a query-by-example panel actually have to
+     do here; adopting the primitives before writing one screen shapes the
+     screens around the package rather than the other way round. Revisit at
+     phase 4, where the admin screens are most alike and the saving would be
+     real.
+   - `Dabbler.Security`, `Dabbler.Security.Blazor` and the `Dabbler.Reports.*`
+     family — unchanged, left to the phases that do authorisation and
+     reporting.
+
+   **Standing rule.** A `Dabbler.*` package is adopted only by a session that
+   names, in its own plan, the code the package removes — and never into the
+   walkthrough harness while it is a prerelease. The operator offered these as
+   helpful-if-helpful; that is the test of helpful.
 
 ## Walkthrough contract
 
