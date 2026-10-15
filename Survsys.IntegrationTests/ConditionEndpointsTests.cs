@@ -1,10 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 using Survsys.Contracts;
 using Xunit;
 
@@ -16,17 +13,18 @@ namespace Survsys.IntegrationTests;
 /// screen will read.
 /// </summary>
 /// <remarks>
-/// The host starts through <see cref="WebApplicationFactory{TEntryPoint}"/>,
-/// which runs <c>Program.cs</c> as written — the startup migration gate
-/// included. It passing here is itself an assertion: the fixture migrated the
-/// database before the host read its pending-migration list.
+/// The host starts through <see cref="SurvsysApi"/>, over
+/// <see cref="WebApplicationFactory{TEntryPoint}"/>, which runs
+/// <c>Program.cs</c> as written — the startup migration gate included. It
+/// passing here is itself an assertion: the fixture migrated the database
+/// before the host read its pending-migration list.
 /// </remarks>
 [Collection(SqlServerCollection.Name)]
 public class ConditionEndpointsTests(SqlServerFixture server) : IDisposable
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    private readonly ConditionsApi api = new(server.ConnectionString);
+    private readonly SurvsysApi api = new(server.ConnectionString);
 
     public void Dispose() => api.Dispose();
 
@@ -158,47 +156,5 @@ public class ConditionEndpointsTests(SqlServerFixture server) : IDisposable
         response.EnsureSuccessStatusCode();
 
         return (await response.Content.ReadFromJsonAsync<PagedResult<ConditionResponse>>(Json))!;
-    }
-
-    /// <summary>
-    /// The API tier as the suite runs it: the real <c>Program.cs</c>, pointed
-    /// at the fixture's database and started as Production, so that what the
-    /// tests assert is what a deployment does rather than what the developer
-    /// exception page does.
-    /// </summary>
-    private sealed class ConditionsApi : WebApplicationFactory<Program>
-    {
-        /// <summary>
-        /// The environment variable form of <c>ConnectionStrings:Survsys</c>,
-        /// which is how the connection string has to arrive.
-        /// </summary>
-        /// <remarks>
-        /// Not through <c>ConfigureAppConfiguration</c>, which would be the
-        /// obvious way and does not work here: those callbacks are applied
-        /// when <c>Program.cs</c> calls <c>builder.Build()</c>, and
-        /// <c>Program.cs</c> reads its connection string before that, while
-        /// it is still configuring services. An environment variable is read
-        /// by <c>CreateBuilder</c> itself, so it is there in time.
-        ///
-        /// Set in the constructor rather than in a host callback for the same
-        /// reason: this runs before the entry point does.
-        /// </remarks>
-        private const string ConnectionStringVariable = "ConnectionStrings__Survsys";
-
-        public ConditionsApi(string connectionString) =>
-            Environment.SetEnvironmentVariable(ConnectionStringVariable, connectionString);
-
-        protected override void ConfigureWebHost(IWebHostBuilder builder) =>
-            builder.UseEnvironment(Environments.Production);
-
-        protected override void Dispose(bool disposing)
-        {
-            base.Dispose(disposing);
-
-            if (disposing)
-            {
-                Environment.SetEnvironmentVariable(ConnectionStringVariable, null);
-            }
-        }
     }
 }

@@ -7,7 +7,7 @@ namespace Survsys.IntegrationTests;
 
 /// <summary>
 /// A real SQL Server database at this assembly's migration level, with the
-/// condition fixture in it. Built once for the whole suite.
+/// condition and person fixtures in it. Built once for the whole suite.
 /// </summary>
 /// <remarks>
 /// <strong>An unreachable server fails the suite, loudly.</strong> Nothing
@@ -63,7 +63,8 @@ public sealed class SqlServerFixture : IDisposable
             throw new InvalidOperationException(Unreachable(unreachable), unreachable);
         }
 
-        context.Database.ExecuteSqlRaw(FixtureSql());
+        context.Database.ExecuteSqlRaw(FixtureSql("conditions.sql"));
+        context.Database.ExecuteSqlRaw(FixtureSql("persons.sql"));
     }
 
     /// <summary>The database the suite runs against.</summary>
@@ -92,6 +93,36 @@ public sealed class SqlServerFixture : IDisposable
     ];
 
     /// <summary>
+    /// How many people <c>Fixtures/persons.sql</c> seeds. Stated here for the
+    /// reason <see cref="SeededConditions"/> is.
+    /// </summary>
+    public const int SeededPersons = 7;
+
+    /// <summary>
+    /// The seeded people in the order the endpoint promises — by last name,
+    /// then first name — written as the endpoint returns them, "Last, First".
+    /// The fixture inserts them in another order on purpose, so this is a
+    /// claim about the endpoint rather than about the fixture.
+    /// </summary>
+    /// <remarks>
+    /// Two of them are the pair that makes the second key assert something:
+    /// Carlos and Maria share a surname, so an endpoint that ordered by the
+    /// last name alone could return them either way round. "Doe" has no first
+    /// name at all, and sorts where SQL Server sorts a null — first within
+    /// its surname, which is only a tie of one here.
+    /// </remarks>
+    public static readonly string[] PersonsByName =
+    [
+        "Abbott, Jane",
+        "Doe, ",
+        "Nguyen, An",
+        "Okafor, Chidi",
+        "Rodriguez, Carlos",
+        "Rodriguez, Maria",
+        "Zimmerman, Paul",
+    ];
+
+    /// <summary>
     /// A context over the suite's database. The caller disposes it.
     /// </summary>
     public SurvsysDbContext NewContext() => new(
@@ -101,14 +132,14 @@ public sealed class SqlServerFixture : IDisposable
 
     public void Dispose() => SqlConnection.ClearAllPools();
 
-    private static string FixtureSql()
+    private static string FixtureSql(string file)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "conditions.sql");
+        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", file);
 
         if (!File.Exists(path))
         {
             throw new InvalidOperationException(
-                $"The condition fixture is not at {path}. It is copied to the output "
+                $"The fixture {file} is not at {path}. It is copied to the output "
                 + "directory by Survsys.IntegrationTests.csproj; a suite without it would "
                 + "assert against an empty table.");
         }

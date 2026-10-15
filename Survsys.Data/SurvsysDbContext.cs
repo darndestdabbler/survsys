@@ -20,6 +20,20 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 {
     public DbSet<Condition> Conditions => Set<Condition>();
 
+    public DbSet<Person> Persons => Set<Person>();
+
+    public DbSet<PersonAddress> PersonAddresses => Set<PersonAddress>();
+
+    public DbSet<PersonTelephone> PersonTelephones => Set<PersonTelephone>();
+
+    public DbSet<PersonEmail> PersonEmails => Set<PersonEmail>();
+
+    public DbSet<PersonRace> PersonRaces => Set<PersonRace>();
+
+    public DbSet<PersonAlias> PersonAliases => Set<PersonAlias>();
+
+    public DbSet<ParentGuardian> ParentGuardians => Set<ParentGuardian>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

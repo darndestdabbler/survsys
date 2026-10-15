@@ -21,9 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The condition rows the suite seeds. Copied rather than embedded so
-         that a failing run can be reproduced by hand against the same SQL. -->
+    <!-- The rows the suite seeds. Copied rather than embedded so that a
+         failing run can be reproduced by hand against the same SQL. -->
     <Content Include="Fixtures\conditions.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\persons.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

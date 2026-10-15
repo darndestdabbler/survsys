@@ -23,18 +23,6 @@ namespace Survsys.Api;
 /// </remarks>
 public static class ConditionEndpoints
 {
-    /// <summary>The page returned when a caller asks for no particular one.</summary>
-    public const int DefaultPage = 1;
-
-    /// <summary>The page size used when a caller asks for no particular one.</summary>
-    public const int DefaultPageSize = 50;
-
-    /// <summary>
-    /// The largest page this endpoint will return. A caller that wants more
-    /// rows asks for another page; it may not ask for an unbounded one.
-    /// </summary>
-    public const int MaxPageSize = 200;
-
     /// <summary>
     /// The projection from the stored row to the wire shape — four of the
     /// table's eight columns.
@@ -73,50 +61,13 @@ public static class ConditionEndpoints
         return routes;
     }
 
-    /// <summary>
-    /// Why the requested page is not a page this endpoint can return, or null
-    /// when it is.
-    /// </summary>
-    /// <remarks>
-    /// Pure, and public because the unit suite proves the bounds without
-    /// starting a host. The last clause is the one that is easy to forget:
-    /// <c>Skip</c> takes an <c>int</c>, so a page number large enough to
-    /// overflow <c>(page - 1) * pageSize</c> would otherwise reach the query
-    /// as a negative skip rather than as a bad request.
-    /// </remarks>
-    public static string? WhyNotAPage(int page, int pageSize)
-    {
-        if (page < 1)
-        {
-            return $"page must be 1 or greater, and {page} was asked for.";
-        }
-
-        if (pageSize < 1)
-        {
-            return $"pageSize must be 1 or greater, and {pageSize} was asked for.";
-        }
-
-        if (pageSize > MaxPageSize)
-        {
-            return $"pageSize must be {MaxPageSize} or fewer, and {pageSize} was asked for.";
-        }
-
-        if ((long)(page - 1) * pageSize > int.MaxValue)
-        {
-            return $"page {page} at a pageSize of {pageSize} is past the last row this "
-                + "endpoint can address.";
-        }
-
-        return null;
-    }
-
     private static async Task<Results<Ok<PagedResult<ConditionResponse>>, ProblemHttpResult>> GetConditions(
         ConditionQueries conditions,
-        int page = DefaultPage,
-        int pageSize = DefaultPageSize,
+        int page = Paging.DefaultPage,
+        int pageSize = Paging.DefaultPageSize,
         CancellationToken cancellationToken = default)
     {
-        if (WhyNotAPage(page, pageSize) is { } why)
+        if (Paging.WhyNotAPage(page, pageSize) is { } why)
         {
             return TypedResults.Problem(
                 detail: why,

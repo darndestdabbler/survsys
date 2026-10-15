@@ -24,7 +24,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 10 | Release 0.1.0 (release: 0.1.0) | yes | 2026-10-15 |
 | 11 | Packaging — point the feed at the handoff folder | no | 2026-10-15 |
 | 12 | Release 0.1.0 (release: 0.1.0) | yes | 2026-10-15 |
-| 13 | Person demographics — schema and endpoints | — | not declared |
+| 13 | Person demographics — schema and endpoints | no | 2026-10-15 |
 | 14 | Person search and case morbidity report creation | — | not declared |
 | 15 | The case morbidity report shell and its Demographics tab | — | not declared |
 | 16 | Phase 1 walkthroughs | — | not declared |
@@ -145,3 +145,14 @@ Point the handoff feed at a folder on disk. The `packaging:` block in `dabbler.y
 **Releasable: yes.**
 
 Release 0.1.0: the framework packs and publishes what is on the trunk.
+
+### Session 13 — Person demographics — schema and endpoints
+
+**Releasable: no.**
+
+Session 13 opens phase 1 by putting the person -- the thing every case morbidity report hangs off -- through the same vertical slice session 5 proved with conditions, and no further. Survsys.Data gains the person entities and one migration for them: Person itself (first, middle and last name, date of birth with the legacy days-old-without-a-birthday fallback, birth gender, current gender, ethnicity, primary language and country of birth), and the six tables that hang off it -- PersonAddress with its begin and end dates, county, state, street, unit number, city, postal code, residence type and note; PersonTelephone; PersonEmail; PersonRace and PersonAlias as composite-key rows, which is how the legacy schema holds a multi-select; and ParentGuardian, the legacy table that names a person's parent or guardian. The columns keep EpiTrax's own snake_case names as declared in ../nedss/legacy/nedss-jpa/src/main/resources/db/migration/V0001__create.sql and the alters that followed it, so a later migration of the legacy data reads straight across; the tables are pluralised, as session 5 pluralised conditions. Survsys.Contracts gains the person wire shapes -- a list response and a detail response, with nested address, telephone and email records and the races, aliases and guardians as string lists -- and Survsys.Api gains GET /api/persons, paged, and GET /api/persons/{id}, with the entity-to-wire mapping here because the forbidden Survsys.Data -> Survsys.Contracts reference leaves it nowhere else, and Problem Details on every failure: a page outside its bounds is a 400, an id that is nobody is a 404, and a database failure is a 500 carrying a correlation id and nothing else. The page-bounds rule session 5 wrote inside ConditionEndpoints moves to a Paging class both slices call, rather than being copied into a second endpoint. Survsys.IntegrationTests gains the person round-trip against a real SQL Server: the fixture seeds Maria Elena Rodriguez and her address, telephone and email exactly as ../nedss/docs/db-snapshots/session-010/03-after-demographics-save.txt dumps them, the suite reads her back over HTTP field by field, and a second test writes a person carrying every relation through SurvsysDbContext and reads that back over HTTP too -- so the round trip is a real write and a real read against the schema the migration produces. One thing the session plan's source is honest about rather than quiet: session-010's person_race is empty and the snapshots dump no person_alias or parent_guardian at all, so the race, alias and guardian rows in the fixture are written for this suite and the file says so at the top, as Fixtures/conditions.sql says it of the condition rows.
+
+**Amended after acceptance:**
+
+- 2026-10-15 — step 'data-person-migration': its files: EF Core names a migration file after the timestamp it generates it at, which a plan written before the work cannot state (claude-code (anthropic, claude-opus-5))
+- 2026-10-15 — step 'integration-suite-persons': its files: The person suite starts the same host against the same database as the conditions suite, and session 5 wrote that WebApplicationFactory as a private class inside ConditionEndpointsTests. Its one subtlety -- that the connection string must arrive as an environment variable, because Program.cs reads it before builder.Build() applies any configuration callback -- is not a thing to hold two copies of, so it moves to SurvsysApi.cs and the conditions suite names it there. Same move, and same reason, as the api-paging-rule step made of the page-bounds rule. (claude-code (anthropic, claude-opus-5))

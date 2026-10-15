@@ -38,6 +38,7 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
         Activity.Current?.Id ?? context.HttpContext.TraceIdentifier);
 
 builder.Services.AddConditions();
+builder.Services.AddPersons();
 
 var app = builder.Build();
 
@@ -74,6 +75,7 @@ app.UseStatusCodePages();
 app.MapGet("/health/ready", () => Results.Ok("ready"));
 
 app.MapConditions();
+app.MapPersons();
 
 app.Run();
 
