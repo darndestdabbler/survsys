@@ -1,0 +1,99 @@
+{
+  "createdDate": "2026-10-15T08:26:22.799000-04:00",
+  "totalSessions": 0,
+  "entries": [
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 1,
+      "dateTime": "2026-10-15T08:26:22.864000-04:00",
+      "task": "Capture the operator's brief for survsys and turn it into the solution plan the rest of this repository is built from. The brief -- port the three legacy disease-surveillance systems under ../nedss (EpiTrax, Java EE case management; EMSA, PHP inbound ELR staging; NMI, PHP outbound CDC notification) into one .NET 10 / MudBlazor / Entity Framework Core / SQL Server application whose API tier mediates every database call -- is written to docs/planning/brief.md as the operator gave it, including the constraints they named: keep it as simple as possible, unit plus integration plus Playwright end-to-end tests, build incrementally so that after the first few sessions a person can see and interact with real database data, ship walkthrough documentation at every release, and keep required operator input to a minimum. docs/planning/solution-plan.md is then written: an objective a reader can act on; the Production split the operator chose, which is the default -- a MudBlazor application tier that calls an API tier, and only the API tier talks to SQL Server; the Handoff artifacts for each separately running part with the standard command for its form, an IIS site package by dotnet publish for the application and API tiers and an idempotent SQL migration script by dotnet ef migrations script --idempotent for the database; the modules, each a .csproj listed in the root solution file and reaching a sibling only by <ProjectReference>, with what each is responsible for, the contract it exposes as preconditions, guarantees and failure mode, the dependency direction, the reason for each cut and the cuts left deferred for session 2 to decide; and the phases with their key deliverables, each scoped to a handful of focused AI sessions and ordered so the earliest put a working MudBlazor screen over real SQL Server data in front of the operator. The plan also fixes the walkthrough contract the operator called non-negotiable: every release ships step-by-step walkthroughs organised around user stories inferred from the legacy code and documentation, and each walkthrough is driven by a Playwright test that performs exactly its written steps and records the run on video, so no walkthrough can ship that a person cannot complete as written.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 2,
+      "dateTime": "2026-10-15T08:35:47.462000-04:00",
+      "task": "Challenge the cuts in docs/planning/solution-plan.md and then break that plan into the numbered sessions the rest of this repository runs. Each of the four modules and three test projects is held to three questions -- whether it should exist at all, whether its stated contract is a promise something can mechanically prove, and whether the dependency direction hides the decisions most likely to change -- and the answers are recorded in the plan as a new 'Module challenge' section: Survsys.Contracts, Survsys.Data, Survsys.Api and Survsys.Web all stand, with two contract promises made provable rather than aspirational (the API tier asserting at startup that the database is at or above the migration level its assembly carries, and a second architecture test asserting no endpoint signature in Survsys.Api names a Survsys.Data entity type, since Survsys.Web is already fenced off by the first), and with the mapping between entities and wire shapes recorded as living in Survsys.Api because Survsys.Data may not reference Survsys.Contracts. Each of the four deferred cuts is then decided in the plan rather than deferred again: a pure Survsys.Messaging module is adopted but created by the session that first needs it in the inbound-ELR phase rather than standing empty through five phases; inbound ELR intake runs as an IHostedService inside the API tier, adding no third handoff artifact; no pure domain module is cut out of Survsys.Data, because its rules are already pure classes the unit suite tests without a database and Survsys.Messaging gives the genuinely pure logic a home; and no Dabbler.* package is adopted now -- every candidate is at 0.1.0-preview.1, Dabbler.Testing.Blazor is refused outright because the walkthrough harness is the operator's non-negotiable and must not be hostage to a prerelease dependency (a readiness endpoint plus Playwright's own web-first assertions replace it), and Dabbler.Components and Dabbler.Api.Querying are left to a session that can show the package removes more code than it adds. The numbered sessions are then appended to docs/sessions/session-plan.md, one '### Session <N>: <title>' heading each with its steps as a top-level ordered list that registers first and ends on cross-provider verification, the complete suite against the verified tree, and close-out, at most about three work steps between them, ordered so a module lands before the modules that depend on it: session 3 is the skeleton, writing Survsys.sln, global.json pinning .NET 10, all seven projects with their references, the testing.suites block in dabbler.yaml with expensive: true and dotnet test --blame-hang-timeout 5m, and the architecture tests; session 4 is the packaging session and does nothing else; then the first vertical slice over one real table, the first MudBlazor screen with the Playwright video harness, and the first walkthrough with its test, closing phase 0 on a release; and thereafter the phases of the plan -- persons and case records, clinical and laboratory and workflow, investigation and contacts and notes and tasks, reference data and administration and reporting, inbound ELR processing, outbound CDC notification, and outbreaks and forms and treatments and audit -- each phase's walkthroughs gathered into a session of their own before the release session that ends the phase, every release a session with no steps headed '(release: <version>)' at the version this plan proposes for the operator to approve: 0.1.0, 0.2.0, 0.3.0, 0.4.0, 0.5.0, 0.6.0, 0.7.0 and 1.0.0.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 3,
+      "dateTime": "2026-10-15T08:50:58.769000-04:00",
+      "task": "Lay down the skeleton of the Survsys solution and nothing else. Write `global.json` at the repository root pinning the .NET 10 SDK, because this host also carries SDK 11.0.100-preview.2 which is newer and would otherwise be selected. Write `Survsys.sln` at the root listing all seven projects -- `Survsys.Contracts`, `Survsys.Data`, `Survsys.Api`, `Survsys.Web`, `Survsys.UnitTests`, `Survsys.IntegrationTests`, `Survsys.E2ETests` -- each a `.csproj` carrying its target framework, its `<ProjectReference>`s and nothing more than the packages it cannot exist without, in exactly the reference graph the solution plan fences: `Survsys.Contracts` referencing no sibling; `Survsys.Data` referencing no sibling and carrying `Microsoft.EntityFrameworkCore.SqlServer`; `Survsys.Api` referencing `Survsys.Data` and `Survsys.Contracts`; `Survsys.Web` referencing `Survsys.Contracts` alone; `Survsys.UnitTests` referencing every module, because it is the project that reads their reference graphs; `Survsys.IntegrationTests` referencing `Survsys.Api` and `Survsys.Data`; and `Survsys.E2ETests` referencing `Survsys.Contracts` only, since it launches the two tiers as processes. Declare `testing.suites` in `dabbler.yaml` -- the unit, integration and end-to-end suites, each with its `covers` and `test_roots`, `expensive: true` on the unit suite, which is this repository's run of record, and `--blame-hang-timeout 5m` in every command so every later run inherits the hang limit. Finally write `Survsys.UnitTests/ArchitectureTests.cs`, the two architecture tests the solution plan makes load-bearing: that the `Survsys.Web` assembly references neither `Survsys.Data` nor `Microsoft.EntityFrameworkCore`, and that no endpoint signature in `Survsys.Api` -- parameter or return type, unwrapped through `Task<>`, `ActionResult<>` and collections -- names a type from the `Survsys.Data` assembly. No feature code in any project.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 4,
+      "dateTime": "2026-10-15T09:46:57.765000-04:00",
+      "task": "Write the `packaging:` block in `dabbler.yaml`, replacing the commented-out example left by the bootstrap, and change nothing else in the repository. `pack` is one argv that produces exactly the three handoff artifacts the solution plan names, written into `{output}`: an IIS site package for each tier (`dotnet publish` of `Survsys.Web` and `Survsys.Api`, each compressed to a single `.zip` so one tier is one pushable artifact rather than several hundred loose files) and the database's idempotent SQL script (`dotnet ef migrations script --idempotent`). `push` is argv naming the feed and naming its credential by environment variable (`secret: DABBLER_FEED_PAT`) rather than holding its value, uploading each artifact over HTTPS. The block is rehearsed with `dabbler packaging --dry-run`, which exits 0 once the declaration loads.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 5,
+      "dateTime": "2026-10-15T10:00:19.505000-04:00",
+      "task": "Session 5 puts one real table through the API tier, end to end and no further. Survsys.Data gains the Condition entity, the SurvsysDbContext, its entity configuration and the initial EF Core migration for the conditions table -- the thinnest real table in the legacy catalogue that a screen can show, carrying the columns of EpiTrax's own condition table (name, the three lead-in prose columns, active, cdc_code, condition_group_id). Survsys.Api gains two things the module challenge turned from promises into assertions: the startup assertion that reads the pending-migration list and refuses to serve while it is non-empty, so a database below the assembly's migration level is one loud startup failure rather than a 500 on whichever request first touches a missing column; and GET /api/conditions, paged, returning the Survsys.Contracts types this session adds -- a paged-result record and a condition response -- with Problem Details on every failure and the entity-to-wire mapping living in the API tier, because the forbidden Survsys.Data -> Survsys.Contracts reference leaves it nowhere else. Survsys.IntegrationTests gains the suite that runs against a real SQL Server, failing loudly when none is reachable rather than skipping, applying the migration and reading the condition rows a fixture seeds. One correction to this session's section of the session plan, made in the open rather than quietly: it names ../nedss/docs/db-snapshots/ as the fixture source, and those snapshots carry no condition rows at all -- every one of them dumps person, person_condition, facility and their neighbours, and none dumps condition. The 186 real condition rows live in the legacy Flyway seed ../nedss/legacy/nedss-jpa/src/main/resources/db/migration/V0003__init.sql, so the fixture is a small set of rows taken from there and committed into this repository with that provenance cited in the file, rather than read out of a sibling working copy at test time.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 5,
+      "dateTime": "2026-10-15T10:05:00.875000-04:00",
+      "what": "step 'data-initial-migration': its files",
+      "reason": "EF Core names a migration file after the timestamp it generates it at, which a plan written before the work cannot state",
+      "by": "claude-code (anthropic, claude-opus-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 5,
+      "dateTime": "2026-10-15T10:16:35.618000-04:00",
+      "what": "step 'integration-suite-conditions': its files",
+      "reason": "The suite found a failure that was not Problem Details: a query value that will not parse into its parameter never reaches an endpoint, so the framework sets a bodiless 400 the exception handler never sees. One line in Program.cs (app.UseStatusCodePages) keeps the solution plan's promise that errors are Problem Details; the right answer was to fix the tier rather than to drop the test.",
+      "by": "claude-code (anthropic, claude-opus-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 6,
+      "dateTime": "2026-10-15T10:43:46.868000-04:00",
+      "task": "Put the first MudBlazor screen in front of the operator and build the walkthrough harness it will be driven through. Survsys.Web becomes a real Blazor Server host with MudBlazor, a typed conditions client over GET /api/conditions whose failures become a message on the screen rather than an unhandled circuit exception, and a conditions list screen carrying stable element identifiers a walkthrough's wording can point at. Each tier gains a readiness endpoint at /health/ready for the harness to wait on, and Survsys.Api gains an opt-in configuration switch that applies its migrations at startup instead of refusing to serve, so the harness can bring an empty database to migration level through the only tier allowed to touch it. Survsys.E2ETests then becomes the harness the walkthrough contract rests on: Playwright with video recording on for every test, both tiers built and launched as processes on free ports under a startup timeout, readiness waited on before the first click, the condition fixture seeded, and one smoke test proving the chain end to end. No prerelease package goes into it.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 7,
+      "dateTime": "2026-10-15T11:05:33.869000-04:00",
+      "task": "Write the first walkthrough and the documentation it lives in. docs/walkthroughs/review-the-conditions-catalogue.md becomes the repository's first walkthrough document: one user story inferred from the legacy EpiTrax administration Conditions screen and NMI's /conditions screen under ../nedss/docs/ -- a surveillance administrator reviewing the condition catalogue to see which conditions may be reported and which carry a CDC code -- written as numbered steps the reader performs, naming every control by the words the Survsys conditions screen actually shows. Survsys.E2ETests then gains the one Playwright test named after that document, ReviewTheConditionsCatalogueTests, which performs those steps in their written order, asserts the outcome the document promises, names the document and the step number in any failure, and records video of the run through the harness base class session 6 built; the placeholder screen test in SurvsysHarnessTests, whose own name said it was standing in until this walkthrough existed, goes with it. docs/ then gains the shape later phases add to: a map of the documentation, the walkthrough index, and the user and technical documentation skeletons -- with Survsys.UnitTests/WalkthroughContractTests making the contract mechanical, so that every walkthrough document from here on must have the test named after it and a line in the index, and no later session can add a document that nothing performs.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 8,
+      "dateTime": "2026-10-15T11:28:21.268000-04:00",
+      "task": "Release 0.1.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 9,
+      "dateTime": "2026-10-15T12:46:06.203000-04:00",
+      "task": "Repair the `packaging:` block in `dabbler.yaml` so that `pack` survives the condition that stopped session 8's release run, and change no other file. The job runs with `TEMP` pointed at `{output}`, so the pack now re-points `TEMP`, `TMP` and `TMPDIR` at a staging directory that is a sibling of `{output}` and publishes both tiers into it, leaving only the three named artifacts under `{output}`; it starts no persistent build server (`UseSharedCompilation=false`, `UseRazorBuildServer=false`, MSBuild node reuse off) so nothing holds a handle on either directory; and it ends by shutting the build servers down and deleting the staging directory, so nothing the pack started outlives it. The repair is proved under session 8's own condition -- the declared pack script run into a scratch directory with `TEMP` pointed at that same directory -- asserting that exactly `Survsys.Web.zip`, `Survsys.Api.zip` and `Survsys.Database.sql` are there when it exits and that the directory can then be removed, with `dabbler packaging --dry-run` as the weaker half proving the declaration still loads.",
+      "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 10,
+      "dateTime": "2026-10-15T14:55:06.589000-04:00",
+      "task": "Release 0.1.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 11,
+      "dateTime": "2026-10-15T15:25:42.138000-04:00",
+      "task": "Point the handoff feed at a folder on disk. The `packaging:` block in `dabbler.yaml` is the only file this session changes: `feed` becomes `D:/handoff/survsys`, because the operator wants the three handoff artifacts dropped into a directory rather than deployed continuously to a remote feed, and the `artifacts.example.org` URL session 4 declared was always a placeholder. A feed that is a folder authenticates nothing, so `secret` and the `--user` argument go together and `DABBLER_FEED_PAT` stops being named in the file at all; `push` stops being an HTTPS upload and becomes a copy of `{artifact}` into `{feed}`, creating the folder when it is not there yet and overwriting an artifact already in it. The comment above the block is rewritten to describe the push the file now declares instead of the upload it used to. `pack` is session 9's work and is not touched: the three artifacts keep their names and their contents. The declaration is proved, not merely loaded -- a check reads the push argv back out of `dabbler.yaml`, substitutes three stand-in artifacts named after the real ones and a scratch folder that does not yet exist as the feed, spawns the argv once per artifact, and asserts all three arrive with their bytes intact and that a second pass with different bytes overwrites rather than failing; `dabbler packaging --dry-run` exits 0 once the block loads, which is the weaker half.",
+      "releasable": false
+    }
+  ]
+}
