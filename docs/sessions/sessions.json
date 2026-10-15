@@ -214,9 +214,9 @@
     {
       "number": 11,
       "title": "Packaging \u2014 point the feed at the handoff folder",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-15T15:23:04.725000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-15T15:34:41.246000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
