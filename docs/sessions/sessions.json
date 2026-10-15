@@ -160,30 +160,43 @@
       "title": "Release 0.1.0 (release: 0.1.0)",
       "status": "cancelled",
       "startedAt": "2026-10-15T11:28:20.931000-04:00",
-      "completedAt": null,
       "orchestrator": {
         "engine": "framework",
         "identityProvenance": "direct"
       },
-      "verificationVerdict": null,
-      "startCommit": "74d68d1c8d9f06ae31c4d6fd6e6dea014938c3ce",
       "frameworkVersion": "3.21.0",
+      "startCommit": "74d68d1c8d9f06ae31c4d6fd6e6dea014938c3ce",
       "preCancelStatus": "in-progress",
       "cancelledReason": "packaging run hit EPERM: TEMP pointed at {output} and .NET's persistent build servers kept it open",
-      "cancelledAt": "2026-10-15T12:32:36-04:00"
-    },
-    {
-      "number": 9,
-      "title": "Person demographics \u2014 schema and endpoints",
-      "status": "not-started",
-      "startedAt": null,
+      "cancelledAt": "2026-10-15T12:32:36-04:00",
       "completedAt": null,
-      "orchestrator": null,
       "verificationVerdict": null
     },
     {
+      "number": 9,
+      "title": "Packaging \u2014 repair the pack block and nothing else",
+      "status": "in-progress",
+      "startedAt": "2026-10-15T12:43:19.632000-04:00",
+      "completedAt": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "startCommit": "dabbe7db4bc5adafcbd63915d86ea9da9ab0292c",
+      "frameworkVersion": "3.21.0",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      }
+    },
+    {
       "number": 10,
-      "title": "Person search and case morbidity report creation",
+      "title": "Release 0.1.0 (release: 0.1.0)",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -192,7 +205,7 @@
     },
     {
       "number": 11,
-      "title": "The case morbidity report shell and its Demographics tab",
+      "title": "Person demographics \u2014 schema and endpoints",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -201,7 +214,7 @@
     },
     {
       "number": 12,
-      "title": "Phase 1 walkthroughs",
+      "title": "Person search and case morbidity report creation",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -210,7 +223,7 @@
     },
     {
       "number": 13,
-      "title": "Release 0.2.0 (release: 0.2.0)",
+      "title": "The case morbidity report shell and its Demographics tab",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -219,7 +232,7 @@
     },
     {
       "number": 14,
-      "title": "Clinical and laboratory data \u2014 schema and endpoints",
+      "title": "Phase 1 walkthroughs",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -228,7 +241,7 @@
     },
     {
       "number": 15,
-      "title": "Clinical and laboratory screens",
+      "title": "Release 0.2.0 (release: 0.2.0)",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -237,7 +250,7 @@
     },
     {
       "number": 16,
-      "title": "Case classification, status and MMWR week",
+      "title": "Clinical and laboratory data \u2014 schema and endpoints",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -246,7 +259,7 @@
     },
     {
       "number": 17,
-      "title": "Workflow state machine, work queues and agency sharing",
+      "title": "Clinical and laboratory screens",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -255,7 +268,7 @@
     },
     {
       "number": 18,
-      "title": "Phase 2 walkthroughs",
+      "title": "Case classification, status and MMWR week",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -264,7 +277,7 @@
     },
     {
       "number": 19,
-      "title": "Release 0.3.0 (release: 0.3.0)",
+      "title": "Workflow state machine, work queues and agency sharing",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -273,7 +286,7 @@
     },
     {
       "number": 20,
-      "title": "The Investigation and Administrative tabs",
+      "title": "Phase 2 walkthroughs",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -282,7 +295,7 @@
     },
     {
       "number": 21,
-      "title": "Contacts and exposures",
+      "title": "Release 0.3.0 (release: 0.3.0)",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -291,7 +304,7 @@
     },
     {
       "number": 22,
-      "title": "Notes and tasks",
+      "title": "The Investigation and Administrative tabs",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -300,7 +313,7 @@
     },
     {
       "number": 23,
-      "title": "File attachments",
+      "title": "Contacts and exposures",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -309,7 +322,7 @@
     },
     {
       "number": 24,
-      "title": "Phase 3 walkthroughs",
+      "title": "Notes and tasks",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -318,7 +331,7 @@
     },
     {
       "number": 25,
-      "title": "Release 0.4.0 (release: 0.4.0)",
+      "title": "File attachments",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -327,7 +340,7 @@
     },
     {
       "number": 26,
-      "title": "Agencies, jurisdictions, facilities and conditions",
+      "title": "Phase 3 walkthroughs",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -336,7 +349,7 @@
     },
     {
       "number": 27,
-      "title": "Core element configuration",
+      "title": "Release 0.4.0 (release: 0.4.0)",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -345,7 +358,7 @@
     },
     {
       "number": 28,
-      "title": "Users, roles, privileges and access audit",
+      "title": "Agencies, jurisdictions, facilities and conditions",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -354,7 +367,7 @@
     },
     {
       "number": 29,
-      "title": "Saved views and custom exports",
+      "title": "Core element configuration",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -363,7 +376,7 @@
     },
     {
       "number": 30,
-      "title": "Phase 4 walkthroughs",
+      "title": "Users, roles, privileges and access audit",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -372,7 +385,7 @@
     },
     {
       "number": 31,
-      "title": "Release 0.5.0 (release: 0.5.0)",
+      "title": "Saved views and custom exports",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -381,7 +394,7 @@
     },
     {
       "number": 32,
-      "title": "`Survsys.Messaging` and HL7 intake parsing",
+      "title": "Phase 4 walkthroughs",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -390,7 +403,7 @@
     },
     {
       "number": 33,
-      "title": "Vocabulary matching",
+      "title": "Release 0.5.0 (release: 0.5.0)",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -399,7 +412,7 @@
     },
     {
       "number": 34,
-      "title": "Duplicate detection and person matching",
+      "title": "`Survsys.Messaging` and HL7 intake parsing",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -408,7 +421,7 @@
     },
     {
       "number": 35,
-      "title": "The message queue and the intake service",
+      "title": "Vocabulary matching",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -417,7 +430,7 @@
     },
     {
       "number": 36,
-      "title": "ELR review screens and promotion to a case",
+      "title": "Duplicate detection and person matching",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -426,7 +439,7 @@
     },
     {
       "number": 37,
-      "title": "Phase 5 walkthroughs",
+      "title": "The message queue and the intake service",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -435,7 +448,7 @@
     },
     {
       "number": 38,
-      "title": "Release 0.6.0 (release: 0.6.0)",
+      "title": "ELR review screens and promotion to a case",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -444,7 +457,7 @@
     },
     {
       "number": 39,
-      "title": "Notification guides and PHIN variable mapping",
+      "title": "Phase 5 walkthroughs",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -453,7 +466,7 @@
     },
     {
       "number": 40,
-      "title": "The seven rule set types and repeating groups",
+      "title": "Release 0.6.0 (release: 0.6.0)",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -462,7 +475,7 @@
     },
     {
       "number": 41,
-      "title": "Message generation and direct transmission",
+      "title": "Notification guides and PHIN variable mapping",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -471,7 +484,7 @@
     },
     {
       "number": 42,
-      "title": "Auto-queue, reconciliation and the export log",
+      "title": "The seven rule set types and repeating groups",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -480,7 +493,7 @@
     },
     {
       "number": 43,
-      "title": "Notification screens",
+      "title": "Message generation and direct transmission",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -489,7 +502,7 @@
     },
     {
       "number": 44,
-      "title": "Phase 6 walkthroughs",
+      "title": "Auto-queue, reconciliation and the export log",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -498,7 +511,7 @@
     },
     {
       "number": 45,
-      "title": "Release 0.7.0 (release: 0.7.0)",
+      "title": "Notification screens",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -507,7 +520,7 @@
     },
     {
       "number": 46,
-      "title": "Outbreak management",
+      "title": "Phase 6 walkthroughs",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -516,7 +529,7 @@
     },
     {
       "number": 47,
-      "title": "The dynamic form builder",
+      "title": "Release 0.7.0 (release: 0.7.0)",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -525,7 +538,7 @@
     },
     {
       "number": 48,
-      "title": "Treatments and vaccines",
+      "title": "Outbreak management",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -534,7 +547,7 @@
     },
     {
       "number": 49,
-      "title": "Audit by EF Core interceptors",
+      "title": "The dynamic form builder",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -543,7 +556,7 @@
     },
     {
       "number": 50,
-      "title": "IBIS integration and ad-hoc reporting",
+      "title": "Treatments and vaccines",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -552,7 +565,7 @@
     },
     {
       "number": 51,
-      "title": "Phase 7 walkthroughs and the full walkthrough regression",
+      "title": "Audit by EF Core interceptors",
       "status": "not-started",
       "startedAt": null,
       "completedAt": null,
@@ -561,6 +574,24 @@
     },
     {
       "number": 52,
+      "title": "IBIS integration and ad-hoc reporting",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 53,
+      "title": "Phase 7 walkthroughs and the full walkthrough regression",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 54,
       "title": "Release 1.0.0 (release: 1.0.0)",
       "status": "not-started",
       "startedAt": null,

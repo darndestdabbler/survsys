@@ -20,50 +20,52 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 6 | First MudBlazor screen and the Playwright harness | no | 2026-10-15 |
 | 7 | The first walkthrough and the documentation it lives in | no | 2026-10-15 |
 | 8 | Release 0.1.0 (release: 0.1.0) | yes | 2026-10-15 |
-| 9 | Person demographics — schema and endpoints | — | not declared |
-| 10 | Person search and case morbidity report creation | — | not declared |
-| 11 | The case morbidity report shell and its Demographics tab | — | not declared |
-| 12 | Phase 1 walkthroughs | — | not declared |
-| 13 | Release 0.2.0 (release: 0.2.0) | — | not declared |
-| 14 | Clinical and laboratory data — schema and endpoints | — | not declared |
-| 15 | Clinical and laboratory screens | — | not declared |
-| 16 | Case classification, status and MMWR week | — | not declared |
-| 17 | Workflow state machine, work queues and agency sharing | — | not declared |
-| 18 | Phase 2 walkthroughs | — | not declared |
-| 19 | Release 0.3.0 (release: 0.3.0) | — | not declared |
-| 20 | The Investigation and Administrative tabs | — | not declared |
-| 21 | Contacts and exposures | — | not declared |
-| 22 | Notes and tasks | — | not declared |
-| 23 | File attachments | — | not declared |
-| 24 | Phase 3 walkthroughs | — | not declared |
-| 25 | Release 0.4.0 (release: 0.4.0) | — | not declared |
-| 26 | Agencies, jurisdictions, facilities and conditions | — | not declared |
-| 27 | Core element configuration | — | not declared |
-| 28 | Users, roles, privileges and access audit | — | not declared |
-| 29 | Saved views and custom exports | — | not declared |
-| 30 | Phase 4 walkthroughs | — | not declared |
-| 31 | Release 0.5.0 (release: 0.5.0) | — | not declared |
-| 32 | `Survsys.Messaging` and HL7 intake parsing | — | not declared |
-| 33 | Vocabulary matching | — | not declared |
-| 34 | Duplicate detection and person matching | — | not declared |
-| 35 | The message queue and the intake service | — | not declared |
-| 36 | ELR review screens and promotion to a case | — | not declared |
-| 37 | Phase 5 walkthroughs | — | not declared |
-| 38 | Release 0.6.0 (release: 0.6.0) | — | not declared |
-| 39 | Notification guides and PHIN variable mapping | — | not declared |
-| 40 | The seven rule set types and repeating groups | — | not declared |
-| 41 | Message generation and direct transmission | — | not declared |
-| 42 | Auto-queue, reconciliation and the export log | — | not declared |
-| 43 | Notification screens | — | not declared |
-| 44 | Phase 6 walkthroughs | — | not declared |
-| 45 | Release 0.7.0 (release: 0.7.0) | — | not declared |
-| 46 | Outbreak management | — | not declared |
-| 47 | The dynamic form builder | — | not declared |
-| 48 | Treatments and vaccines | — | not declared |
-| 49 | Audit by EF Core interceptors | — | not declared |
-| 50 | IBIS integration and ad-hoc reporting | — | not declared |
-| 51 | Phase 7 walkthroughs and the full walkthrough regression | — | not declared |
-| 52 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 9 | Packaging — repair the pack block and nothing else | no | 2026-10-15 |
+| 10 | Release 0.1.0 (release: 0.1.0) | — | not declared |
+| 11 | Person demographics — schema and endpoints | — | not declared |
+| 12 | Person search and case morbidity report creation | — | not declared |
+| 13 | The case morbidity report shell and its Demographics tab | — | not declared |
+| 14 | Phase 1 walkthroughs | — | not declared |
+| 15 | Release 0.2.0 (release: 0.2.0) | — | not declared |
+| 16 | Clinical and laboratory data — schema and endpoints | — | not declared |
+| 17 | Clinical and laboratory screens | — | not declared |
+| 18 | Case classification, status and MMWR week | — | not declared |
+| 19 | Workflow state machine, work queues and agency sharing | — | not declared |
+| 20 | Phase 2 walkthroughs | — | not declared |
+| 21 | Release 0.3.0 (release: 0.3.0) | — | not declared |
+| 22 | The Investigation and Administrative tabs | — | not declared |
+| 23 | Contacts and exposures | — | not declared |
+| 24 | Notes and tasks | — | not declared |
+| 25 | File attachments | — | not declared |
+| 26 | Phase 3 walkthroughs | — | not declared |
+| 27 | Release 0.4.0 (release: 0.4.0) | — | not declared |
+| 28 | Agencies, jurisdictions, facilities and conditions | — | not declared |
+| 29 | Core element configuration | — | not declared |
+| 30 | Users, roles, privileges and access audit | — | not declared |
+| 31 | Saved views and custom exports | — | not declared |
+| 32 | Phase 4 walkthroughs | — | not declared |
+| 33 | Release 0.5.0 (release: 0.5.0) | — | not declared |
+| 34 | `Survsys.Messaging` and HL7 intake parsing | — | not declared |
+| 35 | Vocabulary matching | — | not declared |
+| 36 | Duplicate detection and person matching | — | not declared |
+| 37 | The message queue and the intake service | — | not declared |
+| 38 | ELR review screens and promotion to a case | — | not declared |
+| 39 | Phase 5 walkthroughs | — | not declared |
+| 40 | Release 0.6.0 (release: 0.6.0) | — | not declared |
+| 41 | Notification guides and PHIN variable mapping | — | not declared |
+| 42 | The seven rule set types and repeating groups | — | not declared |
+| 43 | Message generation and direct transmission | — | not declared |
+| 44 | Auto-queue, reconciliation and the export log | — | not declared |
+| 45 | Notification screens | — | not declared |
+| 46 | Phase 6 walkthroughs | — | not declared |
+| 47 | Release 0.7.0 (release: 0.7.0) | — | not declared |
+| 48 | Outbreak management | — | not declared |
+| 49 | The dynamic form builder | — | not declared |
+| 50 | Treatments and vaccines | — | not declared |
+| 51 | Audit by EF Core interceptors | — | not declared |
+| 52 | IBIS integration and ad-hoc reporting | — | not declared |
+| 53 | Phase 7 walkthroughs and the full walkthrough regression | — | not declared |
+| 54 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -117,3 +119,9 @@ Write the first walkthrough and the documentation it lives in. docs/walkthroughs
 **Releasable: yes.**
 
 Release 0.1.0: the framework packs and publishes what is on the trunk.
+
+### Session 9 — Packaging — repair the pack block and nothing else
+
+**Releasable: no.**
+
+Repair the `packaging:` block in `dabbler.yaml` so that `pack` survives the condition that stopped session 8's release run, and change no other file. The job runs with `TEMP` pointed at `{output}`, so the pack now re-points `TEMP`, `TMP` and `TMPDIR` at a staging directory that is a sibling of `{output}` and publishes both tiers into it, leaving only the three named artifacts under `{output}`; it starts no persistent build server (`UseSharedCompilation=false`, `UseRazorBuildServer=false`, MSBuild node reuse off) so nothing holds a handle on either directory; and it ends by shutting the build servers down and deleting the staging directory, so nothing the pack started outlives it. The repair is proved under session 8's own condition -- the declared pack script run into a scratch directory with `TEMP` pointed at that same directory -- asserting that exactly `Survsys.Web.zip`, `Survsys.Api.zip` and `Survsys.Database.sql` are there when it exits and that the directory can then be removed, with `dabbler packaging --dry-run` as the weaker half proving the declaration still loads.

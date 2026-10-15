@@ -62,9 +62,25 @@ testing:
 # Each tier is compressed to a single `.zip`. The framework walks `{output}`
 # and pushes once per file it finds: a bare `dotnet publish` folder would be
 # several hundred pushes for one site, where the thing actually handed over
-# is one package. The tiers are published into a staging folder under
-# `{output}` and that folder is deleted once both zips exist, so what the
-# framework collects is exactly the three artifacts and nothing else.
+# is one package.
+#
+# Nothing but those three artifacts may land in `{output}`, and nothing may
+# still hold that directory open when the pack exits -- session 8's release
+# run stopped with `EPERM` on it because both were violated. The job runs with
+# `TEMP` pointed at `{output}` itself, so the script's first act is to
+# re-point `TEMP`, `TMP` and `TMPDIR` at a staging directory beside `{output}`
+# -- never under it -- and both tiers publish there; only the two zips and the
+# SQL script are ever written into `{output}`. The script also starts no
+# persistent build server (`UseSharedCompilation` and `UseRazorBuildServer`
+# off, MSBuild node reuse and the MSBuild server off), because Roslyn's
+# `VBCSCompiler`, a reused MSBuild node and NuGet's scratch lock each outlive
+# the `dotnet publish` that started them and keep writing into whatever `TEMP`
+# names. However it ends, the script shuts the build servers down and deletes
+# the staging directory, so nothing it started outlives it: a staging
+# directory a killed pack left behind is cleared before the publishes, rather
+# than published over, and one that survives the delete fails the pack instead
+# of being shrugged off -- the delete is suppressed only while an earlier
+# failure is on its way out, so the pack reports that failure and not this one.
 #
 # `feed` is the one value to edit for a real feed; the push is a plain HTTPS
 # upload, which suits zips and a `.sql` script alike where `dotnet nuget
@@ -84,17 +100,33 @@ packaging:
       - -Command
       - |
         $ErrorActionPreference = 'Stop'
-        $out = '{output}'
-        $stage = Join-Path $out 'stage'
-        foreach ($tier in 'Survsys.Web', 'Survsys.Api') {
-          $dir = Join-Path $stage $tier
-          dotnet publish "$tier/$tier.csproj" -c Release -o $dir
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Compress-Archive -Path (Join-Path $dir '*') -DestinationPath (Join-Path $out "$tier.zip") -Force
+        $out = ('{output}').TrimEnd('\','/')
+        $stage = "$out.stage"
+        if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+        New-Item -ItemType Directory -Path $stage | Out-Null
+        $env:TEMP = $stage
+        $env:TMP = $stage
+        $env:TMPDIR = $stage
+        $env:UseSharedCompilation = 'false'
+        $env:UseRazorBuildServer = 'false'
+        $env:MSBUILDDISABLENODEREUSE = '1'
+        $env:DOTNET_CLI_USE_MSBUILD_SERVER = '0'
+        try {
+          foreach ($tier in 'Survsys.Web', 'Survsys.Api') {
+            $dir = Join-Path $stage $tier
+            dotnet publish "$tier/$tier.csproj" -c Release -o $dir
+            if ($LASTEXITCODE -ne 0) { throw "dotnet publish $tier exited $LASTEXITCODE" }
+            Compress-Archive -Path (Join-Path $dir '*') -DestinationPath (Join-Path $out "$tier.zip") -Force
+          }
+          dotnet ef migrations script --idempotent --project Survsys.Data --startup-project Survsys.Api --output (Join-Path $out 'Survsys.Database.sql')
+          if ($LASTEXITCODE -ne 0) { throw "dotnet ef migrations script exited $LASTEXITCODE" }
+        } finally {
+          $ErrorActionPreference = 'Continue'
+          dotnet build-server shutdown | Out-Null
+          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue }
         }
-        Remove-Item $stage -Recurse -Force
-        dotnet ef migrations script --idempotent --project Survsys.Data --startup-project Survsys.Api --output (Join-Path $out 'Survsys.Database.sql')
-        exit $LASTEXITCODE
+        if (Test-Path $stage) { throw "the staging directory $stage could not be deleted" }
+        exit 0
   push:
     argv: ["curl", "--fail", "--silent", "--show-error",
            "--user", "dabbler:{secret}",
