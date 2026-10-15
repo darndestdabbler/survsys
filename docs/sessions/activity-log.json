@@ -1,0 +1,13 @@
+{
+  "createdDate": "2026-10-15T08:26:22.799000-04:00",
+  "totalSessions": 0,
+  "entries": [
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 1,
+      "dateTime": "2026-10-15T08:26:22.864000-04:00",
+      "task": "Capture the operator's brief for survsys and turn it into the solution plan the rest of this repository is built from. The brief -- port the three legacy disease-surveillance systems under ../nedss (EpiTrax, Java EE case management; EMSA, PHP inbound ELR staging; NMI, PHP outbound CDC notification) into one .NET 10 / MudBlazor / Entity Framework Core / SQL Server application whose API tier mediates every database call -- is written to docs/planning/brief.md as the operator gave it, including the constraints they named: keep it as simple as possible, unit plus integration plus Playwright end-to-end tests, build incrementally so that after the first few sessions a person can see and interact with real database data, ship walkthrough documentation at every release, and keep required operator input to a minimum. docs/planning/solution-plan.md is then written: an objective a reader can act on; the Production split the operator chose, which is the default -- a MudBlazor application tier that calls an API tier, and only the API tier talks to SQL Server; the Handoff artifacts for each separately running part with the standard command for its form, an IIS site package by dotnet publish for the application and API tiers and an idempotent SQL migration script by dotnet ef migrations script --idempotent for the database; the modules, each a .csproj listed in the root solution file and reaching a sibling only by <ProjectReference>, with what each is responsible for, the contract it exposes as preconditions, guarantees and failure mode, the dependency direction, the reason for each cut and the cuts left deferred for session 2 to decide; and the phases with their key deliverables, each scoped to a handful of focused AI sessions and ordered so the earliest put a working MudBlazor screen over real SQL Server data in front of the operator. The plan also fixes the walkthrough contract the operator called non-negotiable: every release ships step-by-step walkthroughs organised around user stories inferred from the legacy code and documentation, and each walkthrough is driven by a Playwright test that performs exactly its written steps and records the run on video, so no walkthrough can ship that a person cannot complete as written.",
+      "releasable": false
+    }
+  ]
+}
