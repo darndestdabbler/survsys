@@ -46,20 +46,58 @@ testing:
       test_glob: "*Tests.cs"
       test_name: "{name}Tests.cs"
 
-# Step (f) of the lifecycle: pack, then push to a feed. A session that
-# declared itself releasable publishes through these -- both argv, never
-# shell strings, and `push` naming the credential rather than holding it.
-# This repository declares none, and that is the declaration: it publishes
-# to no feed today. A feed that is a folder on disk -- a drive path, a UNC
-# path or file:// -- takes no credential: leave `secret` out, and the push
-# runs without one. `dabbler packaging --dry-run` rehearses the block and
-# exits 0 when it loads, in a session that may not publish too.
+# Step (f) of the lifecycle: pack, then push to a feed. Both are argv the
+# framework spawns directly -- never shell strings -- and `push` names its
+# credential rather than holding it.
 #
-#   packaging:
-#     pack:
-#       argv: ["dotnet", "pack", "-c", "Release", "-o", "{output}"]
-#     push:
-#       argv: ["dotnet", "nuget", "push", "{artifact}",
-#              "--source", "{feed}", "--api-key", "{secret}"]
-#       feed: https://pkgs.dev.azure.com/<org>/_packaging/<feed>/nuget/v3/index.json
-#       secret: DABBLER_FEED_PAT
+# The three handoff artifacts are the ones the solution plan names: an IIS
+# site package for each tier, and the database's idempotent SQL script.
+#
+# `pack` is ONE `pwsh` invocation rather than three commands because the
+# framework spawns pack once, with no shell to chain them, and the packaging
+# session is allowed to write this file and no other -- so there is nowhere
+# else to put a pack script. The script stops on the first non-zero exit, so
+# a half-built handoff can never report success.
+#
+# Each tier is compressed to a single `.zip`. The framework walks `{output}`
+# and pushes once per file it finds: a bare `dotnet publish` folder would be
+# several hundred pushes for one site, where the thing actually handed over
+# is one package. The tiers are published into a staging folder under
+# `{output}` and that folder is deleted once both zips exist, so what the
+# framework collects is exactly the three artifacts and nothing else.
+#
+# `feed` is the one value to edit for a real feed; the push is a plain HTTPS
+# upload, which suits zips and a `.sql` script alike where `dotnet nuget
+# push` would not. `secret` is the NAME of the credential -- the PAT itself
+# lives in that environment variable and never in this file. A feed that is
+# a folder on disk -- a drive path, a UNC path or file:// -- authenticates
+# nothing: drop `secret` and `--user` together if this becomes one.
+#
+# `dabbler packaging --dry-run` rehearses the block and exits 0 when it
+# loads, in a session that may not publish too.
+packaging:
+  pack:
+    argv:
+      - pwsh
+      - -NoProfile
+      - -NonInteractive
+      - -Command
+      - |
+        $ErrorActionPreference = 'Stop'
+        $out = '{output}'
+        $stage = Join-Path $out 'stage'
+        foreach ($tier in 'Survsys.Web', 'Survsys.Api') {
+          $dir = Join-Path $stage $tier
+          dotnet publish "$tier/$tier.csproj" -c Release -o $dir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path (Join-Path $dir '*') -DestinationPath (Join-Path $out "$tier.zip") -Force
+        }
+        Remove-Item $stage -Recurse -Force
+        dotnet ef migrations script --idempotent --project Survsys.Data --startup-project Survsys.Api --output (Join-Path $out 'Survsys.Database.sql')
+        exit $LASTEXITCODE
+  push:
+    argv: ["curl", "--fail", "--silent", "--show-error",
+           "--user", "dabbler:{secret}",
+           "--upload-file", "{artifact}", "{feed}"]
+    feed: https://artifacts.example.org/survsys-handoff/
+    secret: DABBLER_FEED_PAT
