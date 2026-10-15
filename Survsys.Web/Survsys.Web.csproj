@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- The application tier. It references Survsys.Contracts alone: a
+       reference to Survsys.Data or to EF Core would put the database inside
+       the application tier and void the production split, and
+       ArchitectureTests asserts that it has neither. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Survsys.Contracts\Survsys.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
