@@ -2,3 +2,8 @@
 # verification round after the tree it describes, so committing it
 # makes verified work look like it changed post-verification.
 .dabbler/
+
+# .NET build output. Untracked build artefacts would otherwise be committed
+# at the land and digested as part of the tree the run of record stands for.
+bin/
+obj/
