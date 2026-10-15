@@ -1,0 +1,65 @@
+# dabbler.yaml -- what this repository declares about itself.
+#
+# Tracked, unlike local-overrides.yaml, because CI reads these facts and so
+# does the next machine to pick up a session. Precedence is the packaged
+# router-config.yaml, then this file, then local-overrides.yaml. Providers,
+# models, roles and transports are deliberately absent: those are
+# distribution facts, and a repository that restated them here would fork
+# the model registry in order to say how to run a test suite.
+schema_version: 1
+
+# The three suites this repository runs, and how each one runs.
+#
+# `unit` is the run of record, which is what `expensive: true` says: it is the
+# suite a close demands green, so it covers the whole repository -- a change
+# anywhere makes its last run stale, which is the point of a run of record.
+# It is also the suite that holds the architecture tests, so the reference
+# graph between the modules is checked by the one suite that always runs.
+#
+# `integration` wants a reachable SQL Server and `e2e` wants Playwright
+# browsers with both tiers running, so neither is the mechanical gate on
+# every session. They are declared so that a change under the paths they
+# cover selects their tests, and so that the walkthrough suite has a name
+# before the release that gates on it.
+#
+# Every command carries its own hang limit, so every later run of a suite
+# inherits it rather than depending on who remembered to pass it.
+testing:
+  suites:
+    - name: unit
+      command: dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m
+      expensive: true
+      covers: ["."]
+      test_roots: [Survsys.UnitTests]
+      test_glob: "*Tests.cs"
+      test_name: "{name}Tests.cs"
+    - name: integration
+      command: dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --blame-hang-timeout 5m
+      covers: [Survsys.Data, Survsys.Api, Survsys.IntegrationTests]
+      test_roots: [Survsys.IntegrationTests]
+      test_glob: "*Tests.cs"
+      test_name: "{name}Tests.cs"
+    - name: e2e
+      command: dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --blame-hang-timeout 5m
+      covers: [Survsys.Web, Survsys.Api, Survsys.E2ETests]
+      test_roots: [Survsys.E2ETests]
+      test_glob: "*Tests.cs"
+      test_name: "{name}Tests.cs"
+
+# Step (f) of the lifecycle: pack, then push to a feed. A session that
+# declared itself releasable publishes through these -- both argv, never
+# shell strings, and `push` naming the credential rather than holding it.
+# This repository declares none, and that is the declaration: it publishes
+# to no feed today. A feed that is a folder on disk -- a drive path, a UNC
+# path or file:// -- takes no credential: leave `secret` out, and the push
+# runs without one. `dabbler packaging --dry-run` rehearses the block and
+# exits 0 when it loads, in a session that may not publish too.
+#
+#   packaging:
+#     pack:
+#       argv: ["dotnet", "pack", "-c", "Release", "-o", "{output}"]
+#     push:
+#       argv: ["dotnet", "nuget", "push", "{artifact}",
+#              "--source", "{feed}", "--api-key", "{secret}"]
+#       feed: https://pkgs.dev.azure.com/<org>/_packaging/<feed>/nuget/v3/index.json
+#       secret: DABBLER_FEED_PAT
