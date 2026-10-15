@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- The API tier, and the only module that reaches the database. The
+       mapping between entities and wire shapes lives here, because this is
+       the tier that owns the wire. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Survsys.Data\Survsys.Data.csproj" />
+    <ProjectReference Include="..\Survsys.Contracts\Survsys.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
