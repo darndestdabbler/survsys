@@ -22,50 +22,52 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 8 | Release 0.1.0 (release: 0.1.0) | yes | 2026-10-15 |
 | 9 | Packaging — repair the pack block and nothing else | no | 2026-10-15 |
 | 10 | Release 0.1.0 (release: 0.1.0) | yes | 2026-10-15 |
-| 11 | Person demographics — schema and endpoints | — | not declared |
-| 12 | Person search and case morbidity report creation | — | not declared |
-| 13 | The case morbidity report shell and its Demographics tab | — | not declared |
-| 14 | Phase 1 walkthroughs | — | not declared |
-| 15 | Release 0.2.0 (release: 0.2.0) | — | not declared |
-| 16 | Clinical and laboratory data — schema and endpoints | — | not declared |
-| 17 | Clinical and laboratory screens | — | not declared |
-| 18 | Case classification, status and MMWR week | — | not declared |
-| 19 | Workflow state machine, work queues and agency sharing | — | not declared |
-| 20 | Phase 2 walkthroughs | — | not declared |
-| 21 | Release 0.3.0 (release: 0.3.0) | — | not declared |
-| 22 | The Investigation and Administrative tabs | — | not declared |
-| 23 | Contacts and exposures | — | not declared |
-| 24 | Notes and tasks | — | not declared |
-| 25 | File attachments | — | not declared |
-| 26 | Phase 3 walkthroughs | — | not declared |
-| 27 | Release 0.4.0 (release: 0.4.0) | — | not declared |
-| 28 | Agencies, jurisdictions, facilities and conditions | — | not declared |
-| 29 | Core element configuration | — | not declared |
-| 30 | Users, roles, privileges and access audit | — | not declared |
-| 31 | Saved views and custom exports | — | not declared |
-| 32 | Phase 4 walkthroughs | — | not declared |
-| 33 | Release 0.5.0 (release: 0.5.0) | — | not declared |
-| 34 | `Survsys.Messaging` and HL7 intake parsing | — | not declared |
-| 35 | Vocabulary matching | — | not declared |
-| 36 | Duplicate detection and person matching | — | not declared |
-| 37 | The message queue and the intake service | — | not declared |
-| 38 | ELR review screens and promotion to a case | — | not declared |
-| 39 | Phase 5 walkthroughs | — | not declared |
-| 40 | Release 0.6.0 (release: 0.6.0) | — | not declared |
-| 41 | Notification guides and PHIN variable mapping | — | not declared |
-| 42 | The seven rule set types and repeating groups | — | not declared |
-| 43 | Message generation and direct transmission | — | not declared |
-| 44 | Auto-queue, reconciliation and the export log | — | not declared |
-| 45 | Notification screens | — | not declared |
-| 46 | Phase 6 walkthroughs | — | not declared |
-| 47 | Release 0.7.0 (release: 0.7.0) | — | not declared |
-| 48 | Outbreak management | — | not declared |
-| 49 | The dynamic form builder | — | not declared |
-| 50 | Treatments and vaccines | — | not declared |
-| 51 | Audit by EF Core interceptors | — | not declared |
-| 52 | IBIS integration and ad-hoc reporting | — | not declared |
-| 53 | Phase 7 walkthroughs and the full walkthrough regression | — | not declared |
-| 54 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 11 | Packaging — point the feed at the handoff folder | no | 2026-10-15 |
+| 12 | Release 0.1.0 (release: 0.1.0) | — | not declared |
+| 13 | Person demographics — schema and endpoints | — | not declared |
+| 14 | Person search and case morbidity report creation | — | not declared |
+| 15 | The case morbidity report shell and its Demographics tab | — | not declared |
+| 16 | Phase 1 walkthroughs | — | not declared |
+| 17 | Release 0.2.0 (release: 0.2.0) | — | not declared |
+| 18 | Clinical and laboratory data — schema and endpoints | — | not declared |
+| 19 | Clinical and laboratory screens | — | not declared |
+| 20 | Case classification, status and MMWR week | — | not declared |
+| 21 | Workflow state machine, work queues and agency sharing | — | not declared |
+| 22 | Phase 2 walkthroughs | — | not declared |
+| 23 | Release 0.3.0 (release: 0.3.0) | — | not declared |
+| 24 | The Investigation and Administrative tabs | — | not declared |
+| 25 | Contacts and exposures | — | not declared |
+| 26 | Notes and tasks | — | not declared |
+| 27 | File attachments | — | not declared |
+| 28 | Phase 3 walkthroughs | — | not declared |
+| 29 | Release 0.4.0 (release: 0.4.0) | — | not declared |
+| 30 | Agencies, jurisdictions, facilities and conditions | — | not declared |
+| 31 | Core element configuration | — | not declared |
+| 32 | Users, roles, privileges and access audit | — | not declared |
+| 33 | Saved views and custom exports | — | not declared |
+| 34 | Phase 4 walkthroughs | — | not declared |
+| 35 | Release 0.5.0 (release: 0.5.0) | — | not declared |
+| 36 | `Survsys.Messaging` and HL7 intake parsing | — | not declared |
+| 37 | Vocabulary matching | — | not declared |
+| 38 | Duplicate detection and person matching | — | not declared |
+| 39 | The message queue and the intake service | — | not declared |
+| 40 | ELR review screens and promotion to a case | — | not declared |
+| 41 | Phase 5 walkthroughs | — | not declared |
+| 42 | Release 0.6.0 (release: 0.6.0) | — | not declared |
+| 43 | Notification guides and PHIN variable mapping | — | not declared |
+| 44 | The seven rule set types and repeating groups | — | not declared |
+| 45 | Message generation and direct transmission | — | not declared |
+| 46 | Auto-queue, reconciliation and the export log | — | not declared |
+| 47 | Notification screens | — | not declared |
+| 48 | Phase 6 walkthroughs | — | not declared |
+| 49 | Release 0.7.0 (release: 0.7.0) | — | not declared |
+| 50 | Outbreak management | — | not declared |
+| 51 | The dynamic form builder | — | not declared |
+| 52 | Treatments and vaccines | — | not declared |
+| 53 | Audit by EF Core interceptors | — | not declared |
+| 54 | IBIS integration and ad-hoc reporting | — | not declared |
+| 55 | Phase 7 walkthroughs and the full walkthrough regression | — | not declared |
+| 56 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -131,3 +133,9 @@ Repair the `packaging:` block in `dabbler.yaml` so that `pack` survives the cond
 **Releasable: yes.**
 
 Release 0.1.0: the framework packs and publishes what is on the trunk.
+
+### Session 11 — Packaging — point the feed at the handoff folder
+
+**Releasable: no.**
+
+Point the handoff feed at a folder on disk. The `packaging:` block in `dabbler.yaml` is the only file this session changes: `feed` becomes `D:/handoff/survsys`, because the operator wants the three handoff artifacts dropped into a directory rather than deployed continuously to a remote feed, and the `artifacts.example.org` URL session 4 declared was always a placeholder. A feed that is a folder authenticates nothing, so `secret` and the `--user` argument go together and `DABBLER_FEED_PAT` stops being named in the file at all; `push` stops being an HTTPS upload and becomes a copy of `{artifact}` into `{feed}`, creating the folder when it is not there yet and overwriting an artifact already in it. The comment above the block is rewritten to describe the push the file now declares instead of the upload it used to. `pack` is session 9's work and is not touched: the three artifacts keep their names and their contents. The declaration is proved, not merely loaded -- a check reads the push argv back out of `dabbler.yaml`, substitutes three stand-in artifacts named after the real ones and a scratch folder that does not yet exist as the feed, spawns the argv once per artifact, and asserts all three arrive with their bytes intact and that a second pass with different bytes overwrites rather than failing; `dabbler packaging --dry-run` exits 0 once the block loads, which is the weaker half.

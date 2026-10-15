@@ -47,8 +47,8 @@ testing:
       test_name: "{name}Tests.cs"
 
 # Step (f) of the lifecycle: pack, then push to a feed. Both are argv the
-# framework spawns directly -- never shell strings -- and `push` names its
-# credential rather than holding it.
+# framework spawns directly -- never shell strings -- and the feed is a
+# folder on disk, so the push carries no credential at all.
 #
 # The three handoff artifacts are the ones the solution plan names: an IIS
 # site package for each tier, and the database's idempotent SQL script.
@@ -82,12 +82,30 @@ testing:
 # of being shrugged off -- the delete is suppressed only while an earlier
 # failure is on its way out, so the pack reports that failure and not this one.
 #
-# `feed` is the one value to edit for a real feed; the push is a plain HTTPS
-# upload, which suits zips and a `.sql` script alike where `dotnet nuget
-# push` would not. `secret` is the NAME of the credential -- the PAT itself
-# lives in that environment variable and never in this file. A feed that is
-# a folder on disk -- a drive path, a UNC path or file:// -- authenticates
-# nothing: drop `secret` and `--user` together if this becomes one.
+# `feed` is the folder the handoff is dropped into, and it is the one value
+# to edit if that folder moves. It is a directory because that is what the
+# operator wants -- the three artifacts sitting in a folder, not continuous
+# deployment to a remote feed; the `artifacts.example.org` URL this block
+# used to name was a placeholder and never was a feed.
+#
+# A folder on disk -- a drive path, a UNC path or file:// -- authenticates
+# nothing, so `secret` and `--user` are gone together: nothing in this file
+# names a credential, and the push is a copy rather than an HTTPS upload. It
+# creates the folder when it is not there yet and overwrites a file of the
+# same name already in it, so handing the same artifact over twice replaces
+# it instead of failing. `{artifact}` is one file of the pack's output, and
+# the framework spawns the push once per file it finds.
+#
+# Both placeholders are arguments of their own rather than text inside the
+# script, which is what `-CommandWithArgs` is for: the framework substitutes
+# a placeholder wherever it appears, so a path interpolated into a quoted
+# PowerShell literal would be read as syntax instead of as a path the moment
+# it held an apostrophe -- `C:/Users/O'Connor/out` is a real home directory,
+# and quoting it is not this file's job. Passed as arguments they reach
+# `$args` as the bytes the framework substituted, whatever is in them.
+# `-CommandWithArgs` wants pwsh 7.4 or newer and refuses loudly on an older
+# one, which is the failure to have: the alternative is a path quietly cut
+# in half.
 #
 # `dabbler packaging --dry-run` rehearses the block and exits 0 when it
 # loads, in a session that may not publish too.
@@ -128,8 +146,5 @@ packaging:
         if (Test-Path $stage) { throw "the staging directory $stage could not be deleted" }
         exit 0
   push:
-    argv: ["curl", "--fail", "--silent", "--show-error",
-           "--user", "dabbler:{secret}",
-           "--upload-file", "{artifact}", "{feed}"]
-    feed: https://artifacts.example.org/survsys-handoff/
-    secret: DABBLER_FEED_PAT
+    argv: ["pwsh", "-NoProfile", "-NonInteractive", "-CommandWithArgs", "$ErrorActionPreference = 'Stop'; New-Item -ItemType Directory -Force -Path $args[1] | Out-Null; Copy-Item -LiteralPath $args[0] -Destination $args[1] -Force", "{artifact}", "{feed}"]
+    feed: D:/handoff/survsys
