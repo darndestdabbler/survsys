@@ -80,6 +80,13 @@
       "dateTime": "2026-10-15T12:46:06.203000-04:00",
       "task": "Repair the `packaging:` block in `dabbler.yaml` so that `pack` survives the condition that stopped session 8's release run, and change no other file. The job runs with `TEMP` pointed at `{output}`, so the pack now re-points `TEMP`, `TMP` and `TMPDIR` at a staging directory that is a sibling of `{output}` and publishes both tiers into it, leaving only the three named artifacts under `{output}`; it starts no persistent build server (`UseSharedCompilation=false`, `UseRazorBuildServer=false`, MSBuild node reuse off) so nothing holds a handle on either directory; and it ends by shutting the build servers down and deleting the staging directory, so nothing the pack started outlives it. The repair is proved under session 8's own condition -- the declared pack script run into a scratch directory with `TEMP` pointed at that same directory -- asserting that exactly `Survsys.Web.zip`, `Survsys.Api.zip` and `Survsys.Database.sql` are there when it exits and that the directory can then be removed, with `dabbler packaging --dry-run` as the weaker half proving the declaration still loads.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 10,
+      "dateTime": "2026-10-15T14:55:06.589000-04:00",
+      "task": "Release 0.1.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }

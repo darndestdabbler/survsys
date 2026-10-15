@@ -185,23 +185,31 @@
         "identityProvenance": "direct"
       },
       "verificationVerdict": "VERIFIED",
-      "startCommit": "dabbe7db4bc5adafcbd63915d86ea9da9ab0292c",
-      "frameworkVersion": "3.21.0",
       "verification": {
         "rounds": 2,
         "verifierModel": "gpt-5.6-terra",
         "verifierProvider": "openai",
         "transport": "api"
-      }
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "dabbe7db4bc5adafcbd63915d86ea9da9ab0292c"
     },
     {
       "number": 10,
       "title": "Release 0.1.0 (release: 0.1.0)",
-      "status": "not-started",
-      "startedAt": null,
+      "status": "cancelled",
+      "startedAt": "2026-10-15T14:55:06.255000-04:00",
       "completedAt": null,
-      "orchestrator": null,
-      "verificationVerdict": null
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": null,
+      "startCommit": "76da0e07077da743e1713be878199af55378f42b",
+      "frameworkVersion": "3.21.0",
+      "preCancelStatus": "in-progress",
+      "cancelledReason": "the declared feed was the artifacts.example.org placeholder, which does not resolve; pack succeeded and 0.1.0 was never spent",
+      "cancelledAt": "2026-10-15T15:20:36-04:00"
     },
     {
       "number": 11,
