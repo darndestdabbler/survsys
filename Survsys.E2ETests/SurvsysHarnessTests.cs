@@ -7,13 +7,13 @@ namespace Survsys.E2ETests;
 /// The harness itself, proved end to end.
 /// </summary>
 /// <remarks>
-/// <strong>This is not a walkthrough test.</strong> A walkthrough test is
+/// <strong>These are not walkthrough tests.</strong> A walkthrough test is
 /// named after a document under <c>docs/walkthroughs/</c> and performs that
-/// document's written steps in their written order; the first of those is
-/// written in the session that writes the first document. What these tests
-/// prove is the thing those tests will stand on: two tiers running, a seeded
-/// database behind them, a browser driving the screen, and video recording
-/// on.
+/// document's written steps in their written order;
+/// <see cref="ReviewTheConditionsCatalogueTests"/> is the first of those, and
+/// it is where the screen's wording is held to a document. What these tests
+/// prove is the thing it stands on: two tiers running, a seeded database
+/// behind them, a browser driving the screen, and video recording on.
 ///
 /// Every assertion about the screen goes through Playwright's web-first
 /// assertions, which retry until the element is there. That is the repository's
@@ -57,31 +57,6 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
             .ToHaveCountAsync(SurvsysHarness.SeededConditionsByName.Length);
         await Expect(Page.Locator("#conditions-table [data-condition-name]"))
             .ToHaveTextAsync(SurvsysHarness.SeededConditionsByName);
-    }
-
-    /// <summary>
-    /// The two values the screen has to translate on the way to a reader: a
-    /// condition with no CDC code, and one that may not be chosen for a new
-    /// report. A walkthrough's wording will describe what is on the screen,
-    /// so what is on the screen is what this asserts.
-    /// </summary>
-    [Fact]
-    public async Task TheScreenShowsEachConditionAsTheWalkthroughWillDescribeIt()
-    {
-        await Page.GotoAsync(harness.WebBaseAddress + "conditions");
-
-        var malaria = Page.Locator("[data-condition='Malaria']");
-        await Expect(malaria.Locator("[data-condition-cdc-code]")).ToHaveTextAsync("10130");
-        await Expect(malaria.Locator("[data-condition-active]")).ToHaveTextAsync("Yes");
-
-        // Bartonellosis is a real condition with no CDC code, which the
-        // screen shows as a dash rather than as an empty cell.
-        await Expect(Page.Locator("[data-condition='Bartonellosis'] [data-condition-cdc-code]"))
-            .ToHaveTextAsync("—");
-
-        await Expect(Page
-                .Locator("[data-condition='Influenza, animal isolates'] [data-condition-active]"))
-            .ToHaveTextAsync("No");
     }
 
     /// <summary>

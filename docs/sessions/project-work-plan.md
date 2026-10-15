@@ -18,7 +18,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 4 | Packaging — write the packaging block and nothing else | no | 2026-10-15 |
 | 5 | First vertical slice — one real table through the API | no | 2026-10-15 |
 | 6 | First MudBlazor screen and the Playwright harness | no | 2026-10-15 |
-| 7 | The first walkthrough and the documentation it lives in | — | not declared |
+| 7 | The first walkthrough and the documentation it lives in | no | 2026-10-15 |
 | 8 | Release 0.1.0 (release: 0.1.0) | — | not declared |
 | 9 | Person demographics — schema and endpoints | — | not declared |
 | 10 | Person search and case morbidity report creation | — | not declared |
@@ -105,3 +105,9 @@ Session 5 puts one real table through the API tier, end to end and no further. S
 **Releasable: no.**
 
 Put the first MudBlazor screen in front of the operator and build the walkthrough harness it will be driven through. Survsys.Web becomes a real Blazor Server host with MudBlazor, a typed conditions client over GET /api/conditions whose failures become a message on the screen rather than an unhandled circuit exception, and a conditions list screen carrying stable element identifiers a walkthrough's wording can point at. Each tier gains a readiness endpoint at /health/ready for the harness to wait on, and Survsys.Api gains an opt-in configuration switch that applies its migrations at startup instead of refusing to serve, so the harness can bring an empty database to migration level through the only tier allowed to touch it. Survsys.E2ETests then becomes the harness the walkthrough contract rests on: Playwright with video recording on for every test, both tiers built and launched as processes on free ports under a startup timeout, readiness waited on before the first click, the condition fixture seeded, and one smoke test proving the chain end to end. No prerelease package goes into it.
+
+### Session 7 — The first walkthrough and the documentation it lives in
+
+**Releasable: no.**
+
+Write the first walkthrough and the documentation it lives in. docs/walkthroughs/review-the-conditions-catalogue.md becomes the repository's first walkthrough document: one user story inferred from the legacy EpiTrax administration Conditions screen and NMI's /conditions screen under ../nedss/docs/ -- a surveillance administrator reviewing the condition catalogue to see which conditions may be reported and which carry a CDC code -- written as numbered steps the reader performs, naming every control by the words the Survsys conditions screen actually shows. Survsys.E2ETests then gains the one Playwright test named after that document, ReviewTheConditionsCatalogueTests, which performs those steps in their written order, asserts the outcome the document promises, names the document and the step number in any failure, and records video of the run through the harness base class session 6 built; the placeholder screen test in SurvsysHarnessTests, whose own name said it was standing in until this walkthrough existed, goes with it. docs/ then gains the shape later phases add to: a map of the documentation, the walkthrough index, and the user and technical documentation skeletons -- with Survsys.UnitTests/WalkthroughContractTests making the contract mechanical, so that every walkthrough document from here on must have the test named after it and a line in the index, and no later session can add a document that nothing performs.
