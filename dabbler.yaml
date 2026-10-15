@@ -1,0 +1,47 @@
+# dabbler.yaml -- what this repository declares about itself.
+#
+# Tracked, unlike local-overrides.yaml, because CI reads these facts and so
+# does the next machine to pick up a session. Precedence is the packaged
+# router-config.yaml, then this file, then local-overrides.yaml. Providers,
+# models, roles and transports are deliberately absent: those are
+# distribution facts, and a repository that restated them here would fork
+# the model registry in order to say how to run a test suite.
+schema_version: 1
+
+# No suite is declared, because nothing at the root of this repository says
+# how its tests run. Setup reads what is there -- a pytest section, a
+# `scripts.test`, a POM, a solution -- and where none of it says how the
+# tests run, it declares nothing rather than emitting a command that would
+# fail on its first use. That is a declaration, not an omission.
+#
+# A repository whose build files live BELOW the root reaches this too: a
+# suite declares a command and no working directory, so `service/pom.xml`
+# has no runnable line to become. Declare the suite yourself -- a name, the
+# command that runs it, the paths it covers, and where its tests live:
+#
+#   testing:
+#     suites:
+#       - name: python
+#         command: python -m pytest
+#         expensive: true
+#         covers: ["."]
+#         test_roots: [tests]
+#         test_glob: "test_*.py"
+
+# Step (f) of the lifecycle: pack, then push to a feed. A session that
+# declared itself releasable publishes through these -- both argv, never
+# shell strings, and `push` naming the credential rather than holding it.
+# This repository declares none, and that is the declaration: it publishes
+# to no feed today. A feed that is a folder on disk -- a drive path, a UNC
+# path or file:// -- takes no credential: leave `secret` out, and the push
+# runs without one. `dabbler packaging --dry-run` rehearses the block and
+# exits 0 when it loads, in a session that may not publish too.
+#
+#   packaging:
+#     pack:
+#       argv: ["dotnet", "pack", "-c", "Release", "-o", "{output}"]
+#     push:
+#       argv: ["dotnet", "nuget", "push", "{artifact}",
+#              "--source", "{feed}", "--api-key", "{secret}"]
+#       feed: https://pkgs.dev.azure.com/<org>/_packaging/<feed>/nuget/v3/index.json
+#       secret: DABBLER_FEED_PAT
