@@ -1,0 +1,103 @@
+# dabbler.yaml -- what this repository declares about itself.
+#
+# Tracked, unlike local-overrides.yaml, because CI reads these facts and so
+# does the next machine to pick up a session. Precedence is the packaged
+# router-config.yaml, then this file, then local-overrides.yaml. Providers,
+# models, roles and transports are deliberately absent: those are
+# distribution facts, and a repository that restated them here would fork
+# the model registry in order to say how to run a test suite.
+schema_version: 1
+
+# The three suites this repository runs, and how each one runs.
+#
+# `unit` is the run of record, which is what `expensive: true` says: it is the
+# suite a close demands green, so it covers the whole repository -- a change
+# anywhere makes its last run stale, which is the point of a run of record.
+# It is also the suite that holds the architecture tests, so the reference
+# graph between the modules is checked by the one suite that always runs.
+#
+# `integration` wants a reachable SQL Server and `e2e` wants Playwright
+# browsers with both tiers running, so neither is the mechanical gate on
+# every session. They are declared so that a change under the paths they
+# cover selects their tests, and so that the walkthrough suite has a name
+# before the release that gates on it.
+#
+# Every command carries its own hang limit, so every later run of a suite
+# inherits it rather than depending on who remembered to pass it.
+testing:
+  suites:
+    - name: unit
+      command: dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m
+      expensive: true
+      covers: ["."]
+      test_roots: [Survsys.UnitTests]
+      test_glob: "*Tests.cs"
+      test_name: "{name}Tests.cs"
+    - name: integration
+      command: dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --blame-hang-timeout 5m
+      covers: [Survsys.Data, Survsys.Api, Survsys.IntegrationTests]
+      test_roots: [Survsys.IntegrationTests]
+      test_glob: "*Tests.cs"
+      test_name: "{name}Tests.cs"
+    - name: e2e
+      command: dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --blame-hang-timeout 5m
+      covers: [Survsys.Web, Survsys.Api, Survsys.E2ETests]
+      test_roots: [Survsys.E2ETests]
+      test_glob: "*Tests.cs"
+      test_name: "{name}Tests.cs"
+
+# Step (f) of the lifecycle: pack, then push to a feed. Both are argv the
+# framework spawns directly -- never shell strings -- and `push` names its
+# credential rather than holding it.
+#
+# The three handoff artifacts are the ones the solution plan names: an IIS
+# site package for each tier, and the database's idempotent SQL script.
+#
+# `pack` is ONE `pwsh` invocation rather than three commands because the
+# framework spawns pack once, with no shell to chain them, and the packaging
+# session is allowed to write this file and no other -- so there is nowhere
+# else to put a pack script. The script stops on the first non-zero exit, so
+# a half-built handoff can never report success.
+#
+# Each tier is compressed to a single `.zip`. The framework walks `{output}`
+# and pushes once per file it finds: a bare `dotnet publish` folder would be
+# several hundred pushes for one site, where the thing actually handed over
+# is one package. The tiers are published into a staging folder under
+# `{output}` and that folder is deleted once both zips exist, so what the
+# framework collects is exactly the three artifacts and nothing else.
+#
+# `feed` is the one value to edit for a real feed; the push is a plain HTTPS
+# upload, which suits zips and a `.sql` script alike where `dotnet nuget
+# push` would not. `secret` is the NAME of the credential -- the PAT itself
+# lives in that environment variable and never in this file. A feed that is
+# a folder on disk -- a drive path, a UNC path or file:// -- authenticates
+# nothing: drop `secret` and `--user` together if this becomes one.
+#
+# `dabbler packaging --dry-run` rehearses the block and exits 0 when it
+# loads, in a session that may not publish too.
+packaging:
+  pack:
+    argv:
+      - pwsh
+      - -NoProfile
+      - -NonInteractive
+      - -Command
+      - |
+        $ErrorActionPreference = 'Stop'
+        $out = '{output}'
+        $stage = Join-Path $out 'stage'
+        foreach ($tier in 'Survsys.Web', 'Survsys.Api') {
+          $dir = Join-Path $stage $tier
+          dotnet publish "$tier/$tier.csproj" -c Release -o $dir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path (Join-Path $dir '*') -DestinationPath (Join-Path $out "$tier.zip") -Force
+        }
+        Remove-Item $stage -Recurse -Force
+        dotnet ef migrations script --idempotent --project Survsys.Data --startup-project Survsys.Api --output (Join-Path $out 'Survsys.Database.sql')
+        exit $LASTEXITCODE
+  push:
+    argv: ["curl", "--fail", "--silent", "--show-error",
+           "--user", "dabbler:{secret}",
+           "--upload-file", "{artifact}", "{feed}"]
+    feed: https://artifacts.example.org/survsys-handoff/
+    secret: DABBLER_FEED_PAT
