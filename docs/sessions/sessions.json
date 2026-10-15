@@ -92,9 +92,9 @@
     {
       "number": 5,
       "title": "First vertical slice \u2014 one real table through the API",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-15T09:54:52.244000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-15T10:18:32.010000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
