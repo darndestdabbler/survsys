@@ -87,21 +87,24 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
     /// <summary>
     /// Seeding leaves what the fixtures fill — the conditions, the people and
     /// the people's own details — and nothing a walkthrough fills: no report,
-    /// no share, no specimen, no test, no result and no susceptibility row.
-    /// Run here over whatever the walkthroughs before this test left behind —
-    /// a laboratory walkthrough leaves a specimen that names its person — so
-    /// it proves the deletion order holds against a database the suite has
-    /// already used, which is the database every second run starts from.
+    /// no share, no specimen, no test, no result, no susceptibility row, no
+    /// exposure with its place, contacts and sources, no note, no task and no
+    /// attachment with its bytes. Run here over whatever the walkthroughs
+    /// before this test left behind — a laboratory walkthrough leaves a
+    /// specimen that names its person, and a contacts walkthrough leaves an
+    /// exposure contact that names one too — so it proves the deletion order
+    /// holds against a database the suite has already used, which is the
+    /// database every second run starts from.
     /// </summary>
     [Fact]
     public void SeedingLeavesNothingAWalkthroughFills()
     {
         harness.Seed();
 
-        // The deletion order runs from the laboratory chain down to the
-        // report and only then to the people's details and the people, so
-        // the tables a walkthrough fills are the ones up to and including the
-        // report's.
+        // The deletion order runs from the attachment, note, task, exposure
+        // and laboratory chains down to the report and only then to the
+        // people's details and the people, so the tables a walkthrough fills
+        // are the ones up to and including the report's.
         const string ReportTable = "person_conditions";
         var filledByWalkthroughs = SurvsysHarness.TablesInDeletionOrder
             .TakeWhile(table => table != ReportTable)

@@ -12,6 +12,10 @@ running Survsys. Perform them in any order; each one stands alone.
 | [Enter a laboratory result](enter-a-laboratory-result.md) | An investigator records a specimen, the test run on it and that test's result on a case morbidity report, and reads the specimen back. | `Survsys.E2ETests/EnterALaboratoryResultTests.cs` |
 | [Assign and accept a case](assign-and-accept-a-case.md) | A state user assigns a case morbidity report to the local health department that will investigate it, and that department accepts it from its work queue. | `Survsys.E2ETests/AssignAndAcceptACaseTests.cs` |
 | [Close an investigation](close-an-investigation.md) | A local health department investigator takes an accepted case through its investigation to closed, and reads the report still on file afterwards. | `Survsys.E2ETests/CloseAnInvestigationTests.cs` |
+| [Log an exposure event](log-an-exposure-event.md) | An investigator logs the exposure event a case is thought to have come from — what it was, when it ran from and to, and where it happened — on the report's Contacts tab, and reads it back. | `Survsys.E2ETests/LogAnExposureEventTests.cs` |
+| [Add a contact to a case](add-a-contact-to-a-case.md) | An investigator looks up the identifier of the person exposed alongside the patient, then adds them to the case as a contact of an exposure, with their contact type and disposition, and reads them back. | `Survsys.E2ETests/AddAContactToACaseTests.cs` |
+| [Attach a document](attach-a-document.md) | An investigator attaches a file to a case morbidity report, filed under what kind of document it is, and reads it back on the report's Notes tab. | `Survsys.E2ETests/AttachADocumentTests.cs` |
+| [Work a task list](work-a-task-list.md) | An investigator raises the follow-up a case needs as tasks, one of them repeating weekly, then works them off the task list screen and sorts them with its status filter. | `Survsys.E2ETests/WorkATaskListTests.cs` |
 
 ## The contract every entry here is held to
 

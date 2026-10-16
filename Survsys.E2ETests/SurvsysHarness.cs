@@ -190,9 +190,10 @@ public sealed class SurvsysHarness : IDisposable
     /// name, the reports before the people, and the people before the
     /// conditions. Cleared before any insert, so a second run of the suite
     /// seeds the same seven people and seven conditions rather than fourteen
-    /// of each — and no report and no specimen at all, since a walkthrough
-    /// that needs one creates it, and one left over from the last run would
-    /// be one the document did not describe.
+    /// of each — and no report, no specimen, no exposure, no note, no task
+    /// and no attachment at all, since a walkthrough that needs one creates
+    /// it, and one left over from the last run would be one the document did
+    /// not describe.
     /// </summary>
     /// <remarks>
     /// The laboratory chain is listed in full rather than left to the
@@ -202,9 +203,30 @@ public sealed class SurvsysHarness : IDisposable
     /// would fail to seed. Results go before tests, tests and susceptibility
     /// rows before specimens, the links and the shares before the reports
     /// they hang off, and specimens before the people they name.
+    /// <para>
+    /// The exposure chain is listed in full for the same reason, and it is
+    /// the one phase 3 brought that matters most: an exposure contact names
+    /// its person with a reference the schema refuses to cascade, so a
+    /// contact left behind would refuse the clearing of the people and the
+    /// run after a contacts walkthrough would fail to seed. The contacts and
+    /// the sources go before the exposure they hang off, and the exposure
+    /// before the place it names by <c>exposure_place_id</c>. An attachment
+    /// goes before the <c>attachment_files</c> row holding its bytes, which
+    /// is the row it names. The notes and the tasks name nothing the schema
+    /// enforces, and are listed above the reports they are raised against
+    /// because that is where they belong in this order.
+    /// </para>
     /// </remarks>
     public static readonly string[] TablesInDeletionOrder =
     [
+        "attachments",
+        "attachment_files",
+        "notes",
+        "tasks",
+        "exposure_contacts",
+        "exposure_sources",
+        "exposures",
+        "exposure_places",
         "person_condition_shares",
         "person_condition_labs",
         "lab_test_results",

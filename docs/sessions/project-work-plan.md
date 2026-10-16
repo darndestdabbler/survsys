@@ -39,7 +39,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 25 | Contacts and exposures | no | 2026-10-16 |
 | 26 | Notes and tasks | no | 2026-10-16 |
 | 27 | File attachments | no | 2026-10-16 |
-| 28 | Phase 3 walkthroughs | — | not declared |
+| 28 | Phase 3 walkthroughs | no | 2026-10-16 |
 | 29 | Release 0.4.0 (release: 0.4.0) | — | not declared |
 | 30 | Agencies, jurisdictions, facilities and conditions | — | not declared |
 | 31 | Core element configuration | — | not declared |
@@ -278,3 +278,9 @@ Session 27 gives the case morbidity report its file attachments, end to end: sch
 **Amended after acceptance:**
 
 - 2026-10-16 — step 'data-migration': its files: the migration timestamp is EF's to choose (claude-code (anthropic, claude-opus-5))
+
+### Session 28 — Phase 3 walkthroughs
+
+**Releasable: no.**
+
+Session 28 writes phase 3's four walkthroughs and the four Playwright tests that perform them, so that release 0.4.0 ships nothing a reader cannot complete as written. The documents are docs/walkthroughs/log-an-exposure-event.md, add-a-contact-to-a-case.md, attach-a-document.md and work-a-task-list.md, each one user story drawn from the legacy EpiTrax Contacts and Notes tabs recorded in ../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md, written in the shape the phase 1 and phase 2 walkthroughs set: the story, the legacy screens it is inferred from, the deliberate differences from them, Before you start, numbered steps naming each control by the words the screen shows, and What you should see. Each performs against the screens sessions 25 to 27 built -- the Contacts tab's exposure entry with its place, its contacts and its sources, the Notes tab's Attachments section, and the Notes tab's Tasks section with the task list screen the app bar opens -- and docs/walkthroughs/README.md gains a row for each. The tests are Survsys.E2ETests/LogAnExposureEventTests.cs, AddAContactToACaseTests.cs, AttachADocumentTests.cs and WorkATaskListTests.cs, one test method each, performing the document's steps in their written order on the SurvsysPageTest base class that already records video, selecting by the stable identifiers those sessions put on the screens and naming the document and the step in every failure. Each walkthrough opens its own report through the two-step New CMR flow, so none depends on another's leftovers, and the harness's deletion order gains the exposure, note, task and attachment tables those walkthroughs fill, so a second run of the suite seeds the same seven people and no exposure, task or attachment, as it already promises for reports and specimens.
