@@ -600,9 +600,9 @@
     {
       "number": 30,
       "title": "Agencies, jurisdictions, facilities and conditions",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-16T14:17:35.678000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-16T14:33:12.439000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
