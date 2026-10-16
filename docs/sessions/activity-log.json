@@ -333,6 +333,13 @@
       "dateTime": "2026-10-16T14:11:42.333000-04:00",
       "reason": "Rollback to Start of This Session from the Work Explorer",
       "by": "operator"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 29,
+      "dateTime": "2026-10-16T14:12:26.626000-04:00",
+      "task": "Release 0.4.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }
