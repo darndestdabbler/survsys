@@ -196,6 +196,34 @@ public sealed record ApiAsk(string FailurePrefix, string Expected)
     }
 
     /// <summary>
+    /// Asks the API tier to delete something, and answers with null where it
+    /// did or with why it did not.
+    /// </summary>
+    /// <remarks>
+    /// A delete answers with no body, so there is no value to hand back and
+    /// the answer is the failure alone — in the words, and through the catch,
+    /// every other ask uses.
+    /// </remarks>
+    public async Task<string?> Delete(
+        HttpClient http,
+        string url,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(http);
+
+        try
+        {
+            using var response = await http.DeleteAsync(url, cancellationToken);
+
+            return response.IsSuccessStatusCode ? null : Refused(response);
+        }
+        catch (Exception failed) when (Caught(failed, cancellationToken) is { } failure)
+        {
+            return failure;
+        }
+    }
+
+    /// <summary>
     /// What the API tier answered, read: the value, or why the answer is not
     /// one.
     /// </summary>
@@ -206,10 +234,7 @@ public sealed record ApiAsk(string FailurePrefix, string Expected)
     {
         if (!response.IsSuccessStatusCode)
         {
-            return Asked<T>.Failed(
-                $"{FailurePrefix}: the API tier answered {(int)response.StatusCode}. "
-                + "Try again, and if it keeps happening the API tier's log holds what "
-                + "went wrong.");
+            return Asked<T>.Failed(Refused(response));
         }
 
         var value = await response.Content.ReadFromJsonAsync<T>(cancellationToken);
@@ -220,6 +245,15 @@ public sealed record ApiAsk(string FailurePrefix, string Expected)
                 + $"{Expected} was expected.")
             : Asked<T>.Of(value);
     }
+
+    /// <summary>
+    /// The message for an answer with a failed status: the status, never the
+    /// body.
+    /// </summary>
+    private string Refused(HttpResponseMessage response) =>
+        $"{FailurePrefix}: the API tier answered {(int)response.StatusCode}. "
+        + "Try again, and if it keeps happening the API tier's log holds what "
+        + "went wrong.";
 
     /// <summary>
     /// The message for a failure worth catching, or null for one that is not

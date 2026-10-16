@@ -314,6 +314,279 @@ namespace Survsys.Data.Migrations
                     b.ToTable("conditions", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.CoreElement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Hidden")
+                        .HasColumnType("bit")
+                        .HasColumnName("hidden");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("label");
+
+                    b.Property<string>("Tab")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("tab");
+
+                    b.Property<string>("Uid")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("uid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Uid")
+                        .IsUnique();
+
+                    b.ToTable("core_elements", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Hidden = false,
+                            Label = "Disease onset date",
+                            Tab = "Clinical",
+                            Uid = "disease_onset_date"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Hidden = false,
+                            Label = "Date diagnosed",
+                            Tab = "Clinical",
+                            Uid = "date_diagnosed"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Hidden = false,
+                            Label = "Treatment given",
+                            Tab = "Clinical",
+                            Uid = "treatment_given"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Hidden = false,
+                            Label = "Died?",
+                            Tab = "Clinical",
+                            Uid = "person_died"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Hidden = false,
+                            Label = "Date of death",
+                            Tab = "Clinical",
+                            Uid = "person_date_of_death"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Hidden = false,
+                            Label = "Food handler",
+                            Tab = "Investigation",
+                            Uid = "food_handler"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Hidden = false,
+                            Label = "Health care worker",
+                            Tab = "Investigation",
+                            Uid = "healthcare_worker"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Hidden = false,
+                            Label = "Group living",
+                            Tab = "Investigation",
+                            Uid = "group_living"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Hidden = false,
+                            Label = "Day care association",
+                            Tab = "Investigation",
+                            Uid = "day_care_association"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Hidden = false,
+                            Label = "Imported from",
+                            Tab = "Investigation",
+                            Uid = "imported_from"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Hidden = false,
+                            Label = "Transmission mode",
+                            Tab = "Investigation",
+                            Uid = "transmission_mode"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Hidden = false,
+                            Label = "Risk factors",
+                            Tab = "Investigation",
+                            Uid = "risk_factors"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Hidden = false,
+                            Label = "Risk factors notes",
+                            Tab = "Investigation",
+                            Uid = "risk_factors_notes"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Hidden = false,
+                            Label = "Other data 1",
+                            Tab = "Investigation",
+                            Uid = "other_data_1"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Hidden = false,
+                            Label = "Other data 2",
+                            Tab = "Investigation",
+                            Uid = "other_data_2"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Hidden = false,
+                            Label = "LHD case status",
+                            Tab = "Administrative",
+                            Uid = "lhd_case_status"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Hidden = false,
+                            Label = "State case status",
+                            Tab = "Administrative",
+                            Uid = "state_case_status"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Hidden = false,
+                            Label = "Outbreak associated",
+                            Tab = "Administrative",
+                            Uid = "outbreak_associated"
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Hidden = false,
+                            Label = "LHD investigation started",
+                            Tab = "Administrative",
+                            Uid = "lhd_investigation_start_date"
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Hidden = false,
+                            Label = "LHD investigation completed",
+                            Tab = "Administrative",
+                            Uid = "lhd_investigation_completed_date"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Hidden = false,
+                            Label = "Investigation outcome",
+                            Tab = "Administrative",
+                            Uid = "investigation_outcome"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Hidden = false,
+                            Label = "Event name",
+                            Tab = "Administrative",
+                            Uid = "event_name"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Hidden = false,
+                            Label = "Results reported to LHD",
+                            Tab = "Administrative",
+                            Uid = "results_reported_to_clinician_date"
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Hidden = false,
+                            Label = "Date CDC verbally notified",
+                            Tab = "Administrative",
+                            Uid = "cdc_first_verbally_notified_date"
+                        });
+                });
+
+            modelBuilder.Entity("Survsys.Data.CoreElementOverride", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AgencyId")
+                        .HasColumnType("int")
+                        .HasColumnName("agency_id");
+
+                    b.Property<int?>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<int>("CoreElementId")
+                        .HasColumnType("int")
+                        .HasColumnName("core_element_id");
+
+                    b.Property<bool>("Hidden")
+                        .HasColumnType("bit")
+                        .HasColumnName("hidden");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgencyId");
+
+                    b.HasIndex("ConditionId");
+
+                    b.HasIndex("CoreElementId", "ConditionId", "AgencyId")
+                        .IsUnique();
+
+                    b.ToTable("core_element_overrides", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_core_element_overrides_condition_or_agency", "condition_id IS NOT NULL OR agency_id IS NOT NULL");
+                        });
+                });
+
             modelBuilder.Entity("Survsys.Data.Exposure", b =>
                 {
                     b.Property<int>("Id")
@@ -1306,6 +1579,25 @@ namespace Survsys.Data.Migrations
                     b.HasOne("Survsys.Data.PersonCondition", null)
                         .WithMany()
                         .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.CoreElementOverride", b =>
+                {
+                    b.HasOne("Survsys.Data.Agency", null)
+                        .WithMany()
+                        .HasForeignKey("AgencyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Survsys.Data.Condition", null)
+                        .WithMany()
+                        .HasForeignKey("ConditionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Survsys.Data.CoreElement", null)
+                        .WithMany()
+                        .HasForeignKey("CoreElementId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

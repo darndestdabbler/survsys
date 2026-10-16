@@ -43,54 +43,84 @@
 <MudPaper id="investigation-contact" Elevation="1" Class="pa-4 mb-4">
     <MudText Typo="Typo.h6" GutterBottom="true">Contact Oriented</MudText>
     <MudGrid Spacing="2">
-        <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="foodHandler" id="investigation-food-handler"
-                          Label="Food handler (Yes/No/Unknown)" Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="healthcareWorker" id="investigation-healthcare-worker"
-                          Label="Health care worker (Yes/No/Unknown)" Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="groupLiving" id="investigation-group-living"
-                          Label="Group living (Yes/No/Unknown)" Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="dayCareAssociation" id="investigation-day-care-association"
-                          Label="Day care association (Yes/No/Unknown)" Variant="Variant.Outlined" />
-        </MudItem>
+        @if (Shows("food_handler"))
+        {
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="foodHandler" id="investigation-food-handler"
+                              Label="Food handler (Yes/No/Unknown)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("healthcare_worker"))
+        {
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="healthcareWorker" id="investigation-healthcare-worker"
+                              Label="Health care worker (Yes/No/Unknown)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("group_living"))
+        {
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="groupLiving" id="investigation-group-living"
+                              Label="Group living (Yes/No/Unknown)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("day_care_association"))
+        {
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="dayCareAssociation" id="investigation-day-care-association"
+                              Label="Day care association (Yes/No/Unknown)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
     </MudGrid>
 </MudPaper>
 
 <MudPaper id="investigation-other" Elevation="1" Class="pa-4 mb-4">
     <MudText Typo="Typo.h6" GutterBottom="true">Other</MudText>
     <MudGrid Spacing="2">
-        <MudItem xs="12" sm="4">
-            <MudNumericField @bind-Value="importedFromId" id="investigation-imported-from-id"
-                             Label="Imported from (id)" Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12" sm="4">
-            <MudTextField @bind-Value="transmissionMode" id="investigation-transmission-mode"
-                          Label="Transmission mode (code)" Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12">
-            <MudTextField @bind-Value="riskFactors" id="investigation-risk-factors"
-                          Label="Risk factors" Variant="Variant.Outlined"
-                          Lines="3" />
-        </MudItem>
-        <MudItem xs="12">
-            <MudTextField @bind-Value="riskFactorsNotes" id="investigation-risk-factors-notes"
-                          Label="Risk factors notes" Variant="Variant.Outlined"
-                          Lines="3" />
-        </MudItem>
-        <MudItem xs="12" sm="6">
-            <MudTextField @bind-Value="otherData1" id="investigation-other-data-1"
-                          Label="Other data 1" Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12" sm="6">
-            <MudTextField @bind-Value="otherData2" id="investigation-other-data-2"
-                          Label="Other data 2" Variant="Variant.Outlined" />
-        </MudItem>
+        @if (Shows("imported_from"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="importedFromId" id="investigation-imported-from-id"
+                                 Label="Imported from (id)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("transmission_mode"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="transmissionMode" id="investigation-transmission-mode"
+                              Label="Transmission mode (code)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("risk_factors"))
+        {
+            <MudItem xs="12">
+                <MudTextField @bind-Value="riskFactors" id="investigation-risk-factors"
+                              Label="Risk factors" Variant="Variant.Outlined"
+                              Lines="3" />
+            </MudItem>
+        }
+        @if (Shows("risk_factors_notes"))
+        {
+            <MudItem xs="12">
+                <MudTextField @bind-Value="riskFactorsNotes" id="investigation-risk-factors-notes"
+                              Label="Risk factors notes" Variant="Variant.Outlined"
+                              Lines="3" />
+            </MudItem>
+        }
+        @if (Shows("other_data_1"))
+        {
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="otherData1" id="investigation-other-data-1"
+                              Label="Other data 1" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("other_data_2"))
+        {
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="otherData2" id="investigation-other-data-2"
+                              Label="Other data 2" Variant="Variant.Outlined" />
+            </MudItem>
+        }
     </MudGrid>
 </MudPaper>
 
@@ -109,6 +139,16 @@
     /// <summary>The report's investigation data, as the shell read it.</summary>
     [Parameter, EditorRequired]
     public InvestigationResponse Investigation { get; set; } = default!;
+
+    /// <summary>
+    /// The uids of the fields core element configuration hides on this
+    /// report. A hidden field is left off the tab, and its value still goes
+    /// back as it was read, because the tab saves the whole record.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<string> Hidden { get; set; } = new HashSet<string>();
+
+    private bool Shows(string uid) => !Hidden.Contains(uid);
 
     private string? foodHandler;
 

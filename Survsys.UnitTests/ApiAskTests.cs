@@ -393,6 +393,52 @@ public class ApiAskTests
         Assert.DoesNotContain("No person has id", saved.Failure, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ADeleteSendsTheDeleteAndAnswersNullWhereItWasDone()
+    {
+        HttpRequestMessage? sent = null;
+
+        var failure = await Ask.Delete(
+            Transport(request =>
+            {
+                sent = request;
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }),
+            "api/core-elements/overrides/3",
+            CancellationToken.None);
+
+        Assert.Equal(HttpMethod.Delete, sent?.Method);
+        Assert.Equal("http://api.example.test/api/core-elements/overrides/3", sent?.RequestUri?.ToString());
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public async Task ADeleteThatFailedBecomesAMessageLikeAnAskThatFailed()
+    {
+        var failure = await Ask.Delete(
+            Transport(_ => Answer(
+                HttpStatusCode.NotFound,
+                """{ "status": 404, "detail": "No core element override has id 3." }""")),
+            "api/core-elements/overrides/3",
+            CancellationToken.None);
+
+        Assert.StartsWith(Prefix, failure);
+        Assert.Contains("404", failure);
+        Assert.DoesNotContain("No core element override", failure, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ADeleteTheApiTierDidNotAnswerBecomesAMessage()
+    {
+        var failure = await Ask.Delete(
+            Transport(_ => throw new HttpRequestException("connection refused")),
+            "api/core-elements/overrides/3",
+            CancellationToken.None);
+
+        Assert.StartsWith(Prefix, failure);
+        Assert.Contains("did not answer", failure);
+    }
+
     private static Task<Asked<PagedResult<ConditionResponse>>> Get(
         HttpStatusCode status,
         string body,

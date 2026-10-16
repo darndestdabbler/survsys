@@ -40,6 +40,7 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
 builder.Services.AddConditions();
 builder.Services.AddAgencies();
 builder.Services.AddFacilities();
+builder.Services.AddCoreElements();
 builder.Services.AddPersons();
 builder.Services.AddPersonConditions();
 builder.Services.AddClinical();
@@ -91,6 +92,7 @@ app.MapConditions();
 app.MapPersons();
 app.MapAgencies();
 app.MapFacilities();
+app.MapCoreElements();
 app.MapPersonConditions();
 app.MapClinical();
 app.MapInvestigation();

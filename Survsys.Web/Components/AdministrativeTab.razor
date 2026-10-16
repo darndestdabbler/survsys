@@ -79,60 +79,87 @@
 <MudPaper id="administrative-case" Elevation="1" Class="pa-4 mb-4">
     <MudText Typo="Typo.h6" GutterBottom="true">Case / Outbreak</MudText>
     <MudGrid Spacing="2">
-        <MudItem xs="12" sm="4">
-            <MudNumericField @bind-Value="lhdCaseStatusId" id="administrative-lhd-case-status-id"
-                             Label="LHD case status (id)" Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12" sm="4">
-            <MudNumericField @bind-Value="stateCaseStatusId" id="administrative-state-case-status-id"
-                             Label="State case status (id)" Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12" sm="4">
-            <MudTextField @bind-Value="outbreakAssociated" id="administrative-outbreak-associated"
-                          Label="Outbreak associated (Yes/No/Unknown)" Variant="Variant.Outlined" />
-        </MudItem>
+        @if (Shows("lhd_case_status"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="lhdCaseStatusId" id="administrative-lhd-case-status-id"
+                                 Label="LHD case status (id)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("state_case_status"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="stateCaseStatusId" id="administrative-state-case-status-id"
+                                 Label="State case status (id)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("outbreak_associated"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="outbreakAssociated" id="administrative-outbreak-associated"
+                              Label="Outbreak associated (Yes/No/Unknown)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
     </MudGrid>
 </MudPaper>
 
 <MudPaper id="administrative-investigation" Elevation="1" Class="pa-4 mb-4">
     <MudText Typo="Typo.h6" GutterBottom="true">Auditing / Investigation</MudText>
     <MudGrid Spacing="2">
-        <MudItem xs="12" sm="4">
-            @* Native date inputs, for the reason the Clinical tab's are:
-               what one yields is what the other tier parses. *@
-            <MudTextField @bind-Value="lhdInvestigationStartDate" id="administrative-lhd-investigation-start-date"
-                          Label="LHD investigation started" Variant="Variant.Outlined"
-                          InputType="InputType.Date" />
-        </MudItem>
-        <MudItem xs="12" sm="4">
-            <MudTextField @bind-Value="lhdInvestigationCompletedDate" id="administrative-lhd-investigation-completed-date"
-                          Label="LHD investigation completed" Variant="Variant.Outlined"
-                          InputType="InputType.Date" />
-        </MudItem>
-        <MudItem xs="12" sm="4">
-            <MudNumericField @bind-Value="investigationOutcomeDispositionId" id="administrative-investigation-outcome-disposition-id"
-                             Label="Investigation outcome (disposition id)" Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12">
-            <MudTextField @bind-Value="eventName" id="administrative-event-name"
-                          Label="Event name" Variant="Variant.Outlined" />
-        </MudItem>
+        @if (Shows("lhd_investigation_start_date"))
+        {
+            <MudItem xs="12" sm="4">
+                @* Native date inputs, for the reason the Clinical tab's are:
+                   what one yields is what the other tier parses. *@
+                <MudTextField @bind-Value="lhdInvestigationStartDate" id="administrative-lhd-investigation-start-date"
+                              Label="LHD investigation started" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+        @if (Shows("lhd_investigation_completed_date"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="lhdInvestigationCompletedDate" id="administrative-lhd-investigation-completed-date"
+                              Label="LHD investigation completed" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+        @if (Shows("investigation_outcome"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="investigationOutcomeDispositionId" id="administrative-investigation-outcome-disposition-id"
+                                 Label="Investigation outcome (disposition id)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("event_name"))
+        {
+            <MudItem xs="12">
+                <MudTextField @bind-Value="eventName" id="administrative-event-name"
+                              Label="Event name" Variant="Variant.Outlined" />
+            </MudItem>
+        }
     </MudGrid>
 </MudPaper>
 
 <MudPaper id="administrative-reported" Elevation="1" Class="pa-4 mb-4">
     <MudText Typo="Typo.h6" GutterBottom="true">Reported Dates</MudText>
     <MudGrid Spacing="2">
-        <MudItem xs="12" sm="4">
-            <MudTextField @bind-Value="resultsReportedToClinicianDate" id="administrative-results-reported-to-clinician-date"
-                          Label="Results reported to LHD" Variant="Variant.Outlined"
-                          InputType="InputType.Date" />
-        </MudItem>
-        <MudItem xs="12" sm="4">
-            <MudTextField @bind-Value="cdcFirstVerballyNotifiedDate" id="administrative-cdc-first-verbally-notified-date"
-                          Label="Date CDC verbally notified" Variant="Variant.Outlined"
-                          InputType="InputType.Date" />
-        </MudItem>
+        @if (Shows("results_reported_to_clinician_date"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="resultsReportedToClinicianDate" id="administrative-results-reported-to-clinician-date"
+                              Label="Results reported to LHD" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+        @if (Shows("cdc_first_verbally_notified_date"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="cdcFirstVerballyNotifiedDate" id="administrative-cdc-first-verbally-notified-date"
+                              Label="Date CDC verbally notified" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
     </MudGrid>
 </MudPaper>
 
@@ -155,6 +182,16 @@
     /// <summary>The report's administrative data, as the shell read it.</summary>
     [Parameter, EditorRequired]
     public AdministrativeResponse Administrative { get; set; } = default!;
+
+    /// <summary>
+    /// The uids of the fields core element configuration hides on this
+    /// report. A hidden field is left off the tab, and its value still goes
+    /// back as it was read, because the tab saves the whole record.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<string> Hidden { get; set; } = new HashSet<string>();
+
+    private bool Shows(string uid) => !Hidden.Contains(uid);
 
     /// <summary>
     /// How this tier writes a date into a date box and reads one out: the form

@@ -29,6 +29,7 @@
 @inject ClinicalClient Clinical
 @inject InvestigationClient Investigation
 @inject AdministrativeClient Administrative
+@inject CoreElementsClient CoreElements
 
 <PageTitle>@Title — Survsys</PageTitle>
 
@@ -144,7 +145,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <span id="report-tab-clinical">Clinical</span>
             </TabContent>
             <ChildContent>
-                <ClinicalTab ReportId="@shown.Id" Clinical="@clinicalData" />
+                <ClinicalTab ReportId="@shown.Id" Clinical="@clinicalData" Hidden="@hidden" />
             </ChildContent>
         </MudTabPanel>
         <MudTabPanel Text="Laboratory">
@@ -160,7 +161,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <span id="report-tab-investigation">Investigation</span>
             </TabContent>
             <ChildContent>
-                <InvestigationTab ReportId="@shown.Id" Investigation="@investigationData" />
+                <InvestigationTab ReportId="@shown.Id" Investigation="@investigationData" Hidden="@hidden" />
             </ChildContent>
         </MudTabPanel>
         <MudTabPanel Text="Administrative">
@@ -168,7 +169,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <span id="report-tab-administrative">Administrative</span>
             </TabContent>
             <ChildContent>
-                <AdministrativeTab Report="@shown" Administrative="@administrativeData" />
+                <AdministrativeTab Report="@shown" Administrative="@administrativeData" Hidden="@hidden" />
             </ChildContent>
         </MudTabPanel>
         <MudTabPanel Text="Contacts">
@@ -208,6 +209,12 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     private InvestigationResponse? investigation;
 
     private AdministrativeResponse? administrative;
+
+    /// <summary>
+    /// The uids of the fields core element configuration hides on this
+    /// report, for its condition and investigating agency.
+    /// </summary>
+    private IReadOnlySet<string> hidden = new HashSet<string>();
 
     private bool loading = true;
 
@@ -250,6 +257,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         var clinicalData = await Clinical.Find(shown.Id);
         var investigationData = await Investigation.Find(shown.Id);
         var administrativeData = await Administrative.Find(shown.Id);
+        var hiddenElements = await CoreElements.HiddenOn(shown.Id);
 
         person = who.Value;
         diseases = conditions.Value?.Items ?? [];
@@ -257,10 +265,11 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         clinical = clinicalData.Value;
         investigation = investigationData.Value;
         administrative = administrativeData.Value;
+        hidden = hiddenElements.Value?.ToHashSet() ?? [];
 
         // The first ask that failed is the one worth reporting.
         failure = who.Failure ?? conditions.Failure ?? listed.Failure ?? clinicalData.Failure
-            ?? investigationData.Failure ?? administrativeData.Failure;
+            ?? investigationData.Failure ?? administrativeData.Failure ?? hiddenElements.Failure;
 
         loading = false;
     }

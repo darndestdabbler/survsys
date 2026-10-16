@@ -51,33 +51,45 @@
 <MudPaper id="clinical-dates" Elevation="1" Class="pa-4 mb-4">
     <MudText Typo="Typo.h6" GutterBottom="true">Clinical</MudText>
     <MudGrid Spacing="2">
-        <MudItem xs="12" sm="4">
-            @* Native date inputs, for the reason the Demographic tab's are:
-               what one yields is what the other tier parses. *@
-            <MudTextField @bind-Value="diseaseOnsetDate" id="clinical-disease-onset-date"
-                          Label="Disease onset date" Variant="Variant.Outlined"
-                          InputType="InputType.Date" />
-        </MudItem>
-        <MudItem xs="12" sm="4">
-            <MudTextField @bind-Value="dateDiagnosed" id="clinical-date-diagnosed"
-                          Label="Date diagnosed" Variant="Variant.Outlined"
-                          InputType="InputType.Date" />
-        </MudItem>
-        <MudItem xs="12" sm="4">
-            <MudTextField @bind-Value="treatmentGiven" id="clinical-treatment-given"
-                          Label="Treatment given (Yes/No/Unknown)" Variant="Variant.Outlined" />
-        </MudItem>
+        @if (Shows("disease_onset_date"))
+        {
+            <MudItem xs="12" sm="4">
+                @* Native date inputs, for the reason the Demographic tab's are:
+                   what one yields is what the other tier parses. *@
+                <MudTextField @bind-Value="diseaseOnsetDate" id="clinical-disease-onset-date"
+                              Label="Disease onset date" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+        @if (Shows("date_diagnosed"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="dateDiagnosed" id="clinical-date-diagnosed"
+                              Label="Date diagnosed" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+        @if (Shows("treatment_given"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="treatmentGiven" id="clinical-treatment-given"
+                              Label="Treatment given (Yes/No/Unknown)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
     </MudGrid>
 </MudPaper>
 
 <MudPaper id="clinical-death" Elevation="1" Class="pa-4 mb-4">
     <MudText Typo="Typo.h6" GutterBottom="true">Death</MudText>
     <MudGrid Spacing="2">
-        <MudItem xs="12" sm="4">
-            <MudTextField @bind-Value="deathStatus" id="clinical-death-status"
-                          Label="Died? (Yes/No/Unknown)" Variant="Variant.Outlined" />
-        </MudItem>
-        @if (Died)
+        @if (Shows("person_died"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="deathStatus" id="clinical-death-status"
+                              Label="Died? (Yes/No/Unknown)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Died && Shows("person_date_of_death"))
         {
             <MudItem xs="12" sm="4">
                 <MudTextField @bind-Value="dateOfDeath" id="clinical-date-of-death"
@@ -103,6 +115,16 @@
     /// <summary>The report's clinical data, as the shell read it.</summary>
     [Parameter, EditorRequired]
     public ClinicalResponse Clinical { get; set; } = default!;
+
+    /// <summary>
+    /// The uids of the fields core element configuration hides on this
+    /// report. A hidden field is left off the tab, and its value still goes
+    /// back as it was read, because the tab saves the whole record.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<string> Hidden { get; set; } = new HashSet<string>();
+
+    private bool Shows(string uid) => !Hidden.Contains(uid);
 
     /// <summary>
     /// How this tier writes a date into a date box and reads one out: the form

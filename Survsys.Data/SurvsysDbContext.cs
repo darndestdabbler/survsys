@@ -26,6 +26,10 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<Facility> Facilities => Set<Facility>();
 
+    public DbSet<CoreElement> CoreElements => Set<CoreElement>();
+
+    public DbSet<CoreElementOverride> CoreElementOverrides => Set<CoreElementOverride>();
+
     public DbSet<Person> Persons => Set<Person>();
 
     public DbSet<PersonAddress> PersonAddresses => Set<PersonAddress>();

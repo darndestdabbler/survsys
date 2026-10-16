@@ -347,6 +347,29 @@
       "dateTime": "2026-10-16T14:20:34.201000-04:00",
       "task": "Replace the static sixteen-agency stand-in with real reference data and give agencies, facilities and conditions administration screens. Survsys.Data gains an agencies table (legacy agency: id, name, short_name) seeded by the migration with the sixteen agencies under their current identifiers so every stored agency_id still resolves; a zip_code_agencies table (legacy zip_code_agency: zip_code, agency_id) that is an agency's jurisdiction, since the legacy has no jurisdiction table and serves its jurisdictions from the agency codeset; a facilities table (legacy facility name, short_name, agency_id, with its one address and phone inline); and ZipAgencyRules, the pure rule that normalises a zip (trimmed, ZIP+4 cut to five digits, anything else not a zip) and resolves it against the mapping to one agency, unmapped, or ambiguous where several agencies claim it. One migration carries the three tables. Survsys.Api makes GET /api/agencies read the table, adds an agency's detail with its zip codes, create and update (the zip codes saved with the agency), and GET /api/agencies/by-zip/{zip}; the person-condition and work-queue endpoints check an agency's existence against the table instead of the static list; facilities get list, detail, create and update; conditions get detail, create and update over every column but the group, so the lead-in prose is on the wire for the first time. Survsys.Web gains the matching client calls and the agency, facility and condition administration screens, and the unit suite proves ZipAgencyRules including an unmapped zip, plus the new validators and client calls.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 31,
+      "dateTime": "2026-10-16T15:04:45.739000-04:00",
+      "task": "Give the case morbidity report core element configuration: which of its fields are shown, by default and per condition and per agency, as the legacy Min/Opt Visibility screen did. Survsys.Data gains a core_elements table (legacy core_element: uid, label, plus the tab the field sits on and whether it is hidden by default), seeded by the migration with one row for each field of the Clinical, Investigation and Administrative tabs under a stable uid (the legacy uid where one exists, such as disease_onset_date); a core_element_overrides table that folds the legacy core_element_condition and core_element_agency into one (core element, optional condition, optional agency, hidden), at least one of condition and agency set and one row per combination; and CoreElementVisibilityRules, the pure rule that decides whether an element is hidden for a report's condition and agency, where an agency-and-condition override beats an agency override, which beats a condition override, which beats the element's default. One migration carries the two tables. Survsys.Api adds CoreElementEndpoints: the catalogue with its defaults, setting an element's default, listing, saving and deleting overrides (the condition and agency checked against their tables), and GET /api/person-conditions/{id}/hidden-elements, the uids hidden for that report's condition and investigating agency. Survsys.Web gains a CoreElementsClient, a core element configuration screen reached from the navigation, and the Clinical, Investigation and Administrative tabs leave out every field the report's hidden elements name; a hidden field keeps its stored value, because the tabs still send the whole record. The unit suite proves CoreElementVisibilityRules, the override validator and the client calls.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 31,
+      "dateTime": "2026-10-16T15:07:31.488000-04:00",
+      "what": "step 'api': its files",
+      "reason": "EF gave the overrides' unique index a NOT NULL filter on condition_id and agency_id, so condition-only and agency-only overrides could be duplicated; HasFilter(null) in the configuration and the migration and snapshot regenerated to match is the minimal fix, and the api step's upsert relies on it",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 31,
+      "dateTime": "2026-10-16T15:09:36.115000-04:00",
+      "what": "step 'web-client': its files",
+      "reason": "Deleting an override is the first DELETE this tier sends, and ApiAsk has no Delete; adding one to ApiAsk (with its test) keeps the failure wording in its one place rather than copying it into the new client",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }
