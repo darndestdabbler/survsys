@@ -418,9 +418,9 @@
     {
       "number": 21,
       "title": "Workflow state machine, work queues and agency sharing",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-15T23:57:23.793000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-16T00:38:08.912000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
