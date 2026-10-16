@@ -169,6 +169,13 @@
       "what": "step 'create-a-case-morbidity-report': its files",
       "reason": "The walkthrough's step 8 cannot be performed by anyone: choosing a disease on NewMorbidityReportDetails.razor throws InvalidCastException (MudSelect<int?> vs MudSelectItem<int>) inside MudBlazor and terminates the circuit, so no report can be created through the screen. The fix is T=\"int?\" on the two MudSelectItems, in the one file the walkthrough exposed; it adds no field, button or endpoint.",
       "by": "claude-code (anthropic, claude-opus-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 17,
+      "dateTime": "2026-10-15T22:02:56.186000-04:00",
+      "task": "Release 0.2.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }

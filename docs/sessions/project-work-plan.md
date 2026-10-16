@@ -28,7 +28,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 14 | Person search and case morbidity report creation | no | 2026-10-15 |
 | 15 | The case morbidity report shell and its Demographics tab | no | 2026-10-15 |
 | 16 | Phase 1 walkthroughs | no | 2026-10-15 |
-| 17 | Release 0.2.0 (release: 0.2.0) | — | not declared |
+| 17 | Release 0.2.0 (release: 0.2.0) | yes | 2026-10-15 |
 | 18 | Clinical and laboratory data — schema and endpoints | — | not declared |
 | 19 | Clinical and laboratory screens | — | not declared |
 | 20 | Case classification, status and MMWR week | — | not declared |
@@ -183,3 +183,9 @@ Session 16 writes phase 1's three walkthroughs and the three Playwright tests th
 **Amended after acceptance:**
 
 - 2026-10-15 — step 'create-a-case-morbidity-report': its files: The walkthrough's step 8 cannot be performed by anyone: choosing a disease on NewMorbidityReportDetails.razor throws InvalidCastException (MudSelect<int?> vs MudSelectItem<int>) inside MudBlazor and terminates the circuit, so no report can be created through the screen. The fix is T="int?" on the two MudSelectItems, in the one file the walkthrough exposed; it adds no field, button or endpoint. (claude-code (anthropic, claude-opus-5))
+
+### Session 17 — Release 0.2.0 (release: 0.2.0)
+
+**Releasable: yes.**
+
+Release 0.2.0: the framework packs and publishes what is on the trunk.
