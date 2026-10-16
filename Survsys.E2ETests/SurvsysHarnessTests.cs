@@ -60,6 +60,24 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
             .ToHaveTextAsync(SurvsysHarness.SeededConditionsByName);
     }
 
+    /// <summary>
+    /// A browser that has not signed in is sent to the Sign in page rather
+    /// than shown a screen: what every walkthrough's Before you start tells
+    /// its reader, and the reason every other test here opens signed in.
+    /// </summary>
+    [Fact]
+    public async Task ABrowserNotSignedInIsSentToTheSignInPage()
+    {
+        await using var unsigned = await Browser.NewContextAsync(new() { RecordVideoDir = VideoDirectory });
+        var page = await unsigned.NewPageAsync();
+
+        await page.GotoAsync(harness.WebBaseAddress + "conditions");
+
+        await Expect(page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex("/sign-in"));
+        await Expect(page.Locator("#sign-in-heading")).ToHaveTextAsync("Sign in");
+        await Expect(page.Locator("#conditions-table")).ToHaveCountAsync(0);
+    }
+
     [Fact]
     public async Task ThePeopleScreenShowsTheSeededPeople()
     {

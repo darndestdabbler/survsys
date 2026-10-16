@@ -1,6 +1,10 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Hosting;
+using Survsys.Contracts;
 
 namespace Survsys.IntegrationTests;
 
@@ -41,11 +45,69 @@ public sealed class SurvsysApi : WebApplicationFactory<Program>
     /// </remarks>
     private const string ConnectionStringVariable = "ConnectionStrings__Survsys";
 
-    public SurvsysApi(string connectionString) =>
+    /// <summary>
+    /// The administrator the API tier is started with, which it creates on
+    /// first start against the fixture's database. Environment variables for
+    /// the reason the connection string is one: <c>Program.cs</c> reads them
+    /// before <c>builder.Build()</c>.
+    /// </summary>
+    private const string AdministratorUserNameVariable = "Survsys__Administrator__UserName";
+    private const string AdministratorPasswordVariable = "Survsys__Administrator__Password";
+
+    /// <summary>The administrator's user name, holding every privilege.</summary>
+    public const string AdministratorUserName = "integration-admin";
+
+    /// <summary>
+    /// The administrator's password: a value made up for this suite's own
+    /// throwaway database, and no credential of anything else.
+    /// </summary>
+    public const string AdministratorPassword = "integration-only-password";
+
+    public SurvsysApi(string connectionString)
+    {
         Environment.SetEnvironmentVariable(ConnectionStringVariable, connectionString);
+        Environment.SetEnvironmentVariable(AdministratorUserNameVariable, AdministratorUserName);
+        Environment.SetEnvironmentVariable(AdministratorPasswordVariable, AdministratorPassword);
+    }
+
+    /// <summary>
+    /// A client of the host that has not signed in, for a test of what such a
+    /// caller is refused. <see cref="WebApplicationFactory{TEntryPoint}.CreateClient()"/>
+    /// signs in as the administrator.
+    /// </summary>
+    public HttpClient CreateAnonymousClient() => Server.CreateClient();
+
+    /// <summary>
+    /// Signs this client in as the user named, so every request it makes
+    /// carries that user's bearer token.
+    /// </summary>
+    /// <remarks>
+    /// The token is asked for on a client of its own, because a client's
+    /// default headers cannot be changed once it has sent a request.
+    /// </remarks>
+    public async Task SignIn(HttpClient client, string userName, string password)
+    {
+        using var signingIn = Server.CreateClient();
+        using var response = await signingIn.PostAsJsonAsync("/api/sign-in", new SignInRequest(userName, password));
+        response.EnsureSuccessStatusCode();
+
+        var token = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("accessToken").GetString();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder) =>
         builder.UseEnvironment(Environments.Production);
+
+    /// <summary>
+    /// Every client the suite creates is signed in as the administrator, so a
+    /// test of what an endpoint serves is not also a test of who may ask.
+    /// </summary>
+    protected override void ConfigureClient(HttpClient client)
+    {
+        base.ConfigureClient(client);
+
+        SignIn(client, AdministratorUserName, AdministratorPassword).GetAwaiter().GetResult();
+    }
 
     protected override void Dispose(bool disposing)
     {
@@ -54,6 +116,8 @@ public sealed class SurvsysApi : WebApplicationFactory<Program>
         if (disposing)
         {
             Environment.SetEnvironmentVariable(ConnectionStringVariable, null);
+            Environment.SetEnvironmentVariable(AdministratorUserNameVariable, null);
+            Environment.SetEnvironmentVariable(AdministratorPasswordVariable, null);
         }
     }
 }

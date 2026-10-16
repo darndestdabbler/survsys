@@ -53,7 +53,7 @@ Tasks section.
 
 ## Before you start
 
-You need all five of these. The last two are the ones people forget.
+You need all six of these. The fourth and the fifth are the ones people forget.
 
 1. **A reachable SQL Server**, holding a Survsys database at this build's
    migration level. `Survsys.Api` is the only tier permitted to touch the
@@ -81,6 +81,15 @@ You need all five of these. The last two are the ones people forget.
 5. **The file this walkthrough attaches, on the machine your browser runs
    on.** Step 1 writes it, because a file picker can only offer a file that
    is there.
+6. **Signed in, as a user whose role holds every privilege.** Survsys asks
+   everyone to sign in, and sends you to its **Sign in** page until you do.
+   On a fresh database the only user is the administrator the API tier
+   creates on its first start from two settings you choose:
+   `Survsys__Administrator__UserName` and `Survsys__Administrator__Password`,
+   set where `Survsys.Api` runs. That administrator holds the Administrator
+   role, which has every privilege. Open the application tier's address, type
+   that user name and password on the **Sign in** page, and press **Sign
+   in**; then begin at step 1.
 
 This walkthrough **creates a report and attaches one file to it**. Perform it
 twice and you have two reports on Jane Abbott, each with one attachment; that

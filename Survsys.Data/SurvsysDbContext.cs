@@ -74,6 +74,16 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<AttachmentFile> AttachmentFiles => Set<AttachmentFile>();
 
+    public DbSet<User> Users => Set<User>();
+
+    public DbSet<Role> Roles => Set<Role>();
+
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+
+    public DbSet<RolePrivilege> RolePrivileges => Set<RolePrivilege>();
+
+    public DbSet<AccessRecord> AccessRecords => Set<AccessRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

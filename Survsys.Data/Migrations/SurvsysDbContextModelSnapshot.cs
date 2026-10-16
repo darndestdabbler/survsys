@@ -22,6 +22,36 @@ namespace Survsys.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Survsys.Data.AccessRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AccessedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("accessed_at");
+
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("PersonConditionId", "AccessedAt");
+
+                    b.ToTable("access_records", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.Agency", b =>
                 {
                     b.Property<int>("Id")
@@ -1550,6 +1580,130 @@ namespace Survsys.Data.Migrations
                     b.ToTable("person_telephones", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.Role", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("roles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Administrator"
+                        });
+                });
+
+            modelBuilder.Entity("Survsys.Data.RolePrivilege", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int")
+                        .HasColumnName("role_id");
+
+                    b.Property<string>("Privilege")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("privilege");
+
+                    b.HasKey("RoleId", "Privilege");
+
+                    b.ToTable("role_privileges", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            RoleId = 1,
+                            Privilege = "view_cases"
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            Privilege = "edit_cases"
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            Privilege = "manage_reference_data"
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            Privilege = "manage_users"
+                        });
+                });
+
+            modelBuilder.Entity("Survsys.Data.User", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit")
+                        .HasColumnName("active");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("password_hash");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("user_name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserName")
+                        .IsUnique();
+
+                    b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.UserRole", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int")
+                        .HasColumnName("role_id");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("user_roles", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.ZipCodeAgency", b =>
                 {
                     b.Property<string>("ZipCode")
@@ -1566,6 +1720,15 @@ namespace Survsys.Data.Migrations
                     b.HasIndex("AgencyId");
 
                     b.ToTable("zip_code_agencies", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.AccessRecord", b =>
+                {
+                    b.HasOne("Survsys.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Survsys.Data.Attachment", b =>
@@ -1760,6 +1923,30 @@ namespace Survsys.Data.Migrations
                     b.HasOne("Survsys.Data.Person", null)
                         .WithMany("Telephones")
                         .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.RolePrivilege", b =>
+                {
+                    b.HasOne("Survsys.Data.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.UserRole", b =>
+                {
+                    b.HasOne("Survsys.Data.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

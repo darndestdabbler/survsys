@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -210,8 +211,15 @@ public static class PersonConditionEndpoints
         return routes;
     }
 
+    /// <remarks>
+    /// Serving a report is what the access audit records: who it was served
+    /// to, and when. A report that is not there was not opened, so a 404
+    /// records nothing.
+    /// </remarks>
     private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> GetPersonCondition(
         PersonConditionQueries reports,
+        AccessAuditQueries audit,
+        ClaimsPrincipal user,
         int id,
         CancellationToken cancellationToken = default)
     {
@@ -221,6 +229,11 @@ public static class PersonConditionEndpoints
                 detail: $"No case morbidity report has id {id}.",
                 statusCode: StatusCodes.Status404NotFound,
                 title: "There is no such case morbidity report.");
+        }
+
+        if (AccountEndpoints.UserIdOf(user) is { } userId)
+        {
+            await audit.Record(userId, id, cancellationToken);
         }
 
         return TypedResults.Ok(report);

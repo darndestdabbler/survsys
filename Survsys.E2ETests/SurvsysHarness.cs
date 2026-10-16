@@ -116,6 +116,8 @@ public sealed class SurvsysHarness : IDisposable
         {
             ["ConnectionStrings__Survsys"] = ConnectionString,
             ["Survsys__ApplyMigrations"] = "true",
+            ["Survsys__Administrator__UserName"] = AdministratorUserName,
+            ["Survsys__Administrator__Password"] = AdministratorPassword,
         });
 
         // Whatever goes wrong from here on, the tier that is already running
@@ -136,7 +138,39 @@ public sealed class SurvsysHarness : IDisposable
             api.Dispose();
             throw;
         }
+
+        try
+        {
+            SignIn().GetAwaiter().GetResult();
+        }
+        catch
+        {
+            web.Dispose();
+            api.Dispose();
+            throw;
+        }
     }
+
+    /// <summary>
+    /// The administrator the API tier is started with and creates on its
+    /// first start against this suite's database: the user every walkthrough
+    /// is signed in as, because its role holds every privilege.
+    /// </summary>
+    public const string AdministratorUserName = "administrator";
+
+    /// <summary>
+    /// The administrator's password: a value made up for this suite's own
+    /// database, and no credential of anything else.
+    /// </summary>
+    public const string AdministratorPassword = "walkthrough-only-password";
+
+    /// <summary>
+    /// The signed-in browser state every walkthrough's context opens with,
+    /// written once by the harness: what each walkthrough's Before you start
+    /// asks of its reader, met before step 1 as the seeded rows are.
+    /// </summary>
+    public static string SignedInStatePath { get; } =
+        Path.Combine(AppContext.BaseDirectory, "signed-in-state.json");
 
     /// <summary>The database the suite runs against.</summary>
     public string ConnectionString { get; }
@@ -175,6 +209,40 @@ public sealed class SurvsysHarness : IDisposable
                 + "net10.0/playwright.ps1 install chromium` is the same install by hand, and "
                 + "its output says what it could not fetch.");
         }
+    }
+
+    /// <summary>
+    /// Signs a browser in as the administrator through the application tier's
+    /// own Sign in page, as a reader of a walkthrough does, and keeps the
+    /// cookie it is given at <see cref="SignedInStatePath"/>.
+    /// </summary>
+    private async Task SignIn()
+    {
+        using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+
+        await page.GotoAsync(WebBaseAddress);
+        await page.Locator("#sign-in-user-name").FillAsync(AdministratorUserName);
+        await page.Locator("#sign-in-password").FillAsync(AdministratorPassword);
+        await page.Locator("#sign-in-submit").ClickAsync();
+
+        try
+        {
+            await page.WaitForURLAsync(url => !url.Contains("/sign-in", StringComparison.Ordinal));
+        }
+        catch (TimeoutException refused)
+        {
+            throw new InvalidOperationException(
+                $"Signing in as {AdministratorUserName} did not leave the Sign in page. The API tier "
+                + "creates that administrator on its first start from the settings the harness "
+                + "gives it; a database where a user of that name already has another password "
+                + "keeps that password, and the page would say the sign-in was refused.",
+                refused);
+        }
+
+        await context.StorageStateAsync(new() { Path = SignedInStatePath });
     }
 
     /// <summary>
@@ -549,9 +617,14 @@ public class SurvsysPageTest : PageTest
     public static string VideoDirectory { get; } =
         Path.Combine(AppContext.BaseDirectory, "videos");
 
+    /// <remarks>
+    /// Every context opens signed in as the administrator, with the state
+    /// the harness wrote when it signed in through the Sign in page.
+    /// </remarks>
     public override BrowserNewContextOptions ContextOptions() => new()
     {
         RecordVideoDir = VideoDirectory,
+        StorageStatePath = SurvsysHarness.SignedInStatePath,
     };
 
     /// <summary>

@@ -58,7 +58,7 @@ it does, are not part of this walkthrough.
 
 ## Before you start
 
-You need all four of these. The last one is the one people forget.
+You need all five of these. The fourth is the one people forget.
 
 1. **A reachable SQL Server**, holding a Survsys database at this build's
    migration level. `Survsys.Api` is the only tier permitted to touch the
@@ -84,6 +84,15 @@ You need all four of these. The last one is the one people forget.
    application tier's address is the one you open**, and on a developer
    machine that is <http://localhost:5000>. On a deployed site it is the
    address of the Survsys web site, which your deployment supplies.
+5. **Signed in, as a user whose role holds every privilege.** Survsys asks
+   everyone to sign in, and sends you to its **Sign in** page until you do.
+   On a fresh database the only user is the administrator the API tier
+   creates on its first start from two settings you choose:
+   `Survsys__Administrator__UserName` and `Survsys__Administrator__Password`,
+   set where `Survsys.Api` runs. That administrator holds the Administrator
+   role, which has every privilege. Open the application tier's address, type
+   that user name and password on the **Sign in** page, and press **Sign
+   in**; then begin at step 1.
 
 This walkthrough **creates a report and leaves it closed in Summit County's
 queue**. Perform it twice and you have two reports on Jane Abbott, both

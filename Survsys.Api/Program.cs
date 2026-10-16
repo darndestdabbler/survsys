@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authentication.BearerToken;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Api;
 using Survsys.Data;
@@ -14,6 +16,11 @@ const string connectionStringName = "Survsys";
 // this is the only tier permitted to reach the database. A deployment never
 // sets it: the handoff carries the idempotent script for that.
 const string applyMigrationsKey = "Survsys:ApplyMigrations";
+
+// The administrator ensured at startup, so a fresh database has someone who
+// can sign in and create everyone else.
+const string administratorUserNameKey = "Survsys:Administrator:UserName";
+const string administratorPasswordKey = "Survsys:Administrator:Password";
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +44,27 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
     context.ProblemDetails.Extensions["correlationId"] =
         Activity.Current?.Id ?? context.HttpContext.TraceIdentifier);
 
+// Every request but signing in and the readiness probe is authorised, by one
+// fallback policy rather than by a line beside each endpoint, so an endpoint
+// mapped later is covered the day it is mapped. The caller must carry a
+// bearer token from /api/sign-in, and PrivilegeRules names the privilege the
+// request needs. A caller who is not signed in is answered 401 and one who
+// lacks the privilege 403, both as Problem Details by UseStatusCodePages below.
+builder.Services.AddAuthentication(BearerTokenDefaults.AuthenticationScheme)
+    .AddBearerToken(options => options.BearerTokenExpiration = TimeSpan.FromHours(8));
+builder.Services.AddAuthorization(options => options.FallbackPolicy =
+    new AuthorizationPolicyBuilder(BearerTokenDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .RequireAssertion(context => context.Resource is HttpContext http && PrivilegeRules.Allows(
+            context.User.FindAll(PrivilegeRules.PrivilegeClaim).Select(claim => claim.Value),
+            http.Request.Method,
+            http.Request.Path))
+        .Build());
+
+builder.Services.AddAccounts();
+builder.Services.AddUsers();
+builder.Services.AddRoles();
+builder.Services.AddAccessAudit();
 builder.Services.AddConditions();
 builder.Services.AddAgencies();
 builder.Services.AddFacilities();
@@ -71,6 +99,15 @@ using (var scope = app.Services.CreateScope())
     {
         MigrationGate.AssertNonePending(await database.GetPendingMigrationsAsync());
     }
+
+    // A first administrator, from configuration and never from a file in the
+    // repository: set Survsys__Administrator__UserName and
+    // Survsys__Administrator__Password where the tier runs. Without both,
+    // nothing is created, and a database with no user has nobody to sign in.
+    await scope.ServiceProvider.GetRequiredService<AccountQueries>().EnsureAdministrator(
+        builder.Configuration[administratorUserNameKey],
+        builder.Configuration[administratorPasswordKey],
+        CancellationToken.None);
 }
 
 app.UseExceptionHandler();
@@ -82,12 +119,19 @@ app.UseExceptionHandler();
 // caller reads one error shape from this tier and not two.
 app.UseStatusCodePages();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 // What the walkthrough harness waits on before its first click. This tier
 // answers here only once startup has finished -- the migration gate above
 // included -- so a 200 means it is serving a database at its own migration
 // level, which is the whole of what the harness needs to know.
-app.MapGet("/health/ready", () => Results.Ok("ready"));
+app.MapGet("/health/ready", () => Results.Ok("ready")).AllowAnonymous();
 
+app.MapAccounts();
+app.MapUsers();
+app.MapRoles();
+app.MapAccessAudit();
 app.MapConditions();
 app.MapPersons();
 app.MapAgencies();

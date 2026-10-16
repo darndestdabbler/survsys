@@ -12,6 +12,15 @@
    EVENTS, OUTBREAKS, FACILITIES, CMR SEARCH, EXPORTS, PEOPLE, ADMIN,
    SETTINGS, LOGOUT. The rest arrive with the screens they open.
 
+   Since session 32 an entry is shown only to a person holding the privilege
+   its screen needs, read from the claims this tier's cookie carries: the
+   conditions catalogue to anyone signed in, because reading reference data
+   needs nothing more; the case screens to view_cases, and a new report to
+   edit_cases; the reference data administration to manage_reference_data;
+   and the users and roles to manage_users. The API tier enforces the same
+   privileges whatever the bar shows. The signed-in person's name and Sign
+   out close the bar, and a person not signed in sees neither.
+
    Each link carries an identifier of its own, as every element a walkthrough
    names does. The bar still reads Survsys, which the conditions walkthrough
    says it does. *@
@@ -25,33 +34,67 @@
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudText Typo="Typo.h6" Class="mr-8">Survsys</MudText>
-        <MudButton id="nav-conditions" Href="/conditions" Color="Color.Inherit">
-            Conditions
-        </MudButton>
-        <MudButton id="nav-people" Href="/people" Color="Color.Inherit">
-            People
-        </MudButton>
-        <MudButton id="nav-new-report" Href="/morbidity/create" Color="Color.Inherit">
-            New CMR
-        </MudButton>
-        <MudButton id="nav-queue" Href="/queue" Color="Color.Inherit">
-            Work queue
-        </MudButton>
-        <MudButton id="nav-agency-queue" Href="/queue/agency" Color="Color.Inherit">
-            Agency board
-        </MudButton>
-        <MudButton id="nav-tasks" Href="/tasks" Color="Color.Inherit">
-            Tasks
-        </MudButton>
-        <MudButton id="nav-agencies" Href="/agencies" Color="Color.Inherit">
-            Agencies
-        </MudButton>
-        <MudButton id="nav-facilities" Href="/facilities" Color="Color.Inherit">
-            Facilities
-        </MudButton>
-        <MudButton id="nav-core-elements" Href="/core-elements" Color="Color.Inherit">
-            Field visibility
-        </MudButton>
+        @if (user?.Identity?.IsAuthenticated == true)
+        {
+            <MudButton id="nav-conditions" Href="/conditions" Color="Color.Inherit">
+                Conditions
+            </MudButton>
+            @if (Holds(Privileges.ViewCases))
+            {
+                <MudButton id="nav-people" Href="/people" Color="Color.Inherit">
+                    People
+                </MudButton>
+            }
+            @if (Holds(Privileges.EditCases))
+            {
+                <MudButton id="nav-new-report" Href="/morbidity/create" Color="Color.Inherit">
+                    New CMR
+                </MudButton>
+            }
+            @if (Holds(Privileges.ViewCases))
+            {
+                <MudButton id="nav-queue" Href="/queue" Color="Color.Inherit">
+                    Work queue
+                </MudButton>
+                <MudButton id="nav-agency-queue" Href="/queue/agency" Color="Color.Inherit">
+                    Agency board
+                </MudButton>
+                <MudButton id="nav-tasks" Href="/tasks" Color="Color.Inherit">
+                    Tasks
+                </MudButton>
+            }
+            @if (Holds(Privileges.ManageReferenceData))
+            {
+                <MudButton id="nav-agencies" Href="/agencies" Color="Color.Inherit">
+                    Agencies
+                </MudButton>
+                <MudButton id="nav-facilities" Href="/facilities" Color="Color.Inherit">
+                    Facilities
+                </MudButton>
+                <MudButton id="nav-core-elements" Href="/core-elements" Color="Color.Inherit">
+                    Field visibility
+                </MudButton>
+            }
+            @if (Holds(Privileges.ManageUsers))
+            {
+                <MudButton id="nav-users" Href="/users" Color="Color.Inherit">
+                    Users
+                </MudButton>
+                <MudButton id="nav-roles" Href="/roles" Color="Color.Inherit">
+                    Roles
+                </MudButton>
+            }
+            <MudSpacer />
+            <MudText id="nav-signed-in-as" Typo="Typo.body2" Class="mr-2">
+                @user.FindFirst(AccountClient.DisplayNameClaim)?.Value
+            </MudText>
+            <form method="post" action="/account/sign-out">
+                <AntiforgeryToken />
+                <MudButton id="nav-sign-out" ButtonType="ButtonType.Submit" Color="Color.Inherit">
+                    Sign out
+                </MudButton>
+            </form>
+        }
     </MudAppBar>
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.Large" Class="my-6">
@@ -59,3 +102,15 @@
         </MudContainer>
     </MudMainContent>
 </MudLayout>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private System.Security.Claims.ClaimsPrincipal? user;
+
+    protected override async Task OnParametersSetAsync() =>
+        user = AuthenticationState is { } state ? (await state).User : null;
+
+    private bool Holds(string privilege) => user?.HasClaim(AccountClient.PrivilegeClaim, privilege) == true;
+}
