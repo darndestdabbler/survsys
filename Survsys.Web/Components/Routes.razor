@@ -1,0 +1,9 @@
+@* Every routable screen in this assembly, under the one layout. There is no
+   NotFound page yet because there is one screen and it answers at the root;
+   the session that adds a second screen is the one that needs one. *@
+<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="route">
+        <RouteView RouteData="@route" DefaultLayout="@typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="@route" Selector="h1" />
+    </Found>
+</Router>
