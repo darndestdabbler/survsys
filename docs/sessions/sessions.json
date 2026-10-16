@@ -542,9 +542,9 @@
     {
       "number": 27,
       "title": "File attachments",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-16T04:23:48.301000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-16T04:41:49.865000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
