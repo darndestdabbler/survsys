@@ -56,6 +56,10 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<ExposureSource> ExposureSources => Set<ExposureSource>();
 
+    public DbSet<Note> Notes => Set<Note>();
+
+    public DbSet<CaseTask> Tasks => Set<CaseTask>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

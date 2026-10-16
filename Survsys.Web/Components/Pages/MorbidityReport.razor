@@ -179,6 +179,14 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <ContactsTab ReportId="@shown.Id" />
             </ChildContent>
         </MudTabPanel>
+        <MudTabPanel Text="Notes">
+            <TabContent>
+                <span id="report-tab-notes">Notes</span>
+            </TabContent>
+            <ChildContent>
+                <NotesTab ReportId="@shown.Id" />
+            </ChildContent>
+        </MudTabPanel>
     </MudTabs>
 }
 

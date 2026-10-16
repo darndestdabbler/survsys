@@ -46,6 +46,8 @@ builder.Services.AddAdministrative();
 builder.Services.AddLabs();
 builder.Services.AddExposures();
 builder.Services.AddContactImport();
+builder.Services.AddNotes();
+builder.Services.AddTasks();
 builder.Services.AddWorkQueue();
 
 var app = builder.Build();
@@ -92,6 +94,8 @@ app.MapAdministrative();
 app.MapLabs();
 app.MapExposures();
 app.MapContactImport();
+app.MapNotes();
+app.MapTasks();
 app.MapWorkQueue();
 
 app.Run();

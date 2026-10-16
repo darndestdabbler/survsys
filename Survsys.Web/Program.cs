@@ -40,6 +40,8 @@ builder.Services.AddHttpClient<InvestigationClient>(http => http.BaseAddress = a
 builder.Services.AddHttpClient<AdministrativeClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<LabsClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<ExposuresClient>(http => http.BaseAddress = api);
+builder.Services.AddHttpClient<NotesClient>(http => http.BaseAddress = api);
+builder.Services.AddHttpClient<TasksClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<WorkQueueClient>(http => http.BaseAddress = api);
 
 var app = builder.Build();
