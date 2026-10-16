@@ -7,8 +7,10 @@ using Survsys.Data;
 namespace Survsys.Api;
 
 /// <summary>
-/// <c>GET /api/persons</c>: the people on file, paged. And
+/// <c>GET /api/persons</c>: the people on file, paged.
 /// <c>GET /api/persons/{id}</c>: one person's whole demographic record.
+/// <c>POST /api/persons</c>: a person put on file. And
+/// <c>PUT /api/persons/{id}</c>: that record saved whole.
 /// </summary>
 /// <remarks>
 /// The entity-to-wire mapping lives here, as the conditions slice's does and
@@ -178,12 +180,38 @@ public static class PersonEndpoints
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return string.IsNullOrWhiteSpace(request.LastName)
+        return WhyNotALastName(request.LastName);
+    }
+
+    /// <summary>
+    /// Why this is not a record this tier will save over a person, or null
+    /// when it is.
+    /// </summary>
+    /// <remarks>
+    /// The same one rule the creation keeps, and the same sentence: a save
+    /// that took the last name away would leave a person the schema refuses.
+    /// Nothing the Demographic tab adds — a date, a code, an email — is
+    /// checked here, for the reason the creation checks none of it.
+    ///
+    /// Public because the unit suite proves it. Nothing outside this file
+    /// calls it.
+    /// </remarks>
+    public static string? WhyNotAPerson(UpdatePersonRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return WhyNotALastName(request.LastName);
+    }
+
+    /// <summary>
+    /// The one rule, kept once: a person has a last name.
+    /// </summary>
+    private static string? WhyNotALastName(string? lastName) =>
+        string.IsNullOrWhiteSpace(lastName)
             ? "lastName is required: a person's last name is the one name part this "
                 + "schema requires, and a person without one could not be listed or "
                 + "searched for."
             : null;
-    }
 
     /// <summary>
     /// The person a creation request describes.
@@ -219,10 +247,150 @@ public static class PersonEndpoints
     }
 
     /// <summary>
+    /// Makes a stored person into the record a save request describes.
+    /// </summary>
+    /// <remarks>
+    /// The person's own columns become what the request says, with
+    /// <see cref="ToPerson"/>'s two normalisations — trimmed, and blank meaning
+    /// null — applied to every text field, because the Demographic tab is a
+    /// form in front of a user and every one of its boxes can be submitted
+    /// with spaces in it or nothing.
+    ///
+    /// The child collections are replaced. The addresses, telephones and
+    /// emails, which are keyed by an identifier the database assigns, are
+    /// cleared and rebuilt from the request: the old rows are deleted and the
+    /// new ones inserted, and a row's identifier is not something a save
+    /// preserves. The races and aliases are keyed by their own value with the
+    /// person's, so the same code deleted and inserted in one unit of work
+    /// would be one key tracked twice; for those two the rows the request no
+    /// longer carries are removed and the ones it newly carries are added,
+    /// which ends in the same place — the collection is what the request
+    /// says — without the collision. A code or an alias is trimmed, a blank
+    /// one is dropped and a repeated one is kept once, because a multi-select
+    /// is a set and the table's key says so.
+    ///
+    /// Of the guardians only the rows with a name are cleared and rebuilt. A
+    /// row that holds only a <see cref="ParentGuardian.ParentId"/> is a link
+    /// to another person on file, which the detail mapping does not show and
+    /// no screen edits; a save that deleted it would be losing something the
+    /// user never saw.
+    ///
+    /// <see cref="UpdatePersonRequest.LastName"/> is read with a
+    /// null-forgiving <c>!</c> because <see cref="WhyNotAPerson(UpdatePersonRequest)"/>
+    /// has already refused a request without one; this is called after it and
+    /// never instead of it.
+    ///
+    /// Public because the unit suite proves it. Nothing outside this file
+    /// calls it.
+    /// </remarks>
+    public static void Apply(Person person, UpdatePersonRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+        ArgumentNullException.ThrowIfNull(request);
+
+        person.LastName = Said(request.LastName)!;
+        person.FirstName = Said(request.FirstName);
+        person.MiddleName = Said(request.MiddleName);
+        person.BirthDate = request.BirthDate;
+        person.DaysOldNoBirthday = request.DaysOldNoBirthday;
+        person.BirthGender = Said(request.BirthGender);
+        person.CurrentGender = Said(request.CurrentGender);
+        person.Ethnicity = Said(request.Ethnicity);
+        person.Language = Said(request.Language);
+        person.CountryOfBirth = Said(request.CountryOfBirth);
+
+        person.Addresses.Clear();
+        foreach (var address in request.Addresses)
+        {
+            person.Addresses.Add(new PersonAddress
+            {
+                Street = Said(address.Street),
+                UnitNumber = Said(address.UnitNumber),
+                City = Said(address.City),
+                State = Said(address.State),
+                PostalCode = Said(address.PostalCode),
+                County = Said(address.County),
+                Beginning = address.Beginning,
+                Ending = address.Ending,
+                Note = Said(address.Note),
+                ResidenceTypeId = address.ResidenceTypeId,
+            });
+        }
+
+        person.Telephones.Clear();
+        foreach (var telephone in request.Telephones)
+        {
+            person.Telephones.Add(new PersonTelephone
+            {
+                TelephoneType = Said(telephone.TelephoneType),
+                CountryCode = Said(telephone.CountryCode),
+                AreaCode = Said(telephone.AreaCode),
+                PhoneNumber = Said(telephone.PhoneNumber),
+                Extension = Said(telephone.Extension),
+                Beginning = telephone.Beginning,
+                Note = Said(telephone.Note),
+            });
+        }
+
+        person.Emails.Clear();
+        foreach (var email in request.Emails)
+        {
+            person.Emails.Add(new PersonEmail
+            {
+                EmailAddress = Said(email.EmailAddress),
+                CurrentEmail = email.CurrentEmail,
+            });
+        }
+
+        var races = SaidSet(request.Races);
+        foreach (var gone in person.Races.Where(race => !races.Contains(race.Race)).ToList())
+        {
+            person.Races.Remove(gone);
+        }
+
+        foreach (var race in races.Where(code => !person.Races.Any(held => held.Race == code)))
+        {
+            person.Races.Add(new PersonRace { Race = race });
+        }
+
+        var aliases = SaidSet(request.Aliases);
+        foreach (var gone in person.Aliases.Where(alias => !aliases.Contains(alias.Alias)).ToList())
+        {
+            person.Aliases.Remove(gone);
+        }
+
+        foreach (var alias in aliases.Where(name => !person.Aliases.Any(held => held.Alias == name)))
+        {
+            person.Aliases.Add(new PersonAlias { Alias = alias });
+        }
+
+        foreach (var named in person.Guardians.Where(guardian => guardian.Name != null).ToList())
+        {
+            person.Guardians.Remove(named);
+        }
+
+        foreach (var guardian in request.ParentGuardians.Select(Said).Where(name => name != null))
+        {
+            person.Guardians.Add(new ParentGuardian { Name = guardian });
+        }
+    }
+
+    /// <summary>
     /// A field trimmed, or null where nothing was said in it.
     /// </summary>
     private static string? Said(string? field) =>
         string.IsNullOrWhiteSpace(field) ? null : field.Trim();
+
+    /// <summary>
+    /// A list of values as the set it means: each trimmed, the blank ones
+    /// dropped, each kept once, in the order first said.
+    /// </summary>
+    private static List<string> SaidSet(IEnumerable<string> values) =>
+        values.Select(Said)
+            .Where(value => value != null)
+            .Select(value => value!)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
 
     /// <summary>
     /// Registers what the persons endpoints need of the container. Kept here
@@ -247,6 +415,12 @@ public static class PersonEndpoints
             .WithName("CreatePerson")
             .WithSummary("Puts a person on file, from the name, date of birth and birth "
                 + "gender a search was made with.");
+
+        routes.MapPut("/api/persons/{id:int}", UpdatePerson)
+            .WithName("UpdatePerson")
+            .WithSummary("Saves a person's whole demographic record, replacing the stored "
+                + "addresses, telephones, emails, races, aliases and named guardians "
+                + "with the ones sent.");
 
         return routes;
     }
@@ -318,6 +492,42 @@ public static class PersonEndpoints
         var created = await persons.Add(request, cancellationToken);
 
         return TypedResults.Created($"/api/persons/{created.Id}", created);
+    }
+
+    /// <remarks>
+    /// The endpoint the Demographic tab's Save &amp; Continue needs. One
+    /// request carries the whole record and the answer is what
+    /// <c>GET /api/persons/{id}</c> would now return, so a screen can replace
+    /// what it shows with what was stored and nothing it shows is a guess at
+    /// what the save did.
+    ///
+    /// The rule is checked before the person is read: a request this tier
+    /// would refuse is refused whether or not the person exists, and the 400
+    /// is the same sentence the creation gives.
+    /// </remarks>
+    private static async Task<Results<Ok<PersonDetailResponse>, ProblemHttpResult>> UpdatePerson(
+        PersonQueries persons,
+        int id,
+        UpdatePersonRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotAPerson(request) is { } why)
+        {
+            return TypedResults.Problem(
+                detail: why,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The record asked for is not one this endpoint can save.");
+        }
+
+        if (await persons.Update(id, request, cancellationToken) is not { } saved)
+        {
+            return TypedResults.Problem(
+                detail: $"No person has id {id}.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "There is no such person.");
+        }
+
+        return TypedResults.Ok(saved);
     }
 }
 
@@ -406,6 +616,53 @@ internal sealed class PersonQueries(SurvsysDbContext database)
         await database.SaveChangesAsync(cancellationToken);
 
         return PersonEndpoints.Respond(person);
+    }
+
+    /// <summary>
+    /// Saves a person's whole demographic record and answers with it as
+    /// <see cref="Find"/> would now read it, or null where no person has that
+    /// id — null being the answer and not an exception, as it is for
+    /// <see cref="Find"/>, and for the same reason.
+    /// </summary>
+    /// <remarks>
+    /// The person is loaded with every child collection, because
+    /// <see cref="PersonEndpoints.Apply"/> replaces them and a collection EF
+    /// Core has not loaded is one it cannot tell has lost rows. Split queries,
+    /// so that six collections arrive as seven short reads rather than one
+    /// join whose row count is their product.
+    ///
+    /// The answer is read back through <see cref="Find"/> rather than mapped
+    /// from the tracked entity, so what the save returns is what the next
+    /// read will return — the same projection, over the same rows, with the
+    /// identifiers the database just assigned.
+    ///
+    /// The request is validated before this is called, and a database failure
+    /// surfaces unwrapped, as everything else in this class does.
+    /// </remarks>
+    public async Task<PersonDetailResponse?> Update(
+        int id,
+        UpdatePersonRequest request,
+        CancellationToken cancellationToken)
+    {
+        var stored = await database.Persons
+            .Include(person => person.Addresses)
+            .Include(person => person.Telephones)
+            .Include(person => person.Emails)
+            .Include(person => person.Races)
+            .Include(person => person.Aliases)
+            .Include(person => person.Guardians)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(person => person.Id == id, cancellationToken);
+
+        if (stored is null)
+        {
+            return null;
+        }
+
+        PersonEndpoints.Apply(stored, request);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return await Find(id, cancellationToken);
     }
 
     /// <summary>

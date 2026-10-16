@@ -319,4 +319,261 @@ public class PersonEndpointsTests
         Assert.Null(person.MiddleName);
         Assert.Null(person.BirthGender);
     }
+
+    /// <summary>
+    /// A whole record, as the Demographic tab would send it over the seeded
+    /// person: different in every field, so that a field the save left alone
+    /// would show.
+    /// </summary>
+    private static UpdatePersonRequest Rewritten() => new(
+        LastName: "Garcia",
+        FirstName: "Mariela",
+        MiddleName: "Luz",
+        BirthDate: new DateOnly(1986, 7, 16),
+        DaysOldNoBirthday: 12,
+        BirthGender: "F",
+        CurrentGender: "U",
+        Ethnicity: "NH",
+        Language: "en",
+        CountryOfBirth: "USA")
+    {
+        Races = ["B", "AA"],
+        Aliases = ["Mariela Garcia"],
+        ParentGuardians = ["Ana Garcia", "Luis Garcia"],
+        Addresses =
+        [
+            new PersonAddressRequest(
+                Street: "9 Elm Court",
+                UnitNumber: null,
+                City: "Ogden",
+                State: "UT",
+                PostalCode: "84401",
+                County: "WE",
+                Beginning: new DateOnly(2020, 1, 2),
+                Ending: null,
+                Note: "Current.",
+                ResidenceTypeId: 2),
+        ],
+        Telephones =
+        [
+            new PersonTelephoneRequest(
+                TelephoneType: "C",
+                CountryCode: "1",
+                AreaCode: "385",
+                PhoneNumber: "5550100",
+                Extension: "7",
+                Beginning: new DateOnly(2021, 2, 3),
+                Note: "Mobile."),
+        ],
+        Emails = [new PersonEmailRequest("mariela@example.com", true)],
+    };
+
+    [Fact]
+    public void WhyNotAPersonAcceptsARecordWithALastName()
+    {
+        Assert.Null(PersonEndpoints.WhyNotAPerson(new UpdatePersonRequest("Rodriguez")));
+    }
+
+    /// <summary>
+    /// The same one rule the creation keeps, and the same sentence, because a
+    /// save that took the last name away would leave a person the schema
+    /// refuses.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t")]
+    public void WhyNotAPersonRefusesARecordWithoutALastName(string? lastName)
+    {
+        Assert.Equal(
+            PersonEndpoints.WhyNotAPerson(new CreatePersonRequest(lastName)),
+            PersonEndpoints.WhyNotAPerson(new UpdatePersonRequest(lastName)));
+        Assert.Contains("lastName is required",
+            PersonEndpoints.WhyNotAPerson(new UpdatePersonRequest(lastName)),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ApplyCarriesEveryFieldOfTheRecord()
+    {
+        var person = Seeded();
+
+        PersonEndpoints.Apply(person, Rewritten());
+
+        Assert.Equal(11, person.Id);
+        Assert.Equal("Garcia", person.LastName);
+        Assert.Equal("Mariela", person.FirstName);
+        Assert.Equal("Luz", person.MiddleName);
+        Assert.Equal(new DateOnly(1986, 7, 16), person.BirthDate);
+        Assert.Equal(12, person.DaysOldNoBirthday);
+        Assert.Equal("F", person.BirthGender);
+        Assert.Equal("U", person.CurrentGender);
+        Assert.Equal("NH", person.Ethnicity);
+        Assert.Equal("en", person.Language);
+        Assert.Equal("USA", person.CountryOfBirth);
+    }
+
+    /// <summary>
+    /// The rows that hang off the person become the rows the request carries
+    /// — none of the seeded address, telephone, email, race, alias or guardian
+    /// survives, and each new row carries every field it was sent with.
+    /// </summary>
+    [Fact]
+    public void ApplyReplacesEachChildCollectionWithWhatTheRecordCarries()
+    {
+        var person = Seeded();
+
+        PersonEndpoints.Apply(person, Rewritten());
+
+        var address = Assert.Single(person.Addresses);
+        Assert.Equal(0, address.Id);
+        Assert.Equal("9 Elm Court", address.Street);
+        Assert.Null(address.UnitNumber);
+        Assert.Equal("Ogden", address.City);
+        Assert.Equal("UT", address.State);
+        Assert.Equal("84401", address.PostalCode);
+        Assert.Equal("WE", address.County);
+        Assert.Equal(new DateOnly(2020, 1, 2), address.Beginning);
+        Assert.Null(address.Ending);
+        Assert.Equal("Current.", address.Note);
+        Assert.Equal(2, address.ResidenceTypeId);
+
+        var telephone = Assert.Single(person.Telephones);
+        Assert.Equal(0, telephone.Id);
+        Assert.Equal("C", telephone.TelephoneType);
+        Assert.Equal("1", telephone.CountryCode);
+        Assert.Equal("385", telephone.AreaCode);
+        Assert.Equal("5550100", telephone.PhoneNumber);
+        Assert.Equal("7", telephone.Extension);
+        Assert.Equal(new DateOnly(2021, 2, 3), telephone.Beginning);
+        Assert.Equal("Mobile.", telephone.Note);
+
+        var email = Assert.Single(person.Emails);
+        Assert.Equal(0, email.Id);
+        Assert.Equal("mariela@example.com", email.EmailAddress);
+        Assert.True(email.CurrentEmail);
+
+        Assert.Equal(["B", "AA"], person.Races.Select(race => race.Race));
+        Assert.Equal(["Mariela Garcia"], person.Aliases.Select(alias => alias.Alias));
+        Assert.Equal(
+            ["Ana Garcia", "Luis Garcia"],
+            person.Guardians.Select(guardian => guardian.Name));
+    }
+
+    /// <summary>
+    /// A record with every collection empty leaves the person with no rows at
+    /// all: a row taken off the screen is simply absent from the next save.
+    /// </summary>
+    [Fact]
+    public void ApplyWithEmptyCollectionsLeavesNoChildRow()
+    {
+        var person = Seeded();
+
+        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez"));
+
+        Assert.Empty(person.Addresses);
+        Assert.Empty(person.Telephones);
+        Assert.Empty(person.Emails);
+        Assert.Empty(person.Races);
+        Assert.Empty(person.Aliases);
+        Assert.Empty(person.Guardians);
+    }
+
+    /// <summary>
+    /// A race or an alias the person already has is the same row after the
+    /// save, not a deleted one and an inserted one: those two tables are keyed
+    /// by the value, and the same key deleted and inserted in one unit of
+    /// work is one key tracked twice.
+    /// </summary>
+    [Fact]
+    public void ApplyKeepsARaceOrAliasThePersonAlreadyHasRatherThanRewritingIt()
+    {
+        var person = Seeded();
+        var race = person.Races.Single();
+        var alias = person.Aliases.Single();
+
+        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez")
+        {
+            Races = ["AA", "W"],
+            Aliases = ["Maria Elena Garcia", "M. E. Rodriguez"],
+        });
+
+        Assert.Contains(race, person.Races);
+        Assert.Contains(alias, person.Aliases);
+        Assert.Equal(["W", "AA"], person.Races.Select(held => held.Race));
+        Assert.Equal(
+            ["Maria Elena Garcia", "M. E. Rodriguez"],
+            person.Aliases.Select(held => held.Alias));
+    }
+
+    /// <summary>
+    /// A guardian row that holds only a link to another person is not shown
+    /// by the detail and not sent back by the screen, so a save leaves it
+    /// where it was; only the named rows are replaced.
+    /// </summary>
+    [Fact]
+    public void ApplyLeavesAGuardianWithNoNameAlone()
+    {
+        var person = Seeded();
+        var linked = new ParentGuardian { Id = 5, ChildId = 11, ParentId = 12 };
+        person.Guardians.Add(linked);
+
+        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez")
+        {
+            ParentGuardians = ["Ana Garcia"],
+        });
+
+        Assert.Equal(2, person.Guardians.Count);
+        Assert.Contains(linked, person.Guardians);
+        Assert.Equal(["Ana Garcia"], person.Guardians
+            .Where(guardian => guardian.Name != null)
+            .Select(guardian => guardian.Name));
+    }
+
+    /// <summary>
+    /// Every box the Demographic tab has can be submitted with spaces around
+    /// what was typed, or empty: a value is trimmed, a blank one is nothing
+    /// said, and a code typed twice into the multi-select is one code.
+    /// </summary>
+    [Fact]
+    public void ApplyTrimsWhatWasTypedAndTreatsABlankFieldAsNothingSaid()
+    {
+        var person = Seeded();
+
+        PersonEndpoints.Apply(person, new UpdatePersonRequest(
+            LastName: "  Garcia ",
+            FirstName: " Mariela",
+            MiddleName: "   ",
+            CurrentGender: "",
+            Language: " en ")
+        {
+            Races = [" B", "B", "", "  "],
+            Aliases = [" Mariela ", "\t"],
+            ParentGuardians = ["", " Ana Garcia "],
+            Addresses = [new PersonAddressRequest(Street: " 9 Elm Court ", City: "")],
+            Telephones = [new PersonTelephoneRequest(AreaCode: " 385 ", PhoneNumber: " ")],
+            Emails = [new PersonEmailRequest(EmailAddress: "  ")],
+        });
+
+        Assert.Equal("Garcia", person.LastName);
+        Assert.Equal("Mariela", person.FirstName);
+        Assert.Null(person.MiddleName);
+        Assert.Null(person.CurrentGender);
+        Assert.Equal("en", person.Language);
+
+        Assert.Equal(["B"], person.Races.Select(race => race.Race));
+        Assert.Equal(["Mariela"], person.Aliases.Select(alias => alias.Alias));
+        Assert.Equal(["Ana Garcia"], person.Guardians.Select(guardian => guardian.Name));
+
+        var address = Assert.Single(person.Addresses);
+        Assert.Equal("9 Elm Court", address.Street);
+        Assert.Null(address.City);
+
+        var telephone = Assert.Single(person.Telephones);
+        Assert.Equal("385", telephone.AreaCode);
+        Assert.Null(telephone.PhoneNumber);
+
+        Assert.Null(Assert.Single(person.Emails).EmailAddress);
+    }
 }

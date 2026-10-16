@@ -258,6 +258,70 @@ public class ApiAskTests
         Assert.Contains("500", created.Failure);
     }
 
+    /// <summary>
+    /// A put carries the body as JSON to the URL given and answers with what
+    /// the API tier now holds.
+    /// </summary>
+    [Fact]
+    public async Task APutSendsTheBodyAndReturnsWhatWasSaved()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var saved = await Ask.Put<UpdatePersonRequest, PersonDetailResponse>(
+            Transport(request =>
+            {
+                sent = request;
+                body = request.Content!.ReadAsStringAsync().Result;
+
+                return Answer(
+                    HttpStatusCode.OK,
+                    """
+                    {
+                      "id": 11, "lastName": "Garcia", "firstName": "Mariela",
+                      "middleName": null, "birthDate": null,
+                      "daysOldNoBirthday": null, "birthGender": null,
+                      "currentGender": null, "ethnicity": null, "language": null,
+                      "countryOfBirth": null, "races": ["B"], "aliases": [],
+                      "parentGuardians": [], "addresses": [], "telephones": [],
+                      "emails": []
+                    }
+                    """);
+            }),
+            "api/persons/11",
+            new UpdatePersonRequest("Garcia", "Mariela") { Races = ["B"] },
+            CancellationToken.None);
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/persons/11", sent?.RequestUri?.ToString());
+        Assert.Equal(Json, sent?.Content?.Headers.ContentType?.MediaType);
+        Assert.Contains("\"lastName\":\"Garcia\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"races\":[\"B\"]", body, StringComparison.Ordinal);
+
+        Assert.True(saved.Succeeded);
+        Assert.Equal(11, saved.Value?.Id);
+        Assert.Equal("Garcia", saved.Value?.LastName);
+        Assert.Equal(["B"], saved.Value?.Races);
+    }
+
+    [Fact]
+    public async Task APutThatFailedBecomesAMessageLikeAnAskThatFailed()
+    {
+        var saved = await Ask.Put<UpdatePersonRequest, PersonDetailResponse>(
+            Transport(_ => Answer(
+                HttpStatusCode.NotFound,
+                """{ "status": 404, "detail": "No person has id 11." }""")),
+            "api/persons/11",
+            new UpdatePersonRequest("Garcia"),
+            CancellationToken.None);
+
+        Assert.False(saved.Succeeded);
+        Assert.Null(saved.Value);
+        Assert.StartsWith(Prefix, saved.Failure);
+        Assert.Contains("404", saved.Failure);
+        Assert.DoesNotContain("No person has id", saved.Failure, StringComparison.Ordinal);
+    }
+
     private static Task<Asked<PagedResult<ConditionResponse>>> Get(
         HttpStatusCode status,
         string body,

@@ -52,10 +52,11 @@ public sealed record PersonSearchCriteria(
 /// </summary>
 /// <remarks>
 /// It is the only thing in this tier that speaks HTTP about people, and it
-/// swallows no failure silently: the two <see cref="ApiAsk"/>s below each say
-/// which of the two things went wrong, because a screen that could not search
-/// and a screen that could not create a person are two different sentences for
-/// a user to read.
+/// swallows no failure silently: the <see cref="ApiAsk"/>s below each say
+/// which of the four things went wrong, because a screen that could not
+/// search, one that could not read a person, one that could not create one
+/// and one that could not save one are four different sentences for a user
+/// to read.
 /// </remarks>
 public sealed class PersonsClient(HttpClient http)
 {
@@ -68,11 +69,16 @@ public sealed class PersonsClient(HttpClient http)
     /// <summary>How a failure to create a person starts.</summary>
     public const string CreateFailurePrefix = "The person could not be created";
 
+    /// <summary>How a failure to save a person's record starts.</summary>
+    public const string UpdateFailurePrefix = "The person could not be saved";
+
     private static readonly ApiAsk Searching = new(SearchFailurePrefix, "a page of people");
 
     private static readonly ApiAsk Finding = new(FindFailurePrefix, "the person's record");
 
     private static readonly ApiAsk Creating = new(CreateFailurePrefix, "the person created");
+
+    private static readonly ApiAsk Updating = new(UpdateFailurePrefix, "the person's record as saved");
 
     /// <summary>
     /// One page of the people matching the criteria, or why there is none.
@@ -110,6 +116,23 @@ public sealed class PersonsClient(HttpClient http)
         CancellationToken cancellationToken = default) =>
         Creating.Post<CreatePersonRequest, PersonResponse>(
             http, "api/persons", person, cancellationToken);
+
+    /// <summary>
+    /// Saves a person's whole demographic record and answers with it as the
+    /// API tier now holds it, or with why nothing was saved.
+    /// </summary>
+    /// <remarks>
+    /// What the Demographic tab's Save &amp; Continue does. The answer is the
+    /// same shape <see cref="Find"/> returns, so a screen replaces what it
+    /// shows with what was stored rather than with what it sent — the
+    /// identifiers of the child rows, for one, are assigned by the save.
+    /// </remarks>
+    public Task<Asked<PersonDetailResponse>> Update(
+        int id,
+        UpdatePersonRequest record,
+        CancellationToken cancellationToken = default) =>
+        Updating.Put<UpdatePersonRequest, PersonDetailResponse>(
+            http, $"api/persons/{id}", record, cancellationToken);
 
     /// <summary>
     /// The URL a search asks for: the page, and every criterion that was

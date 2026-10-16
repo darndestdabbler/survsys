@@ -8,16 +8,16 @@ using Xunit;
 namespace Survsys.UnitTests;
 
 /// <summary>
-/// The application tier's writer of <c>POST /api/person-conditions</c>: what
-/// it sends, what it hands the screen back, and the phrase its failures start
-/// with.
+/// The application tier's writer and reader of <c>/api/person-conditions</c>:
+/// what it sends, what it hands the screen back, and the phrase each of its
+/// two failures starts with.
 /// </summary>
 /// <remarks>
 /// Every way an ask can fail is <see cref="ApiAskTests"/>'s. What matters here
-/// is that the report the screen filled in is the report that is sent, and
-/// that the record number the API assigned is what comes back — because the
-/// record number is the one thing the creation screen shows the user
-/// afterwards.
+/// is that the report the screen filled in is the report that is sent, that
+/// the record number the API assigned is what comes back — because the record
+/// number is what the report shell shows at the top — and that a report read
+/// by its identifier is the report the shell gets.
 /// </remarks>
 public class PersonConditionsClientTests
 {
@@ -101,6 +101,60 @@ public class PersonConditionsClientTests
         Assert.StartsWith(PersonConditionsClient.FailurePrefix, opened.Failure);
         Assert.Contains("400", opened.Failure);
         Assert.DoesNotContain("987654", opened.Failure, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The read the report shell makes first: the report's own URL, and the
+    /// report back — whose person and condition the shell then reads from
+    /// their own resources.
+    /// </summary>
+    [Fact]
+    public async Task TheReportFoundIsTheReportTheClientReturns()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new PersonConditionsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, Opened);
+        }));
+
+        var found = await client.Find(11);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal("http://api.example.test/api/person-conditions/11", sent?.RequestUri?.ToString());
+        Assert.Null(sent?.Content);
+
+        Assert.True(found.Succeeded);
+        Assert.Equal(11, found.Value?.Id);
+        Assert.Equal(13, found.Value?.PersonId);
+        Assert.Equal(74, found.Value?.ConditionId);
+        Assert.Equal("202600001", found.Value?.RecordNumber);
+        Assert.Equal(1, found.Value?.AgencyId);
+        Assert.Equal(new DateOnly(2026, 3, 12), found.Value?.FirstReportedPhDate);
+        Assert.Equal(new DateOnly(2026, 3, 12), found.Value?.EventOnsetDate);
+    }
+
+    /// <summary>
+    /// An identifier nobody has: the API tier answers 404, and what the shell
+    /// gets is a message about loading — not about creating, which is the
+    /// other thing this client does — rather than an exception.
+    /// </summary>
+    [Fact]
+    public async Task AReportNobodyHasBecomesAMessageAboutLoading()
+    {
+        var client = new PersonConditionsClient(Transport(_ => Answer(
+            HttpStatusCode.NotFound,
+            """{ "status": 404, "detail": "No case morbidity report has id 987654." }""")));
+
+        var found = await client.Find(987654);
+
+        Assert.False(found.Succeeded);
+        Assert.Null(found.Value);
+        Assert.StartsWith(PersonConditionsClient.FindFailurePrefix, found.Failure);
+        Assert.Contains("404", found.Failure);
+        Assert.DoesNotContain("987654", found.Failure, StringComparison.Ordinal);
+        Assert.NotEqual(PersonConditionsClient.FailurePrefix, PersonConditionsClient.FindFailurePrefix);
     }
 
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>

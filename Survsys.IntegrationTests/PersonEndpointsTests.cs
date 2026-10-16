@@ -849,6 +849,341 @@ public class PersonEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     /// <summary>
+    /// The save the Demographic tab makes, twice over: a person put with one
+    /// of every row reads back exactly those rows, and put again with
+    /// different ones reads back exactly the new ones and none of the old —
+    /// which is what "the request is the whole record" means over a real
+    /// database.
+    /// </summary>
+    [Fact]
+    public async Task APersonPutWithNewRowsReadsBackExactlyThoseAndNoneOfTheOld()
+    {
+        var client = api.CreateClient();
+        var id = await Created("Whitlock");
+
+        try
+        {
+            var first = await Put(client, id, new UpdatePersonRequest(
+                LastName: "Whitlock",
+                FirstName: "Rosa",
+                MiddleName: "Jane",
+                BirthDate: new DateOnly(1990, 11, 2),
+                DaysOldNoBirthday: null,
+                BirthGender: "F",
+                CurrentGender: "F",
+                Ethnicity: "NH",
+                Language: "en",
+                CountryOfBirth: "USA")
+            {
+                Races = ["W", "AA"],
+                Aliases = ["Rosa Whitlock-Pane"],
+                ParentGuardians = ["June Whitlock"],
+                Addresses =
+                [
+                    new PersonAddressRequest(
+                        Street: "12 Birch Row",
+                        UnitNumber: "3",
+                        City: "Logan",
+                        State: "UT",
+                        PostalCode: "84321",
+                        County: "CA",
+                        Beginning: new DateOnly(2018, 4, 1),
+                        Ending: null,
+                        Note: "Since the move north.",
+                        ResidenceTypeId: 1),
+                ],
+                Telephones =
+                [
+                    new PersonTelephoneRequest(
+                        TelephoneType: "H",
+                        CountryCode: "1",
+                        AreaCode: "435",
+                        PhoneNumber: "5550177",
+                        Extension: null,
+                        Beginning: new DateOnly(2018, 4, 1),
+                        Note: null),
+                ],
+                Emails = [new PersonEmailRequest("rosa.whitlock@example.com", true)],
+            });
+
+            Assert.Equal(id, first.Id);
+            Assert.Equal("Whitlock", first.LastName);
+            Assert.Equal("Rosa", first.FirstName);
+            Assert.Equal("Jane", first.MiddleName);
+            Assert.Equal(new DateOnly(1990, 11, 2), first.BirthDate);
+            Assert.Null(first.DaysOldNoBirthday);
+            Assert.Equal("F", first.BirthGender);
+            Assert.Equal("F", first.CurrentGender);
+            Assert.Equal("NH", first.Ethnicity);
+            Assert.Equal("en", first.Language);
+            Assert.Equal("USA", first.CountryOfBirth);
+            Assert.Equal(["AA", "W"], first.Races);
+            Assert.Equal(["Rosa Whitlock-Pane"], first.Aliases);
+            Assert.Equal(["June Whitlock"], first.ParentGuardians);
+
+            var address = Assert.Single(first.Addresses);
+            Assert.True(address.Id > 0);
+            Assert.Equal("12 Birch Row", address.Street);
+            Assert.Equal("3", address.UnitNumber);
+            Assert.Equal("Logan", address.City);
+            Assert.Equal("UT", address.State);
+            Assert.Equal("84321", address.PostalCode);
+            Assert.Equal("CA", address.County);
+            Assert.Equal(new DateOnly(2018, 4, 1), address.Beginning);
+            Assert.Null(address.Ending);
+            Assert.Equal("Since the move north.", address.Note);
+            Assert.Equal(1, address.ResidenceTypeId);
+
+            var telephone = Assert.Single(first.Telephones);
+            Assert.True(telephone.Id > 0);
+            Assert.Equal("H", telephone.TelephoneType);
+            Assert.Equal("1", telephone.CountryCode);
+            Assert.Equal("435", telephone.AreaCode);
+            Assert.Equal("5550177", telephone.PhoneNumber);
+            Assert.Null(telephone.Extension);
+            Assert.Equal(new DateOnly(2018, 4, 1), telephone.Beginning);
+            Assert.Null(telephone.Note);
+
+            var email = Assert.Single(first.Emails);
+            Assert.True(email.Id > 0);
+            Assert.Equal("rosa.whitlock@example.com", email.EmailAddress);
+            Assert.True(email.CurrentEmail);
+
+            // What the save answered is what the next read returns.
+            AssertSame(first, await Person(id));
+
+            var second = await Put(client, id, new UpdatePersonRequest(
+                LastName: "Whitlock",
+                FirstName: "Rosa",
+                BirthDate: new DateOnly(1990, 11, 2),
+                BirthGender: "F")
+            {
+                Races = ["B"],
+                Aliases = ["R. Whitlock"],
+                ParentGuardians = ["Alan Whitlock"],
+                Addresses = [new PersonAddressRequest(Street: "7 Aspen Way", City: "Ogden", State: "UT")],
+                Telephones = [new PersonTelephoneRequest(AreaCode: "801", PhoneNumber: "5550199")],
+                Emails = [new PersonEmailRequest("rosa@example.org", null)],
+            });
+
+            Assert.Null(second.MiddleName);
+            Assert.Null(second.CurrentGender);
+            Assert.Null(second.Ethnicity);
+            Assert.Null(second.Language);
+            Assert.Null(second.CountryOfBirth);
+            Assert.Equal(["B"], second.Races);
+            Assert.Equal(["R. Whitlock"], second.Aliases);
+            Assert.Equal(["Alan Whitlock"], second.ParentGuardians);
+            Assert.Equal("7 Aspen Way", Assert.Single(second.Addresses).Street);
+            Assert.Equal("5550199", Assert.Single(second.Telephones).PhoneNumber);
+            Assert.Equal("rosa@example.org", Assert.Single(second.Emails).EmailAddress);
+            Assert.Null(Assert.Single(second.Emails).CurrentEmail);
+
+            // None of the old rows is left in the tables, under this person
+            // or any other.
+            await using var context = server.NewContext();
+            Assert.Single(await context.Set<PersonAddress>().Where(row => row.PersonId == id).ToListAsync());
+            Assert.Single(await context.Set<PersonTelephone>().Where(row => row.PersonId == id).ToListAsync());
+            Assert.Single(await context.Set<PersonEmail>().Where(row => row.PersonId == id).ToListAsync());
+            Assert.Single(await context.Set<PersonRace>().Where(row => row.PersonId == id).ToListAsync());
+            Assert.Single(await context.Set<PersonAlias>().Where(row => row.PersonId == id).ToListAsync());
+            Assert.Single(await context.Set<ParentGuardian>().Where(row => row.ChildId == id).ToListAsync());
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    /// <summary>
+    /// A record with every collection empty takes every row off the person: a
+    /// row a user removed from the screen is absent from the next save, and
+    /// that is the whole of how a row is removed.
+    /// </summary>
+    [Fact]
+    public async Task APersonPutWithEmptyCollectionsIsLeftWithNone()
+    {
+        var client = api.CreateClient();
+        var id = await Created("Eames");
+
+        try
+        {
+            await Put(client, id, new UpdatePersonRequest("Eames", "Ray")
+            {
+                Races = ["W"],
+                Aliases = ["R. Eames"],
+                ParentGuardians = ["Charles Eames"],
+                Addresses = [new PersonAddressRequest(Street: "203 Chautauqua")],
+                Telephones = [new PersonTelephoneRequest(AreaCode: "310", PhoneNumber: "5550123")],
+                Emails = [new PersonEmailRequest("ray@example.com")],
+            });
+
+            var emptied = await Put(client, id, new UpdatePersonRequest("Eames", "Ray"));
+
+            Assert.Equal("Eames", emptied.LastName);
+            Assert.Equal("Ray", emptied.FirstName);
+            Assert.Empty(emptied.Races);
+            Assert.Empty(emptied.Aliases);
+            Assert.Empty(emptied.ParentGuardians);
+            Assert.Empty(emptied.Addresses);
+            Assert.Empty(emptied.Telephones);
+            Assert.Empty(emptied.Emails);
+            AssertSame(emptied, await Person(id));
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    /// <summary>
+    /// A guardian row that holds only a link to another person — no name —
+    /// is not shown by the detail, not sent back by the screen, and left
+    /// where it was by a save that replaces the named ones.
+    /// </summary>
+    [Fact]
+    public async Task APutLeavesAGuardianRecordedOnlyAsALinkAlone()
+    {
+        var client = api.CreateClient();
+        var id = await Created("Fenwick");
+        var parent = await IdOf("Rodriguez, Carlos");
+
+        try
+        {
+            await using (var seeding = server.NewContext())
+            {
+                seeding.Set<ParentGuardian>().AddRange(
+                    new ParentGuardian { ChildId = id, ParentId = parent },
+                    new ParentGuardian { ChildId = id, Name = "Old Name" });
+                await seeding.SaveChangesAsync();
+            }
+
+            var saved = await Put(client, id, new UpdatePersonRequest("Fenwick")
+            {
+                ParentGuardians = ["New Name"],
+            });
+
+            Assert.Equal(["New Name"], saved.ParentGuardians);
+
+            await using var context = server.NewContext();
+            var rows = await context.Set<ParentGuardian>()
+                .Where(row => row.ChildId == id)
+                .OrderBy(row => row.Id)
+                .ToListAsync();
+
+            Assert.Equal(2, rows.Count);
+            Assert.Equal(parent, rows[0].ParentId);
+            Assert.Null(rows[0].Name);
+            Assert.Equal("New Name", rows[1].Name);
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    [Fact]
+    public async Task APutOnAnIdNobodyHasIsAProblemDetails()
+    {
+        using var response = await api.CreateClient().PutAsJsonAsync(
+            "/api/persons/999999", new UpdatePersonRequest("Nobody"), Json);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = problem.RootElement;
+
+        Assert.Equal(404, root.GetProperty("status").GetInt32());
+        Assert.Contains("999999", root.GetProperty("detail").GetString(), StringComparison.Ordinal);
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("correlationId").GetString()));
+    }
+
+    /// <summary>
+    /// The one requirement the schema has, refused before anything is
+    /// written: the person reads back exactly as they were, rows and all.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task APutWithoutALastNameIsAProblemDetailsAndChangesNothing(string? lastName)
+    {
+        var client = api.CreateClient();
+        var id = await Created("Holloway");
+
+        try
+        {
+            var before = await Put(client, id, new UpdatePersonRequest("Holloway", "Ivy")
+            {
+                Races = ["W"],
+                Addresses = [new PersonAddressRequest(Street: "1 Quay Street")],
+            });
+
+            using var response = await client.PutAsJsonAsync(
+                $"/api/persons/{id}",
+                new UpdatePersonRequest(lastName, "Changed")
+                {
+                    Races = ["B"],
+                    Addresses = [new PersonAddressRequest(Street: "2 Changed Street")],
+                },
+                Json);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+            using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var root = problem.RootElement;
+
+            Assert.Equal(400, root.GetProperty("status").GetInt32());
+            Assert.Contains("lastName is required",
+                root.GetProperty("detail").GetString(), StringComparison.Ordinal);
+            Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("correlationId").GetString()));
+
+            AssertSame(before, await Person(id));
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    /// <summary>
+    /// A person this suite puts on file to save over, by the endpoint that
+    /// creates one; the caller forgets them.
+    /// </summary>
+    private async Task<int> Created(string lastName)
+    {
+        using var created = await api.CreateClient()
+            .PostAsJsonAsync("/api/persons", new CreatePersonRequest(lastName), Json);
+
+        created.EnsureSuccessStatusCode();
+
+        return (await created.Content.ReadFromJsonAsync<PersonResponse>(Json))!.Id;
+    }
+
+    /// <summary>
+    /// Two detail records with the same content. Compared as the JSON they
+    /// are sent as, because a record holding lists compares those lists by
+    /// reference, and what a caller cares about is the wire.
+    /// </summary>
+    private static void AssertSame(PersonDetailResponse expected, PersonDetailResponse actual) =>
+        Assert.Equal(
+            JsonSerializer.Serialize(expected, Json),
+            JsonSerializer.Serialize(actual, Json));
+
+    /// <summary>A save that is expected to succeed, and what it answered.</summary>
+    private static async Task<PersonDetailResponse> Put(
+        HttpClient client, int id, UpdatePersonRequest record)
+    {
+        using var response = await client.PutAsJsonAsync($"/api/persons/{id}", record, Json);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        return (await response.Content.ReadFromJsonAsync<PersonDetailResponse>(Json))!;
+    }
+
+    /// <summary>
     /// How <see cref="SqlServerFixture.PersonsByName"/> writes a person: the
     /// endpoint promises an order over two name parts, and a person with no
     /// first name is one of them.

@@ -7,13 +7,12 @@
    buttons, Save & Continue and Cancel. That is what this screen is, over the
    person named at the top so a user can see who they are reporting on.
 
-   What it does NOT do is show the report afterwards. The legacy flow ends at
-   /event/edit/{recordNumber}, the report's own form with its tab strip, and
-   that screen is the next session's: it owns the shell and the Demographics
-   tab. So this screen's promise ends at the record number it created, which
-   it names. The session that writes the shell replaces the panel below with
-   navigation to it — the endpoint that reads a report back,
-   GET /api/person-conditions/{id}, already exists for it. *@
+   The flow ends where the legacy one does: once the report exists, this
+   screen navigates to the report's own form, MorbidityReport.razor at
+   /event/edit/{id}, whose header names the record number just created and
+   whose tab strip carries the Demographic tab. Session 14 ended here on a
+   panel naming the record number, because the shell was session 15's; the
+   shell exists now, and the panel went with its arrival. *@
 @page "/morbidity/create/{PersonId:int}"
 @inject PersonsClient Persons
 @inject ConditionsClient Conditions
@@ -27,27 +26,7 @@
     New case morbidity report
 </MudText>
 
-@if (opened is { } report)
-{
-    @* The whole of what this session promises to show of a created report:
-       the number it is known by. *@
-    <MudAlert id="report-created" Severity="Severity.Success" Variant="Variant.Filled"
-              Class="mb-4">
-        Case morbidity report
-        <strong id="report-created-record-number">@report.RecordNumber</strong>
-        has been created for @Named.
-    </MudAlert>
-
-    <MudText id="report-created-next" Typo="Typo.body2" Class="mb-4">
-        Keep the record number: it is how this report is referred to. The
-        report's own form is not part of this release.
-    </MudText>
-
-    <MudButton id="report-created-another" Variant="Variant.Outlined" Href="/morbidity/create">
-        Create another report
-    </MudButton>
-}
-else if (loading)
+@if (loading)
 {
     <MudProgressCircular id="new-report-details-busy" Color="Color.Primary" Indeterminate="true" />
 }
@@ -135,8 +114,6 @@ else
     private IReadOnlyList<ConditionResponse> diseases = [];
 
     private IReadOnlyList<AgencyResponse> agencies = [];
-
-    private PersonConditionResponse? opened;
 
     private string? firstReported;
 
@@ -235,14 +212,16 @@ else
                 AgencyId: agency,
                 FirstReportedPhDate: reported));
 
+            // The report exists: the flow ends on its own form, as the
+            // legacy one does, with the record number in that form's header.
             if (created.Value is { } report)
             {
-                opened = report;
+                Navigation.NavigateTo($"/event/edit/{report.Id}");
+
+                return;
             }
-            else
-            {
-                failure = created.Failure;
-            }
+
+            failure = created.Failure;
         }
         finally
         {

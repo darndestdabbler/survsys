@@ -255,12 +255,125 @@ public class PersonsClientTests
     }
 
     /// <summary>
-    /// The three things this client does fail differently, because a user who
-    /// cannot search, one whose person could not be read and one whose person
-    /// was not created are being told three different things.
+    /// The save the Demographic tab makes: the record goes as the body of a
+    /// PUT to the person's own URL, and what comes back is the detail the API
+    /// tier now holds — with the identifiers it assigned, which the screen
+    /// did not send.
     /// </summary>
     [Fact]
-    public async Task EachOfTheThreeFailuresSaysWhichOneItWas()
+    public async Task TheRecordSavedIsSentWholeAndTheDetailComesBack()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new PersonsClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+
+            return Answer(
+                HttpStatusCode.OK,
+                """
+                {
+                  "id": 11, "lastName": "Garcia", "firstName": "Mariela",
+                  "middleName": null, "birthDate": "1986-07-16",
+                  "daysOldNoBirthday": null, "birthGender": "F",
+                  "currentGender": null, "ethnicity": null, "language": "en",
+                  "countryOfBirth": null, "races": ["AA", "B"], "aliases": ["Mariela Garcia"],
+                  "parentGuardians": ["Ana Garcia"],
+                  "addresses": [
+                    {
+                      "id": 31, "street": "9 Elm Court", "unitNumber": null, "city": "Ogden",
+                      "state": "UT", "postalCode": "84401", "county": "WE",
+                      "beginning": "2020-01-02", "ending": null, "note": null,
+                      "residenceTypeId": null
+                    }
+                  ],
+                  "telephones": [
+                    {
+                      "id": 32, "telephoneType": null, "countryCode": null, "areaCode": "385",
+                      "phoneNumber": "5550100", "extension": null, "beginning": null, "note": null
+                    }
+                  ],
+                  "emails": [{ "id": 33, "emailAddress": "mariela@example.com", "currentEmail": true }]
+                }
+                """);
+        }));
+
+        var saved = await client.Update(11, new UpdatePersonRequest(
+            LastName: "Garcia",
+            FirstName: "Mariela",
+            BirthDate: new DateOnly(1986, 7, 16),
+            BirthGender: "F",
+            Language: "en")
+        {
+            Races = ["B", "AA"],
+            Aliases = ["Mariela Garcia"],
+            ParentGuardians = ["Ana Garcia"],
+            Addresses =
+            [
+                new PersonAddressRequest(
+                    Street: "9 Elm Court", City: "Ogden", State: "UT", PostalCode: "84401",
+                    County: "WE", Beginning: new DateOnly(2020, 1, 2)),
+            ],
+            Telephones = [new PersonTelephoneRequest(AreaCode: "385", PhoneNumber: "5550100")],
+            Emails = [new PersonEmailRequest("mariela@example.com", true)],
+        });
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/persons/11", sent?.RequestUri?.ToString());
+
+        Assert.Contains("\"lastName\":\"Garcia\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"birthDate\":\"1986-07-16\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"races\":[\"B\",\"AA\"]", body, StringComparison.Ordinal);
+        Assert.Contains("\"aliases\":[\"Mariela Garcia\"]", body, StringComparison.Ordinal);
+        Assert.Contains("\"parentGuardians\":[\"Ana Garcia\"]", body, StringComparison.Ordinal);
+        Assert.Contains("\"street\":\"9 Elm Court\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"beginning\":\"2020-01-02\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"phoneNumber\":\"5550100\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"emailAddress\":\"mariela@example.com\"", body, StringComparison.Ordinal);
+
+        // A row's identifier is the API tier's to assign, so it is not in what
+        // this one sends.
+        Assert.DoesNotContain("\"id\"", body, StringComparison.Ordinal);
+
+        Assert.True(saved.Succeeded);
+        Assert.Equal(11, saved.Value?.Id);
+        Assert.Equal("Garcia", saved.Value?.LastName);
+        Assert.Equal(["AA", "B"], saved.Value?.Races);
+        Assert.Equal(31, Assert.Single(saved.Value!.Addresses).Id);
+        Assert.Equal(32, Assert.Single(saved.Value.Telephones).Id);
+        Assert.Equal(33, Assert.Single(saved.Value.Emails).Id);
+    }
+
+    /// <summary>
+    /// A save that failed says so about saving, and names the status and not
+    /// the API tier's own account of what was wrong.
+    /// </summary>
+    [Fact]
+    public async Task ASaveThatFailedBecomesAMessageAboutSaving()
+    {
+        var client = new PersonsClient(Transport(_ => Answer(
+            HttpStatusCode.BadRequest,
+            """{ "status": 400, "detail": "lastName is required: and so on." }""")));
+
+        var saved = await client.Update(11, new UpdatePersonRequest(""));
+
+        Assert.False(saved.Succeeded);
+        Assert.Null(saved.Value);
+        Assert.StartsWith(PersonsClient.UpdateFailurePrefix, saved.Failure);
+        Assert.Contains("400", saved.Failure);
+        Assert.DoesNotContain("lastName", saved.Failure, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The four things this client does fail differently, because a user who
+    /// cannot search, one whose person could not be read, one whose person
+    /// was not created and one whose record was not saved are being told four
+    /// different things.
+    /// </summary>
+    [Fact]
+    public async Task EachOfTheFourFailuresSaysWhichOneItWas()
     {
         var client = new PersonsClient(
             Transport(_ => Answer(HttpStatusCode.InternalServerError, "{}")));
@@ -268,12 +381,18 @@ public class PersonsClientTests
         var searched = await client.Page(new PersonSearchCriteria(LastName: "Rod"), 1, 50);
         var found = await client.Find(11);
         var created = await client.Create(new CreatePersonRequest("Thorsen"));
+        var saved = await client.Update(11, new UpdatePersonRequest("Thorsen"));
 
         Assert.StartsWith(PersonsClient.SearchFailurePrefix, searched.Failure);
         Assert.StartsWith(PersonsClient.FindFailurePrefix, found.Failure);
         Assert.StartsWith(PersonsClient.CreateFailurePrefix, created.Failure);
+        Assert.StartsWith(PersonsClient.UpdateFailurePrefix, saved.Failure);
 
-        Assert.Equal(3, new[] { searched.Failure, found.Failure, created.Failure }.Distinct().Count());
+        Assert.Equal(
+            4,
+            new[] { searched.Failure, found.Failure, created.Failure, saved.Failure }
+                .Distinct()
+                .Count());
     }
 
     /// <summary>

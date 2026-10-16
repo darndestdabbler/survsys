@@ -127,6 +127,37 @@ public sealed record ApiAsk(string FailurePrefix, string Expected)
     }
 
     /// <summary>
+    /// Sends the API tier something to save over what it holds, and answers
+    /// with what it now holds or with why nothing was saved.
+    /// </summary>
+    /// <remarks>
+    /// The same <see cref="Read{T}"/> and the same catch as a load, so a save
+    /// that failed is reported in the same words as a load that failed: a
+    /// screen in front of a user is told the status and never the body,
+    /// whichever way the ask went.
+    /// </remarks>
+    public async Task<Asked<T>> Put<TBody, T>(
+        HttpClient http,
+        string url,
+        TBody body,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        ArgumentNullException.ThrowIfNull(http);
+
+        try
+        {
+            using var response = await http.PutAsJsonAsync(url, body, cancellationToken);
+
+            return await Read<T>(response, cancellationToken);
+        }
+        catch (Exception failed) when (Caught(failed, cancellationToken) is { } failure)
+        {
+            return Asked<T>.Failed(failure);
+        }
+    }
+
+    /// <summary>
     /// What the API tier answered, read: the value, or why the answer is not
     /// one.
     /// </summary>
