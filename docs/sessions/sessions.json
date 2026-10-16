@@ -396,9 +396,9 @@
     {
       "number": 20,
       "title": "Case classification, status and MMWR week",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-15T23:04:39.578000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-15T23:57:17.980000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
