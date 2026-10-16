@@ -127,6 +127,44 @@ public sealed record ApiAsk(string FailurePrefix, string Expected)
     }
 
     /// <summary>
+    /// Sends the API tier content this client has already built — a multipart
+    /// body and its file, where a record would not do — and answers with what
+    /// it created or with why nothing was.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Post{TBody, T}"/> writes the body as JSON, which an upload
+    /// is not: a file goes up as <c>multipart/form-data</c>, and what the
+    /// parts are called is the caller's business because the endpoint binds
+    /// them by name. So the content arrives built, and what this adds is the
+    /// only thing a client should not write for itself — the same
+    /// <see cref="Read{T}"/> and the same catch filter every other ask uses,
+    /// so an upload that failed is reported in the words a load that failed
+    /// is reported in.
+    ///
+    /// The content is the caller's to dispose, as it is the caller's to build.
+    /// </remarks>
+    public async Task<Asked<T>> PostContent<T>(
+        HttpClient http,
+        string url,
+        HttpContent content,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        ArgumentNullException.ThrowIfNull(http);
+
+        try
+        {
+            using var response = await http.PostAsync(url, content, cancellationToken);
+
+            return await Read<T>(response, cancellationToken);
+        }
+        catch (Exception failed) when (Caught(failed, cancellationToken) is { } failure)
+        {
+            return Asked<T>.Failed(failure);
+        }
+    }
+
+    /// <summary>
     /// Sends the API tier something to save over what it holds, and answers
     /// with what it now holds or with why nothing was saved.
     /// </summary>

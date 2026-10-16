@@ -60,6 +60,10 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<CaseTask> Tasks => Set<CaseTask>();
 
+    public DbSet<Attachment> Attachments => Set<Attachment>();
+
+    public DbSet<AttachmentFile> AttachmentFiles => Set<AttachmentFile>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

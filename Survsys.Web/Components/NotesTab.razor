@@ -3,9 +3,8 @@
 
    ../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md
    records the legacy Notes tab as three sections — Attachments, Notes and
-   Tasks. This is the Notes section. Attachments are session 27's, which owns
-   the attachment tables and the upload endpoint; the Tasks section arrives
-   beside this one.
+   Tasks. This is the Notes section, with the other two beside it: the
+   AttachmentsPanel above and the shared TasksPanel below.
 
    The note list shows what the legacy list shows — Creator, Note type,
    Created and a Strikethrough checkbox — and the "+ Note" panel opens inline
@@ -32,6 +31,8 @@
    can name it: notes-note-0, notes-note-0-strikethrough and so on. *@
 @using System.Globalization
 @inject NotesClient Api
+
+<AttachmentsPanel ReportId="@ReportId" />
 
 @if (listFailure is { } whyNoList)
 {

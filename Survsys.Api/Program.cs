@@ -47,6 +47,7 @@ builder.Services.AddLabs();
 builder.Services.AddExposures();
 builder.Services.AddContactImport();
 builder.Services.AddNotes();
+builder.Services.AddAttachments();
 builder.Services.AddTasks();
 builder.Services.AddWorkQueue();
 
@@ -95,6 +96,7 @@ app.MapLabs();
 app.MapExposures();
 app.MapContactImport();
 app.MapNotes();
+app.MapAttachments();
 app.MapTasks();
 app.MapWorkQueue();
 

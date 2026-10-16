@@ -295,6 +295,21 @@
       "what": "step 'data-migration': its files",
       "reason": "the migration timestamp is EF's to choose",
       "by": "claude-code (anthropic, claude-opus-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 27,
+      "dateTime": "2026-10-16T04:29:16.917000-04:00",
+      "task": "Session 27 gives the case morbidity report its file attachments, end to end: schema, the upload, list and download endpoints with their size limit and content-type check, and the Attachments section of the Notes tab. Survsys.Data gains two entities under the legacy snake_case names of EpiTrax's attachment and attachment_file tables, as declared in legacy/nedss-jpa/src/main/resources/db/migration/V0001__create.sql under ../nedss and mapped in ../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md, each a plural table with its own internal IEntityTypeConfiguration and a DbSet, with one migration named Attachments for the pair. AttachmentFile -> attachment_files holds the bytes alone: Data, a required byte[]. Attachment -> attachments holds what a list shows -- filename, content_type, size, category, created_at -- with PersonConditionId and AttachmentFileId as required foreign keys to person_conditions and attachment_files with no navigation, in the shape LabTestConfiguration and ExposureContactConfiguration declare theirs. The legacy's two-table split is kept for the reason it exists: listing a report's attachments reads the metadata table and never the megabytes beside it. Survsys.Contracts gains AttachmentResponse, the metadata of one stored attachment and never its bytes, which the list and the upload both answer with. Survsys.Api gains AttachmentEndpoints, modelled on NoteEndpoints: POST /api/person-conditions/{id}/attachments takes one multipart file and its category, refuses what it cannot store, writes the file row and the metadata row in one transaction and answers 201; GET /api/person-conditions/{id}/attachments lists a report's attachments newest first and paged, metadata only; GET /api/attachments/{id}/content answers with the stored bytes under the stored content type and filename. The five category codes the legacy upload dialog offers (correspondence, lab, letter, x-ray, other), the legacy's own 30 MB size limit and the allowed content types are consts and a frozen set on the endpoint class, exactly as the note type vocabulary is a pair of consts on NoteEndpoints: the attachment slice is the only thing that reads them, so there is no reference table and no rule class in Survsys.Data. A pure public WhyNotAnAttachment the unit suite proves refuses, with the field named and what to do instead, a missing filename, an empty file, a file over the limit, a content type outside the allowlist and a category outside the five, and the upload endpoint carries a request body size limit of its own so that sentence is what a caller over the limit reads rather than Kestrel's bare refusal arriving first. The DbContext stays behind an internal sealed AttachmentQueries as the architecture test requires, the entity-to-wire projection is a static Expression the unit suite proves, and a report id naming no report or an attachment id naming no attachment is a 404 in the slice's own words. Survsys.Web gains a typed AttachmentsClient over the list and the upload -- ApiAsk gains the one method that posts content it is handed, because a multipart body is not JSON and the failure handling stays in one place -- and an AttachmentsPanel hosted at the top of NotesTab.razor, which is where the legacy Notes tab's first section is: 'No attachments found' where a report has none, a table of filename, category, size, content type and created date where it has some, and a '+ Attachment' panel with the category select and a file picker that uploads one file and puts it at the top of the list, every element carrying a stable identifier a walkthrough can name.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 27,
+      "dateTime": "2026-10-16T04:32:01.469000-04:00",
+      "what": "step 'data-migration': its files",
+      "reason": "the migration timestamp is EF's to choose",
+      "by": "claude-code (anthropic, claude-opus-5)"
     }
   ]
 }

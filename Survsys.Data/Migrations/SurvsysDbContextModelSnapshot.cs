@@ -22,6 +22,77 @@ namespace Survsys.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Survsys.Data.Attachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AttachmentFileId")
+                        .HasColumnType("int")
+                        .HasColumnName("attachment_file_id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Filename")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)")
+                        .HasColumnName("filename");
+
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttachmentFileId");
+
+                    b.HasIndex("PersonConditionId");
+
+                    b.ToTable("attachments", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.AttachmentFile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)")
+                        .HasColumnName("data");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("attachment_files", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.CaseTask", b =>
                 {
                     b.Property<int>("Id")
@@ -1041,6 +1112,21 @@ namespace Survsys.Data.Migrations
                     b.HasIndex("PersonId");
 
                     b.ToTable("person_telephones", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.Attachment", b =>
+                {
+                    b.HasOne("Survsys.Data.AttachmentFile", null)
+                        .WithMany()
+                        .HasForeignKey("AttachmentFileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Survsys.Data.ExposureContact", b =>

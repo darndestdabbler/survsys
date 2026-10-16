@@ -259,6 +259,77 @@ public class ApiAskTests
     }
 
     /// <summary>
+    /// Content the client built goes up as it was built — a multipart body
+    /// with its parts, not a JSON record — and what comes back is read the
+    /// same way every other answer is.
+    /// </summary>
+    [Fact]
+    public async Task PostContentSendsTheContentAndReturnsWhatWasCreated()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent([1, 2, 3]), "file", "culture-result.pdf");
+        form.Add(new StringContent("lab"), "category");
+
+        var created = await Ask.PostContent<AttachmentResponse>(
+            Transport(request =>
+            {
+                sent = request;
+                body = request.Content!.ReadAsStringAsync().Result;
+
+                return Answer(
+                    HttpStatusCode.Created,
+                    """
+                    {
+                      "id": 7, "personConditionId": 14,
+                      "filename": "culture-result.pdf",
+                      "contentType": "application/pdf", "size": 3,
+                      "category": "lab",
+                      "createdAt": "2026-03-13T09:41:02-06:00"
+                    }
+                    """);
+            }),
+            "api/person-conditions/14/attachments",
+            form,
+            CancellationToken.None);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal(
+            "http://api.example.test/api/person-conditions/14/attachments",
+            sent?.RequestUri?.ToString());
+        Assert.Equal("multipart/form-data", sent?.Content?.Headers.ContentType?.MediaType);
+        Assert.Contains("culture-result.pdf", body, StringComparison.Ordinal);
+        Assert.Contains("lab", body, StringComparison.Ordinal);
+
+        Assert.True(created.Succeeded);
+        Assert.Equal(7, created.Value?.Id);
+        Assert.Equal("culture-result.pdf", created.Value?.Filename);
+    }
+
+    [Fact]
+    public async Task PostContentThatFailedBecomesAMessageLikeAnAskThatFailed()
+    {
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent([1, 2, 3]), "file", "culture-result.pdf");
+
+        var created = await Ask.PostContent<AttachmentResponse>(
+            Transport(_ => Answer(
+                HttpStatusCode.BadRequest,
+                """{ "status": 400, "detail": "the file is empty: and so on." }""")),
+            "api/person-conditions/14/attachments",
+            form,
+            CancellationToken.None);
+
+        Assert.False(created.Succeeded);
+        Assert.Null(created.Value);
+        Assert.StartsWith(Prefix, created.Failure);
+        Assert.Contains("400", created.Failure);
+        Assert.DoesNotContain("the file is empty", created.Failure, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A put carries the body as JSON to the URL given and answers with what
     /// the API tier now holds.
     /// </summary>
