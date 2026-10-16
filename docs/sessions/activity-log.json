@@ -176,6 +176,21 @@
       "dateTime": "2026-10-15T22:02:56.186000-04:00",
       "task": "Release 0.2.0: the framework packs and publishes what is on the trunk.",
       "releasable": true
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 18,
+      "dateTime": "2026-10-15T22:11:51.136000-04:00",
+      "task": "Session 18 opens phase 2 by giving the case morbidity report its clinical and laboratory data, as schema and endpoints and no screen. Survsys.Data gains the clinical fields the legacy Clinical save writes -- disease_onset_date, date_diagnosed and treatment_given on PersonCondition, and death_status and date_of_death on Person, from ../nedss/docs/functional/epitrax-cmr-deep-editing.md -- and the laboratory chain the legacy V0001__create.sql declares: Lab the specimen, LabTest the test on it, LabTestResult the result of a test, LabResistTest the antimicrobial susceptibility, and PersonConditionLab the join linking a specimen to a report, each column under its legacy snake_case name, with one migration for the lot. Survsys.Contracts and Survsys.Api gain the clinical and laboratory wire shapes and their endpoints -- reading and saving a report's clinical data, creating a specimen with its tests, results and susceptibility, reading one back whole, and listing a report's specimens paged -- each refusal a Problem Details. Survsys.IntegrationTests gains a laboratory result round-trip over a session-011 fixture: a specimen with a test and a result is posted to a seeded report and read back, carrying the values ../nedss/docs/db-snapshots/session-011/02-after-lab-save.txt dumps. The reference ids behind the lab foreign keys stay plain nullable ints exactly as Condition.ConditionGroupId and PersonCondition.AgencyId are, and no screen, case status, workflow or lookup table is written.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 18,
+      "dateTime": "2026-10-15T22:17:14.234000-04:00",
+      "what": "step 'data-migration': its files",
+      "reason": "dotnet ef stamped the migration 20261016021641; aligning the planned files to the generated names.",
+      "by": "claude-code (anthropic, claude-opus-5)"
     }
   ]
 }

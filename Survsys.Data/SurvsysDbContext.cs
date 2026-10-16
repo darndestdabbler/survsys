@@ -36,6 +36,16 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<PersonCondition> PersonConditions => Set<PersonCondition>();
 
+    public DbSet<Lab> Labs => Set<Lab>();
+
+    public DbSet<LabTest> LabTests => Set<LabTest>();
+
+    public DbSet<LabTestResult> LabTestResults => Set<LabTestResult>();
+
+    public DbSet<LabResistTest> LabResistTests => Set<LabResistTest>();
+
+    public DbSet<PersonConditionLab> PersonConditionLabs => Set<PersonConditionLab>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

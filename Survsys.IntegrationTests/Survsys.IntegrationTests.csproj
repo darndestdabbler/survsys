@@ -25,6 +25,7 @@
          failing run can be reproduced by hand against the same SQL. -->
     <Content Include="Fixtures\conditions.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Fixtures\persons.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\person-conditions.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

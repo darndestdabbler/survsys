@@ -29,7 +29,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 15 | The case morbidity report shell and its Demographics tab | no | 2026-10-15 |
 | 16 | Phase 1 walkthroughs | no | 2026-10-15 |
 | 17 | Release 0.2.0 (release: 0.2.0) | yes | 2026-10-15 |
-| 18 | Clinical and laboratory data — schema and endpoints | — | not declared |
+| 18 | Clinical and laboratory data — schema and endpoints | no | 2026-10-15 |
 | 19 | Clinical and laboratory screens | — | not declared |
 | 20 | Case classification, status and MMWR week | — | not declared |
 | 21 | Workflow state machine, work queues and agency sharing | — | not declared |
@@ -189,3 +189,13 @@ Session 16 writes phase 1's three walkthroughs and the three Playwright tests th
 **Releasable: yes.**
 
 Release 0.2.0: the framework packs and publishes what is on the trunk.
+
+### Session 18 — Clinical and laboratory data — schema and endpoints
+
+**Releasable: no.**
+
+Session 18 opens phase 2 by giving the case morbidity report its clinical and laboratory data, as schema and endpoints and no screen. Survsys.Data gains the clinical fields the legacy Clinical save writes -- disease_onset_date, date_diagnosed and treatment_given on PersonCondition, and death_status and date_of_death on Person, from ../nedss/docs/functional/epitrax-cmr-deep-editing.md -- and the laboratory chain the legacy V0001__create.sql declares: Lab the specimen, LabTest the test on it, LabTestResult the result of a test, LabResistTest the antimicrobial susceptibility, and PersonConditionLab the join linking a specimen to a report, each column under its legacy snake_case name, with one migration for the lot. Survsys.Contracts and Survsys.Api gain the clinical and laboratory wire shapes and their endpoints -- reading and saving a report's clinical data, creating a specimen with its tests, results and susceptibility, reading one back whole, and listing a report's specimens paged -- each refusal a Problem Details. Survsys.IntegrationTests gains a laboratory result round-trip over a session-011 fixture: a specimen with a test and a result is posted to a seeded report and read back, carrying the values ../nedss/docs/db-snapshots/session-011/02-after-lab-save.txt dumps. The reference ids behind the lab foreign keys stay plain nullable ints exactly as Condition.ConditionGroupId and PersonCondition.AgencyId are, and no screen, case status, workflow or lookup table is written.
+
+**Amended after acceptance:**
+
+- 2026-10-15 — step 'data-migration': its files: dotnet ef stamped the migration 20261016021641; aligning the planned files to the generated names. (claude-code (anthropic, claude-opus-5))

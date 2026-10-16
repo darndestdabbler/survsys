@@ -24,12 +24,17 @@ namespace Survsys.Data;
 /// behind each of them; none of those tables exists here yet, and a navigation
 /// to a table that does not exist is not a thing to write early.
 ///
-/// The mortality columns (<c>date_of_death</c>, <c>death_status</c>,
-/// <c>live</c>, <c>fatal_condition_id</c>), the pregnancy link
-/// (<c>from_pregnant_id</c>) and the audit timestamp (<c>updated_at</c>) are
-/// not here. The first are the Clinical tab's fields rather than the
-/// Demographic tab's, and an audit column nothing in this schema writes would
-/// be a half-feature.
+/// Two mortality columns are here as of session 18:
+/// <see cref="DeathStatus"/> and <see cref="DateOfDeath"/>, which the legacy
+/// Clinical tab writes — <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c>
+/// section 3 maps the Died? control to <c>death_status</c> and the date beside
+/// it to <c>date_of_death</c>. They are Clinical-tab fields, not the
+/// Demographic tab's, and session 13 deferred them here. The rest of the
+/// legacy mortality columns stay out: <c>live</c> is the Died? answer
+/// <see cref="DeathStatus"/> already carries and would duplicate it,
+/// <c>fatal_condition_id</c> and the pregnancy link <c>from_pregnant_id</c> are
+/// a later session's, and the audit timestamp <c>updated_at</c> is not here
+/// because a column nothing in this schema writes would be a half-feature.
 ///
 /// There is no behaviour here. The ages the Demographic tab shows — current
 /// age, age at onset, age at event date — are computed by the screen that
@@ -93,6 +98,34 @@ public class Person
     /// The country the person was born in, as the legacy country code.
     /// </summary>
     public string? CountryOfBirth { get; set; }
+
+    /// <summary>
+    /// Whether the person has died, as the legacy <c>death_status</c> code —
+    /// the Clinical tab's Died? answer, one of <c>Yes</c>, <c>No</c> or
+    /// <c>Unknown</c>, and null until it has been answered.
+    /// </summary>
+    /// <remarks>
+    /// A Clinical-tab field, not the Demographic tab's, added in session 18:
+    /// <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c> section 3
+    /// maps the Died? control to this column. A plain string holding the legacy
+    /// code, as the other demographic codes are held, because the reference
+    /// table behind it does not exist here yet.
+    /// </remarks>
+    public string? DeathStatus { get; set; }
+
+    /// <summary>
+    /// The date the person died, where it is known; null otherwise, and blank
+    /// whenever <see cref="DeathStatus"/> is not <c>Yes</c>.
+    /// </summary>
+    /// <remarks>
+    /// A Clinical-tab field added in session 18, paired with
+    /// <see cref="DeathStatus"/> and mapped by
+    /// <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c> section 3. A
+    /// <see cref="DateOnly"/> where the legacy column is a <c>TIMESTAMP</c>,
+    /// for the reason <see cref="BirthDate"/> is one: a date of death has no
+    /// time of day to lose and the Clinical tab asks for it with a date picker.
+    /// </remarks>
+    public DateOnly? DateOfDeath { get; set; }
 
     /// <summary>
     /// Every address this person has had, the current one included: the one

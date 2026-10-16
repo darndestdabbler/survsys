@@ -65,6 +65,7 @@ public sealed class SqlServerFixture : IDisposable
 
         context.Database.ExecuteSqlRaw(FixtureSql("conditions.sql"));
         context.Database.ExecuteSqlRaw(FixtureSql("persons.sql"));
+        context.Database.ExecuteSqlRaw(FixtureSql("person-conditions.sql"));
     }
 
     /// <summary>The database the suite runs against.</summary>
@@ -121,6 +122,28 @@ public sealed class SqlServerFixture : IDisposable
         "Rodriguez, Maria",
         "Zimmerman, Paul",
     ];
+
+    /// <summary>
+    /// The record number of the one case morbidity report
+    /// <c>Fixtures/person-conditions.sql</c> seeds — the report the laboratory
+    /// round-trip records a specimen against. Stated here so a test naming it
+    /// is not also restating the fixture's own value, and echoing the report
+    /// <c>../nedss/docs/db-snapshots/session-011/02-after-lab-save.txt</c>
+    /// dumps.
+    /// </summary>
+    public const string SeededReportRecordNumber = "202600004";
+
+    /// <summary>
+    /// The seeded report's person, as <see cref="PersonsByName"/> writes them:
+    /// the person a specimen recorded against the report is collected from.
+    /// </summary>
+    public const string SeededReportPerson = "Rodriguez, Maria";
+
+    /// <summary>
+    /// The seeded report's condition, as <see cref="ConditionsByName"/> lists
+    /// it — an active one, which is the only kind a report may be opened for.
+    /// </summary>
+    public const string SeededReportCondition = "Malaria";
 
     /// <summary>
     /// A context over the suite's database. The caller disposes it.

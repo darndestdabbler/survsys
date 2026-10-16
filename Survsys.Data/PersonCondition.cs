@@ -27,11 +27,21 @@ namespace Survsys.Data;
 /// shows exactly: the person, the condition, the record number, the
 /// investigating agency, the date the condition was first reported to public
 /// health, the event onset date and the moment the record was created. The
-/// legacy table has 67 columns, and the other 60 belong to the sessions that
-/// show them — the workflow and the case status, the clinical and laboratory
-/// fields, the investigation and administrative tabs, the queue, the outbreak
-/// link and the CDC and IBIS export timestamps. None of them is here, because
-/// a column nothing in this schema reads or writes would be a half-feature.
+/// legacy table has 67 columns, and the rest belong to the sessions that
+/// show them — the workflow and the case status, the investigation and
+/// administrative tabs, the queue, the outbreak link and the CDC and IBIS
+/// export timestamps — because a column nothing in this schema reads or writes
+/// would be a half-feature.
+///
+/// Three of those fields are here as of session 18:
+/// <see cref="DiseaseOnsetDate"/>, <see cref="DateDiagnosed"/> and
+/// <see cref="TreatmentGiven"/>, the case-specific fields the legacy Clinical
+/// tab writes, which
+/// <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c> section 3 maps.
+/// Session 14 deferred them to the session that shows them, and this is the
+/// schema half of it; the Clinical tab's person-level fields are on
+/// <see cref="Person"/>, and the laboratory fields are their own entities
+/// rather than columns here.
 ///
 /// There is no behaviour here and no navigation out: nothing in this session
 /// walks from a report to its person or its condition, so the two foreign keys
@@ -123,4 +133,47 @@ public class PersonCondition
     /// session's.
     /// </remarks>
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>
+    /// The date the disease began in this person, as the Clinical tab records
+    /// it; null until it has been entered.
+    /// </summary>
+    /// <remarks>
+    /// A Clinical-tab field added in session 18, mapped by
+    /// <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c> section 3.
+    /// Distinct from <see cref="EventOnsetDate"/>, which the creation flow set
+    /// to the creation date: the Clinical tab is where the real onset is
+    /// entered, and this is the column it writes. A <see cref="DateOnly"/>
+    /// where the legacy column is a <c>DATE</c>, entered with a date picker as
+    /// <see cref="FirstReportedPhDate"/> and <see cref="EventOnsetDate"/> are.
+    /// </remarks>
+    public DateOnly? DiseaseOnsetDate { get; set; }
+
+    /// <summary>
+    /// The date this case was diagnosed, as the Clinical tab records it; null
+    /// until it has been entered.
+    /// </summary>
+    /// <remarks>
+    /// A Clinical-tab field added in session 18, mapped by
+    /// <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c> section 3. A
+    /// <see cref="DateOnly"/> where the legacy column is a <c>DATE</c>, for the
+    /// reason <see cref="DiseaseOnsetDate"/> is one.
+    /// </remarks>
+    public DateOnly? DateDiagnosed { get; set; }
+
+    /// <summary>
+    /// Whether treatment was given for this case, as the legacy
+    /// <c>treatment_given</c> code — one of <c>Yes</c>, <c>No</c> or
+    /// <c>Unknown</c>, and null until it has been answered.
+    /// </summary>
+    /// <remarks>
+    /// A Clinical-tab field added in session 18, mapped by
+    /// <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c> section 3,
+    /// which notes this is case-specific and so lives on the report rather than
+    /// on the person. A plain string holding the legacy code, because the
+    /// reference table behind it does not exist here yet. The facility,
+    /// clinician and treatment-detail rows the legacy "Add" dialogs create are
+    /// a later session's; this is the basic Yes/No/Unknown answer and no more.
+    /// </remarks>
+    public string? TreatmentGiven { get; set; }
 }

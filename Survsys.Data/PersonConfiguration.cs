@@ -73,6 +73,10 @@ internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
         builder.Property(person => person.CountryOfBirth)
             .HasColumnName("country_of_birth")
             .HasMaxLength(CodeLength);
+        builder.Property(person => person.DeathStatus)
+            .HasColumnName("death_status")
+            .HasMaxLength(CodeLength);
+        builder.Property(person => person.DateOfDeath).HasColumnName("date_of_death");
 
         // The two columns a list of people is ordered by and the two a search
         // for a person filters on first, in that order, so one index serves

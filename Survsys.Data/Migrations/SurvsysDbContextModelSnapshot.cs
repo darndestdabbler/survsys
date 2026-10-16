@@ -67,6 +67,188 @@ namespace Survsys.Data.Migrations
                     b.ToTable("conditions", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.Lab", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccessionNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("accession_no");
+
+                    b.Property<DateOnly?>("CollectionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("collection_date");
+
+                    b.Property<int?>("DiagnosticFacilityId")
+                        .HasColumnType("int")
+                        .HasColumnName("diagnostic_facility_id");
+
+                    b.Property<int?>("LabFacilityId")
+                        .HasColumnType("int")
+                        .HasColumnName("lab_facility_id");
+
+                    b.Property<int?>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_id");
+
+                    b.Property<int?>("ProviderId")
+                        .HasColumnType("int")
+                        .HasColumnName("provider_id");
+
+                    b.Property<int?>("ReportingFacilityId")
+                        .HasColumnType("int")
+                        .HasColumnName("reporting_facility_id");
+
+                    b.Property<bool?>("SpecimenSentToState")
+                        .HasColumnType("bit")
+                        .HasColumnName("specimen_sent_to_state");
+
+                    b.Property<int?>("SpecimenSourceId")
+                        .HasColumnType("int")
+                        .HasColumnName("specimen_source_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonId");
+
+                    b.ToTable("labs", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.LabResistTest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("LabId")
+                        .HasColumnType("int")
+                        .HasColumnName("lab_id");
+
+                    b.Property<int?>("OrganismId")
+                        .HasColumnType("int")
+                        .HasColumnName("organism_id");
+
+                    b.Property<int?>("ResistTestAgentId")
+                        .HasColumnType("int")
+                        .HasColumnName("resist_test_agent_id");
+
+                    b.Property<int?>("ResistTestResultId")
+                        .HasColumnType("int")
+                        .HasColumnName("resist_test_result_id");
+
+                    b.Property<DateOnly?>("TestDate")
+                        .HasColumnType("date")
+                        .HasColumnName("test_date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LabId");
+
+                    b.ToTable("lab_resist_tests", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.LabTest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("LabId")
+                        .HasColumnType("int")
+                        .HasColumnName("lab_id");
+
+                    b.Property<DateOnly?>("LabTestDate")
+                        .HasColumnType("date")
+                        .HasColumnName("lab_test_date");
+
+                    b.Property<string>("LoincCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("loinc_code");
+
+                    b.Property<string>("ReferenceRange")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("reference_range");
+
+                    b.Property<int?>("TestStatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("test_status_id");
+
+                    b.Property<int?>("TestTypeId")
+                        .HasColumnType("int")
+                        .HasColumnName("test_type_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LabId");
+
+                    b.ToTable("lab_tests", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.LabTestResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("comment");
+
+                    b.Property<int>("LabTestId")
+                        .HasColumnType("int")
+                        .HasColumnName("lab_test_id");
+
+                    b.Property<int?>("OrganismId")
+                        .HasColumnType("int")
+                        .HasColumnName("organism_id");
+
+                    b.Property<bool>("PrimaryLabResult")
+                        .HasColumnType("bit")
+                        .HasColumnName("primary_lab_result");
+
+                    b.Property<string>("ResultValue")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("result_value");
+
+                    b.Property<string>("TestResult")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("test_result");
+
+                    b.Property<string>("Units")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("units");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LabTestId");
+
+                    b.ToTable("lab_test_results", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.ParentGuardian", b =>
                 {
                     b.Property<int>("Id")
@@ -124,9 +306,18 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("current_gender");
 
+                    b.Property<DateOnly?>("DateOfDeath")
+                        .HasColumnType("date")
+                        .HasColumnName("date_of_death");
+
                     b.Property<int?>("DaysOldNoBirthday")
                         .HasColumnType("int")
                         .HasColumnName("days_old_no_birthday");
+
+                    b.Property<string>("DeathStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("death_status");
 
                     b.Property<string>("Ethnicity")
                         .HasMaxLength(20)
@@ -264,6 +455,14 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("created_at");
 
+                    b.Property<DateOnly?>("DateDiagnosed")
+                        .HasColumnType("date")
+                        .HasColumnName("date_diagnosed");
+
+                    b.Property<DateOnly?>("DiseaseOnsetDate")
+                        .HasColumnType("date")
+                        .HasColumnName("disease_onset_date");
+
                     b.Property<DateOnly?>("EventOnsetDate")
                         .HasColumnType("date")
                         .HasColumnName("event_onset_date");
@@ -282,6 +481,11 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("record_number");
 
+                    b.Property<string>("TreatmentGiven")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("treatment_given");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ConditionId");
@@ -292,6 +496,23 @@ namespace Survsys.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("person_conditions", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.PersonConditionLab", b =>
+                {
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.Property<int>("LabId")
+                        .HasColumnType("int")
+                        .HasColumnName("lab_id");
+
+                    b.HasKey("PersonConditionId", "LabId");
+
+                    b.HasIndex("LabId");
+
+                    b.ToTable("person_condition_labs", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.PersonEmail", b =>
@@ -392,6 +613,42 @@ namespace Survsys.Data.Migrations
                     b.ToTable("person_telephones", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.Lab", b =>
+                {
+                    b.HasOne("Survsys.Data.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.LabResistTest", b =>
+                {
+                    b.HasOne("Survsys.Data.Lab", null)
+                        .WithMany()
+                        .HasForeignKey("LabId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.LabTest", b =>
+                {
+                    b.HasOne("Survsys.Data.Lab", null)
+                        .WithMany()
+                        .HasForeignKey("LabId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.LabTestResult", b =>
+                {
+                    b.HasOne("Survsys.Data.LabTest", null)
+                        .WithMany()
+                        .HasForeignKey("LabTestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Survsys.Data.ParentGuardian", b =>
                 {
                     b.HasOne("Survsys.Data.Person", null)
@@ -430,6 +687,21 @@ namespace Survsys.Data.Migrations
                     b.HasOne("Survsys.Data.Person", null)
                         .WithMany()
                         .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.PersonConditionLab", b =>
+                {
+                    b.HasOne("Survsys.Data.Lab", null)
+                        .WithMany()
+                        .HasForeignKey("LabId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
