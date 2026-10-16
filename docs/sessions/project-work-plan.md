@@ -34,7 +34,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 20 | Case classification, status and MMWR week | no | 2026-10-15 |
 | 21 | Workflow state machine, work queues and agency sharing | no | 2026-10-16 |
 | 22 | Phase 2 walkthroughs | no | 2026-10-16 |
-| 23 | Release 0.3.0 (release: 0.3.0) | — | not declared |
+| 23 | Release 0.3.0 (release: 0.3.0) | yes | 2026-10-16 |
 | 24 | The Investigation and Administrative tabs | — | not declared |
 | 25 | Contacts and exposures | — | not declared |
 | 26 | Notes and tasks | — | not declared |
@@ -231,3 +231,9 @@ Session 21 gives the case morbidity report its workflow lifecycle, the endpoints
 **Releasable: no.**
 
 Session 22 writes phase 2's three walkthroughs and the three Playwright tests that perform them, so that release 0.3.0 ships nothing a reader cannot complete as written. The documents are docs/walkthroughs/enter-a-laboratory-result.md, assign-and-accept-a-case.md and close-an-investigation.md, each one user story drawn from the legacy EpiTrax Laboratory tab and workflow screens, written in the shape the phase 1 walkthroughs set: the story, the legacy screens it is inferred from, Before you start, numbered steps naming each control by the words the screen shows, and What you should see. Each performs against the screens sessions 19 to 21 built -- the Laboratory tab's specimen, test and result entry on the report form, the agency board's assignment panel and the work queue's Accept action, and the work queue's Begin investigation and Close actions -- and docs/walkthroughs/README.md gains a row for each. The tests are Survsys.E2ETests/EnterALaboratoryResultTests.cs, AssignAndAcceptACaseTests.cs and CloseAnInvestigationTests.cs, one test method each, performing the document's steps in their written order on the SurvsysPageTest base class that already records video, selecting by the stable identifiers those sessions put on the screens and naming the document and step in every failure. Each walkthrough opens its own report through the two-step creation flow, so none depends on another's leftovers. The harness's deletion order gains the laboratory tables the first walkthrough fills, so a second run of the suite seeds the same seven people and no specimen, as it already promises for reports.
+
+### Session 23 — Release 0.3.0 (release: 0.3.0)
+
+**Releasable: yes.**
+
+Release 0.3.0: the framework packs and publishes what is on the trunk.
