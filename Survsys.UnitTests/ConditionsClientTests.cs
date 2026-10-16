@@ -96,6 +96,90 @@ public class ConditionsClientTests
         Assert.DoesNotContain("correlation", asked.Failure, StringComparison.OrdinalIgnoreCase);
     }
 
+    private const string HepatitisA =
+        """
+        {
+          "id": 74, "name": "Hepatitis A", "cdcCode": "10110", "active": true,
+          "contactLeadIn": "Contacts.", "placeLeadIn": null, "treatmentLeadIn": null
+        }
+        """;
+
+    private static readonly ConditionDetailResponse HepatitisADetail =
+        new(74, "Hepatitis A", "10110", true, "Contacts.", null, null);
+
+    [Fact]
+    public async Task FindAsksForTheConditionAndReturnsIt()
+    {
+        HttpRequestMessage? sent = null;
+        var client = Recording(request => sent = request, HttpStatusCode.OK, HepatitisA);
+
+        var asked = await client.Find(74);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal("http://api.example.test/api/conditions/74", sent?.RequestUri?.ToString());
+        Assert.Equal(HepatitisADetail, asked.Value);
+    }
+
+    [Fact]
+    public async Task CreatePostsToTheCollectionAndReturnsTheCreatedCondition()
+    {
+        HttpRequestMessage? sent = null;
+        var client = Recording(request => sent = request, HttpStatusCode.Created, HepatitisA);
+
+        var asked = await client.Create(new SaveConditionRequest("Hepatitis A", true, "10110", "Contacts."));
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/conditions", sent?.RequestUri?.ToString());
+        Assert.Equal(HepatitisADetail, asked.Value);
+    }
+
+    [Fact]
+    public async Task UpdatePutsToTheConditionAndReturnsItAsSaved()
+    {
+        HttpRequestMessage? sent = null;
+        var client = Recording(request => sent = request, HttpStatusCode.OK, HepatitisA);
+
+        var asked = await client.Update(74, new SaveConditionRequest("Hepatitis A", true));
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/conditions/74", sent?.RequestUri?.ToString());
+        Assert.Equal(HepatitisADetail, asked.Value);
+    }
+
+    [Fact]
+    public async Task ASaveThatFailedCarriesTheSavePrefix()
+    {
+        var client = Answering(HttpStatusCode.BadRequest, "{}");
+
+        var asked = await client.Update(74, new SaveConditionRequest("", true));
+
+        Assert.False(asked.Succeeded);
+        Assert.StartsWith(ConditionsClient.SaveFailurePrefix, asked.Failure);
+    }
+
+    [Fact]
+    public async Task AFindThatFailedCarriesTheFindPrefix()
+    {
+        var client = Answering(HttpStatusCode.NotFound, "{}");
+
+        var asked = await client.Find(99);
+
+        Assert.StartsWith(ConditionsClient.FindFailurePrefix, asked.Failure);
+    }
+
+    private static ConditionsClient Recording(
+        Action<HttpRequestMessage> record,
+        HttpStatusCode status,
+        string body) =>
+        new(new HttpClient(new StubTransport(request =>
+        {
+            record(request);
+            return Answer(status, body);
+        }))
+        {
+            BaseAddress = new Uri("http://api.example.test/"),
+        });
+
     private const string EmptyPage =
         """{ "items": [], "page": 1, "pageSize": 50, "totalCount": 0 }""";
 

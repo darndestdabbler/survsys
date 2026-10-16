@@ -41,7 +41,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 27 | File attachments | no | 2026-10-16 |
 | 28 | Phase 3 walkthroughs | no | 2026-10-16 |
 | 29 | Release 0.4.0 (release: 0.4.0) | yes | 2026-10-16 |
-| 30 | Agencies, jurisdictions, facilities and conditions | — | not declared |
+| 30 | Agencies, jurisdictions, facilities and conditions | no | 2026-10-16 |
 | 31 | Core element configuration | — | not declared |
 | 32 | Users, roles, privileges and access audit | — | not declared |
 | 33 | Saved views and custom exports | — | not declared |
@@ -295,3 +295,9 @@ Release 0.4.0: the framework packs and publishes what is on the trunk.
 
 - 2026-10-16 — session 29 — Rollback to Start of This Session from the Work Explorer (operator)
 - 2026-10-16 — session 29 — Rollback to Start of This Session from the Work Explorer (operator)
+
+### Session 30 — Agencies, jurisdictions, facilities and conditions
+
+**Releasable: no.**
+
+Replace the static sixteen-agency stand-in with real reference data and give agencies, facilities and conditions administration screens. Survsys.Data gains an agencies table (legacy agency: id, name, short_name) seeded by the migration with the sixteen agencies under their current identifiers so every stored agency_id still resolves; a zip_code_agencies table (legacy zip_code_agency: zip_code, agency_id) that is an agency's jurisdiction, since the legacy has no jurisdiction table and serves its jurisdictions from the agency codeset; a facilities table (legacy facility name, short_name, agency_id, with its one address and phone inline); and ZipAgencyRules, the pure rule that normalises a zip (trimmed, ZIP+4 cut to five digits, anything else not a zip) and resolves it against the mapping to one agency, unmapped, or ambiguous where several agencies claim it. One migration carries the three tables. Survsys.Api makes GET /api/agencies read the table, adds an agency's detail with its zip codes, create and update (the zip codes saved with the agency), and GET /api/agencies/by-zip/{zip}; the person-condition and work-queue endpoints check an agency's existence against the table instead of the static list; facilities get list, detail, create and update; conditions get detail, create and update over every column but the group, so the lead-in prose is on the wire for the first time. Survsys.Web gains the matching client calls and the agency, facility and condition administration screens, and the unit suite proves ZipAgencyRules including an unmapped zip, plus the new validators and client calls.

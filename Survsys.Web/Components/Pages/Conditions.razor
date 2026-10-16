@@ -9,7 +9,9 @@
    break a walkthrough that was passing.
 
    One page of rows, with no sorting, filtering or paging control: what the
-   screen promises is exactly what the first walkthrough performs. *@
+   screen promises is exactly what the first walkthrough performs. A
+   condition's name opens its edit screen, and New condition opens an empty
+   one. *@
 @page "/"
 @page "/conditions"
 @inject ConditionsClient Client
@@ -19,6 +21,11 @@
 <MudText id="conditions-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
     Conditions
 </MudText>
+
+<MudButton id="conditions-new" Variant="Variant.Filled" Color="Color.Primary" Class="mb-4"
+           Href="/conditions/new">
+    New condition
+</MudButton>
 
 @if (asked is null)
 {
@@ -45,7 +52,10 @@ else if (asked.Value is { } result)
                 @foreach (var condition in result.Items)
                 {
                     <tr data-condition="@condition.Name">
-                        <td data-condition-name>@condition.Name</td>
+                        @* The name is the way into the condition's edit
+                           screen, rather than a fourth column: the
+                           walkthrough reads these three headings. *@
+                        <td data-condition-name><MudLink Href="@($"/conditions/{condition.Id}/edit")">@condition.Name</MudLink></td>
                         @* The API returns null for a condition that is not
                            nationally notifiable and has no code. A screen
                            shows that as a dash rather than as an empty cell,

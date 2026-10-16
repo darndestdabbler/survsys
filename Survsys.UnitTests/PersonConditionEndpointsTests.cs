@@ -90,7 +90,7 @@ public class PersonConditionEndpointsTests
         Assert.Null(PersonConditionEndpoints.WhyNotAReport(new CreatePersonConditionRequest(
             PersonId: 13,
             ConditionId: 74,
-            AgencyId: AgencyEndpoints.All[0].Id,
+            AgencyId: 1,
             FirstReportedPhDate: new DateOnly(2026, 3, 12))));
     }
 
@@ -131,16 +131,13 @@ public class PersonConditionEndpointsTests
     }
 
     /// <summary>
-    /// The agency is refused here rather than in the database, because the
-    /// agency list is a static one in this tier: there is no foreign key
-    /// behind <c>agency_id</c> yet to refuse it, which is exactly why this
-    /// check is worth having.
+    /// An agency identifier nothing can have is refused here; one no agency on
+    /// file has is the agencies table's to refuse.
     /// </summary>
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    [InlineData(99)]
-    public void WhyNotAReportRefusesAnAgencyNoAgencyHas(int agencyId)
+    public void WhyNotAReportRefusesAnIdentifierNoAgencyCanHave(int agencyId)
     {
         Assert.Contains($"agencyId {agencyId} is not an agency",
             PersonConditionEndpoints.WhyNotAReport(
@@ -148,14 +145,14 @@ public class PersonConditionEndpointsTests
             StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void WhyNotAReportAcceptsEveryAgencyTheTierLists()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(16)]
+    [InlineData(99)]
+    public void WhyNotAReportAcceptsAnyIdentifierAnAgencyCouldHave(int agencyId)
     {
-        foreach (var agency in AgencyEndpoints.All)
-        {
-            Assert.Null(PersonConditionEndpoints.WhyNotAReport(
-                new CreatePersonConditionRequest(PersonId: 13, ConditionId: 74, AgencyId: agency.Id)));
-        }
+        Assert.Null(PersonConditionEndpoints.WhyNotAReport(
+            new CreatePersonConditionRequest(PersonId: 13, ConditionId: 74, AgencyId: agencyId)));
     }
 
     /// <summary>
@@ -203,30 +200,26 @@ public class PersonConditionEndpointsTests
     }
 
     /// <summary>
-    /// Every agency the tier lists is one a report may be assigned to, as it is
-    /// one a report may be created against: the two checks read the same static
-    /// list.
+    /// Any identifier an agency could have passes: whether one does is the
+    /// agencies table's to answer, not this function's.
     /// </summary>
-    [Fact]
-    public void WhyNotAnAssignmentAcceptsEveryAgencyTheTierLists()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(16)]
+    [InlineData(99)]
+    public void WhyNotAnAssignmentAcceptsAnyIdentifierAnAgencyCouldHave(int agencyId)
     {
-        foreach (var agency in AgencyEndpoints.All)
-        {
-            Assert.Null(PersonConditionEndpoints.WhyNotAnAssignment(
-                new AssignReportRequest(agency.Id)));
-        }
+        Assert.Null(PersonConditionEndpoints.WhyNotAnAssignment(new AssignReportRequest(agencyId)));
     }
 
     /// <summary>
-    /// An agency nobody has is refused before the database is asked, as it is on
-    /// creation: there is no foreign key behind <c>agency_id</c> to refuse it,
-    /// which is why this check is worth having. The message names the value.
+    /// An identifier no agency can have is refused before the database is
+    /// asked, as it is on creation. The message names the value.
     /// </summary>
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    [InlineData(99)]
-    public void WhyNotAnAssignmentRefusesAnAgencyNoAgencyHas(int agencyId)
+    public void WhyNotAnAssignmentRefusesAnIdentifierNoAgencyCanHave(int agencyId)
     {
         Assert.Contains($"agencyId {agencyId} is not an agency",
             PersonConditionEndpoints.WhyNotAnAssignment(new AssignReportRequest(agencyId)),

@@ -38,6 +38,8 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
         Activity.Current?.Id ?? context.HttpContext.TraceIdentifier);
 
 builder.Services.AddConditions();
+builder.Services.AddAgencies();
+builder.Services.AddFacilities();
 builder.Services.AddPersons();
 builder.Services.AddPersonConditions();
 builder.Services.AddClinical();
@@ -88,6 +90,7 @@ app.MapGet("/health/ready", () => Results.Ok("ready"));
 app.MapConditions();
 app.MapPersons();
 app.MapAgencies();
+app.MapFacilities();
 app.MapPersonConditions();
 app.MapClinical();
 app.MapInvestigation();

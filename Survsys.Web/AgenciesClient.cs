@@ -24,7 +24,17 @@ public sealed class AgenciesClient(HttpClient http)
     /// </summary>
     public const string FailurePrefix = "The agencies could not be loaded";
 
+    /// <summary>How a failure to load one agency starts.</summary>
+    public const string FindFailurePrefix = "The agency could not be loaded";
+
+    /// <summary>How a failure to create or save an agency starts.</summary>
+    public const string SaveFailurePrefix = "The agency could not be saved";
+
     private static readonly ApiAsk Ask = new(FailurePrefix, "a list of agencies");
+
+    private static readonly ApiAsk Finding = new(FindFailurePrefix, "the agency's record");
+
+    private static readonly ApiAsk Saving = new(SaveFailurePrefix, "the agency as saved");
 
     /// <summary>
     /// Every agency a report may be assigned to, in name order, or why there
@@ -33,4 +43,23 @@ public sealed class AgenciesClient(HttpClient http)
     public Task<Asked<PagedResult<AgencyResponse>>> All(
         CancellationToken cancellationToken = default) =>
         Ask.Get<PagedResult<AgencyResponse>>(http, "api/agencies", cancellationToken);
+
+    /// <summary>One agency with its zip codes, or why there is none.</summary>
+    public Task<Asked<AgencyDetailResponse>> Find(
+        int id,
+        CancellationToken cancellationToken = default) =>
+        Finding.Get<AgencyDetailResponse>(http, $"api/agencies/{id}", cancellationToken);
+
+    /// <summary>Creates an agency, answering with it as created or why it was not.</summary>
+    public Task<Asked<AgencyDetailResponse>> Create(
+        SaveAgencyRequest request,
+        CancellationToken cancellationToken = default) =>
+        Saving.Post<SaveAgencyRequest, AgencyDetailResponse>(http, "api/agencies", request, cancellationToken);
+
+    /// <summary>Saves over an agency, answering with it as saved or why it was not.</summary>
+    public Task<Asked<AgencyDetailResponse>> Update(
+        int id,
+        SaveAgencyRequest request,
+        CancellationToken cancellationToken = default) =>
+        Saving.Put<SaveAgencyRequest, AgencyDetailResponse>(http, $"api/agencies/{id}", request, cancellationToken);
 }

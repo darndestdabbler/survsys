@@ -67,10 +67,10 @@ public static class WorkQueueEndpoints
     /// <remarks>
     /// The shape <see cref="PersonConditionEndpoints.WhyNotAnAssignment"/> has:
     /// a pure function the unit suite proves, with the endpoint turning the
-    /// sentence into a 400. Only the agency is here, because it is the static
-    /// list this tier can answer without a query; whether the report exists,
-    /// whether it is already shared, and whether the agency is the one
-    /// investigating it all need the database and are the query's.
+    /// sentence into a 400. Only an agency identifier nothing can have is
+    /// refused here; whether the agency and the report exist, whether the report
+    /// is already shared, and whether the agency is the one investigating it all
+    /// need the database.
     ///
     /// Public because the unit suite proves it. Nothing outside this file calls
     /// it.
@@ -79,11 +79,9 @@ public static class WorkQueueEndpoints
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (AgencyEndpoints.Find(request.AgencyId) is null)
+        if (request.AgencyId <= 0)
         {
-            return $"agencyId {request.AgencyId} is not an agency this tier knows. The "
-                + "agencies a report may be shared with are the ones GET /api/agencies "
-                + "lists.";
+            return AgencyEndpoints.NotAnAgency(request.AgencyId);
         }
 
         return null;
@@ -94,11 +92,11 @@ public static class WorkQueueEndpoints
     /// it is one.
     /// </summary>
     /// <remarks>
-    /// The work queue is an agency's, so an agency is required and one no agency
-    /// has is refused: a missing parameter arrives as zero and is named as
-    /// required, and a non-zero one no agency has is named as unknown. Pure, as
+    /// The work queue is an agency's, so an agency is required: a missing
+    /// parameter arrives as zero and is named as required. Pure, as
     /// <see cref="WhyNotAShare"/> is, and the endpoint turns the sentence into a
-    /// 400.
+    /// 400; an agency no agency on file has is the endpoint's to refuse, because
+    /// that needs a query.
     /// </remarks>
     public static string? WhyNotAQueueAgency(int agencyId)
     {
@@ -106,12 +104,6 @@ public static class WorkQueueEndpoints
         {
             return "agencyId is required: the work queue is an agency's, so name the "
                 + "agency to read it for with ?agencyId=, one GET /api/agencies lists.";
-        }
-
-        if (AgencyEndpoints.Find(agencyId) is null)
-        {
-            return $"agencyId {agencyId} is not an agency this tier knows. The work queue "
-                + "is read for one of the agencies GET /api/agencies lists.";
         }
 
         return null;
@@ -145,12 +137,18 @@ public static class WorkQueueEndpoints
 
     private static async Task<Results<Ok<PagedResult<WorkQueueItemResponse>>, ProblemHttpResult>> GetWorkQueue(
         WorkQueueQueries reports,
+        AgencyQueries agencies,
         int agencyId = 0,
         int page = Paging.DefaultPage,
         int pageSize = Paging.DefaultPageSize,
         CancellationToken cancellationToken = default)
     {
-        if (WhyNotAQueueAgency(agencyId) is { } whyAgency)
+        var whyAgency = WhyNotAQueueAgency(agencyId)
+            ?? (await agencies.Find(agencyId, cancellationToken) is null
+                ? AgencyEndpoints.NotAnAgency(agencyId)
+                : null);
+
+        if (whyAgency is not null)
         {
             return TypedResults.Problem(
                 detail: whyAgency,
@@ -170,7 +168,7 @@ public static class WorkQueueEndpoints
     }
 
     /// <remarks>
-    /// The agency is refused before the database is asked. Then the report
+    /// An agency no agency on file has is a 400. Then the report
     /// itself: a report id that names no report is a 404, a report already
     /// shared with the agency or shared to the agency already investigating it
     /// is a 400 — a share adds a reader, and neither a second copy nor the
@@ -179,14 +177,18 @@ public static class WorkQueueEndpoints
     /// </remarks>
     private static async Task<Results<Created<AgencyResponse>, ProblemHttpResult>> ShareReport(
         WorkQueueQueries reports,
+        AgencyQueries agencies,
         int id,
         ShareReportRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (WhyNotAShare(request) is { } why)
+        var why = WhyNotAShare(request);
+        var agency = why is null ? await agencies.Find(request.AgencyId, cancellationToken) : null;
+
+        if (agency is null)
         {
             return TypedResults.Problem(
-                detail: why,
+                detail: why ?? AgencyEndpoints.NotAnAgency(request.AgencyId),
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "The agency the report is to be shared with is not one this endpoint knows.");
         }
@@ -217,7 +219,7 @@ public static class WorkQueueEndpoints
             default:
                 return TypedResults.Created(
                     $"/api/person-conditions/{id}/shares",
-                    AgencyEndpoints.Find(request.AgencyId)!);
+                    agency);
         }
     }
 
@@ -350,13 +352,12 @@ internal sealed class WorkQueueQueries(SurvsysDbContext database)
     /// report has that id — the answer the endpoint turns into a 404.
     /// </summary>
     /// <remarks>
-    /// The agency ids are resolved through the stand-in list the agencies
-    /// endpoint serves, as the names live there and not in this schema; an id
-    /// the list does not know is dropped rather than carried as a nameless row,
-    /// which cannot happen for a share written through this tier but is not
-    /// worth trusting a reader to. One page holds them all, as the agencies
-    /// endpoint's does, because a report's shares are a handful and not a
-    /// collection to page.
+    /// The shares are joined to the agencies table for their names; a share
+    /// whose agency id no agency has is dropped rather than carried as a
+    /// nameless row, which cannot happen for a share written through this tier —
+    /// the share column has no foreign key, so it is not worth trusting a reader
+    /// to. One page holds them all, as the agencies endpoint's does, because a
+    /// report's shares are a handful and not a collection to page.
     /// </remarks>
     public async Task<PagedResult<AgencyResponse>?> SharesOf(int id, CancellationToken cancellationToken)
     {
@@ -365,16 +366,13 @@ internal sealed class WorkQueueQueries(SurvsysDbContext database)
             return null;
         }
 
-        var agencyIds = await database.PersonConditionShares
+        var agencies = await database.PersonConditionShares
             .Where(share => share.PersonConditionId == id)
-            .Select(share => share.AgencyId)
-            .ToListAsync(cancellationToken);
-
-        var agencies = agencyIds
-            .Select(AgencyEndpoints.Find)
-            .OfType<AgencyResponse>()
+            .Join(database.Agencies, share => share.AgencyId, agency => agency.Id, (_, agency) => agency)
             .OrderBy(agency => agency.Name)
-            .ToList();
+            .ThenBy(agency => agency.Id)
+            .Select(AgencyEndpoints.ToResponse)
+            .ToListAsync(cancellationToken);
 
         return new PagedResult<AgencyResponse>(
             agencies, Paging.DefaultPage, agencies.Count, agencies.Count);

@@ -22,6 +22,113 @@ namespace Survsys.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Survsys.Data.Agency", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("ShortName")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("short_name");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("agencies", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Bear River"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "Central Utah"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "Davis County"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Name = "Out of State"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Name = "Salt Lake County"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Name = "San Juan County"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Name = "Southeastern Utah"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Name = "Southwest Utah"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Name = "Summit County"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Name = "Tooele County"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Name = "TriCounty"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Name = "Utah County"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Name = "Utah Navajo"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Name = "Utah State"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Name = "Wasatch County"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Name = "Weber-Morgan"
+                        });
+                });
+
             modelBuilder.Entity("Survsys.Data.Attachment", b =>
                 {
                     b.Property<int>("Id")
@@ -394,6 +501,62 @@ namespace Survsys.Data.Migrations
                     b.HasIndex("ExposureId");
 
                     b.ToTable("exposure_sources", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.Facility", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AgencyId")
+                        .HasColumnType("int")
+                        .HasColumnName("agency_id");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("city");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("ShortName")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("short_name");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(2)
+                        .HasColumnType("nvarchar(2)")
+                        .HasColumnName("state");
+
+                    b.Property<string>("Street")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("street");
+
+                    b.Property<string>("Zip")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)")
+                        .HasColumnName("zip");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgencyId");
+
+                    b.ToTable("facilities", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.Lab", b =>
@@ -1114,6 +1277,24 @@ namespace Survsys.Data.Migrations
                     b.ToTable("person_telephones", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.ZipCodeAgency", b =>
+                {
+                    b.Property<string>("ZipCode")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)")
+                        .HasColumnName("zip_code");
+
+                    b.Property<int>("AgencyId")
+                        .HasColumnType("int")
+                        .HasColumnName("agency_id");
+
+                    b.HasKey("ZipCode", "AgencyId");
+
+                    b.HasIndex("AgencyId");
+
+                    b.ToTable("zip_code_agencies", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.Attachment", b =>
                 {
                     b.HasOne("Survsys.Data.AttachmentFile", null)
@@ -1150,6 +1331,15 @@ namespace Survsys.Data.Migrations
                         .WithMany()
                         .HasForeignKey("ExposureId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.Facility", b =>
+                {
+                    b.HasOne("Survsys.Data.Agency", null)
+                        .WithMany()
+                        .HasForeignKey("AgencyId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -1278,6 +1468,15 @@ namespace Survsys.Data.Migrations
                     b.HasOne("Survsys.Data.Person", null)
                         .WithMany("Telephones")
                         .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.ZipCodeAgency", b =>
+                {
+                    b.HasOne("Survsys.Data.Agency", null)
+                        .WithMany()
+                        .HasForeignKey("AgencyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

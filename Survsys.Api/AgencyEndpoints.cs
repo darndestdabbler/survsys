@@ -1,87 +1,114 @@
+using System.Linq.Expressions;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
+using Survsys.Data;
 
 namespace Survsys.Api;
 
 /// <summary>
-/// <c>GET /api/agencies</c>: the public health agencies a case morbidity
-/// report can be assigned to, which is what step two of the creation flow's
-/// Investigating Agency dropdown is filled from.
+/// <c>/api/agencies</c>: the public health agencies a case morbidity report can
+/// be assigned to, their administration, and which agency's jurisdiction a zip
+/// code falls in.
 /// </summary>
 /// <remarks>
-/// <strong>This list is a stand-in, and it says so here rather than leaving a
-/// reader to find out.</strong> The legacy <c>agency</c> table exists in
-/// EpiTrax and does not exist here yet: agencies, their jurisdictions and the
-/// zip-code-to-agency mapping are a later session's, the one that owns the
-/// reference-data administration screens. What stands in until then is the
-/// list of agency <em>names</em> the legacy creation screen offered, as
-/// <c>../nedss/docs/functional/epitrax-cmr-workflow.md</c> records them from
-/// the screen itself.
+/// The agencies are the <c>agencies</c> table, which the migration seeds with
+/// the sixteen agencies this tier served from a static list before the table
+/// existed, under the same identifiers — so every <c>agency_id</c> already
+/// written still names the agency it did.
 ///
-/// Two consequences, both deliberate. The identifiers here are assigned by
-/// this list and are <em>not</em> the legacy environment's: no snapshot under
-/// <c>../nedss/docs/db-snapshots/</c> dumps the <c>agency</c> table, so the
-/// legacy ids are not known — the one id those documents do record is
-/// <c>agency_id</c> 24 for Bear River in one environment and 11 in another,
-/// which is the clearest evidence available that an agency id is a fact about
-/// an installation rather than about an agency. And the session that writes
-/// the real table owns the identifiers from then on: a
-/// <c>person_conditions.agency_id</c> written against this list is a reference
-/// into it, and that session is the one that has to carry the rows across.
-///
-/// This is the one endpoint in this tier that reaches no database. There is no
-/// <c>AddAgencies</c> to go with it for the same reason: there is no query to
-/// register, so the list is a static field and the handler returns it.
-///
-/// The document's own heading says seventeen and then names sixteen. Sixteen
-/// are served — the ones it names — because the seventeenth is most likely the
-/// dropdown's "Please select" row, and an agency invented to make a count
-/// match would be a fiction in a reference list.
+/// The handlers are handed <see cref="AgencyQueries"/> and not the
+/// <c>DbContext</c>, because the architecture test lets no <c>Survsys.Data</c>
+/// type into an endpoint signature. The other slices that need to know whether
+/// an agency exists ask the same <see cref="AgencyQueries"/>.
 /// </remarks>
 public static class AgencyEndpoints
 {
-    /// <summary>
-    /// Every agency a report can be assigned to, in name order — the order a
-    /// dropdown shows them in, fixed here so that it is the same order on
-    /// every request and in every tier.
-    /// </summary>
-    /// <remarks>
-    /// Public because the unit suite proves it and because
-    /// <see cref="PersonConditionEndpoints"/> asks <see cref="Find"/> whether
-    /// an agency a caller named is one of these.
-    /// </remarks>
-    public static readonly IReadOnlyList<AgencyResponse> All =
-    [
-        new(1, "Bear River"),
-        new(2, "Central Utah"),
-        new(3, "Davis County"),
-        new(4, "Out of State"),
-        new(5, "Salt Lake County"),
-        new(6, "San Juan County"),
-        new(7, "Southeastern Utah"),
-        new(8, "Southwest Utah"),
-        new(9, "Summit County"),
-        new(10, "Tooele County"),
-        new(11, "TriCounty"),
-        new(12, "Utah County"),
-        new(13, "Utah Navajo"),
-        new(14, "Utah State"),
-        new(15, "Wasatch County"),
-        new(16, "Weber-Morgan"),
-    ];
+    private const int NameLength = 200;
+
+    private const int ShortNameLength = 50;
 
     /// <summary>
-    /// The agency with that identifier, or null where no agency has it.
+    /// The projection from the stored agency to the wire shape a dropdown
+    /// reads. Public because the unit suite proves it.
+    /// </summary>
+    public static readonly Expression<Func<Agency, AgencyResponse>> ToResponse =
+        agency => new AgencyResponse(agency.Id, agency.Name);
+
+    /// <summary>
+    /// Why this is not an agency this tier will save, or null when it is one.
     /// </summary>
     /// <remarks>
-    /// Null is the answer and not an exception, as
-    /// <c>PersonQueries.Find</c>'s is: an identifier nobody has is a question
-    /// this tier can answer, and the caller decides what it means. The
-    /// creation endpoint's answer is a 400, because an agency nobody has is a
-    /// bad request body rather than a missing resource.
+    /// The shape every validator here has: a pure function the unit suite
+    /// proves, with the endpoint turning the sentence into a 400. Every zip code
+    /// has to be one <see cref="ZipAgencyRules.Normalize"/> reads, so a typo is
+    /// refused rather than saved as a jurisdiction nothing resolves into.
     /// </remarks>
-    public static AgencyResponse? Find(int id) =>
-        All.SingleOrDefault(agency => agency.Id == id);
+    public static string? WhyNotAnAgency(SaveAgencyRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return "name is required: an agency is chosen from a list by its name.";
+        }
+
+        if (request.Name.Trim().Length > NameLength)
+        {
+            return $"name is longer than {NameLength} characters.";
+        }
+
+        if (request.ShortName?.Trim().Length > ShortNameLength)
+        {
+            return $"shortName is longer than {ShortNameLength} characters.";
+        }
+
+        foreach (var zip in request.ZipCodes ?? [])
+        {
+            if (ZipAgencyRules.Normalize(zip) is null)
+            {
+                return $"zipCodes holds '{zip}', which is not a zip code. A zip code is five "
+                    + "digits, or a ZIP+4 such as 84108-1234.";
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The zip codes a save request names, as the mapping stores them: five
+    /// digits each, once each, in order.
+    /// </summary>
+    /// <remarks>
+    /// The request is validated before this is called, so every value reads.
+    /// Public because the unit suite proves it.
+    /// </remarks>
+    public static IReadOnlyList<string> ZipCodesOf(SaveAgencyRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return (request.ZipCodes ?? [])
+            .Select(ZipAgencyRules.Normalize)
+            .OfType<string>()
+            .Distinct()
+            .Order(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>
+    /// The sentence every slice refuses an agency identifier with, whether it
+    /// is one nothing can have or one no agency on file has.
+    /// </summary>
+    public static string NotAnAgency(int agencyId) =>
+        $"agencyId {agencyId} is not an agency this tier knows. The agencies are the ones "
+            + "GET /api/agencies lists.";
+
+    /// <summary>
+    /// Registers what the agency endpoints, and every slice that checks an
+    /// agency, need of the container.
+    /// </summary>
+    public static IServiceCollection AddAgencies(this IServiceCollection services) =>
+        services.AddScoped<AgencyQueries>();
 
     public static IEndpointRouteBuilder MapAgencies(this IEndpointRouteBuilder routes)
     {
@@ -90,19 +117,263 @@ public static class AgencyEndpoints
             .WithSummary("The public health agencies a case morbidity report can be "
                 + "assigned to, ordered by name.");
 
+        routes.MapGet("/api/agencies/{id:int}", GetAgency)
+            .WithName("GetAgency")
+            .WithSummary("One agency, with the zip codes of its jurisdiction.");
+
+        routes.MapPost("/api/agencies", CreateAgency)
+            .WithName("CreateAgency")
+            .WithSummary("Creates an agency and its jurisdiction's zip codes.");
+
+        routes.MapPut("/api/agencies/{id:int}", UpdateAgency)
+            .WithName("UpdateAgency")
+            .WithSummary("Saves over an agency and replaces its jurisdiction's zip codes.");
+
+        routes.MapGet("/api/agencies/by-zip/{zip}", GetAgencyByZip)
+            .WithName("GetAgencyByZip")
+            .WithSummary("The one agency whose jurisdiction a zip code falls in.");
+
         return routes;
     }
 
     /// <remarks>
-    /// It takes no page and no page size: sixteen rows are not a page, and a
-    /// dropdown that had to ask for a second one would be a dropdown nobody
-    /// could use. It still answers in <see cref="PagedResult{T}"/>, because
-    /// every collection this tier puts on the wire comes back in that one
-    /// shape and a client that had to read two shapes would be reading this
-    /// tier's exceptions rather than its contract. The one page it returns
-    /// holds everything, so the page size and the total are both the length of
-    /// the list.
+    /// It takes no page: the agencies are a handful, and a dropdown that had to
+    /// ask for a second page would be one nobody could use. It still answers in
+    /// <see cref="PagedResult{T}"/>, the one collection shape this tier puts on
+    /// the wire, with everything on the one page.
     /// </remarks>
-    private static Ok<PagedResult<AgencyResponse>> GetAgencies() =>
-        TypedResults.Ok(new PagedResult<AgencyResponse>(All, Paging.DefaultPage, All.Count, All.Count));
+    private static async Task<Ok<PagedResult<AgencyResponse>>> GetAgencies(
+        AgencyQueries agencies,
+        CancellationToken cancellationToken = default)
+    {
+        var all = await agencies.All(cancellationToken);
+
+        return TypedResults.Ok(new PagedResult<AgencyResponse>(all, Paging.DefaultPage, all.Count, all.Count));
+    }
+
+    private static async Task<Results<Ok<AgencyDetailResponse>, ProblemHttpResult>> GetAgency(
+        AgencyQueries agencies,
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        if (await agencies.Detail(id, cancellationToken) is not { } agency)
+        {
+            return NoSuchAgency(id);
+        }
+
+        return TypedResults.Ok(agency);
+    }
+
+    private static async Task<Results<Created<AgencyDetailResponse>, ProblemHttpResult>> CreateAgency(
+        AgencyQueries agencies,
+        SaveAgencyRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotAnAgency(request) is { } why)
+        {
+            return Refused(why);
+        }
+
+        var created = await agencies.Add(request, cancellationToken);
+
+        return TypedResults.Created($"/api/agencies/{created.Id}", created);
+    }
+
+    private static async Task<Results<Ok<AgencyDetailResponse>, ProblemHttpResult>> UpdateAgency(
+        AgencyQueries agencies,
+        int id,
+        SaveAgencyRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotAnAgency(request) is { } why)
+        {
+            return Refused(why);
+        }
+
+        if (await agencies.Update(id, request, cancellationToken) is not { } agency)
+        {
+            return NoSuchAgency(id);
+        }
+
+        return TypedResults.Ok(agency);
+    }
+
+    /// <remarks>
+    /// Each outcome of <see cref="ZipAgencyRules.Resolve"/> is its own status:
+    /// a value that is not a zip is a 400, a zip no agency claims a 404, and a
+    /// zip two agencies claim a 409 — it names a conflict in the mapping that a
+    /// person has to settle, not an agency.
+    /// </remarks>
+    private static async Task<Results<Ok<AgencyResponse>, ProblemHttpResult>> GetAgencyByZip(
+        AgencyQueries agencies,
+        string zip,
+        CancellationToken cancellationToken = default)
+    {
+        var resolution = await agencies.Resolve(zip, cancellationToken);
+
+        return resolution.Outcome switch
+        {
+            ZipResolutionOutcome.NotAZip => TypedResults.Problem(
+                detail: $"'{zip}' is not a zip code. A zip code is five digits, or a ZIP+4 "
+                    + "such as 84108-1234.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The value asked about is not a zip code."),
+            ZipResolutionOutcome.Unmapped => TypedResults.Problem(
+                detail: $"No agency's jurisdiction includes zip code {zip}.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "The zip code is not mapped to an agency."),
+            ZipResolutionOutcome.Ambiguous => TypedResults.Problem(
+                detail: $"More than one agency's jurisdiction includes zip code {zip}, so it "
+                    + "names no single agency.",
+                statusCode: StatusCodes.Status409Conflict,
+                title: "The zip code is mapped to more than one agency."),
+            _ => TypedResults.Ok((await agencies.Find(resolution.AgencyId!.Value, cancellationToken))!),
+        };
+    }
+
+    private static ProblemHttpResult NoSuchAgency(int id) =>
+        TypedResults.Problem(
+            detail: $"No agency has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such agency.");
+
+    private static ProblemHttpResult Refused(string why) =>
+        TypedResults.Problem(
+            detail: why,
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "The agency asked for is not one this endpoint can save.");
+}
+
+/// <summary>
+/// The agency queries, and the only thing in this tier that holds the
+/// <c>DbContext</c> for agencies and the zip-to-agency mapping.
+/// </summary>
+/// <remarks>
+/// Internal, as every slice's queries are. The person-condition and work-queue
+/// slices ask <see cref="Find"/> whether an agency a caller named exists.
+/// </remarks>
+internal sealed class AgencyQueries(SurvsysDbContext database)
+{
+    /// <summary>Every agency, ordered by name and then by id.</summary>
+    public Task<List<AgencyResponse>> All(CancellationToken cancellationToken) =>
+        database.Agencies
+            .OrderBy(agency => agency.Name)
+            .ThenBy(agency => agency.Id)
+            .Select(AgencyEndpoints.ToResponse)
+            .ToListAsync(cancellationToken);
+
+    /// <summary>The agency with that id, or null where no agency has it.</summary>
+    public Task<AgencyResponse?> Find(int id, CancellationToken cancellationToken) =>
+        database.Agencies
+            .Where(agency => agency.Id == id)
+            .Select(AgencyEndpoints.ToResponse)
+            .SingleOrDefaultAsync(cancellationToken);
+
+    /// <summary>
+    /// The agency with that id and its zip codes, or null where no agency has
+    /// it.
+    /// </summary>
+    public async Task<AgencyDetailResponse?> Detail(int id, CancellationToken cancellationToken)
+    {
+        var agency = await database.Agencies
+            .SingleOrDefaultAsync(agency => agency.Id == id, cancellationToken);
+
+        if (agency is null)
+        {
+            return null;
+        }
+
+        var zipCodes = await database.ZipCodeAgencies
+            .Where(mapping => mapping.AgencyId == id)
+            .OrderBy(mapping => mapping.ZipCode)
+            .Select(mapping => mapping.ZipCode)
+            .ToListAsync(cancellationToken);
+
+        return new AgencyDetailResponse(agency.Id, agency.Name, agency.ShortName, zipCodes);
+    }
+
+    /// <summary>
+    /// Creates the agency and its zip codes in one transaction: two saves,
+    /// because the mapping rows need the identity the first one assigns.
+    /// </summary>
+    public async Task<AgencyDetailResponse> Add(SaveAgencyRequest request, CancellationToken cancellationToken)
+    {
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+
+        var agency = new Agency { Name = request.Name };
+        Apply(agency, request);
+        database.Agencies.Add(agency);
+        await database.SaveChangesAsync(cancellationToken);
+
+        var zipCodes = AgencyEndpoints.ZipCodesOf(request);
+        database.ZipCodeAgencies.AddRange(
+            zipCodes.Select(zip => new ZipCodeAgency { ZipCode = zip, AgencyId = agency.Id }));
+        await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return new AgencyDetailResponse(agency.Id, agency.Name, agency.ShortName, zipCodes);
+    }
+
+    /// <summary>
+    /// Saves over the agency and replaces its zip codes, or answers null where
+    /// no agency has that id.
+    /// </summary>
+    public async Task<AgencyDetailResponse?> Update(
+        int id,
+        SaveAgencyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var agency = await database.Agencies
+            .SingleOrDefaultAsync(agency => agency.Id == id, cancellationToken);
+
+        if (agency is null)
+        {
+            return null;
+        }
+
+        Apply(agency, request);
+
+        // The difference and not a delete-all-then-insert: a zip kept on the
+        // list is one row EF Core already tracks, and adding a second instance
+        // under the same key would be refused.
+        var zipCodes = AgencyEndpoints.ZipCodesOf(request);
+        var stored = await database.ZipCodeAgencies
+            .Where(mapping => mapping.AgencyId == id)
+            .ToListAsync(cancellationToken);
+
+        database.ZipCodeAgencies.RemoveRange(stored.Where(mapping => !zipCodes.Contains(mapping.ZipCode)));
+        database.ZipCodeAgencies.AddRange(zipCodes
+            .Except(stored.Select(mapping => mapping.ZipCode))
+            .Select(zip => new ZipCodeAgency { ZipCode = zip, AgencyId = id }));
+        await database.SaveChangesAsync(cancellationToken);
+
+        return new AgencyDetailResponse(agency.Id, agency.Name, agency.ShortName, zipCodes);
+    }
+
+    /// <summary>
+    /// What a zip code resolves to, reading only the mapping rows for that zip.
+    /// </summary>
+    public async Task<ZipResolution> Resolve(string? zip, CancellationToken cancellationToken)
+    {
+        if (ZipAgencyRules.Normalize(zip) is not { } code)
+        {
+            return ZipAgencyRules.Resolve(zip, []);
+        }
+
+        var mapping = await database.ZipCodeAgencies
+            .Where(row => row.ZipCode == code)
+            .ToListAsync(cancellationToken);
+
+        return ZipAgencyRules.Resolve(code, mapping);
+    }
+
+    /// <summary>
+    /// The request's values onto the agency: trimmed, and a blank short name
+    /// stored as null.
+    /// </summary>
+    private static void Apply(Agency agency, SaveAgencyRequest request)
+    {
+        agency.Name = request.Name.Trim();
+        agency.ShortName = string.IsNullOrWhiteSpace(request.ShortName) ? null : request.ShortName.Trim();
+    }
 }

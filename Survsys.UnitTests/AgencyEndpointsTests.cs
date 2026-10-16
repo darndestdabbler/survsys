@@ -1,112 +1,95 @@
 using Survsys.Api;
+using Survsys.Contracts;
+using Survsys.Data;
 using Xunit;
 
 namespace Survsys.UnitTests;
 
 /// <summary>
-/// The agency list the creation screen's Investigating Agency dropdown is
-/// filled from, and the lookup the creation endpoint asks of it.
+/// What the agency endpoints decide without the database: the wire shape, what
+/// an agency to save must be, the zip codes it is saved with, and the sentence
+/// an unknown agency is refused with.
 /// </summary>
-/// <remarks>
-/// A stand-in for the legacy <c>agency</c> table until the session that writes
-/// that table — <see cref="AgencyEndpoints"/> says so of itself at length.
-/// These are the properties a dropdown and a foreign key need of it whatever
-/// it is standing in for: distinct identifiers, names that can be shown, and
-/// one order.
-/// </remarks>
 public class AgencyEndpointsTests
 {
-    /// <summary>
-    /// The names <c>../nedss/docs/functional/epitrax-cmr-workflow.md</c>
-    /// records from the legacy creation screen, written out here rather than
-    /// read off the list under test: a test that took the expected order from
-    /// the thing it is testing would pass whatever order that was in.
-    /// </summary>
-    private static readonly string[] Legacy =
-    [
-        "Bear River",
-        "Central Utah",
-        "Davis County",
-        "Out of State",
-        "Salt Lake County",
-        "San Juan County",
-        "Southeastern Utah",
-        "Southwest Utah",
-        "Summit County",
-        "Tooele County",
-        "TriCounty",
-        "Utah County",
-        "Utah Navajo",
-        "Utah State",
-        "Wasatch County",
-        "Weber-Morgan",
-    ];
-
     [Fact]
-    public void TheListIsTheAgenciesTheLegacyScreenOffered()
+    public void ToResponseCarriesTheIdentifierAndTheName()
     {
-        Assert.Equal(Legacy, AgencyEndpoints.All.Select(agency => agency.Name));
-    }
+        var agency = new Agency { Id = 5, Name = "Salt Lake County", ShortName = "SLCo" };
 
-    /// <summary>
-    /// In name order, which is the order a dropdown shows them in. Asserted
-    /// against a sort of the names rather than against the literal list, so
-    /// that an agency added out of place fails here rather than in front of a
-    /// user.
-    /// </summary>
-    [Fact]
-    public void TheAgenciesAreInNameOrder()
-    {
-        var names = AgencyEndpoints.All.Select(agency => agency.Name).ToList();
-
-        Assert.Equal(names.OrderBy(name => name, StringComparer.Ordinal), names);
-    }
-
-    /// <summary>
-    /// What a foreign key needs of them: an identifier that is one agency's
-    /// and nobody else's. A duplicate here would be a report assigned to two
-    /// agencies at once, or to neither.
-    /// </summary>
-    [Fact]
-    public void EveryIdentifierIsDistinct()
-    {
-        var ids = AgencyEndpoints.All.Select(agency => agency.Id).ToList();
-
-        Assert.Equal(ids.Count, ids.Distinct().Count());
+        Assert.Equal(
+            new AgencyResponse(5, "Salt Lake County"),
+            AgencyEndpoints.ToResponse.Compile().Invoke(agency));
     }
 
     [Fact]
-    public void EveryAgencyHasANameAndAnIdentifierThatCanBeStored()
+    public void WhyNotAnAgencyAcceptsANameAShortNameAndZipCodes()
     {
-        Assert.NotEmpty(AgencyEndpoints.All);
-
-        foreach (var agency in AgencyEndpoints.All)
-        {
-            Assert.False(string.IsNullOrWhiteSpace(agency.Name));
-            Assert.True(agency.Id > 0);
-        }
+        Assert.Null(AgencyEndpoints.WhyNotAnAgency(
+            new SaveAgencyRequest("Salt Lake County", "SLCo", ["84108", " 84101-1234 "])));
     }
 
     [Fact]
-    public void FindAnswersTheAgencyWithThatIdentifier()
+    public void WhyNotAnAgencyAcceptsAnAgencyWithNoShortNameAndNoZipCodes()
     {
-        foreach (var agency in AgencyEndpoints.All)
-        {
-            Assert.Equal(agency, AgencyEndpoints.Find(agency.Id));
-        }
+        Assert.Null(AgencyEndpoints.WhyNotAnAgency(new SaveAgencyRequest("Utah State")));
     }
 
-    /// <summary>
-    /// The answer the creation endpoint turns into a 400: an agency nobody has
-    /// is nothing, rather than an exception or the first agency in the list.
-    /// </summary>
     [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    [InlineData(99)]
-    [InlineData(int.MaxValue)]
-    public void FindAnswersNothingForAnIdentifierNoAgencyHas(int id)
+    [InlineData("")]
+    [InlineData("   ")]
+    public void WhyNotAnAgencyRefusesAnAgencyWithNoName(string name)
     {
-        Assert.Null(AgencyEndpoints.Find(id));
+        Assert.Contains("name is required",
+            AgencyEndpoints.WhyNotAnAgency(new SaveAgencyRequest(name)),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotAnAgencyRefusesANameLongerThanTheColumn()
+    {
+        Assert.Contains("name is longer than 200",
+            AgencyEndpoints.WhyNotAnAgency(new SaveAgencyRequest(new string('a', 201))),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotAnAgencyRefusesAShortNameLongerThanTheColumn()
+    {
+        Assert.Contains("shortName is longer than 50",
+            AgencyEndpoints.WhyNotAnAgency(new SaveAgencyRequest("Utah State", new string('a', 51))),
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("8410")]
+    [InlineData("ABCDE")]
+    [InlineData("")]
+    public void WhyNotAnAgencyRefusesAZipCodeThatIsNotOne(string zip)
+    {
+        Assert.Contains($"zipCodes holds '{zip}'",
+            AgencyEndpoints.WhyNotAnAgency(new SaveAgencyRequest("Utah State", null, ["84108", zip])),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ZipCodesOfNormalizesDeduplicatesAndOrders()
+    {
+        Assert.Equal(
+            ["84101", "84108"],
+            AgencyEndpoints.ZipCodesOf(
+                new SaveAgencyRequest("Salt Lake County", null, ["84108", "84101-1234", " 84108 "])));
+    }
+
+    [Fact]
+    public void ZipCodesOfIsEmptyForNoZipCodes()
+    {
+        Assert.Empty(AgencyEndpoints.ZipCodesOf(new SaveAgencyRequest("Utah State")));
+    }
+
+    [Fact]
+    public void NotAnAgencyNamesTheIdentifier()
+    {
+        Assert.StartsWith("agencyId 99 is not an agency", AgencyEndpoints.NotAnAgency(99), StringComparison.Ordinal);
     }
 }

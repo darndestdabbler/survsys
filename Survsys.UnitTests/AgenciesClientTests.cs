@@ -74,6 +74,84 @@ public class AgenciesClientTests
         Assert.NotEqual(ConditionsClient.FailurePrefix, AgenciesClient.FailurePrefix);
     }
 
+    private const string SaltLake =
+        """{ "id": 5, "name": "Salt Lake County", "shortName": "SLCo", "zipCodes": ["84101", "84108"] }""";
+
+    private static readonly AgencyDetailResponse SaltLakeDetail =
+        new(5, "Salt Lake County", "SLCo", ["84101", "84108"]);
+
+    [Fact]
+    public async Task FindAsksForTheAgencyAndReturnsItWithItsZipCodes()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new AgenciesClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, SaltLake);
+        }));
+
+        var asked = await client.Find(5);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal("http://api.example.test/api/agencies/5", sent?.RequestUri?.ToString());
+        Assert.Equal(SaltLakeDetail.ZipCodes, asked.Value!.ZipCodes);
+        Assert.Equal(SaltLakeDetail.Name, asked.Value.Name);
+    }
+
+    [Fact]
+    public async Task CreatePostsToTheCollection()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new AgenciesClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.Created, SaltLake);
+        }));
+
+        var asked = await client.Create(new SaveAgencyRequest("Salt Lake County", "SLCo", ["84101", "84108"]));
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/agencies", sent?.RequestUri?.ToString());
+        Assert.Equal(5, asked.Value!.Id);
+    }
+
+    [Fact]
+    public async Task UpdatePutsToTheAgency()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new AgenciesClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, SaltLake);
+        }));
+
+        var asked = await client.Update(5, new SaveAgencyRequest("Salt Lake County"));
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/agencies/5", sent?.RequestUri?.ToString());
+        Assert.True(asked.Succeeded);
+    }
+
+    [Fact]
+    public async Task ASaveThatFailedCarriesTheSavePrefix()
+    {
+        var client = new AgenciesClient(Transport(_ => Answer(HttpStatusCode.BadRequest, "{}")));
+
+        var asked = await client.Create(new SaveAgencyRequest(""));
+
+        Assert.StartsWith(AgenciesClient.SaveFailurePrefix, asked.Failure);
+    }
+
+    [Fact]
+    public async Task AFindThatFailedCarriesTheFindPrefix()
+    {
+        var client = new AgenciesClient(Transport(_ => Answer(HttpStatusCode.NotFound, "{}")));
+
+        var asked = await client.Find(99);
+
+        Assert.StartsWith(AgenciesClient.FindFailurePrefix, asked.Failure);
+    }
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 

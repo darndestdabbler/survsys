@@ -30,33 +30,36 @@ public class WorkQueueEndpointsTests
         WorkflowState = WorkflowRules.AcceptedCode,
     };
 
-    [Fact]
-    public void WhyNotAShareAcceptsEveryAgencyTheTierLists()
+    /// <summary>
+    /// Any identifier an agency could have passes: whether one does is the
+    /// agencies table's to answer.
+    /// </summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(16)]
+    [InlineData(99)]
+    public void WhyNotAShareAcceptsAnyIdentifierAnAgencyCouldHave(int agencyId)
     {
-        foreach (var agency in AgencyEndpoints.All)
-        {
-            Assert.Null(WorkQueueEndpoints.WhyNotAShare(new ShareReportRequest(agency.Id)));
-        }
+        Assert.Null(WorkQueueEndpoints.WhyNotAShare(new ShareReportRequest(agencyId)));
     }
 
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    [InlineData(99)]
-    public void WhyNotAShareRefusesAnAgencyNoAgencyHas(int agencyId)
+    public void WhyNotAShareRefusesAnIdentifierNoAgencyCanHave(int agencyId)
     {
         Assert.Contains($"agencyId {agencyId} is not an agency",
             WorkQueueEndpoints.WhyNotAShare(new ShareReportRequest(agencyId)),
             StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void WhyNotAQueueAgencyAcceptsEveryAgencyTheTierLists()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(16)]
+    [InlineData(99)]
+    public void WhyNotAQueueAgencyAcceptsAnyIdentifierAnAgencyCouldHave(int agencyId)
     {
-        foreach (var agency in AgencyEndpoints.All)
-        {
-            Assert.Null(WorkQueueEndpoints.WhyNotAQueueAgency(agency.Id));
-        }
+        Assert.Null(WorkQueueEndpoints.WhyNotAQueueAgency(agencyId));
     }
 
     /// <summary>
@@ -71,14 +74,6 @@ public class WorkQueueEndpointsTests
     {
         Assert.Contains("agencyId is required",
             WorkQueueEndpoints.WhyNotAQueueAgency(agencyId),
-            StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void WhyNotAQueueAgencyRefusesAnAgencyNoAgencyHas()
-    {
-        Assert.Contains("agencyId 99 is not an agency",
-            WorkQueueEndpoints.WhyNotAQueueAgency(99),
             StringComparison.Ordinal);
     }
 

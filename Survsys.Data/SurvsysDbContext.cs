@@ -20,6 +20,12 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 {
     public DbSet<Condition> Conditions => Set<Condition>();
 
+    public DbSet<Agency> Agencies => Set<Agency>();
+
+    public DbSet<ZipCodeAgency> ZipCodeAgencies => Set<ZipCodeAgency>();
+
+    public DbSet<Facility> Facilities => Set<Facility>();
+
     public DbSet<Person> Persons => Set<Person>();
 
     public DbSet<PersonAddress> PersonAddresses => Set<PersonAddress>();

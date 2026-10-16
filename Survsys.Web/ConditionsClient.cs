@@ -26,7 +26,36 @@ public sealed class ConditionsClient(HttpClient http)
     /// </summary>
     public const string FailurePrefix = "The conditions could not be loaded";
 
+    /// <summary>How a failure to load one condition starts.</summary>
+    public const string FindFailurePrefix = "The condition could not be loaded";
+
+    /// <summary>How a failure to create or save a condition starts.</summary>
+    public const string SaveFailurePrefix = "The condition could not be saved";
+
     private static readonly ApiAsk Ask = new(FailurePrefix, "a page of conditions");
+
+    private static readonly ApiAsk Finding = new(FindFailurePrefix, "the condition's record");
+
+    private static readonly ApiAsk Saving = new(SaveFailurePrefix, "the condition as saved");
+
+    /// <summary>One condition with its lead-in prose, or why there is none.</summary>
+    public Task<Asked<ConditionDetailResponse>> Find(
+        int id,
+        CancellationToken cancellationToken = default) =>
+        Finding.Get<ConditionDetailResponse>(http, $"api/conditions/{id}", cancellationToken);
+
+    /// <summary>Creates a condition, answering with it as created or why it was not.</summary>
+    public Task<Asked<ConditionDetailResponse>> Create(
+        SaveConditionRequest request,
+        CancellationToken cancellationToken = default) =>
+        Saving.Post<SaveConditionRequest, ConditionDetailResponse>(http, "api/conditions", request, cancellationToken);
+
+    /// <summary>Saves over a condition, answering with it as saved or why it was not.</summary>
+    public Task<Asked<ConditionDetailResponse>> Update(
+        int id,
+        SaveConditionRequest request,
+        CancellationToken cancellationToken = default) =>
+        Saving.Put<SaveConditionRequest, ConditionDetailResponse>(http, $"api/conditions/{id}", request, cancellationToken);
 
     /// <summary>
     /// One page of conditions, or why there is none.

@@ -87,8 +87,8 @@ public static class PersonConditionEndpoints
     /// Whether the person and the condition exist is not here, because that
     /// cannot be answered without a query —
     /// <see cref="PersonConditionQueries.WhyNotOnFile"/> is where that lives.
-    /// The agency <em>is</em> here, because the agency list is a static one in
-    /// this tier and asking it costs nothing.
+    /// Nor whether the agency exists, which <see cref="AgencyQueries"/>
+    /// answers; only an agency identifier nothing can have is refused here.
     ///
     /// Public because the unit suite proves it. Nothing outside this file
     /// calls it.
@@ -109,11 +109,10 @@ public static class PersonConditionEndpoints
                 + $"condition, and {request.ConditionId} is not an identifier anything has.";
         }
 
-        if (request.AgencyId is { } agencyId && AgencyEndpoints.Find(agencyId) is null)
+        if (request.AgencyId is { } agencyId && agencyId <= 0)
         {
-            return $"agencyId {agencyId} is not an agency this tier knows. The agencies a "
-                + "report may be assigned to are the ones GET /api/agencies lists; leave "
-                + "agencyId out to create a report with no investigating agency.";
+            return AgencyEndpoints.NotAnAgency(agencyId)
+                + " Leave agencyId out to create a report with no investigating agency.";
         }
 
         return null;
@@ -157,11 +156,8 @@ public static class PersonConditionEndpoints
     /// <remarks>
     /// The shape <see cref="WhyNotAReport"/> and <see cref="WhyNotAStatus"/>
     /// have: a pure function the unit suite proves, with the endpoint turning
-    /// the sentence into a 400. The agency is refused here rather than in the
-    /// database, because the agency list is a static one in this tier and asking
-    /// it costs nothing — the same reason <see cref="WhyNotAReport"/> checks the
-    /// agency on creation. Whether the report exists is not here, because that
-    /// needs a query.
+    /// the sentence into a 400. Only an agency identifier nothing can have is
+    /// refused here; whether the agency and the report exist needs a query.
     ///
     /// Public because the unit suite proves it. Nothing outside this file calls
     /// it.
@@ -170,11 +166,9 @@ public static class PersonConditionEndpoints
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (AgencyEndpoints.Find(request.AgencyId) is null)
+        if (request.AgencyId <= 0)
         {
-            return $"agencyId {request.AgencyId} is not an agency this tier knows. The "
-                + "agencies a report may be assigned to are the ones GET /api/agencies "
-                + "lists.";
+            return AgencyEndpoints.NotAnAgency(request.AgencyId);
         }
 
         return null;
@@ -247,12 +241,18 @@ public static class PersonConditionEndpoints
     /// </remarks>
     private static async Task<Results<Created<PersonConditionResponse>, ProblemHttpResult>> CreatePersonCondition(
         PersonConditionQueries reports,
+        AgencyQueries agencies,
         CreatePersonConditionRequest request,
         CancellationToken cancellationToken = default)
     {
         if (WhyNotAReport(request) is { } why)
         {
             return Refused(why);
+        }
+
+        if (request.AgencyId is { } agencyId && await agencies.Find(agencyId, cancellationToken) is null)
+        {
+            return Refused(AgencyEndpoints.NotAnAgency(agencyId));
         }
 
         if (await reports.WhyNotOnFile(request, cancellationToken) is { } missing)
@@ -300,18 +300,23 @@ public static class PersonConditionEndpoints
     /// <remarks>
     /// Assigning a report names its investigating agency and returns it to the
     /// assigned-to-LHD start of the workflow, as the legacy enters a case into
-    /// the Local Health Department's queue. The agency is refused before the
-    /// database is asked, as <see cref="WhyNotAReport"/> refuses one on
-    /// creation; a report id that names no report is a 404, the resource
-    /// addressed being the report itself.
+    /// the Local Health Department's queue. An agency no agency on file has is
+    /// a 400, as it is on creation; a report id that names no report is a 404,
+    /// the resource addressed being the report itself.
     /// </remarks>
     private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> Assign(
         PersonConditionQueries reports,
+        AgencyQueries agencies,
         int id,
         AssignReportRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (WhyNotAnAssignment(request) is { } why)
+        var why = WhyNotAnAssignment(request)
+            ?? (await agencies.Find(request.AgencyId, cancellationToken) is null
+                ? AgencyEndpoints.NotAnAgency(request.AgencyId)
+                : null);
+
+        if (why is not null)
         {
             return TypedResults.Problem(
                 detail: why,

@@ -34,6 +34,7 @@ var api = new Uri(apiBaseAddress.TrimEnd('/') + '/');
 builder.Services.AddHttpClient<ConditionsClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<PersonsClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<AgenciesClient>(http => http.BaseAddress = api);
+builder.Services.AddHttpClient<FacilitiesClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<PersonConditionsClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<ClinicalClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<InvestigationClient>(http => http.BaseAddress = api);

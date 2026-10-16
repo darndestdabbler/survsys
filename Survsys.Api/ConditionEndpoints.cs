@@ -45,6 +45,57 @@ public static class ConditionEndpoints
             condition.Active);
 
     /// <summary>
+    /// The projection from the stored row to the administration screen's shape
+    /// — every column but the group. Public because the unit suite proves it.
+    /// </summary>
+    public static readonly Expression<Func<Condition, ConditionDetailResponse>> ToDetail =
+        condition => new ConditionDetailResponse(
+            condition.Id,
+            condition.Name,
+            condition.CdcCode,
+            condition.Active,
+            condition.ContactLeadIn,
+            condition.PlaceLeadIn,
+            condition.TreatmentLeadIn);
+
+    /// <summary>
+    /// <see cref="ToDetail"/> compiled, for a condition just saved and so in
+    /// hand rather than in a query.
+    /// </summary>
+    public static readonly Func<Condition, ConditionDetailResponse> Detail = ToDetail.Compile();
+
+    /// <summary>
+    /// Why this is not a condition this tier will save, or null when it is
+    /// one. A pure function the unit suite proves, with the endpoint turning
+    /// the sentence into a 400; the bounds are the columns'.
+    /// </summary>
+    public static string? WhyNotACondition(SaveConditionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return "name is required: a condition is listed and chosen by its name.";
+        }
+
+        if (request.Name.Trim().Length > NameLength)
+        {
+            return $"name is longer than {NameLength} characters.";
+        }
+
+        if (request.CdcCode?.Trim().Length > CdcCodeLength)
+        {
+            return $"cdcCode is longer than {CdcCodeLength} characters.";
+        }
+
+        return null;
+    }
+
+    private const int NameLength = 200;
+
+    private const int CdcCodeLength = 20;
+
+    /// <summary>
     /// Registers what the conditions endpoint needs of the container. Kept
     /// here with the endpoint so the slice's wiring is in one place, and so
     /// that <c>Program.cs</c> need not name an internal type.
@@ -58,8 +109,79 @@ public static class ConditionEndpoints
             .WithName("GetConditions")
             .WithSummary("The conditions a case can be reported for, paged and ordered by name.");
 
+        routes.MapGet("/api/conditions/{id:int}", GetCondition)
+            .WithName("GetCondition")
+            .WithSummary("One condition, with its investigator lead-in prose.");
+
+        routes.MapPost("/api/conditions", CreateCondition)
+            .WithName("CreateCondition")
+            .WithSummary("Creates a condition.");
+
+        routes.MapPut("/api/conditions/{id:int}", UpdateCondition)
+            .WithName("UpdateCondition")
+            .WithSummary("Saves over a condition.");
+
         return routes;
     }
+
+    private static async Task<Results<Ok<ConditionDetailResponse>, ProblemHttpResult>> GetCondition(
+        ConditionQueries conditions,
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        if (await conditions.Find(id, cancellationToken) is not { } condition)
+        {
+            return NoSuchCondition(id);
+        }
+
+        return TypedResults.Ok(condition);
+    }
+
+    private static async Task<Results<Created<ConditionDetailResponse>, ProblemHttpResult>> CreateCondition(
+        ConditionQueries conditions,
+        SaveConditionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotACondition(request) is { } why)
+        {
+            return Refused(why);
+        }
+
+        var created = await conditions.Add(request, cancellationToken);
+
+        return TypedResults.Created($"/api/conditions/{created.Id}", created);
+    }
+
+    private static async Task<Results<Ok<ConditionDetailResponse>, ProblemHttpResult>> UpdateCondition(
+        ConditionQueries conditions,
+        int id,
+        SaveConditionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotACondition(request) is { } why)
+        {
+            return Refused(why);
+        }
+
+        if (await conditions.Update(id, request, cancellationToken) is not { } condition)
+        {
+            return NoSuchCondition(id);
+        }
+
+        return TypedResults.Ok(condition);
+    }
+
+    private static ProblemHttpResult NoSuchCondition(int id) =>
+        TypedResults.Problem(
+            detail: $"No condition has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such condition.");
+
+    private static ProblemHttpResult Refused(string why) =>
+        TypedResults.Problem(
+            detail: why,
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "The condition asked for is not one this endpoint can save.");
 
     private static async Task<Results<Ok<PagedResult<ConditionResponse>>, ProblemHttpResult>> GetConditions(
         ConditionQueries conditions,
@@ -117,5 +239,60 @@ internal sealed class ConditionQueries(SurvsysDbContext database)
             .ToListAsync(cancellationToken);
 
         return new PagedResult<ConditionResponse>(rows, page, pageSize, total);
+    }
+
+    /// <summary>The condition with that id, or null where no condition has it.</summary>
+    public Task<ConditionDetailResponse?> Find(int id, CancellationToken cancellationToken) =>
+        database.Conditions
+            .Where(condition => condition.Id == id)
+            .Select(ConditionEndpoints.ToDetail)
+            .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<ConditionDetailResponse> Add(SaveConditionRequest request, CancellationToken cancellationToken)
+    {
+        var condition = new Condition { Name = request.Name };
+        Apply(condition, request);
+        database.Conditions.Add(condition);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return ConditionEndpoints.Detail(condition);
+    }
+
+    /// <summary>
+    /// Saves over the condition, or answers null where no condition has that
+    /// id. The group is left as it is: it is not on the wire.
+    /// </summary>
+    public async Task<ConditionDetailResponse?> Update(
+        int id,
+        SaveConditionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var condition = await database.Conditions
+            .SingleOrDefaultAsync(condition => condition.Id == id, cancellationToken);
+
+        if (condition is null)
+        {
+            return null;
+        }
+
+        Apply(condition, request);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return ConditionEndpoints.Detail(condition);
+    }
+
+    /// <summary>
+    /// The request's values onto the condition: the name and code trimmed, and
+    /// a blank optional value stored as null. The lead-in prose is kept as
+    /// written, since its line breaks are the investigator's.
+    /// </summary>
+    private static void Apply(Condition condition, SaveConditionRequest request)
+    {
+        condition.Name = request.Name.Trim();
+        condition.Active = request.Active;
+        condition.CdcCode = string.IsNullOrWhiteSpace(request.CdcCode) ? null : request.CdcCode.Trim();
+        condition.ContactLeadIn = string.IsNullOrWhiteSpace(request.ContactLeadIn) ? null : request.ContactLeadIn;
+        condition.PlaceLeadIn = string.IsNullOrWhiteSpace(request.PlaceLeadIn) ? null : request.PlaceLeadIn;
+        condition.TreatmentLeadIn = string.IsNullOrWhiteSpace(request.TreatmentLeadIn) ? null : request.TreatmentLeadIn;
     }
 }
