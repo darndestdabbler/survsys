@@ -73,5 +73,16 @@ internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
         builder.Property(person => person.CountryOfBirth)
             .HasColumnName("country_of_birth")
             .HasMaxLength(CodeLength);
+
+        // The two columns a list of people is ordered by and the two a search
+        // for a person filters on first, in that order, so one index serves
+        // both: the page reads it in order instead of sorting the table, and a
+        // search by surname — with or without a first name after it — seeks
+        // into it instead of reading every person. Last name first because
+        // that is the order the page promises and the order a user types.
+        //
+        // It is not unique, and could not be: two people share a name, which
+        // is why the page orders by the identifier after these two.
+        builder.HasIndex(person => new { person.LastName, person.FirstName });
     }
 }

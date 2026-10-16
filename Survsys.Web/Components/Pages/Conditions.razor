@@ -26,7 +26,7 @@
        the screen shows between the first render and the answer. *@
     <MudProgressCircular id="conditions-loading" Color="Color.Primary" Indeterminate="true" />
 }
-else if (asked.Result is { } result)
+else if (asked.Value is { } result)
 {
     <MudText id="conditions-total" Typo="Typo.body2" Class="mb-4">
         @result.TotalCount condition(s), showing @result.Items.Count.
@@ -70,7 +70,7 @@ else
 }
 
 @code {
-    private ConditionsPage? asked;
+    private Asked<PagedResult<ConditionResponse>>? asked;
 
     protected override async Task OnInitializedAsync() =>
         asked = await Client.Page(1, PageSize);

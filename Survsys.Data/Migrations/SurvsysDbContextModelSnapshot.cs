@@ -156,6 +156,8 @@ namespace Survsys.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("LastName", "FirstName");
+
                     b.ToTable("persons", (string)null);
                 });
 
@@ -239,6 +241,57 @@ namespace Survsys.Data.Migrations
                     b.HasKey("PersonId", "Alias");
 
                     b.ToTable("person_aliases", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.PersonCondition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AgencyId")
+                        .HasColumnType("int")
+                        .HasColumnName("agency_id");
+
+                    b.Property<int>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly?>("EventOnsetDate")
+                        .HasColumnType("date")
+                        .HasColumnName("event_onset_date");
+
+                    b.Property<DateOnly?>("FirstReportedPhDate")
+                        .HasColumnType("date")
+                        .HasColumnName("first_reported_ph_date");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_id");
+
+                    b.Property<string>("RecordNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("record_number");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConditionId");
+
+                    b.HasIndex("PersonId");
+
+                    b.HasIndex("RecordNumber")
+                        .IsUnique();
+
+                    b.ToTable("person_conditions", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.PersonEmail", b =>
@@ -363,6 +416,21 @@ namespace Survsys.Data.Migrations
                         .WithMany("Aliases")
                         .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.PersonCondition", b =>
+                {
+                    b.HasOne("Survsys.Data.Condition", null)
+                        .WithMany()
+                        .HasForeignKey("ConditionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

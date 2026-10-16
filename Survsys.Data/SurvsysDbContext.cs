@@ -34,6 +34,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<ParentGuardian> ParentGuardians => Set<ParentGuardian>();
 
+    public DbSet<PersonCondition> PersonConditions => Set<PersonCondition>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

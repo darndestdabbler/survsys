@@ -39,6 +39,7 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
 
 builder.Services.AddConditions();
 builder.Services.AddPersons();
+builder.Services.AddPersonConditions();
 
 var app = builder.Build();
 
@@ -76,6 +77,8 @@ app.MapGet("/health/ready", () => Results.Ok("ready"));
 
 app.MapConditions();
 app.MapPersons();
+app.MapAgencies();
+app.MapPersonConditions();
 
 app.Run();
 

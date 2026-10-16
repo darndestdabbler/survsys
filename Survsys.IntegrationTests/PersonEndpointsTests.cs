@@ -373,12 +373,507 @@ public class PersonEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     /// <summary>
+    /// A surname prefix: the criterion the search form is mostly used with.
+    /// Two of the seeded people are Rodriguezes, and the matches come back in
+    /// the order the endpoint promises rather than in the order the fixture
+    /// inserted them.
+    /// </summary>
+    [Fact]
+    public async Task ASurnamePrefixMatchesTheSurnamesThatStartWithIt()
+    {
+        var page = await Persons("/api/persons?lastName=Rod");
+
+        Assert.Equal(["Rodriguez, Carlos", "Rodriguez, Maria"], page.Items.Select(Named));
+        Assert.Equal(2, page.TotalCount);
+    }
+
+    /// <summary>
+    /// The total is the total of what was searched for and not of the table —
+    /// the count is taken over the filtered query, which is the mistake this
+    /// asserts against: a pager that said seven here would offer pages that
+    /// were not there.
+    /// </summary>
+    [Fact]
+    public async Task ASearchIsPagedOverItsOwnMatchesAndNotOverTheTable()
+    {
+        var first = await Persons("/api/persons?lastName=Rodriguez&page=1&pageSize=1");
+        var second = await Persons("/api/persons?lastName=Rodriguez&page=2&pageSize=1");
+
+        Assert.Equal(["Rodriguez, Carlos"], first.Items.Select(Named));
+        Assert.Equal(["Rodriguez, Maria"], second.Items.Select(Named));
+        Assert.Equal(2, first.TotalCount);
+        Assert.Equal(2, second.TotalCount);
+    }
+
+    [Fact]
+    public async Task AFirstNamePrefixNarrowsASurnameToOnePerson()
+    {
+        var page = await Persons("/api/persons?lastName=Rodriguez&firstName=Mar");
+
+        Assert.Equal(["Rodriguez, Maria"], page.Items.Select(Named));
+        Assert.Equal(1, page.TotalCount);
+    }
+
+    [Fact]
+    public async Task AMiddleNamePrefixMatches()
+    {
+        var page = await Persons("/api/persons?middleName=Ele");
+
+        Assert.Equal(["Rodriguez, Maria"], page.Items.Select(Named));
+    }
+
+    /// <summary>
+    /// The case a user types in is not the case the name is stored in, and the
+    /// search finds them anyway. SQL Server's doing, under the column's
+    /// default collation — which is why this is asserted here, against a real
+    /// database, and not in the unit suite where the same expression compiled
+    /// in memory would be case-sensitive.
+    /// </summary>
+    [Theory]
+    [InlineData("rodriguez")]
+    [InlineData("RODRIGUEZ")]
+    [InlineData("rOdRiGuEz")]
+    public async Task ASurnameInTheWrongCaseMatchesAllTheSame(string typed)
+    {
+        var page = await Persons($"/api/persons?lastName={typed}");
+
+        Assert.Equal(["Rodriguez, Carlos", "Rodriguez, Maria"], page.Items.Select(Named));
+    }
+
+    /// <summary>
+    /// The date of birth matches exactly, and not as a prefix or a range: a
+    /// person born the day before is not a match for the day after.
+    /// </summary>
+    [Fact]
+    public async Task ADateOfBirthMatchesExactly()
+    {
+        var matched = await Persons("/api/persons?birthDate=1985-06-15");
+        var missed = await Persons("/api/persons?birthDate=1985-06-16");
+
+        Assert.Equal(["Rodriguez, Maria"], matched.Items.Select(Named));
+        Assert.Empty(missed.Items);
+    }
+
+    [Fact]
+    public async Task ABirthGenderMatchesTheCodeItIsStoredAs()
+    {
+        var page = await Persons("/api/persons?birthGender=F");
+
+        Assert.Equal(["Abbott, Jane", "Rodriguez, Maria"], page.Items.Select(Named));
+        Assert.Equal(2, page.TotalCount);
+    }
+
+    /// <summary>
+    /// One telephone number, typed the ways a person types one — whole, in
+    /// punctuation, and without its area code — against the two columns the
+    /// legacy schema stores it in. The one seeded telephone is Maria's, area
+    /// code <c>801</c> and number <c>5551234</c>, as
+    /// <c>03-after-demographics-save.txt</c> dumps it.
+    /// </summary>
+    [Theory]
+    [InlineData("8015551234")]
+    [InlineData("(801) 555-1234")]
+    [InlineData("801-555-1234")]
+    [InlineData("555-1234")]
+    [InlineData("5551234")]
+    [InlineData("801")]
+    public async Task ATelephoneMatchesOnItsDigitsHoweverItWasTyped(string typed)
+    {
+        var page = await Persons($"/api/persons?phone={Uri.EscapeDataString(typed)}");
+
+        Assert.Equal(["Rodriguez, Maria"], page.Items.Select(Named));
+        Assert.Equal(1, page.TotalCount);
+    }
+
+    /// <summary>
+    /// A telephone stored with its country code, searched for the way a person
+    /// types one: <c>+1 (801) 555-1234</c> is eleven digits, and they are the
+    /// three stored columns in the order they are dialled.
+    /// </summary>
+    /// <remarks>
+    /// The row is written here rather than seeded, because
+    /// <c>Fixtures/persons.sql</c> copies the one telephone the legacy
+    /// snapshot dumps and that row has no country code — the snapshot's
+    /// <c>country_code</c> is empty. Writing it through the context keeps the
+    /// fixture the snapshot's and still proves the query against the schema
+    /// the migration produces; the person is taken back out afterwards, as
+    /// every person this suite writes is.
+    /// </remarks>
+    [Theory]
+    [InlineData("+1 (801) 555-1234")]
+    [InlineData("1-801-555-1234")]
+    [InlineData("18015551234")]
+    [InlineData("8015551234")]
+    [InlineData("5551234")]
+    public async Task ATelephoneStoredWithACountryCodeIsFoundByTheWholeNumber(string typed)
+    {
+        var written = new Person
+        {
+            LastName = "Ferreira",
+            FirstName = "Tomas",
+            Telephones =
+            {
+                new PersonTelephone
+                {
+                    CountryCode = "1",
+                    AreaCode = "801",
+                    PhoneNumber = "5551234",
+                },
+            },
+        };
+
+        await using (var context = server.NewContext())
+        {
+            context.Persons.Add(written);
+            await context.SaveChangesAsync();
+        }
+
+        try
+        {
+            var page = await Persons($"/api/persons?phone={Uri.EscapeDataString(typed)}");
+
+            Assert.Contains("Ferreira, Tomas", page.Items.Select(Named));
+        }
+        finally
+        {
+            await Forget(written.Id);
+        }
+    }
+
+    [Fact]
+    public async Task ATelephoneNobodyHasMatchesNobody()
+    {
+        var page = await Persons("/api/persons?phone=9999999");
+
+        Assert.Empty(page.Items);
+        Assert.Equal(0, page.TotalCount);
+    }
+
+    /// <summary>
+    /// Criteria narrow each other rather than widening the search: Carlos
+    /// matches the surname and the gender, and Maria matches only the surname.
+    /// </summary>
+    [Fact]
+    public async Task TwoCriteriaTogetherMatchOnlyWhatMatchesBoth()
+    {
+        var page = await Persons("/api/persons?lastName=Rod&birthGender=M");
+
+        Assert.Equal(["Rodriguez, Carlos"], page.Items.Select(Named));
+        Assert.Equal(1, page.TotalCount);
+    }
+
+    /// <summary>
+    /// A search that found nobody is an empty page and not a 404: the
+    /// collection was found, and it has nothing in it that matches.
+    /// </summary>
+    [Fact]
+    public async Task ASearchThatMatchesNobodyIsAnEmptyPage()
+    {
+        using var response = await api.CreateClient().GetAsync("/api/persons?lastName=Zzyzx");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var page = (await response.Content.ReadFromJsonAsync<PagedResult<PersonResponse>>(Json))!;
+
+        Assert.Empty(page.Items);
+        Assert.Equal(0, page.TotalCount);
+    }
+
+    /// <summary>
+    /// A screen whose search boxes were left empty: every text criterion
+    /// present and every one blank. It is the same request as no criteria at
+    /// all, which is the unfiltered page this endpoint returned before search
+    /// existed — and the existing tests above are the rest of that promise.
+    /// </summary>
+    /// <remarks>
+    /// The date of birth is not among them, and
+    /// <see cref="ADateOfBirthThatIsNotADateIsAProblemDetails"/> says why: it
+    /// is the one typed criterion, so an empty value for it is a value that is
+    /// not a date rather than a criterion nobody gave. A caller leaves it out
+    /// of the query string instead, which is what <c>Survsys.Web</c>'s client
+    /// does with every criterion nobody typed.
+    /// </remarks>
+    [Fact]
+    public async Task CriteriaThatAreAllBlankLeaveThePageUnfiltered()
+    {
+        var page = await Persons(
+            "/api/persons?lastName=&firstName=&middleName=&phone=&birthGender=");
+
+        Assert.Equal(SqlServerFixture.PersonsByName, page.Items.Select(Named));
+        Assert.Equal(SqlServerFixture.SeededPersons, page.TotalCount);
+    }
+
+    /// <summary>
+    /// A surname that is nothing but spaces is a surname nobody typed, rather
+    /// than a search for names beginning with a space.
+    /// </summary>
+    [Fact]
+    public async Task ASurnameOfSpacesLeavesThePageUnfiltered()
+    {
+        var page = await Persons("/api/persons?lastName=%20%20");
+
+        Assert.Equal(SqlServerFixture.SeededPersons, page.TotalCount);
+    }
+
+    /// <summary>
+    /// The search is a filter and not a pattern language: a value carrying
+    /// SQL Server's own wildcards matches the people whose names contain those
+    /// characters, which is nobody, rather than matching everybody.
+    /// </summary>
+    [Theory]
+    [InlineData("%")]
+    [InlineData("_")]
+    [InlineData("[R]")]
+    public async Task ASurnameCarryingAWildcardMatchesNobodyRatherThanEverybody(string typed)
+    {
+        var page = await Persons($"/api/persons?lastName={Uri.EscapeDataString(typed)}");
+
+        Assert.Empty(page.Items);
+        Assert.Equal(0, page.TotalCount);
+    }
+
+    /// <summary>
+    /// A date of birth that is not a date is a 400 rather than a 500 or a
+    /// search for everybody: the framework refuses to bind it, and
+    /// <c>UseStatusCodePages</c> turns that into the one error shape this tier
+    /// returns.
+    /// </summary>
+    /// <remarks>
+    /// An empty value is one of them, which is the one asymmetry in these
+    /// criteria and is on the record here rather than left to be discovered: a
+    /// blank text criterion is a criterion nobody gave, but
+    /// <c>?birthDate=</c> is a date this tier cannot read, because the date is
+    /// bound and parsed by the framework before any of this tier's own code
+    /// runs. A criterion nobody typed is left out of the query string
+    /// altogether, which is what <c>Survsys.Web</c>'s client does with every
+    /// one of them.
+    /// </remarks>
+    [Theory]
+    [InlineData("yesterday")]
+    [InlineData("1985-13-45")]
+    [InlineData("")]
+    public async Task ADateOfBirthThatIsNotADateIsAProblemDetails(string typed)
+    {
+        using var response = await api.CreateClient().GetAsync($"/api/persons?birthDate={typed}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    /// <summary>
+    /// The creation the legacy flow's "Create Person and CMR" button makes: a
+    /// person who was not on file is put on file, read back from the
+    /// <c>Location</c> the 201 gave, and then found by the search that failed
+    /// to find them a moment ago.
+    /// </summary>
+    [Fact]
+    public async Task APersonPostedIsCreatedReadableAndThenFindable()
+    {
+        var client = api.CreateClient();
+
+        var before = await Persons("/api/persons?lastName=Thorsen");
+        Assert.Empty(before.Items);
+
+        using var created = await client.PostAsJsonAsync("/api/persons", new CreatePersonRequest(
+            LastName: "Thorsen",
+            FirstName: "Inge",
+            MiddleName: "Birgit",
+            BirthDate: new DateOnly(1971, 3, 9),
+            BirthGender: "F"), Json);
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        var posted = (await created.Content.ReadFromJsonAsync<PersonResponse>(Json))!;
+
+        try
+        {
+            Assert.True(posted.Id > 0);
+            Assert.Equal("Thorsen", posted.LastName);
+            Assert.Equal("Inge", posted.FirstName);
+            Assert.Equal("Birgit", posted.MiddleName);
+            Assert.Equal(new DateOnly(1971, 3, 9), posted.BirthDate);
+            Assert.Equal("F", posted.BirthGender);
+
+            // The Location is an endpoint that exists, and it reads back the
+            // person just created rather than a second person who happens to
+            // share their name.
+            Assert.Equal($"/api/persons/{posted.Id}", created.Headers.Location?.ToString());
+
+            using var read = await client.GetAsync(created.Headers.Location);
+            read.EnsureSuccessStatusCode();
+            var detail = (await read.Content.ReadFromJsonAsync<PersonDetailResponse>(Json))!;
+
+            Assert.Equal(posted.Id, detail.Id);
+            Assert.Equal("Thorsen", detail.LastName);
+            Assert.Equal("Inge", detail.FirstName);
+            Assert.Equal("Birgit", detail.MiddleName);
+            Assert.Equal(new DateOnly(1971, 3, 9), detail.BirthDate);
+            Assert.Equal("F", detail.BirthGender);
+
+            var after = await Persons("/api/persons?lastName=Thorsen");
+            Assert.Equal(["Thorsen, Inge"], after.Items.Select(Named));
+        }
+        finally
+        {
+            await Forget(posted.Id);
+        }
+    }
+
+    /// <summary>
+    /// A person created from a search form has nothing but what was typed:
+    /// no address, telephone, email, race, alias or guardian, and no
+    /// demographic field the request does not carry. Filling those in is the
+    /// Demographics screen's, which is a later session's.
+    /// </summary>
+    [Fact]
+    public async Task APersonPostedWithNothingButALastNameIsCreatedWithNothingElse()
+    {
+        using var created = await api.CreateClient()
+            .PostAsJsonAsync("/api/persons", new CreatePersonRequest("Kettleborough"), Json);
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        var posted = (await created.Content.ReadFromJsonAsync<PersonResponse>(Json))!;
+
+        try
+        {
+            var detail = await Person(posted.Id);
+
+            Assert.Equal("Kettleborough", detail.LastName);
+            Assert.Null(detail.FirstName);
+            Assert.Null(detail.MiddleName);
+            Assert.Null(detail.BirthDate);
+            Assert.Null(detail.DaysOldNoBirthday);
+            Assert.Null(detail.BirthGender);
+            Assert.Null(detail.CurrentGender);
+            Assert.Null(detail.Ethnicity);
+            Assert.Null(detail.Language);
+            Assert.Null(detail.CountryOfBirth);
+            Assert.Empty(detail.Races);
+            Assert.Empty(detail.Aliases);
+            Assert.Empty(detail.ParentGuardians);
+            Assert.Empty(detail.Addresses);
+            Assert.Empty(detail.Telephones);
+            Assert.Empty(detail.Emails);
+        }
+        finally
+        {
+            await Forget(posted.Id);
+        }
+    }
+
+    /// <summary>
+    /// What a form sends when a box was typed in with spaces, or submitted
+    /// empty: the name is stored trimmed, and a blank field is stored as
+    /// nothing said rather than as an empty string.
+    /// </summary>
+    [Fact]
+    public async Task APersonPostedWithSpacesAndBlanksIsStoredTrimmedAndNull()
+    {
+        using var created = await api.CreateClient().PostAsJsonAsync(
+            "/api/persons",
+            new CreatePersonRequest(
+                LastName: "  Pemberton ",
+                FirstName: " Ada",
+                MiddleName: "  ",
+                BirthDate: null,
+                BirthGender: ""),
+            Json);
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        var posted = (await created.Content.ReadFromJsonAsync<PersonResponse>(Json))!;
+
+        try
+        {
+            var detail = await Person(posted.Id);
+
+            Assert.Equal("Pemberton", detail.LastName);
+            Assert.Equal("Ada", detail.FirstName);
+            Assert.Null(detail.MiddleName);
+            Assert.Null(detail.BirthGender);
+        }
+        finally
+        {
+            await Forget(posted.Id);
+        }
+    }
+
+    /// <summary>
+    /// The one requirement the schema has, refused before anything is written:
+    /// the Problem Details names the field, and the person count is what it
+    /// was.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task APersonWithoutALastNameIsAProblemDetailsAndIsNotWritten(string? lastName)
+    {
+        var before = await Persons("/api/persons?pageSize=200");
+
+        using var response = await api.CreateClient()
+            .PostAsJsonAsync("/api/persons", new CreatePersonRequest(lastName), Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = problem.RootElement;
+
+        Assert.Equal(400, root.GetProperty("status").GetInt32());
+        Assert.Contains("lastName is required",
+            root.GetProperty("detail").GetString(), StringComparison.Ordinal);
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("correlationId").GetString()));
+
+        var after = await Persons("/api/persons?pageSize=200");
+        Assert.Equal(before.TotalCount, after.TotalCount);
+    }
+
+    /// <summary>
+    /// A body that is not a person at all. The framework refuses to bind it
+    /// and <c>UseStatusCodePages</c> turns that into the one error shape this
+    /// tier returns, so a caller reads one shape whether the request was
+    /// wrong or the body was.
+    /// </summary>
+    [Fact]
+    public async Task ABodyThatIsNotJsonIsAProblemDetails()
+    {
+        using var body = new StringContent(
+            "last name please", System.Text.Encoding.UTF8, "application/json");
+
+        using var response = await api.CreateClient().PostAsync("/api/persons", body);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    /// <summary>
     /// How <see cref="SqlServerFixture.PersonsByName"/> writes a person: the
     /// endpoint promises an order over two name parts, and a person with no
     /// first name is one of them.
     /// </summary>
     private static string Named(PersonResponse person) =>
         $"{person.LastName}, {person.FirstName}";
+
+    /// <summary>
+    /// Takes a person this suite created back out of the database, so that the
+    /// tests asserting <see cref="SqlServerFixture.SeededPersons"/> are
+    /// asserting the fixture and not whichever creation test ran first.
+    /// </summary>
+    /// <remarks>
+    /// Through the context, because this tier has no delete endpoint and is
+    /// not getting one: a test cleans up with the schema and not with a
+    /// feature nobody asked for.
+    /// </remarks>
+    private async Task Forget(int personId)
+    {
+        await using var context = server.NewContext();
+
+        await context.Persons
+            .Where(person => person.Id == personId)
+            .ExecuteDeleteAsync();
+    }
 
     private async Task<int> IdOf(string named)
     {

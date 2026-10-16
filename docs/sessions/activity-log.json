@@ -124,6 +124,29 @@
       "what": "step 'integration-suite-persons': its files",
       "reason": "The person suite starts the same host against the same database as the conditions suite, and session 5 wrote that WebApplicationFactory as a private class inside ConditionEndpointsTests. Its one subtlety -- that the connection string must arrive as an environment variable, because Program.cs reads it before builder.Build() applies any configuration callback -- is not a thing to hold two copies of, so it moves to SurvsysApi.cs and the conditions suite names it there. Same move, and same reason, as the api-paging-rule step made of the page-bounds rule.",
       "by": "claude-code (anthropic, claude-opus-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 14,
+      "dateTime": "2026-10-15T20:13:55.906000-04:00",
+      "task": "Session 14 adds the two things phase 1 needs before a case morbidity report can exist: a way to find a person, and a way to create a report about one. Survsys.Api gains RecordNumber, a pure rule class for the legacy YYYYNNNNN record number -- the year followed by a five-digit sequence, as ../nedss/docs/db-snapshots/session-010/02-after-cmr-creation.txt dumps it (202600001) -- with its tests in Survsys.UnitTests/RecordNumberTests.cs. Person search arrives as criteria on the existing GET /api/persons rather than as a second endpoint and a second paging shape: the fields the legacy search form carries, which ../nedss/docs/functional/epitrax-core-workflows.md lists as last, first and middle name, date of birth, phone and birth sex, held in a PersonSearch record bound with [AsParameters], with the name parts matched by prefix, the date of birth and the birth gender matched exactly, and the phone matched against the digits of a person's telephone rows; Survsys.Data gains the index on persons(last_name, first_name) that the search and the existing ordering both read. Survsys.Data gains PersonCondition -- EpiTrax's own person_condition table, the CMR table, named after it rather than after the morbidity report because the contact records phase 3 adds are rows in the same table -- carrying what the legacy two-step creation flow actually writes: person_id, condition_id, record_number, agency_id, first_reported_ph_date, event_onset_date and created_at, with the legacy snake_case column names, a unique index on record_number, and one generated migration. Survsys.Contracts and Survsys.Api gain the creation flow itself: GET /api/agencies, serving the 17 investigating agencies ../nedss/docs/functional/epitrax-cmr-workflow.md names from a stand-in list in the API tier, because no snapshot dumps the legacy agency table and session 30 owns the real one; POST /api/persons, which is what the legacy 'Create Person and CMR' button needs and what session 13 deferred to here; and POST /api/person-conditions with GET /api/person-conditions/{id}, the second making the first's Location header honest, where the server and not the caller assigns the record number -- the next sequence for the year, read from the highest record number already issued in it. Survsys.Web gains three screens over those endpoints: /people, the standalone person search, and /morbidity/create and /morbidity/create/{personId}, the legacy two-step creation flow -- search for the person, then choose the first-reported-to-public-health date, the disease and the investigating agency -- each element a later walkthrough will name carrying a stable identifier of its own, and the three navigable from the application bar. The failure handling ConditionsClient hand-rolled for one client moves into an ApiAsk the four clients share, as session 13 moved the page-bounds rule into Paging: three more copies of a try/catch chain would be three more places for a tier's contract to drift.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 14,
+      "dateTime": "2026-10-15T20:18:28.342000-04:00",
+      "what": "step 'data-person-condition-migration': its files",
+      "reason": "EF Core names a migration file after the timestamp it generates it at, which a plan written before the work cannot state",
+      "by": "claude-code (anthropic, claude-opus-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 14,
+      "dateTime": "2026-10-15T20:43:52.354000-04:00",
+      "what": "step 'web-creation-screens': its files",
+      "reason": "Step two of the creation flow names the person it is about at the top of the screen, which needs a read of one person that PersonsClient does not have yet: the plan gave that client a search and a creation only. Find is added to it here, with its case in the test file named after it, rather than the screen reaching past its client.",
+      "by": "claude-code (anthropic, claude-opus-5)"
     }
   ]
 }

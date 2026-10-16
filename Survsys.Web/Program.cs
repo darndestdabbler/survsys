@@ -26,8 +26,15 @@ builder.Services.AddMudServices();
 // The trailing slash matters: a base address without one would drop the last
 // path segment when a relative request is resolved against it, so an API
 // hosted under a path prefix would be asked the wrong URL.
-builder.Services.AddHttpClient<ConditionsClient>(http =>
-    http.BaseAddress = new Uri(apiBaseAddress.TrimEnd('/') + '/'));
+var api = new Uri(apiBaseAddress.TrimEnd('/') + '/');
+
+// One typed client per resource this tier reads or writes, each against the
+// one API address. A screen takes a client and never an HttpClient: what a
+// failure says is the client's to decide, and a screen's to show.
+builder.Services.AddHttpClient<ConditionsClient>(http => http.BaseAddress = api);
+builder.Services.AddHttpClient<PersonsClient>(http => http.BaseAddress = api);
+builder.Services.AddHttpClient<AgenciesClient>(http => http.BaseAddress = api);
+builder.Services.AddHttpClient<PersonConditionsClient>(http => http.BaseAddress = api);
 
 var app = builder.Build();
 

@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Survsys.Api;
+using Survsys.Contracts;
 using Survsys.Data;
 using Xunit;
 
@@ -196,5 +197,126 @@ public class PersonEndpointsTests
         Assert.Empty(detail.Addresses);
         Assert.Empty(detail.Telephones);
         Assert.Empty(detail.Emails);
+    }
+
+    /// <summary>
+    /// The created person is described by the list's own mapping, compiled —
+    /// so what a creation answers with and what a list shows cannot drift
+    /// apart.
+    /// </summary>
+    [Fact]
+    public void RespondIsTheListMappingItself()
+    {
+        var person = Seeded();
+
+        Assert.Equal(
+            PersonEndpoints.ToResponse.Compile().Invoke(person),
+            PersonEndpoints.Respond(person));
+    }
+
+    [Fact]
+    public void WhyNotAPersonAcceptsAPersonWithALastName()
+    {
+        Assert.Null(PersonEndpoints.WhyNotAPerson(new CreatePersonRequest("Rodriguez")));
+    }
+
+    /// <summary>
+    /// The one requirement the schema has, so the one rule this endpoint keeps
+    /// — and it is kept before any query, which is what makes it provable
+    /// here.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t")]
+    public void WhyNotAPersonRefusesAPersonWithoutALastName(string? lastName)
+    {
+        Assert.Contains("lastName is required",
+            PersonEndpoints.WhyNotAPerson(new CreatePersonRequest(lastName)),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Nothing else is required, and nothing else is checked: the legacy data
+    /// leaves every other field empty on plenty of people, and the reference
+    /// tables the codes belong to do not exist to check a code against.
+    /// </summary>
+    [Fact]
+    public void WhyNotAPersonAcceptsAPersonWhoIsNothingButALastName()
+    {
+        Assert.Null(PersonEndpoints.WhyNotAPerson(new CreatePersonRequest(
+            LastName: "Doe",
+            FirstName: null,
+            MiddleName: null,
+            BirthDate: null,
+            BirthGender: null)));
+    }
+
+    [Fact]
+    public void ToPersonCarriesTheFiveFieldsARequestHolds()
+    {
+        var person = PersonEndpoints.ToPerson(new CreatePersonRequest(
+            LastName: "Rodriguez",
+            FirstName: "Maria",
+            MiddleName: "Elena",
+            BirthDate: new DateOnly(1985, 6, 15),
+            BirthGender: "F"));
+
+        Assert.Equal("Rodriguez", person.LastName);
+        Assert.Equal("Maria", person.FirstName);
+        Assert.Equal("Elena", person.MiddleName);
+        Assert.Equal(new DateOnly(1985, 6, 15), person.BirthDate);
+        Assert.Equal("F", person.BirthGender);
+    }
+
+    /// <summary>
+    /// A person created from a search form has nothing else yet, and
+    /// everything that is not asked for is unset rather than empty: a created
+    /// person is a person nothing has been said about beyond their name.
+    /// </summary>
+    [Fact]
+    public void ToPersonLeavesEverythingTheRequestDoesNotCarryUnset()
+    {
+        var person = PersonEndpoints.ToPerson(new CreatePersonRequest("Doe"));
+
+        Assert.Equal(0, person.Id);
+        Assert.Null(person.FirstName);
+        Assert.Null(person.MiddleName);
+        Assert.Null(person.BirthDate);
+        Assert.Null(person.DaysOldNoBirthday);
+        Assert.Null(person.BirthGender);
+        Assert.Null(person.CurrentGender);
+        Assert.Null(person.Ethnicity);
+        Assert.Null(person.Language);
+        Assert.Null(person.CountryOfBirth);
+        Assert.Empty(person.Addresses);
+        Assert.Empty(person.Telephones);
+        Assert.Empty(person.Emails);
+        Assert.Empty(person.Races);
+        Assert.Empty(person.Aliases);
+        Assert.Empty(person.Guardians);
+    }
+
+    /// <summary>
+    /// What a form in front of a user sends: values with spaces around them,
+    /// and boxes nobody typed in submitted as empty strings. A name is trimmed
+    /// and a blank field is nothing said — NULL, which is how a column here
+    /// says nobody has said.
+    /// </summary>
+    [Fact]
+    public void ToPersonTrimsWhatWasTypedAndTreatsABlankFieldAsNothingSaid()
+    {
+        var person = PersonEndpoints.ToPerson(new CreatePersonRequest(
+            LastName: "  Rodriguez ",
+            FirstName: " Maria",
+            MiddleName: "   ",
+            BirthDate: null,
+            BirthGender: ""));
+
+        Assert.Equal("Rodriguez", person.LastName);
+        Assert.Equal("Maria", person.FirstName);
+        Assert.Null(person.MiddleName);
+        Assert.Null(person.BirthGender);
     }
 }
