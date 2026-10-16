@@ -498,7 +498,7 @@
     {
       "number": 25,
       "title": "Contacts and exposures",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-16T02:39:23.330000-04:00",
       "orchestrator": {
         "engine": "claude-code",
@@ -508,7 +508,7 @@
       },
       "frameworkVersion": "3.21.0",
       "startCommit": "2e7562911f428bd791fa65ad095d0bf91809c5b8",
-      "completedAt": null,
+      "completedAt": "2026-10-16T03:23:52.338000-04:00",
       "verificationVerdict": "VERIFIED",
       "verification": {
         "rounds": 2,
