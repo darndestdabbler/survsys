@@ -325,6 +325,14 @@
       "dateTime": "2026-10-16T05:46:08.745000-04:00",
       "reason": "Rollback to Start of This Session from the Work Explorer",
       "by": "operator"
+    },
+    {
+      "kind": "rollback",
+      "sessionNumber": 29,
+      "through": 29,
+      "dateTime": "2026-10-16T14:11:42.333000-04:00",
+      "reason": "Rollback to Start of This Session from the Work Explorer",
+      "by": "operator"
     }
   ]
 }

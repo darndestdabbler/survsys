@@ -290,3 +290,4 @@ Session 28 writes phase 3's four walkthroughs and the four Playwright tests that
 **Rolled back:**
 
 - 2026-10-16 — session 29 — Rollback to Start of This Session from the Work Explorer (operator)
+- 2026-10-16 — session 29 — Rollback to Start of This Session from the Work Explorer (operator)
