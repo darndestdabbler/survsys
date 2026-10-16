@@ -1,0 +1,240 @@
+@* Step two of the legacy two-step creation flow, at the legacy address: the
+   disease and the agency, and then the report exists.
+
+   ../nedss/docs/functional/epitrax-cmr-workflow.md records this screen's
+   three fields — "First reported to public health" as a date, "Disease" as a
+   searchable dropdown, "Investigating Agency" as a dropdown — and its two
+   buttons, Save & Continue and Cancel. That is what this screen is, over the
+   person named at the top so a user can see who they are reporting on.
+
+   The flow ends where the legacy one does: once the report exists, this
+   screen navigates to the report's own form, MorbidityReport.razor at
+   /event/edit/{id}, whose header names the record number just created and
+   whose tab strip carries the Demographic tab. Session 14 ended here on a
+   panel naming the record number, because the shell was session 15's; the
+   shell exists now, and the panel went with its arrival. *@
+@page "/morbidity/create/{PersonId:int}"
+@inject PersonsClient Persons
+@inject ConditionsClient Conditions
+@inject AgenciesClient Agencies
+@inject PersonConditionsClient Reports
+@inject NavigationManager Navigation
+
+<PageTitle>New case morbidity report — Survsys</PageTitle>
+
+<MudText id="new-report-details-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    New case morbidity report
+</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="new-report-details-busy" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (failure is { } whyNot)
+    {
+        @* Whichever of the four asks failed says so in its own words: the
+           person, the conditions, the agencies, or the report itself. *@
+        <MudAlert id="new-report-details-error" Severity="Severity.Error"
+                  Variant="Variant.Filled" Class="mb-4">
+            @whyNot
+        </MudAlert>
+    }
+
+    @if (complaint is { } whyNotYet)
+    {
+        <MudAlert id="new-report-details-complaint" Severity="Severity.Warning" Class="mb-4">
+            @whyNotYet
+        </MudAlert>
+    }
+
+    @if (person is not null)
+    {
+        <MudText id="new-report-details-person" Typo="Typo.body1" Class="mb-4">
+            Step 2 of 2. Reporting on <strong>@Named</strong>
+            (person @PersonId).
+        </MudText>
+
+        <MudPaper id="new-report-details-form" Elevation="1" Class="pa-4 mb-4">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="4">
+                    @* A native date input, for the reason the search form's
+                       is one: what it yields is what the other tier parses. *@
+                    <MudTextField @bind-Value="firstReported"
+                                  id="report-first-reported"
+                                  Label="First reported to public health"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Date" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    @* The conditions that may be chosen, which is what the
+                       active flag means; the legacy dropdown filters as a
+                       user types, and this one lists them.
+
+                       Each item names its type, here and on the agency list
+                       below, because the list's own type is the nullable
+                       integer it binds to while an item inferred from a plain
+                       integer value is MudSelectItem<int>: the two compile,
+                       and the first click on an item throws an invalid cast
+                       inside MudBlazor and terminates the circuit. The
+                       create-a-case-morbidity-report walkthrough is what
+                       found it. *@
+                    <MudSelect @bind-Value="conditionId" id="report-disease"
+                               Label="Disease" Variant="Variant.Outlined">
+                        @foreach (var condition in diseases)
+                        {
+                            <MudSelectItem T="int?" Value="@condition.Id">@condition.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect @bind-Value="agencyId" id="report-agency"
+                               Label="Investigating agency" Variant="Variant.Outlined">
+                        @foreach (var agency in agencies)
+                        {
+                            <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <div class="d-flex gap-2 mt-4">
+                <MudButton id="report-save" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@saving" OnClick="@Save">
+                    Save &amp; Continue
+                </MudButton>
+                <MudButton id="report-cancel" Variant="Variant.Outlined" Disabled="@saving"
+                           Href="/morbidity/create">
+                    Cancel
+                </MudButton>
+            </div>
+        </MudPaper>
+    }
+}
+
+@code {
+    /// <summary>The person this report is about, from the address.</summary>
+    [Parameter]
+    public int PersonId { get; set; }
+
+    private PersonDetailResponse? person;
+
+    private IReadOnlyList<ConditionResponse> diseases = [];
+
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private string? firstReported;
+
+    private int? conditionId;
+
+    private int? agencyId;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    private string? complaint;
+
+    /// <summary>
+    /// How many conditions this screen asks for. The whole catalogue, in one
+    /// page: the legacy one holds 186 rows and the API tier returns up to 200
+    /// in a page, so one ask is the whole list. A catalogue past that bound
+    /// wants an endpoint that filters, and the session that owns the
+    /// conditions screens is the one to write it.
+    /// </summary>
+    private const int Catalogue = 200;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var found = await Persons.Find(PersonId);
+        var conditions = await Conditions.Page(1, Catalogue);
+        var listed = await Agencies.All();
+
+        person = found.Value;
+        diseases = conditions.Value?.Items
+            .Where(condition => condition.Active)
+            .ToList() ?? [];
+        agencies = listed.Value?.Items ?? [];
+
+        // The first ask that failed is the one worth reporting: a screen that
+        // could not read the person has nothing to say about the agencies.
+        failure = found.Failure ?? conditions.Failure ?? listed.Failure;
+
+        loading = false;
+    }
+
+    /// <summary>
+    /// The person's name as the legacy header bar writes it: last name first.
+    /// </summary>
+    private string Named => person is null
+        ? $"person {PersonId}"
+        : string.IsNullOrWhiteSpace(person.FirstName)
+            ? person.LastName
+            : $"{person.LastName}, {person.FirstName}";
+
+    private async Task Save()
+    {
+        if (conditionId is not { } disease)
+        {
+            complaint = "Choose the disease this report is for.";
+
+            return;
+        }
+
+        if (agencyId is not { } agency)
+        {
+            complaint = "Choose the agency investigating this report.";
+
+            return;
+        }
+
+        DateOnly? reported = null;
+
+        if (!string.IsNullOrWhiteSpace(firstReported))
+        {
+            if (!DateOnly.TryParse(
+                firstReported,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var parsed))
+            {
+                complaint = "Give the date first reported to public health as yyyy-mm-dd, "
+                    + "or leave it empty.";
+
+                return;
+            }
+
+            reported = parsed;
+        }
+
+        complaint = null;
+        failure = null;
+        saving = true;
+
+        try
+        {
+            var created = await Reports.Open(new CreatePersonConditionRequest(
+                PersonId: PersonId,
+                ConditionId: disease,
+                AgencyId: agency,
+                FirstReportedPhDate: reported));
+
+            // The report exists: the flow ends on its own form, as the
+            // legacy one does, with the record number in that form's header.
+            if (created.Value is { } report)
+            {
+                Navigation.NavigateTo($"/event/edit/{report.Id}");
+
+                return;
+            }
+
+            failure = created.Failure;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}
