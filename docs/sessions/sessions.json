@@ -520,9 +520,9 @@
     {
       "number": 26,
       "title": "Notes and tasks",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-16T03:26:24.915000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-16T03:52:11.595000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
