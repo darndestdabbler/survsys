@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- The API tier, and the only module that reaches the database. The
+       mapping between entities and wire shapes lives here, because this is
+       the tier that owns the wire. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Design-time only, and private: `dotnet ef` needs it in the startup
+         project, which is what dabbler.yaml's packaging script makes this one
+         when it writes the idempotent migration script. It ships with
+         nothing. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Survsys.Data\Survsys.Data.csproj" />
+    <ProjectReference Include="..\Survsys.Contracts\Survsys.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
