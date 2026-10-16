@@ -4,9 +4,10 @@
 
    The app bar carries the application's name and, since session 14, the
    navigation between the screens there now are: the conditions catalogue, the
-   people on file, and a new case morbidity report — the first three of the
-   legacy application's own main navigation, which
-   ../nedss/docs/functional/epitrax-cmr-workflow.md records as NEW CMR,
+   people on file, a new case morbidity report, and — since session 21 — the
+   work queue and the agency board, the two faces of the legacy EVENTS work
+   surface. The legacy application's own main navigation, which
+   ../nedss/docs/functional/epitrax-cmr-workflow.md records, is NEW CMR,
    EVENTS, OUTBREAKS, FACILITIES, CMR SEARCH, EXPORTS, PEOPLE, ADMIN,
    SETTINGS, LOGOUT. The rest arrive with the screens they open.
 
@@ -31,6 +32,12 @@
         </MudButton>
         <MudButton id="nav-new-report" Href="/morbidity/create" Color="Color.Inherit">
             New CMR
+        </MudButton>
+        <MudButton id="nav-queue" Href="/queue" Color="Color.Inherit">
+            Work queue
+        </MudButton>
+        <MudButton id="nav-agency-queue" Href="/queue/agency" Color="Color.Inherit">
+            Agency board
         </MudButton>
     </MudAppBar>
     <MudMainContent>

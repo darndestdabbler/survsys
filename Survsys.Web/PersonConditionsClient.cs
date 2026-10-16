@@ -32,11 +32,21 @@ public sealed class PersonConditionsClient(HttpClient http)
     /// <summary>How a failure to set a report's case status starts.</summary>
     public const string StatusFailurePrefix = "The case morbidity report status could not be saved";
 
+    /// <summary>How a failure to assign a report to an agency starts.</summary>
+    public const string AssignFailurePrefix = "The case morbidity report could not be assigned";
+
+    /// <summary>How a failure to advance a report's workflow starts.</summary>
+    public const string WorkflowFailurePrefix = "The case morbidity report workflow could not be advanced";
+
     private static readonly ApiAsk Opening = new(FailurePrefix, "the report created");
 
     private static readonly ApiAsk Finding = new(FindFailurePrefix, "the report");
 
     private static readonly ApiAsk Setting = new(StatusFailurePrefix, "the report as saved");
+
+    private static readonly ApiAsk Assigning = new(AssignFailurePrefix, "the report as assigned");
+
+    private static readonly ApiAsk Advancing = new(WorkflowFailurePrefix, "the report as advanced");
 
     /// <summary>
     /// Opens a case morbidity report and answers with it — its record number
@@ -80,4 +90,40 @@ public sealed class PersonConditionsClient(HttpClient http)
         CancellationToken cancellationToken = default) =>
         Setting.Put<UpdateCaseStatusRequest, PersonConditionResponse>(
             http, $"api/person-conditions/{id}/status", status, cancellationToken);
+
+    /// <summary>
+    /// Assigns a report to an investigating agency and answers with the report
+    /// as the API tier now holds it, or with why nothing was assigned.
+    /// </summary>
+    /// <remarks>
+    /// A fourth prefix, because a user whose assignment was refused is being
+    /// told a different thing than one whose status or workflow could not be
+    /// saved. Assigning returns the report to the assigned-to-LHD start of the
+    /// workflow, which the answered report carries, so the screen shows the
+    /// state as stored rather than as it was.
+    /// </remarks>
+    public Task<Asked<PersonConditionResponse>> Assign(
+        int id,
+        AssignReportRequest assignment,
+        CancellationToken cancellationToken = default) =>
+        Assigning.Put<AssignReportRequest, PersonConditionResponse>(
+            http, $"api/person-conditions/{id}/assignment", assignment, cancellationToken);
+
+    /// <summary>
+    /// Moves a report to the next workflow state and answers with the report as
+    /// the API tier now holds it, or with why it was not moved.
+    /// </summary>
+    /// <remarks>
+    /// A fifth prefix, as the assignment has a fourth: a move the transition
+    /// table refuses comes back as this failure, since the rule is the API
+    /// tier's — the screen offers only the one move the state allows and reads
+    /// a refusal as a message rather than re-checking it. The answer is the
+    /// whole report, so the screen shows the state as stored.
+    /// </remarks>
+    public Task<Asked<PersonConditionResponse>> Transition(
+        int id,
+        UpdateWorkflowStateRequest workflow,
+        CancellationToken cancellationToken = default) =>
+        Advancing.Put<UpdateWorkflowStateRequest, PersonConditionResponse>(
+            http, $"api/person-conditions/{id}/workflow", workflow, cancellationToken);
 }

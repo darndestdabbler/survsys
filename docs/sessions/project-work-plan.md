@@ -32,7 +32,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 18 | Clinical and laboratory data — schema and endpoints | no | 2026-10-15 |
 | 19 | Clinical and laboratory screens | no | 2026-10-15 |
 | 20 | Case classification, status and MMWR week | no | 2026-10-15 |
-| 21 | Workflow state machine, work queues and agency sharing | — | not declared |
+| 21 | Workflow state machine, work queues and agency sharing | no | 2026-10-16 |
 | 22 | Phase 2 walkthroughs | — | not declared |
 | 23 | Release 0.3.0 (release: 0.3.0) | — | not declared |
 | 24 | The Investigation and Administrative tabs | — | not declared |
@@ -215,3 +215,13 @@ Session 20 gives the case morbidity report its case status and its MMWR week and
 **Amended after acceptance:**
 
 - 2026-10-15 — step 'data-migration': its files: EF generated the migration with timestamp 20261016034757; the plan's placeholder timestamp was unpredictable. (claude-code (anthropic, claude-opus-5))
+
+### Session 21 — Workflow state machine, work queues and agency sharing
+
+**Releasable: no.**
+
+Session 21 gives the case morbidity report its workflow lifecycle, the endpoints that move it through that lifecycle, read-only sharing of a report with other agencies, and the work-queue screens an agency works from. The lifecycle is a pure transition table in Survsys.Data taking no DbContext, in the shape CaseStatusRules has: WorkflowRules owns the four states the session plan names -- assigned_to_lhd, accepted, under_investigation and closed -- as the forward chain assigned_to_lhd to accepted to under_investigation to closed, with reading a stored code into a state (an empty or absent code reads as the assigned_to_lhd default, as the legacy starts a case at the Local Health Department), parsing a caller's offered target code, writing a state back to its code, and the transition table that answers whether a move from one state to another is allowed -- the three forward moves allowed and every one of the other thirteen ordered pairs refused. The report gains one nullable column, workflow_state, under the legacy snake_case naming and holding the code as case_status does; a report is opened at assigned_to_lhd. A second small entity, PersonConditionShare, is this schema's own join expressing read-only multi-agency sharing: a row ties a report to an agency it is shared with, the agency id a reference into the AgencyEndpoints stand-in list as person_conditions.agency_id is, with a unique index so a report is not shared to one agency twice. One migration named Workflow carries both deltas. Survsys.Api adds an assignment endpoint (set the investigating agency and return the report to assigned_to_lhd), a single workflow-transition endpoint gated by WorkflowRules (which covers acceptance, the move to under_investigation and closure, because the pure table is the rule and one route is clearer than three copies of one check), a share-add and share-list pair, and a work-queue read filtered to an agency that returns the reports the agency investigates together with the reports shared read-only to it. Survsys.Web adds the application-tier clients for those endpoints and two work-queue screens: an agency board showing a chosen agency's whole queue with sharing and assignment, and an assignee worklist showing the cases that agency is the assignee of with the workflow action buttons the allowed transitions enable. Every element a later walkthrough names carries a stable identifier.
+
+**Amended after acceptance:**
+
+- 2026-10-16 — step 'data-migration': its files: EF stamped the migration with timestamp 20261016041344; recording the three real paths it wrote. (claude-code (anthropic, claude-opus-5))

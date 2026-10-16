@@ -499,6 +499,11 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("treatment_given");
 
+                    b.Property<string>("WorkflowState")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("workflow_state");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ConditionId");
@@ -526,6 +531,31 @@ namespace Survsys.Data.Migrations
                     b.HasIndex("LabId");
 
                     b.ToTable("person_condition_labs", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.PersonConditionShare", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AgencyId")
+                        .HasColumnType("int")
+                        .HasColumnName("agency_id");
+
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonConditionId", "AgencyId")
+                        .IsUnique();
+
+                    b.ToTable("person_condition_shares", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.PersonEmail", b =>
@@ -716,6 +746,15 @@ namespace Survsys.Data.Migrations
                         .WithMany()
                         .HasForeignKey("PersonConditionId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.PersonConditionShare", b =>
+                {
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

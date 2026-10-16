@@ -42,6 +42,7 @@ builder.Services.AddPersons();
 builder.Services.AddPersonConditions();
 builder.Services.AddClinical();
 builder.Services.AddLabs();
+builder.Services.AddWorkQueue();
 
 var app = builder.Build();
 
@@ -83,6 +84,7 @@ app.MapAgencies();
 app.MapPersonConditions();
 app.MapClinical();
 app.MapLabs();
+app.MapWorkQueue();
 
 app.Run();
 

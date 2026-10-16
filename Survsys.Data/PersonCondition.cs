@@ -227,4 +227,30 @@ public class PersonCondition
     /// <see cref="EventOnsetDate"/>; the two are set and read together.
     /// </remarks>
     public int? MmwrYear { get; set; }
+
+    /// <summary>
+    /// Where this report sits in the investigation lifecycle: the legacy
+    /// workflow code, or null for a report read as the assigned-to-LHD start.
+    /// </summary>
+    /// <remarks>
+    /// The vocabulary and the state machine over it are
+    /// <see cref="WorkflowRules"/>'s: the four states the session plan names —
+    /// assigned to LHD, accepted, under investigation and closed — as the
+    /// forward chain, with the codes a report's workflow may hold and the rule
+    /// for moving between them. A plain string holding the legacy code, because
+    /// there is no workflow reference table in this schema and
+    /// <c>current_workflow_id</c> is a foreign key to one the legacy has and
+    /// this does not, exactly as <see cref="CaseStatus"/> holds the status code
+    /// and <see cref="AgencyId"/> references a list no table stands behind.
+    ///
+    /// A report is opened at <see cref="WorkflowRules.InitialCode"/>, as the
+    /// legacy starts a case at the Local Health Department; null until then,
+    /// which <see cref="WorkflowRules.Read(string?)"/> reads as that same
+    /// assigned-to-LHD default, so a report written before this column existed
+    /// is where it was. The move from one state to the next is the transition
+    /// endpoint's, gated by <see cref="WorkflowRules.IsAllowed"/>; nothing here
+    /// moves it on a report's labs or classification, because the
+    /// classification-gated transitions are the deferred, Utah-specific work.
+    /// </remarks>
+    public string? WorkflowState { get; set; }
 }

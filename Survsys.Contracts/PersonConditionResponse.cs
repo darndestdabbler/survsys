@@ -52,6 +52,13 @@ namespace Survsys.Contracts;
 /// onset date's calendar year at either end of it; null where there is no
 /// onset date, and read together with <paramref name="MmwrWeek"/>.
 /// </param>
+/// <param name="WorkflowState">
+/// Where the report sits in the investigation lifecycle, as the legacy workflow
+/// code — one of assigned to LHD, accepted, under investigation or closed — or
+/// null for a report read as the assigned-to-LHD default a case starts at. The
+/// vocabulary and the moves between states are the API tier's, which validates
+/// a transition against the workflow rules.
+/// </param>
 public record PersonConditionResponse(
     int Id,
     int PersonId,
@@ -63,4 +70,5 @@ public record PersonConditionResponse(
     DateTimeOffset CreatedAt,
     string? CaseStatus,
     int? MmwrWeek,
-    int? MmwrYear);
+    int? MmwrYear,
+    string? WorkflowState);

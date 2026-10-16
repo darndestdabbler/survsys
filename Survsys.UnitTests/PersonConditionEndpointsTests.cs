@@ -35,6 +35,7 @@ public class PersonConditionEndpointsTests
         CaseStatus = CaseStatusRules.ConfirmedCode,
         MmwrWeek = 10,
         MmwrYear = 2026,
+        WorkflowState = WorkflowRules.UnderInvestigationCode,
     };
 
     [Fact]
@@ -45,7 +46,7 @@ public class PersonConditionEndpointsTests
         Assert.Equal(
             new(11, 13, 74, "202600001", 1, new DateOnly(2026, 3, 12), new DateOnly(2026, 3, 12),
                 new DateTimeOffset(2026, 3, 12, 22, 7, 16, TimeSpan.FromHours(-6)),
-                CaseStatusRules.ConfirmedCode, 10, 2026),
+                CaseStatusRules.ConfirmedCode, 10, 2026, WorkflowRules.UnderInvestigationCode),
             response);
     }
 
@@ -198,6 +199,37 @@ public class PersonConditionEndpointsTests
     {
         Assert.Contains($"caseStatus '{caseStatus}'",
             PersonConditionEndpoints.WhyNotAStatus(new UpdateCaseStatusRequest(caseStatus)),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Every agency the tier lists is one a report may be assigned to, as it is
+    /// one a report may be created against: the two checks read the same static
+    /// list.
+    /// </summary>
+    [Fact]
+    public void WhyNotAnAssignmentAcceptsEveryAgencyTheTierLists()
+    {
+        foreach (var agency in AgencyEndpoints.All)
+        {
+            Assert.Null(PersonConditionEndpoints.WhyNotAnAssignment(
+                new AssignReportRequest(agency.Id)));
+        }
+    }
+
+    /// <summary>
+    /// An agency nobody has is refused before the database is asked, as it is on
+    /// creation: there is no foreign key behind <c>agency_id</c> to refuse it,
+    /// which is why this check is worth having. The message names the value.
+    /// </summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(99)]
+    public void WhyNotAnAssignmentRefusesAnAgencyNoAgencyHas(int agencyId)
+    {
+        Assert.Contains($"agencyId {agencyId} is not an agency",
+            PersonConditionEndpoints.WhyNotAnAssignment(new AssignReportRequest(agencyId)),
             StringComparison.Ordinal);
     }
 }

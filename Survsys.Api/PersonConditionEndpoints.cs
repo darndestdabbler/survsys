@@ -61,7 +61,8 @@ public static class PersonConditionEndpoints
             report.CreatedAt,
             report.CaseStatus,
             report.MmwrWeek,
-            report.MmwrYear);
+            report.MmwrYear,
+            report.WorkflowState);
 
     /// <summary>
     /// <see cref="ToResponse"/> compiled, for the one caller that has a report
@@ -150,6 +151,36 @@ public static class PersonConditionEndpoints
     }
 
     /// <summary>
+    /// Why this is not an agency a report may be assigned to, or null when it
+    /// is one.
+    /// </summary>
+    /// <remarks>
+    /// The shape <see cref="WhyNotAReport"/> and <see cref="WhyNotAStatus"/>
+    /// have: a pure function the unit suite proves, with the endpoint turning
+    /// the sentence into a 400. The agency is refused here rather than in the
+    /// database, because the agency list is a static one in this tier and asking
+    /// it costs nothing — the same reason <see cref="WhyNotAReport"/> checks the
+    /// agency on creation. Whether the report exists is not here, because that
+    /// needs a query.
+    ///
+    /// Public because the unit suite proves it. Nothing outside this file calls
+    /// it.
+    /// </remarks>
+    public static string? WhyNotAnAssignment(AssignReportRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (AgencyEndpoints.Find(request.AgencyId) is null)
+        {
+            return $"agencyId {request.AgencyId} is not an agency this tier knows. The "
+                + "agencies a report may be assigned to are the ones GET /api/agencies "
+                + "lists.";
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Registers what the person-conditions endpoints need of the container.
     /// Kept here with the endpoints so the slice's wiring is in one place, and
     /// so that <c>Program.cs</c> need not name an internal type.
@@ -171,6 +202,16 @@ public static class PersonConditionEndpoints
         routes.MapPut("/api/person-conditions/{id:int}/status", SetStatus)
             .WithName("SetPersonConditionStatus")
             .WithSummary("Sets a case morbidity report's case status.");
+
+        routes.MapPut("/api/person-conditions/{id:int}/assignment", Assign)
+            .WithName("AssignPersonCondition")
+            .WithSummary("Assigns a case morbidity report to an investigating agency and "
+                + "returns it to the assigned-to-LHD start of the workflow.");
+
+        routes.MapPut("/api/person-conditions/{id:int}/workflow", AdvanceWorkflow)
+            .WithName("SetPersonConditionWorkflow")
+            .WithSummary("Moves a case morbidity report to the next workflow state the "
+                + "transition table allows.");
 
         return routes;
     }
@@ -246,6 +287,105 @@ public static class PersonConditionEndpoints
         }
 
         if (await reports.SetStatus(id, request, cancellationToken) is not { } report)
+        {
+            return TypedResults.Problem(
+                detail: $"No case morbidity report has id {id}.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "There is no such case morbidity report.");
+        }
+
+        return TypedResults.Ok(report);
+    }
+
+    /// <remarks>
+    /// Assigning a report names its investigating agency and returns it to the
+    /// assigned-to-LHD start of the workflow, as the legacy enters a case into
+    /// the Local Health Department's queue. The agency is refused before the
+    /// database is asked, as <see cref="WhyNotAReport"/> refuses one on
+    /// creation; a report id that names no report is a 404, the resource
+    /// addressed being the report itself.
+    /// </remarks>
+    private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> Assign(
+        PersonConditionQueries reports,
+        int id,
+        AssignReportRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotAnAssignment(request) is { } why)
+        {
+            return TypedResults.Problem(
+                detail: why,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The agency the report is to be assigned to is not one this endpoint knows.");
+        }
+
+        if (await reports.Assign(id, request.AgencyId, cancellationToken) is not { } report)
+        {
+            return TypedResults.Problem(
+                detail: $"No case morbidity report has id {id}.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "There is no such case morbidity report.");
+        }
+
+        return TypedResults.Ok(report);
+    }
+
+    /// <remarks>
+    /// The move is gated by the pure transition table and nothing else: a
+    /// target code the vocabulary does not know is a 400 before the database is
+    /// asked, a report id that names no report is a 404, and a move
+    /// <see cref="WorkflowRules.IsAllowed"/> rejects — a skip, a backward move,
+    /// or a reopening — is a 400 whose message names where the report is and
+    /// where it was asked to go. The current state is read from the report and
+    /// the target written back; no labs or classification move it, because the
+    /// classification-gated transitions are the deferred, Utah-specific work.
+    ///
+    /// The <see cref="WorkflowState"/> enum stays out of this signature and in
+    /// the body, as the architecture test requires of an endpoint; the query
+    /// holds the <c>DbContext</c>.
+    /// </remarks>
+    private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> AdvanceWorkflow(
+        PersonConditionQueries reports,
+        int id,
+        UpdateWorkflowStateRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!WorkflowRules.TryParse(request.WorkflowState, out var target))
+        {
+            return TypedResults.Problem(
+                detail: $"workflowState '{request.WorkflowState}' is not a workflow state a "
+                    + $"report may be moved to. A workflow state is one of "
+                    + $"{WorkflowRules.AssignedToLhdCode}, {WorkflowRules.AcceptedCode}, "
+                    + $"{WorkflowRules.UnderInvestigationCode} or {WorkflowRules.ClosedCode}.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The workflow state asked for is not one this endpoint can set.");
+        }
+
+        if (await reports.WorkflowCodeOf(id, cancellationToken) is not { } currentCode)
+        {
+            return TypedResults.Problem(
+                detail: $"No case morbidity report has id {id}.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "There is no such case morbidity report.");
+        }
+
+        var current = WorkflowRules.Read(currentCode);
+
+        if (!WorkflowRules.IsAllowed(current, target))
+        {
+            return TypedResults.Problem(
+                detail: $"A report at {WorkflowRules.CodeOf(current)} may not be moved to "
+                    + $"{WorkflowRules.CodeOf(target)}. The workflow runs "
+                    + $"{WorkflowRules.AssignedToLhdCode} to {WorkflowRules.AcceptedCode} to "
+                    + $"{WorkflowRules.UnderInvestigationCode} to {WorkflowRules.ClosedCode}, "
+                    + "one step at a time and forward only.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The workflow move asked for is not one the transition table allows.");
+        }
+
+        if (await reports.SetWorkflow(id, WorkflowRules.CodeOf(target), cancellationToken) is not { } report)
         {
             return TypedResults.Problem(
                 detail: $"No case morbidity report has id {id}.",
@@ -375,6 +515,8 @@ internal sealed class PersonConditionQueries(SurvsysDbContext database)
         // it, and the MMWR week and year are read off it here and stored, as
         // the record number is: no column computes them on the fly, and the
         // case status stays unset — null, which is Unknown — until one is set.
+        // The workflow starts at assigned_to_lhd, as the legacy opens a case at
+        // the Local Health Department.
         var onset = DateOnly.FromDateTime(createdAt.Date);
         var mmwr = MmwrWeek.Of(onset);
 
@@ -389,6 +531,7 @@ internal sealed class PersonConditionQueries(SurvsysDbContext database)
             CreatedAt = createdAt,
             MmwrWeek = mmwr.Week,
             MmwrYear = mmwr.Year,
+            WorkflowState = WorkflowRules.InitialCode,
         };
 
         database.PersonConditions.Add(report);
@@ -423,6 +566,92 @@ internal sealed class PersonConditionQueries(SurvsysDbContext database)
         }
 
         report.CaseStatus = request.CaseStatus;
+        await database.SaveChangesAsync(cancellationToken);
+
+        return PersonConditionEndpoints.Respond(report);
+    }
+
+    /// <summary>
+    /// Assigns a report to an agency and returns its workflow to the
+    /// assigned-to-LHD start, answering the report as stored, or null where no
+    /// report has that id — the answer the endpoint turns into a 404.
+    /// </summary>
+    /// <remarks>
+    /// The agency is validated before this is called; here is only the write.
+    /// Both columns move together: assigning a report is entering it into an
+    /// agency's queue, which is the start of the workflow, so the state returns
+    /// to <see cref="WorkflowRules.InitialCode"/> whatever it was.
+    /// </remarks>
+    public async Task<PersonConditionResponse?> Assign(
+        int id,
+        int agencyId,
+        CancellationToken cancellationToken)
+    {
+        var report = await database.PersonConditions
+            .SingleOrDefaultAsync(report => report.Id == id, cancellationToken);
+
+        if (report is null)
+        {
+            return null;
+        }
+
+        report.AgencyId = agencyId;
+        report.WorkflowState = WorkflowRules.InitialCode;
+        await database.SaveChangesAsync(cancellationToken);
+
+        return PersonConditionEndpoints.Respond(report);
+    }
+
+    /// <summary>
+    /// The report's current workflow code, read as the assigned-to-LHD default
+    /// where the stored column is empty, or null where no report has that id —
+    /// which the endpoint turns into a 404.
+    /// </summary>
+    /// <remarks>
+    /// Null means no report, not an empty column: a report that exists with no
+    /// stored code is at <see cref="WorkflowRules.InitialCode"/>, as
+    /// <see cref="WorkflowRules.Read(string?)"/> reads it, so the endpoint can
+    /// tell "no such report" from "a report at the default start". The endpoint
+    /// reads the state and checks the move; the write is <see cref="SetWorkflow"/>.
+    /// </remarks>
+    public async Task<string?> WorkflowCodeOf(int id, CancellationToken cancellationToken)
+    {
+        var found = await database.PersonConditions
+            .Where(report => report.Id == id)
+            .Select(report => new { report.WorkflowState })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (found is null)
+        {
+            return null;
+        }
+
+        return found.WorkflowState ?? WorkflowRules.InitialCode;
+    }
+
+    /// <summary>
+    /// Writes a report's workflow code and answers with the report as stored,
+    /// or null where no report has that id.
+    /// </summary>
+    /// <remarks>
+    /// The move is validated before this is called — the code is one the
+    /// vocabulary knows and the transition one the table allows — so here is
+    /// only the write. Nothing else on the report moves with it.
+    /// </remarks>
+    public async Task<PersonConditionResponse?> SetWorkflow(
+        int id,
+        string workflowCode,
+        CancellationToken cancellationToken)
+    {
+        var report = await database.PersonConditions
+            .SingleOrDefaultAsync(report => report.Id == id, cancellationToken);
+
+        if (report is null)
+        {
+            return null;
+        }
+
+        report.WorkflowState = workflowCode;
         await database.SaveChangesAsync(cancellationToken);
 
         return PersonConditionEndpoints.Respond(report);

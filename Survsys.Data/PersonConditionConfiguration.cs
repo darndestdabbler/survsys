@@ -36,11 +36,14 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
 
     /// <summary>
     /// Room for a short coded value: the Yes/No/Unknown the Clinical tab writes
-    /// to <see cref="PersonCondition.TreatmentGiven"/>, and the case status
-    /// code on <see cref="PersonCondition.CaseStatus"/>, whose longest value is
-    /// the two-letter <c>NC</c>. The legacy columns are unbounded text; a column
-    /// that holds a code does not need room for prose, and the bound leaves
-    /// room over the longest value rather than sitting on it.
+    /// to <see cref="PersonCondition.TreatmentGiven"/>, the case status code on
+    /// <see cref="PersonCondition.CaseStatus"/> whose longest value is the
+    /// two-letter <c>NC</c>, and the workflow code on
+    /// <see cref="PersonCondition.WorkflowState"/> whose longest value is the
+    /// nineteen-character <c>under_investigation</c>. The legacy columns are
+    /// unbounded text; a column that holds a code does not need room for prose,
+    /// and the bound leaves room over the longest value rather than sitting on
+    /// it.
     /// </summary>
     private const int CodeLength = 20;
 
@@ -74,6 +77,9 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
             .HasMaxLength(CodeLength);
         builder.Property(report => report.MmwrWeek).HasColumnName("mmwr_week");
         builder.Property(report => report.MmwrYear).HasColumnName("mmwr_year");
+        builder.Property(report => report.WorkflowState)
+            .HasColumnName("workflow_state")
+            .HasMaxLength(CodeLength);
 
         // What makes a record number a way of referring to a report. The rule
         // that issues one reads the highest already issued for the year and
