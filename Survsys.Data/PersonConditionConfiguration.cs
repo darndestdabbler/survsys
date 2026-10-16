@@ -35,11 +35,12 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
     private const int RecordNumberLength = 20;
 
     /// <summary>
-    /// Room for a Yes/No/Unknown code, which is what the Clinical tab writes
-    /// to <see cref="PersonCondition.TreatmentGiven"/>. The legacy column is an
-    /// unbounded <c>text</c>; a column that holds a code does not need room for
-    /// prose, and the bound leaves room over the longest answer rather than
-    /// sitting on it.
+    /// Room for a short coded value: the Yes/No/Unknown the Clinical tab writes
+    /// to <see cref="PersonCondition.TreatmentGiven"/>, and the case status
+    /// code on <see cref="PersonCondition.CaseStatus"/>, whose longest value is
+    /// the two-letter <c>NC</c>. The legacy columns are unbounded text; a column
+    /// that holds a code does not need room for prose, and the bound leaves
+    /// room over the longest value rather than sitting on it.
     /// </summary>
     private const int CodeLength = 20;
 
@@ -68,6 +69,11 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
         builder.Property(report => report.TreatmentGiven)
             .HasColumnName("treatment_given")
             .HasMaxLength(CodeLength);
+        builder.Property(report => report.CaseStatus)
+            .HasColumnName("case_status")
+            .HasMaxLength(CodeLength);
+        builder.Property(report => report.MmwrWeek).HasColumnName("mmwr_week");
+        builder.Property(report => report.MmwrYear).HasColumnName("mmwr_year");
 
         // What makes a record number a way of referring to a report. The rule
         // that issues one reads the highest already issued for the year and

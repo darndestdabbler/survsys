@@ -28,10 +28,9 @@ namespace Survsys.Data;
 /// investigating agency, the date the condition was first reported to public
 /// health, the event onset date and the moment the record was created. The
 /// legacy table has 67 columns, and the rest belong to the sessions that
-/// show them — the workflow and the case status, the investigation and
-/// administrative tabs, the queue, the outbreak link and the CDC and IBIS
-/// export timestamps — because a column nothing in this schema reads or writes
-/// would be a half-feature.
+/// show them — the workflow, the investigation and administrative tabs, the
+/// queue, the outbreak link and the CDC and IBIS export timestamps — because a
+/// column nothing in this schema reads or writes would be a half-feature.
 ///
 /// Three of those fields are here as of session 18:
 /// <see cref="DiseaseOnsetDate"/>, <see cref="DateDiagnosed"/> and
@@ -42,6 +41,15 @@ namespace Survsys.Data;
 /// schema half of it; the Clinical tab's person-level fields are on
 /// <see cref="Person"/>, and the laboratory fields are their own entities
 /// rather than columns here.
+///
+/// Three more are here as of session 20: <see cref="CaseStatus"/>, the case
+/// classification, and <see cref="MmwrWeek"/> with <see cref="MmwrYear"/>, the
+/// epidemiological week the report is counted in. They are a report's own
+/// columns and no reference table stands behind the status, exactly as none
+/// stands behind <see cref="AgencyId"/>: the status holds the legacy code and
+/// the vocabulary lives in <see cref="CaseStatusRules"/> rather than in a
+/// table, and the two MMWR columns are the arithmetic
+/// <see cref="MmwrWeek.Of(System.DateOnly)"/> works over the event onset date.
 ///
 /// There is no behaviour here and no navigation out: nothing in this session
 /// walks from a report to its person or its condition, so the two foreign keys
@@ -176,4 +184,47 @@ public class PersonCondition
     /// a later session's; this is the basic Yes/No/Unknown answer and no more.
     /// </remarks>
     public string? TreatmentGiven { get; set; }
+
+    /// <summary>
+    /// The case classification: the legacy status code, or null for an
+    /// unclassified case, which <see cref="CaseStatusRules"/> reads as Unknown.
+    /// </summary>
+    /// <remarks>
+    /// The vocabulary is <see cref="CaseStatusRules"/>'s, the five statuses
+    /// <c>../nedss/docs/business-logic/CLASSIFICATION_RULES.md</c> section 1.2
+    /// lists reduced to the ones the session plan names — Confirmed, Probable,
+    /// Suspected, Not a Case and Unknown. A plain string holding the legacy
+    /// code, because there is no case-status reference table in this schema and
+    /// the codes are a fixed CDC vocabulary rather than an
+    /// installation-configurable list; it is set manually, since the
+    /// disease-specific auto-classification that would assign it is the
+    /// deferred, Utah-specific work section 8 describes. Null until a status is
+    /// chosen, which is how the legacy leaves an unclassified case.
+    /// </remarks>
+    public string? CaseStatus { get; set; }
+
+    /// <summary>
+    /// The MMWR week the report's event is counted in, or null where it has no
+    /// event onset date to count from.
+    /// </summary>
+    /// <remarks>
+    /// Computed from <see cref="EventOnsetDate"/> by
+    /// <see cref="MmwrWeek.Of(System.DateOnly)"/> and stored when the report is
+    /// opened, as <see cref="RecordNumber"/> is assigned there: no column reads
+    /// the event onset date on the fly, and the session that makes that date
+    /// editable recomputes this. Paired with <see cref="MmwrYear"/>, because an
+    /// MMWR week number means nothing without the year whose week it is — the
+    /// days around a year end belong to the neighbouring MMWR year.
+    /// </remarks>
+    public int? MmwrWeek { get; set; }
+
+    /// <summary>
+    /// The MMWR year the report's event is counted in, which can differ from
+    /// the event onset date's calendar year; null where there is no onset date.
+    /// </summary>
+    /// <remarks>
+    /// Computed and stored with the MMWR week and from the same
+    /// <see cref="EventOnsetDate"/>; the two are set and read together.
+    /// </remarks>
+    public int? MmwrYear { get; set; }
 }

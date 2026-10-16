@@ -74,6 +74,51 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <MudText Typo="Typo.caption">Event date</MudText>
                 <MudText id="report-header-event-date" Typo="Typo.body1">@EventDate</MudText>
             </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">MMWR week</MudText>
+                <MudText id="report-header-mmwr" Typo="Typo.body1">@Mmwr</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Case status</MudText>
+                <MudText id="report-header-case-status" Typo="Typo.body1">@Status</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @* The case status editor: a text box holding the legacy code, as every
+       coded field in this tier is, and the API tier's to validate — a code it
+       refuses is shown here rather than re-checked. The status is a case-level
+       field, so it sits above the tab strip and not inside a tab. *@
+    <MudPaper id="report-status" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Case status</MudText>
+
+        @if (statusSaved is { } savedMessage)
+        {
+            <MudAlert id="report-status-saved" Severity="Severity.Success" Variant="Variant.Filled"
+                      Class="mb-4">
+                @savedMessage
+            </MudAlert>
+        }
+
+        @if (statusError is { } whyNotSaved)
+        {
+            <MudAlert id="report-status-error" Severity="Severity.Error" Variant="Variant.Filled"
+                      Class="mb-4">
+                @whyNotSaved
+            </MudAlert>
+        }
+
+        <MudGrid Spacing="2" Class="align-center">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="statusCode" id="report-status-input"
+                              Label="Case status (C/P/S/NC)" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudButton id="report-status-save" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@savingStatus" OnClick="@SaveStatus">
+                    Save status
+                </MudButton>
+            </MudItem>
         </MudGrid>
     </MudPaper>
 
@@ -129,6 +174,14 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
 
     private string? failure;
 
+    private string? statusCode;
+
+    private bool savingStatus;
+
+    private string? statusSaved;
+
+    private string? statusError;
+
     /// <summary>
     /// How many conditions this screen asks for: the whole catalogue in one
     /// page, for the reason the creation screen gives.
@@ -150,6 +203,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         }
 
         report = shown;
+        statusCode = shown.CaseStatus;
 
         var who = await Persons.Find(shown.PersonId);
         var conditions = await Conditions.Page(1, Catalogue);
@@ -205,4 +259,63 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     private string EventDate => report?.EventOnsetDate is { } date
         ? date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
         : "(not recorded)";
+
+    /// <summary>
+    /// The MMWR week and year together, or "(not calculated)" where the report
+    /// has no onset date to count from.
+    /// </summary>
+    private string Mmwr => report?.MmwrWeek is { } week && report.MmwrYear is { } year
+        ? $"Week {week}, {year}"
+        : "(not calculated)";
+
+    /// <summary>
+    /// The case status code, or "Unknown" where none is set — which is how the
+    /// report carries an unclassified case.
+    /// </summary>
+    private string Status => report?.CaseStatus is { } code && !string.IsNullOrWhiteSpace(code)
+        ? code
+        : "Unknown";
+
+    /// <summary>
+    /// Sets the case status through the API tier and replaces the shown report
+    /// with the answer, so the header reads what was stored and not what was
+    /// typed; the vocabulary rule is the API's, and a code it refuses is shown
+    /// as the failure rather than re-checked here.
+    /// </summary>
+    private async Task SaveStatus()
+    {
+        if (report is not { } current)
+        {
+            return;
+        }
+
+        statusSaved = null;
+        statusError = null;
+        savingStatus = true;
+
+        try
+        {
+            var answered = await Reports.SetStatus(
+                current.Id, new UpdateCaseStatusRequest(Blank(statusCode)));
+
+            if (answered.Value is { } updated)
+            {
+                report = updated;
+                statusCode = updated.CaseStatus;
+                statusSaved = "The case status has been saved.";
+            }
+            else
+            {
+                statusError = answered.Failure;
+            }
+        }
+        finally
+        {
+            savingStatus = false;
+        }
+    }
+
+    /// <summary>The status box's content, trimmed, or null where it holds nothing.</summary>
+    private static string? Blank(string? typed) =>
+        string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
 }

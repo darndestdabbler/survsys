@@ -29,9 +29,14 @@ public sealed class PersonConditionsClient(HttpClient http)
     /// <summary>How a failure to read one report starts.</summary>
     public const string FindFailurePrefix = "The case morbidity report could not be loaded";
 
+    /// <summary>How a failure to set a report's case status starts.</summary>
+    public const string StatusFailurePrefix = "The case morbidity report status could not be saved";
+
     private static readonly ApiAsk Opening = new(FailurePrefix, "the report created");
 
     private static readonly ApiAsk Finding = new(FindFailurePrefix, "the report");
+
+    private static readonly ApiAsk Setting = new(StatusFailurePrefix, "the report as saved");
 
     /// <summary>
     /// Opens a case morbidity report and answers with it — its record number
@@ -57,4 +62,22 @@ public sealed class PersonConditionsClient(HttpClient http)
         int id,
         CancellationToken cancellationToken = default) =>
         Finding.Get<PersonConditionResponse>(http, $"api/person-conditions/{id}", cancellationToken);
+
+    /// <summary>
+    /// Sets a report's case status and answers with the report as the API tier
+    /// now holds it, or with why nothing was saved.
+    /// </summary>
+    /// <remarks>
+    /// A third prefix, because a user whose status was refused is being told a
+    /// different thing than one whose report could not be created or shown. The
+    /// answer is the whole <see cref="PersonConditionResponse"/>, so the screen
+    /// shows the status as stored rather than as typed, and the vocabulary rule
+    /// stays the API tier's — a code it refuses comes back as this failure.
+    /// </remarks>
+    public Task<Asked<PersonConditionResponse>> SetStatus(
+        int id,
+        UpdateCaseStatusRequest status,
+        CancellationToken cancellationToken = default) =>
+        Setting.Put<UpdateCaseStatusRequest, PersonConditionResponse>(
+            http, $"api/person-conditions/{id}/status", status, cancellationToken);
 }

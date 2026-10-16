@@ -58,7 +58,10 @@ public static class PersonConditionEndpoints
             report.AgencyId,
             report.FirstReportedPhDate,
             report.EventOnsetDate,
-            report.CreatedAt);
+            report.CreatedAt,
+            report.CaseStatus,
+            report.MmwrWeek,
+            report.MmwrYear);
 
     /// <summary>
     /// <see cref="ToResponse"/> compiled, for the one caller that has a report
@@ -116,6 +119,37 @@ public static class PersonConditionEndpoints
     }
 
     /// <summary>
+    /// Why this is not a case status this tier will set, as far as can be said
+    /// without the database, or null when it is one.
+    /// </summary>
+    /// <remarks>
+    /// The shape <see cref="WhyNotAReport"/> has: a pure function the unit
+    /// suite proves, with the endpoint turning the sentence into a 400. The
+    /// vocabulary is <see cref="CaseStatusRules"/>'s, so a code it does not
+    /// know is refused rather than written; null is a status too — it clears
+    /// the status to Unknown — and so passes. Whether the report exists is not
+    /// here, because that needs a query.
+    ///
+    /// Public because the unit suite proves it. Nothing outside this file calls
+    /// it.
+    /// </remarks>
+    public static string? WhyNotAStatus(UpdateCaseStatusRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!CaseStatusRules.IsAssignable(request.CaseStatus))
+        {
+            return $"caseStatus '{request.CaseStatus}' is not a status a report may be set "
+                + $"to. A case status is one of {CaseStatusRules.ConfirmedCode}, "
+                + $"{CaseStatusRules.ProbableCode}, {CaseStatusRules.SuspectedCode} or "
+                + $"{CaseStatusRules.NotACaseCode}, or left out to clear the status to "
+                + "Unknown.";
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Registers what the person-conditions endpoints need of the container.
     /// Kept here with the endpoints so the slice's wiring is in one place, and
     /// so that <c>Program.cs</c> need not name an internal type.
@@ -133,6 +167,10 @@ public static class PersonConditionEndpoints
             .WithName("CreatePersonCondition")
             .WithSummary("Opens a case morbidity report about a person, for a condition, "
                 + "and assigns its record number.");
+
+        routes.MapPut("/api/person-conditions/{id:int}/status", SetStatus)
+            .WithName("SetPersonConditionStatus")
+            .WithSummary("Sets a case morbidity report's case status.");
 
         return routes;
     }
@@ -184,6 +222,38 @@ public static class PersonConditionEndpoints
         var created = await reports.Add(request, DateTimeOffset.Now, cancellationToken);
 
         return TypedResults.Created($"/api/person-conditions/{created.Id}", created);
+    }
+
+    /// <remarks>
+    /// The status is set directly and not derived: the disease-specific
+    /// auto-classification is deferred, so a caller chooses the status, and
+    /// <see cref="WhyNotAStatus"/> refuses a code the vocabulary does not know
+    /// before the database is asked. A report id that names no report is a 404,
+    /// the resource addressed being the report itself.
+    /// </remarks>
+    private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> SetStatus(
+        PersonConditionQueries reports,
+        int id,
+        UpdateCaseStatusRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotAStatus(request) is { } why)
+        {
+            return TypedResults.Problem(
+                detail: why,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The case status asked for is not one this endpoint can set.");
+        }
+
+        if (await reports.SetStatus(id, request, cancellationToken) is not { } report)
+        {
+            return TypedResults.Problem(
+                detail: $"No case morbidity report has id {id}.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "There is no such case morbidity report.");
+        }
+
+        return TypedResults.Ok(report);
     }
 
     private static ProblemHttpResult Refused(string why) =>
@@ -301,6 +371,13 @@ internal sealed class PersonConditionQueries(SurvsysDbContext database)
             .Select(report => report.RecordNumber)
             .FirstOrDefaultAsync(cancellationToken);
 
+        // The event onset date is the creation date, as the legacy flow sets
+        // it, and the MMWR week and year are read off it here and stored, as
+        // the record number is: no column computes them on the fly, and the
+        // case status stays unset — null, which is Unknown — until one is set.
+        var onset = DateOnly.FromDateTime(createdAt.Date);
+        var mmwr = MmwrWeek.Of(onset);
+
         var report = new PersonCondition
         {
             PersonId = request.PersonId,
@@ -308,11 +385,44 @@ internal sealed class PersonConditionQueries(SurvsysDbContext database)
             RecordNumber = RecordNumber.Next(year, highest),
             AgencyId = request.AgencyId,
             FirstReportedPhDate = request.FirstReportedPhDate,
-            EventOnsetDate = DateOnly.FromDateTime(createdAt.Date),
+            EventOnsetDate = onset,
             CreatedAt = createdAt,
+            MmwrWeek = mmwr.Week,
+            MmwrYear = mmwr.Year,
         };
 
         database.PersonConditions.Add(report);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return PersonConditionEndpoints.Respond(report);
+    }
+
+    /// <summary>
+    /// Sets a report's case status and answers with the report as stored, or
+    /// null where no report has that id — the answer the endpoint turns into a
+    /// 404.
+    /// </summary>
+    /// <remarks>
+    /// The request is validated before this is called, so the code is one the
+    /// vocabulary knows; here is only the write. The status is stored as it was
+    /// offered, as the clinical save stores its coded fields — null clears it
+    /// to Unknown. The MMWR fields are untouched, because the event onset date
+    /// they are read from does not change here.
+    /// </remarks>
+    public async Task<PersonConditionResponse?> SetStatus(
+        int id,
+        UpdateCaseStatusRequest request,
+        CancellationToken cancellationToken)
+    {
+        var report = await database.PersonConditions
+            .SingleOrDefaultAsync(report => report.Id == id, cancellationToken);
+
+        if (report is null)
+        {
+            return null;
+        }
+
+        report.CaseStatus = request.CaseStatus;
         await database.SaveChangesAsync(cancellationToken);
 
         return PersonConditionEndpoints.Respond(report);

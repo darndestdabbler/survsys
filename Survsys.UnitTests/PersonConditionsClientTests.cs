@@ -37,6 +37,23 @@ public class PersonConditionsClientTests
         }
         """;
 
+    private const string Classified =
+        """
+        {
+          "id": 11,
+          "personId": 13,
+          "conditionId": 74,
+          "recordNumber": "202600001",
+          "agencyId": 1,
+          "firstReportedPhDate": "2026-03-12",
+          "eventOnsetDate": "2026-03-12",
+          "createdAt": "2026-03-12T22:07:16-06:00",
+          "caseStatus": "C",
+          "mmwrWeek": 10,
+          "mmwrYear": 2026
+        }
+        """;
+
     [Fact]
     public async Task TheReportFilledInIsTheReportSent()
     {
@@ -155,6 +172,65 @@ public class PersonConditionsClientTests
         Assert.Contains("404", found.Failure);
         Assert.DoesNotContain("987654", found.Failure, StringComparison.Ordinal);
         Assert.NotEqual(PersonConditionsClient.FailurePrefix, PersonConditionsClient.FindFailurePrefix);
+    }
+
+    /// <summary>
+    /// Setting the status: the status the screen typed is the body sent to the
+    /// report's own status URL, and the report that comes back carries the
+    /// status as stored — along with the MMWR week and year the report already
+    /// held.
+    /// </summary>
+    [Fact]
+    public async Task TheStatusSetIsSentAndTheSavedReportComesBack()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new PersonConditionsClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+
+            return Answer(HttpStatusCode.OK, Classified);
+        }));
+
+        var saved = await client.SetStatus(11, new UpdateCaseStatusRequest("C"));
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal(
+            "http://api.example.test/api/person-conditions/11/status",
+            sent?.RequestUri?.ToString());
+        Assert.Contains("\"caseStatus\":\"C\"", body, StringComparison.Ordinal);
+
+        Assert.True(saved.Succeeded);
+        Assert.Equal("C", saved.Value?.CaseStatus);
+        Assert.Equal(10, saved.Value?.MmwrWeek);
+        Assert.Equal(2026, saved.Value?.MmwrYear);
+    }
+
+    /// <summary>
+    /// A status the API tier refused: the message starts with this client's
+    /// third prefix — not the create or the load one — and names the status
+    /// the API gave rather than the code it refused.
+    /// </summary>
+    [Fact]
+    public async Task AStatusThatCouldNotBeSavedCarriesTheStatusPrefix()
+    {
+        var client = new PersonConditionsClient(Transport(_ => Answer(
+            HttpStatusCode.BadRequest,
+            """{ "status": 400, "detail": "caseStatus 'X' is not a status a report may be set to." }""")));
+
+        var saved = await client.SetStatus(11, new UpdateCaseStatusRequest("X"));
+
+        Assert.False(saved.Succeeded);
+        Assert.Null(saved.Value);
+        Assert.StartsWith(PersonConditionsClient.StatusFailurePrefix, saved.Failure);
+        Assert.Contains("400", saved.Failure);
+        Assert.DoesNotContain("'X'", saved.Failure, StringComparison.Ordinal);
+        Assert.NotEqual(
+            PersonConditionsClient.FailurePrefix, PersonConditionsClient.StatusFailurePrefix);
+        Assert.NotEqual(
+            PersonConditionsClient.FindFailurePrefix, PersonConditionsClient.StatusFailurePrefix);
     }
 
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>

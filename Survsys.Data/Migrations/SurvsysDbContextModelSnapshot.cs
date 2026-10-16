@@ -447,6 +447,11 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("agency_id");
 
+                    b.Property<string>("CaseStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("case_status");
+
                     b.Property<int>("ConditionId")
                         .HasColumnType("int")
                         .HasColumnName("condition_id");
@@ -470,6 +475,14 @@ namespace Survsys.Data.Migrations
                     b.Property<DateOnly?>("FirstReportedPhDate")
                         .HasColumnType("date")
                         .HasColumnName("first_reported_ph_date");
+
+                    b.Property<int?>("MmwrWeek")
+                        .HasColumnType("int")
+                        .HasColumnName("mmwr_week");
+
+                    b.Property<int?>("MmwrYear")
+                        .HasColumnType("int")
+                        .HasColumnName("mmwr_year");
 
                     b.Property<int>("PersonId")
                         .HasColumnType("int")

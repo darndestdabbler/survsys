@@ -32,6 +32,9 @@ public class PersonConditionEndpointsTests
         FirstReportedPhDate = new DateOnly(2026, 3, 12),
         EventOnsetDate = new DateOnly(2026, 3, 12),
         CreatedAt = new DateTimeOffset(2026, 3, 12, 22, 7, 16, TimeSpan.FromHours(-6)),
+        CaseStatus = CaseStatusRules.ConfirmedCode,
+        MmwrWeek = 10,
+        MmwrYear = 2026,
     };
 
     [Fact]
@@ -41,7 +44,8 @@ public class PersonConditionEndpointsTests
 
         Assert.Equal(
             new(11, 13, 74, "202600001", 1, new DateOnly(2026, 3, 12), new DateOnly(2026, 3, 12),
-                new DateTimeOffset(2026, 3, 12, 22, 7, 16, TimeSpan.FromHours(-6))),
+                new DateTimeOffset(2026, 3, 12, 22, 7, 16, TimeSpan.FromHours(-6)),
+                CaseStatusRules.ConfirmedCode, 10, 2026),
             response);
     }
 
@@ -162,6 +166,38 @@ public class PersonConditionEndpointsTests
     {
         Assert.Contains("personId is required",
             PersonConditionEndpoints.WhyNotAReport(new CreatePersonConditionRequest(0, 0, 99)),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Each status a report may be set to: the four known codes, and null,
+    /// which clears the status to Unknown.
+    /// </summary>
+    [Theory]
+    [InlineData(CaseStatusRules.ConfirmedCode)]
+    [InlineData(CaseStatusRules.ProbableCode)]
+    [InlineData(CaseStatusRules.SuspectedCode)]
+    [InlineData(CaseStatusRules.NotACaseCode)]
+    [InlineData(null)]
+    public void WhyNotAStatusAcceptsAKnownCodeOrNull(string? caseStatus)
+    {
+        Assert.Null(PersonConditionEndpoints.WhyNotAStatus(new UpdateCaseStatusRequest(caseStatus)));
+    }
+
+    /// <summary>
+    /// A code no case may be set to: the legacy codes this installation does
+    /// not use, a code in the wrong case, and a value that is not a code. The
+    /// message names the value the caller offered.
+    /// </summary>
+    [Theory]
+    [InlineData("D")]
+    [InlineData("OS")]
+    [InlineData("c")]
+    [InlineData("X")]
+    public void WhyNotAStatusRefusesACodeNoCaseMayBeSetTo(string caseStatus)
+    {
+        Assert.Contains($"caseStatus '{caseStatus}'",
+            PersonConditionEndpoints.WhyNotAStatus(new UpdateCaseStatusRequest(caseStatus)),
             StringComparison.Ordinal);
     }
 }
