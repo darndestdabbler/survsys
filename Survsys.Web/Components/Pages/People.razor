@@ -1,0 +1,24 @@
+@* The people on file, found by searching for them: the screen the legacy
+   PEOPLE menu item opens, at the address it opens it at.
+
+   It is the search panel and nothing else. The legacy screen's purpose is
+   "standalone person management — find/view/edit people independent of CMR
+   context", as ../nedss/docs/functional/epitrax-core-workflows.md puts it;
+   this session's half of that is the finding. A person's own screen — the
+   demographic record, and editing it — is a later session's, and until it
+   exists a row here offers nothing to click rather than offering a link to
+   nowhere. *@
+@page "/people"
+
+<PageTitle>People — Survsys</PageTitle>
+
+<MudText id="people-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    People
+</MudText>
+
+<MudText id="people-lead-in" Typo="Typo.body2" Class="mb-4">
+    Search for a person by name, date of birth, telephone or birth sex. Leave
+    every box empty to list everyone on file.
+</MudText>
+
+<PersonSearchPanel />

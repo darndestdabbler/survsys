@@ -1,0 +1,256 @@
+namespace Survsys.Data;
+
+/// <summary>
+/// A case morbidity report: the record a public health investigator opens
+/// about one person and one condition, and what the legacy two-step creation
+/// flow writes.
+/// </summary>
+/// <remarks>
+/// The columns are EpiTrax's own <c>person_condition</c> table, as declared in
+/// <c>legacy/nedss-jpa/src/main/resources/db/migration/V0001__create.sql</c>
+/// under <c>../nedss</c>, down to their snake_case names — so that a later
+/// migration of the legacy data reads straight across rather than through a
+/// column-name translation nobody kept.
+///
+/// The name is the legacy table's and not the report's, which is the one place
+/// this entity reads worse than it could. Users call this a CMR — a case
+/// morbidity report — and the screens that create one say so. The table is
+/// called <c>person_condition</c> because a morbidity report is not the only
+/// thing in it: a contact record, the kind phase 3 adds, is a row of this same
+/// table distinguished by <c>person_condition_type_id</c>, and so is every
+/// other way a person can be linked to a condition. An entity called
+/// <c>MorbidityReport</c> would be the wrong name for half the rows the table
+/// will hold, so it keeps the name of the thing it is.
+///
+/// This session writes what the legacy creation flow writes and no more, which
+/// <c>../nedss/docs/db-snapshots/session-010/02-after-cmr-creation.txt</c>
+/// shows exactly: the person, the condition, the record number, the
+/// investigating agency, the date the condition was first reported to public
+/// health, the event onset date and the moment the record was created. The
+/// legacy table has 67 columns, and the rest belong to the sessions that
+/// show them — the workflow, the investigation and administrative tabs, the
+/// queue, the outbreak link and the CDC and IBIS export timestamps — because a
+/// column nothing in this schema reads or writes would be a half-feature.
+///
+/// Three of those fields are here as of session 18:
+/// <see cref="DiseaseOnsetDate"/>, <see cref="DateDiagnosed"/> and
+/// <see cref="TreatmentGiven"/>, the case-specific fields the legacy Clinical
+/// tab writes, which
+/// <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c> section 3 maps.
+/// Session 14 deferred them to the session that shows them, and this is the
+/// schema half of it; the Clinical tab's person-level fields are on
+/// <see cref="Person"/>, and the laboratory fields are their own entities
+/// rather than columns here.
+///
+/// Three more are here as of session 20: <see cref="CaseStatus"/>, the case
+/// classification, and <see cref="MmwrWeek"/> with <see cref="MmwrYear"/>, the
+/// epidemiological week the report is counted in. They are a report's own
+/// columns and no reference table stands behind the status, exactly as none
+/// stands behind <see cref="AgencyId"/>: the status holds the legacy code and
+/// the vocabulary lives in <see cref="CaseStatusRules"/> rather than in a
+/// table, and the two MMWR columns are the arithmetic
+/// <see cref="MmwrWeek.Of(System.DateOnly)"/> works over the event onset date.
+///
+/// There is no behaviour here and no navigation out: nothing in this session
+/// walks from a report to its person or its condition, so the two foreign keys
+/// are the plain identifiers the configuration makes them, and the session
+/// that walks one adds the navigation it needs.
+/// </remarks>
+public class PersonCondition
+{
+    public int Id { get; set; }
+
+    /// <summary>The person this report is about.</summary>
+    public int PersonId { get; set; }
+
+    /// <summary>The disease or condition this report is for.</summary>
+    public int ConditionId { get; set; }
+
+    /// <summary>
+    /// The number this report is known by, in the legacy <c>YYYYNNNNN</c>
+    /// format: the year it was created in, then the sequence within that year
+    /// padded to five digits, so the first report of 2026 is
+    /// <c>202600001</c>.
+    /// </summary>
+    /// <remarks>
+    /// Required, and unique across the table — which is the configuration's
+    /// to say and the reason the rule that issues one can read the highest
+    /// already issued and add to it. The caller never chooses it: it is
+    /// assigned where a report is created, because a caller that could choose
+    /// one could choose one already taken.
+    /// </remarks>
+    public required string RecordNumber { get; set; }
+
+    /// <summary>
+    /// The agency investigating this report, as the legacy
+    /// <c>agency_id</c>.
+    /// </summary>
+    /// <remarks>
+    /// A bare nullable identifier rather than a navigation, exactly as
+    /// <see cref="Condition.ConditionGroupId"/> and
+    /// <see cref="PersonAddress.ResidenceTypeId"/> are: the legacy
+    /// <c>agency</c> table does not exist here yet, and a navigation to a
+    /// table that does not exist is not a thing to write early. Nullable
+    /// because the legacy column is.
+    /// </remarks>
+    public int? AgencyId { get; set; }
+
+    /// <summary>
+    /// The date the condition was first reported to public health — the first
+    /// of the three fields step two of the creation flow asks for.
+    /// </summary>
+    /// <remarks>
+    /// A <see cref="DateOnly"/> where the legacy column is a
+    /// <c>TIMESTAMP</c>, for the reason <see cref="Person.BirthDate"/> gives:
+    /// every value in <c>../nedss/docs/db-snapshots/session-010/</c> is at
+    /// midnight, and the legacy screen asks for it with a date picker.
+    /// </remarks>
+    public DateOnly? FirstReportedPhDate { get; set; }
+
+    /// <summary>
+    /// The date the event this report is about began.
+    /// </summary>
+    /// <remarks>
+    /// The legacy creation flow sets this to the date the record was created
+    /// and leaves the real onset date to be entered later, which is what the
+    /// snapshot shows: <c>event_onset_date</c> and <c>created_at</c> are the
+    /// same day there. The Clinical tab is where an investigator corrects it,
+    /// and that tab is a later session's.
+    ///
+    /// A <see cref="DateOnly"/> where the legacy column is a
+    /// <c>TIMESTAMP</c>, for the reason <see cref="FirstReportedPhDate"/> is.
+    /// </remarks>
+    public DateOnly? EventOnsetDate { get; set; }
+
+    /// <summary>
+    /// When this report was created, and so the year its
+    /// <see cref="RecordNumber"/> is taken from.
+    /// </summary>
+    /// <remarks>
+    /// A <see cref="DateTimeOffset"/> and not a <see cref="DateOnly"/>,
+    /// because this one is a moment rather than a day — the legacy column
+    /// holds a time of day and the snapshot's value is
+    /// <c>2026-03-12 22:07:16</c> — and it carries its offset, so a record
+    /// created in Utah says which hour it was created in rather than leaving a
+    /// reader to assume the server's zone.
+    ///
+    /// Required, and set where the report is created. It is not an audit
+    /// column: nothing maintains it afterwards, nothing says who created the
+    /// record, and the legacy <c>updated_at</c> that would pair with it is not
+    /// here. Who did what is the access audit's, and that is a later
+    /// session's.
+    /// </remarks>
+    public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>
+    /// The date the disease began in this person, as the Clinical tab records
+    /// it; null until it has been entered.
+    /// </summary>
+    /// <remarks>
+    /// A Clinical-tab field added in session 18, mapped by
+    /// <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c> section 3.
+    /// Distinct from <see cref="EventOnsetDate"/>, which the creation flow set
+    /// to the creation date: the Clinical tab is where the real onset is
+    /// entered, and this is the column it writes. A <see cref="DateOnly"/>
+    /// where the legacy column is a <c>DATE</c>, entered with a date picker as
+    /// <see cref="FirstReportedPhDate"/> and <see cref="EventOnsetDate"/> are.
+    /// </remarks>
+    public DateOnly? DiseaseOnsetDate { get; set; }
+
+    /// <summary>
+    /// The date this case was diagnosed, as the Clinical tab records it; null
+    /// until it has been entered.
+    /// </summary>
+    /// <remarks>
+    /// A Clinical-tab field added in session 18, mapped by
+    /// <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c> section 3. A
+    /// <see cref="DateOnly"/> where the legacy column is a <c>DATE</c>, for the
+    /// reason <see cref="DiseaseOnsetDate"/> is one.
+    /// </remarks>
+    public DateOnly? DateDiagnosed { get; set; }
+
+    /// <summary>
+    /// Whether treatment was given for this case, as the legacy
+    /// <c>treatment_given</c> code — one of <c>Yes</c>, <c>No</c> or
+    /// <c>Unknown</c>, and null until it has been answered.
+    /// </summary>
+    /// <remarks>
+    /// A Clinical-tab field added in session 18, mapped by
+    /// <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c> section 3,
+    /// which notes this is case-specific and so lives on the report rather than
+    /// on the person. A plain string holding the legacy code, because the
+    /// reference table behind it does not exist here yet. The facility,
+    /// clinician and treatment-detail rows the legacy "Add" dialogs create are
+    /// a later session's; this is the basic Yes/No/Unknown answer and no more.
+    /// </remarks>
+    public string? TreatmentGiven { get; set; }
+
+    /// <summary>
+    /// The case classification: the legacy status code, or null for an
+    /// unclassified case, which <see cref="CaseStatusRules"/> reads as Unknown.
+    /// </summary>
+    /// <remarks>
+    /// The vocabulary is <see cref="CaseStatusRules"/>'s, the five statuses
+    /// <c>../nedss/docs/business-logic/CLASSIFICATION_RULES.md</c> section 1.2
+    /// lists reduced to the ones the session plan names — Confirmed, Probable,
+    /// Suspected, Not a Case and Unknown. A plain string holding the legacy
+    /// code, because there is no case-status reference table in this schema and
+    /// the codes are a fixed CDC vocabulary rather than an
+    /// installation-configurable list; it is set manually, since the
+    /// disease-specific auto-classification that would assign it is the
+    /// deferred, Utah-specific work section 8 describes. Null until a status is
+    /// chosen, which is how the legacy leaves an unclassified case.
+    /// </remarks>
+    public string? CaseStatus { get; set; }
+
+    /// <summary>
+    /// The MMWR week the report's event is counted in, or null where it has no
+    /// event onset date to count from.
+    /// </summary>
+    /// <remarks>
+    /// Computed from <see cref="EventOnsetDate"/> by
+    /// <see cref="MmwrWeek.Of(System.DateOnly)"/> and stored when the report is
+    /// opened, as <see cref="RecordNumber"/> is assigned there: no column reads
+    /// the event onset date on the fly, and the session that makes that date
+    /// editable recomputes this. Paired with <see cref="MmwrYear"/>, because an
+    /// MMWR week number means nothing without the year whose week it is — the
+    /// days around a year end belong to the neighbouring MMWR year.
+    /// </remarks>
+    public int? MmwrWeek { get; set; }
+
+    /// <summary>
+    /// The MMWR year the report's event is counted in, which can differ from
+    /// the event onset date's calendar year; null where there is no onset date.
+    /// </summary>
+    /// <remarks>
+    /// Computed and stored with the MMWR week and from the same
+    /// <see cref="EventOnsetDate"/>; the two are set and read together.
+    /// </remarks>
+    public int? MmwrYear { get; set; }
+
+    /// <summary>
+    /// Where this report sits in the investigation lifecycle: the legacy
+    /// workflow code, or null for a report read as the assigned-to-LHD start.
+    /// </summary>
+    /// <remarks>
+    /// The vocabulary and the state machine over it are
+    /// <see cref="WorkflowRules"/>'s: the four states the session plan names —
+    /// assigned to LHD, accepted, under investigation and closed — as the
+    /// forward chain, with the codes a report's workflow may hold and the rule
+    /// for moving between them. A plain string holding the legacy code, because
+    /// there is no workflow reference table in this schema and
+    /// <c>current_workflow_id</c> is a foreign key to one the legacy has and
+    /// this does not, exactly as <see cref="CaseStatus"/> holds the status code
+    /// and <see cref="AgencyId"/> references a list no table stands behind.
+    ///
+    /// A report is opened at <see cref="WorkflowRules.InitialCode"/>, as the
+    /// legacy starts a case at the Local Health Department; null until then,
+    /// which <see cref="WorkflowRules.Read(string?)"/> reads as that same
+    /// assigned-to-LHD default, so a report written before this column existed
+    /// is where it was. The move from one state to the next is the transition
+    /// endpoint's, gated by <see cref="WorkflowRules.IsAllowed"/>; nothing here
+    /// moves it on a report's labs or classification, because the
+    /// classification-gated transitions are the deferred, Utah-specific work.
+    /// </remarks>
+    public string? WorkflowState { get; set; }
+}
