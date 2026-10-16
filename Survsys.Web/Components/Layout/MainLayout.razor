@@ -1,0 +1,48 @@
+@* The frame every screen is drawn in. MudThemeProvider has to be somewhere
+   above every MudBlazor component or none of them is styled, and the layout
+   is the place it is above all of them.
+
+   The app bar carries the application's name and, since session 14, the
+   navigation between the screens there now are: the conditions catalogue, the
+   people on file, a new case morbidity report, and — since session 21 — the
+   work queue and the agency board, the two faces of the legacy EVENTS work
+   surface. The legacy application's own main navigation, which
+   ../nedss/docs/functional/epitrax-cmr-workflow.md records, is NEW CMR,
+   EVENTS, OUTBREAKS, FACILITIES, CMR SEARCH, EXPORTS, PEOPLE, ADMIN,
+   SETTINGS, LOGOUT. The rest arrive with the screens they open.
+
+   Each link carries an identifier of its own, as every element a walkthrough
+   names does. The bar still reads Survsys, which the conditions walkthrough
+   says it does. *@
+@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudText Typo="Typo.h6" Class="mr-8">Survsys</MudText>
+        <MudButton id="nav-conditions" Href="/conditions" Color="Color.Inherit">
+            Conditions
+        </MudButton>
+        <MudButton id="nav-people" Href="/people" Color="Color.Inherit">
+            People
+        </MudButton>
+        <MudButton id="nav-new-report" Href="/morbidity/create" Color="Color.Inherit">
+            New CMR
+        </MudButton>
+        <MudButton id="nav-queue" Href="/queue" Color="Color.Inherit">
+            Work queue
+        </MudButton>
+        <MudButton id="nav-agency-queue" Href="/queue/agency" Color="Color.Inherit">
+            Agency board
+        </MudButton>
+    </MudAppBar>
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="my-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>

@@ -1,0 +1,327 @@
+@* The work queue a screen draws: one agency's case morbidity reports, as the
+   work-queue endpoint returns them. The two queue screens share it — the
+   assignee worklist and the agency board — and differ only in what they ask of
+   it through its parameters.
+
+   It carries no rule of its own. The workflow vocabulary and the moves between
+   states are the API tier's; what is here is the one next move a state is
+   likely to take, offered as a button, and a move the API refuses comes back as
+   the client's message rather than being re-checked. The codes themselves are
+   the legacy codes the wire carries, mapped to a label and a next step for
+   display; this tier reads Survsys.Contracts and not Survsys.Data, so the rule
+   class that owns them is not in reach here, which is why the mapping is a
+   handful of literals and not a reference to it. *@
+@inject WorkQueueClient WorkQueue
+@inject ConditionsClient Conditions
+@inject PersonConditionsClient Reports
+
+@if (AgencyId <= 0)
+{
+    <MudText id="work-queue-empty" Typo="Typo.body2">
+        Choose an agency to see its work queue.
+    </MudText>
+}
+else if (loading)
+{
+    <MudProgressCircular id="work-queue-busy" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (failure is { } whyNot)
+    {
+        <MudAlert id="work-queue-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @whyNot
+        </MudAlert>
+    }
+
+    @if (actionSaved is { } saved)
+    {
+        <MudAlert id="queue-action-saved" Severity="Severity.Success" Class="mb-4">@saved</MudAlert>
+    }
+
+    @if (actionError is { } failedAction)
+    {
+        <MudAlert id="queue-action-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @failedAction
+        </MudAlert>
+    }
+
+    @if (rows.Count == 0)
+    {
+        <MudText id="work-queue-none" Typo="Typo.body2">
+            No reports are in this agency's queue.
+        </MudText>
+    }
+    else
+    {
+        @if (Shown.Count == 0)
+        {
+            <MudText id="work-queue-none-page" Typo="Typo.body2">
+                No cases to act on this page.
+            </MudText>
+        }
+        else
+        {
+        <MudSimpleTable id="work-queue-table" Hover="true" Dense="true">
+            <thead>
+                <tr>
+                    <th>Record #</th>
+                    <th>Disease</th>
+                    <th>Workflow</th>
+                    <th>Status</th>
+                    <th>Onset</th>
+                    <th>Sharing</th>
+                    @if (Actions)
+                    {
+                        <th>Action</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Shown)
+                {
+                    <tr id="@($"queue-row-{row.Id}")">
+                        <td id="@($"queue-row-{row.Id}-record")">@row.RecordNumber</td>
+                        <td>@ConditionName(row.ConditionId)</td>
+                        <td id="@($"queue-row-{row.Id}-workflow")">@Label(row.WorkflowState)</td>
+                        <td>@(row.CaseStatus ?? "Unknown")</td>
+                        <td>@(row.EventOnsetDate?.ToString("yyyy-MM-dd") ?? "—")</td>
+                        <td>@(row.Shared ? "Shared read-only" : "Investigating")</td>
+                        @if (Actions)
+                        {
+                            <td>
+                                @if (!row.Shared && NextMove(row.WorkflowState) is { } move)
+                                {
+                                    <MudButton id="@($"queue-row-{row.Id}-advance")" Size="Size.Small"
+                                               Variant="Variant.Filled" Color="Color.Primary"
+                                               Disabled="@acting"
+                                               OnClick="@(() => Advance(row, move.Target))">
+                                        @move.Label
+                                    </MudButton>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+        }
+
+        @if (totalCount > PageSize || page > 1)
+        {
+            <div class="d-flex align-center gap-4 mt-2">
+                <MudButton id="queue-prev" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page <= 1 || loading)" OnClick="PreviousPage">
+                    Previous
+                </MudButton>
+                <MudText id="queue-page" Typo="Typo.body2">Page @(page) of @LastPage</MudText>
+                <MudButton id="queue-next" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page >= LastPage || loading)" OnClick="NextPage">
+                    Next
+                </MudButton>
+            </div>
+        }
+    }
+}
+
+@code {
+    /// <summary>The agency whose queue is shown; zero or less shows the hint.</summary>
+    [Parameter]
+    public int AgencyId { get; set; }
+
+    /// <summary>Whether a row the agency investigates offers its next workflow move.</summary>
+    [Parameter]
+    public bool Actions { get; set; }
+
+    /// <summary>
+    /// Whether rows the agency only has shared to it are shown. The assignee
+    /// worklist leaves them out — a reader cannot act on them — and the agency
+    /// board keeps them, as the agency's whole queue.
+    /// </summary>
+    [Parameter]
+    public bool IncludeShared { get; set; } = true;
+
+    /// <summary>
+    /// A token a parent bumps to make the panel reload: an assign or a share on
+    /// the board changes the queue, and raising this is how the board says so.
+    /// </summary>
+    [Parameter]
+    public int RefreshToken { get; set; }
+
+    private List<WorkQueueItemResponse> rows = [];
+
+    private Dictionary<int, string> conditionNames = [];
+
+    private bool loading;
+
+    private bool acting;
+
+    private string? failure;
+
+    private string? actionSaved;
+
+    private string? actionError;
+
+    private int loadedAgency = -1;
+
+    private int loadedToken = -1;
+
+    private int page = 1;
+
+    private int totalCount;
+
+    /// <summary>
+    /// How many conditions this panel asks for, to resolve a row's disease
+    /// name: the whole catalogue in one page, as the creation screen reads it.
+    /// </summary>
+    private const int Catalogue = 200;
+
+    /// <summary>
+    /// How many reports of a queue a page holds. A queue grows without bound as
+    /// reports are opened, so it is paged rather than read in one go the way the
+    /// bounded conditions catalogue is; the page controls below walk the pages.
+    /// </summary>
+    private const int PageSize = 50;
+
+    private IReadOnlyList<WorkQueueItemResponse> Shown =>
+        IncludeShared ? rows : rows.Where(row => !row.Shared).ToList();
+
+    /// <summary>
+    /// The last page the queue has, counting from one and never below it so an
+    /// empty queue still reads "Page 1 of 1".
+    /// </summary>
+    private int LastPage => Math.Max(1, (totalCount + PageSize - 1) / PageSize);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AgencyId == loadedAgency && RefreshToken == loadedToken)
+        {
+            return;
+        }
+
+        // A new agency starts at the first page; a refresh of the same agency
+        // after an assign or a share stays where the reader was.
+        if (AgencyId != loadedAgency)
+        {
+            page = 1;
+        }
+
+        loadedAgency = AgencyId;
+        loadedToken = RefreshToken;
+
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        actionSaved = null;
+        actionError = null;
+
+        if (AgencyId <= 0)
+        {
+            rows = [];
+            totalCount = 0;
+            failure = null;
+            loading = false;
+
+            return;
+        }
+
+        loading = true;
+        failure = null;
+
+        var queue = await WorkQueue.Queue(AgencyId, page, PageSize);
+        var conditions = await Conditions.Page(1, Catalogue);
+
+        rows = queue.Value?.Items.ToList() ?? [];
+        totalCount = queue.Value?.TotalCount ?? 0;
+        conditionNames = conditions.Value?.Items.ToDictionary(
+            condition => condition.Id, condition => condition.Name) ?? [];
+
+        // The queue is what this panel is; a disease name it could not resolve
+        // falls back to the id, so a failure to load the names is not a failure
+        // to show the queue.
+        failure = queue.Failure;
+
+        loading = false;
+    }
+
+    private async Task Advance(WorkQueueItemResponse row, string target)
+    {
+        actionSaved = null;
+        actionError = null;
+        acting = true;
+
+        try
+        {
+            var moved = await Reports.Transition(row.Id, new UpdateWorkflowStateRequest(target));
+
+            if (moved.Value is { } report)
+            {
+                var at = rows.FindIndex(held => held.Id == row.Id);
+
+                if (at >= 0)
+                {
+                    rows[at] = rows[at] with { WorkflowState = report.WorkflowState ?? rows[at].WorkflowState };
+                }
+
+                actionSaved = $"Report {row.RecordNumber} moved to {Label(report.WorkflowState ?? row.WorkflowState)}.";
+            }
+            else
+            {
+                actionError = moved.Failure;
+            }
+        }
+        finally
+        {
+            acting = false;
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (page > 1)
+        {
+            page--;
+            await Load();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (page < LastPage)
+        {
+            page++;
+            await Load();
+        }
+    }
+
+    private string ConditionName(int conditionId) =>
+        conditionNames.TryGetValue(conditionId, out var name) ? name : $"condition {conditionId}";
+
+    /// <summary>
+    /// A workflow code read as its label. The codes are the legacy codes the
+    /// wire carries; the API tier owns them, and this is display only.
+    /// </summary>
+    private static string Label(string workflowState) => workflowState switch
+    {
+        "assigned_to_lhd" => "Assigned to LHD",
+        "accepted" => "Accepted",
+        "under_investigation" => "Under investigation",
+        "closed" => "Closed",
+        _ => workflowState,
+    };
+
+    /// <summary>
+    /// The one next move a state is likely to take, offered as a button, or
+    /// null at the end of the chain. The API tier decides whether the move is
+    /// allowed; this only offers it.
+    /// </summary>
+    private static (string Target, string Label)? NextMove(string workflowState) => workflowState switch
+    {
+        "assigned_to_lhd" => ("accepted", "Accept"),
+        "accepted" => ("under_investigation", "Begin investigation"),
+        "under_investigation" => ("closed", "Close"),
+        _ => null,
+    };
+}
