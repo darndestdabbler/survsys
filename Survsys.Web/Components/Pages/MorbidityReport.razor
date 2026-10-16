@@ -1,0 +1,208 @@
+@* The case morbidity report's own form: where the legacy creation flow ends,
+   and where every tab of the report lives.
+
+   ../nedss/docs/functional/epitrax-cmr-workflow.md records the form at
+   /event/edit/{recordNumber} as a header bar that stays above every tab and
+   a strip of eight tabs. This is that form, reduced to what this release
+   holds. The address is by the report's identifier, because
+   GET /api/person-conditions/{id} is the endpoint that reads a report back
+   and nothing finds one by its record number yet; the record number is in
+   the header, where the legacy form shows it.
+
+   The header shows only what the report carries -- the patient, the record
+   number, the event type, the disease, the investigating agency and the
+   event date -- and none of the legacy header's actions or workflow fields,
+   because the columns behind those are not on the report and a blank for
+   each would be promising a feature. The strip carries the Demographic tab
+   alone: the other seven arrive with the sessions that own them.
+
+   The person's name and the condition's are read from their own resources,
+   since the report carries identifiers and not names; the disease and the
+   agency come from the same two lists the creation screen offers, which is
+   one ask each. The first ask that fails is the one reported, in the words
+   of the client that made it. *@
+@page "/event/edit/{ReportId:int}"
+@inject PersonConditionsClient Reports
+@inject PersonsClient Persons
+@inject ConditionsClient Conditions
+@inject AgenciesClient Agencies
+@inject ClinicalClient Clinical
+
+<PageTitle>@Title — Survsys</PageTitle>
+
+<MudText id="report-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Case morbidity report
+</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="report-busy" Color="Color.Primary" Indeterminate="true" />
+}
+else if (failure is { } whyNot)
+{
+    <MudAlert id="report-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+else if (report is { } shown && person is not null && clinical is { } clinicalData)
+{
+    @* The header bar: a label and a value per field, each value with the
+       identifier a walkthrough names it by. *@
+    <MudPaper id="report-header" Elevation="1" Class="pa-4 mb-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Patient name</MudText>
+                <MudText id="report-header-patient" Typo="Typo.body1">@Named</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Record #</MudText>
+                <MudText id="report-header-record-number" Typo="Typo.body1">@shown.RecordNumber</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Event type</MudText>
+                <MudText id="report-header-event-type" Typo="Typo.body1">Morbidity</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Disease</MudText>
+                <MudText id="report-header-disease" Typo="Typo.body1">@Disease</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Investigating agency</MudText>
+                <MudText id="report-header-agency" Typo="Typo.body1">@Agency</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Event date</MudText>
+                <MudText id="report-header-event-date" Typo="Typo.body1">@EventDate</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudTabs id="report-tabs" Elevation="1" Rounded="true" ApplyEffectsToContainer="true"
+             TabPanelsClass="pa-4">
+        @* The tab's own identifier is on what the tab shows rather than on
+           the panel: MudTabPanel has an ID parameter of its own, which an id
+           attribute would bind to, and clicking the label is clicking the
+           tab. *@
+        <MudTabPanel Text="Demographic">
+            <TabContent>
+                <span id="report-tab-demographic">Demographic</span>
+            </TabContent>
+            <ChildContent>
+                <DemographicsTab Person="@person" EventOnsetDate="@shown.EventOnsetDate" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Clinical">
+            <TabContent>
+                <span id="report-tab-clinical">Clinical</span>
+            </TabContent>
+            <ChildContent>
+                <ClinicalTab ReportId="@shown.Id" Clinical="@clinicalData" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Laboratory">
+            <TabContent>
+                <span id="report-tab-laboratory">Laboratory</span>
+            </TabContent>
+            <ChildContent>
+                <LaboratoryTab ReportId="@shown.Id" />
+            </ChildContent>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+    /// <summary>The report this form is for, from the address.</summary>
+    [Parameter]
+    public int ReportId { get; set; }
+
+    private PersonConditionResponse? report;
+
+    private PersonDetailResponse? person;
+
+    private IReadOnlyList<ConditionResponse> diseases = [];
+
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private ClinicalResponse? clinical;
+
+    private bool loading = true;
+
+    private string? failure;
+
+    /// <summary>
+    /// How many conditions this screen asks for: the whole catalogue in one
+    /// page, for the reason the creation screen gives.
+    /// </summary>
+    private const int Catalogue = 200;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The report first, because every other ask depends on what it
+        // says; a report that could not be read leaves nothing else to ask.
+        var found = await Reports.Find(ReportId);
+
+        if (found.Value is not { } shown)
+        {
+            failure = found.Failure;
+            loading = false;
+
+            return;
+        }
+
+        report = shown;
+
+        var who = await Persons.Find(shown.PersonId);
+        var conditions = await Conditions.Page(1, Catalogue);
+        var listed = await Agencies.All();
+        var clinicalData = await Clinical.Find(shown.Id);
+
+        person = who.Value;
+        diseases = conditions.Value?.Items ?? [];
+        agencies = listed.Value?.Items ?? [];
+        clinical = clinicalData.Value;
+
+        // The first ask that failed is the one worth reporting.
+        failure = who.Failure ?? conditions.Failure ?? listed.Failure ?? clinicalData.Failure;
+
+        loading = false;
+    }
+
+    /// <summary>What the browser tab says: the record number, once there is one.</summary>
+    private string Title => report is null
+        ? "Case morbidity report"
+        : $"Case morbidity report {report.RecordNumber}";
+
+    /// <summary>
+    /// The person's name as the legacy header bar writes it: last name first.
+    /// </summary>
+    private string Named => person is null
+        ? $"person {report?.PersonId}"
+        : string.IsNullOrWhiteSpace(person.FirstName)
+            ? person.LastName
+            : $"{person.LastName}, {person.FirstName}";
+
+    /// <summary>
+    /// The disease by name, or by identifier where the catalogue page did not
+    /// carry it.
+    /// </summary>
+    private string Disease => diseases
+        .FirstOrDefault(condition => condition.Id == report?.ConditionId)?.Name
+        ?? $"condition {report?.ConditionId}";
+
+    /// <summary>
+    /// The agency by name; "(none)" where none was chosen, which the report
+    /// allows.
+    /// </summary>
+    private string Agency => report?.AgencyId is not { } agencyId
+        ? "(none)"
+        : agencies.FirstOrDefault(agency => agency.Id == agencyId)?.Name
+            ?? $"agency {agencyId}";
+
+    /// <summary>
+    /// The event date, written as the date boxes in this tier take one, or
+    /// "(not recorded)" where the report has none.
+    /// </summary>
+    private string EventDate => report?.EventOnsetDate is { } date
+        ? date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+        : "(not recorded)";
+}
