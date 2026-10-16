@@ -272,9 +272,9 @@
     {
       "number": 14,
       "title": "Person search and case morbidity report creation",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-15T20:03:27.640000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-15T20:51:39.664000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
