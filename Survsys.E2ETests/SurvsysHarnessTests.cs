@@ -59,6 +59,30 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
             .ToHaveTextAsync(SurvsysHarness.SeededConditionsByName);
     }
 
+    [Fact]
+    public async Task ThePeopleScreenShowsTheSeededPeople()
+    {
+        await Open(harness.WebBaseAddress + "people");
+
+        await Expect(Page.Locator("#people-heading")).ToHaveTextAsync("People");
+
+        // Every box empty lists everyone on file, which is what the screen's
+        // own lead-in promises.
+        await Page.Locator("#person-search-search").ClickAsync();
+
+        await Expect(Page.Locator("#person-search-error")).ToHaveCountAsync(0);
+        await Expect(Page.Locator("#person-search-total")).ToHaveTextAsync(
+            $"{SurvsysHarness.SeededPeopleByName.Length} person(s) found, "
+            + $"showing {SurvsysHarness.SeededPeopleByName.Length}.");
+
+        // The seven fixture rows, in the order the endpoint promises and the
+        // screen therefore shows: last name then first name. The fixture
+        // inserts them in another order, so this is an assertion about the
+        // chain and not about the fixture.
+        await Expect(Page.Locator("#person-search-results [data-person-name]"))
+            .ToHaveTextAsync(SurvsysHarness.SeededPeopleByName);
+    }
+
     /// <summary>
     /// The walkthrough contract's fourth clause: every end-to-end run records
     /// video. The recording is on for every test in the suite because the

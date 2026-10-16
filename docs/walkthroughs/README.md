@@ -6,6 +6,9 @@ running Survsys. Perform them in any order; each one stands alone.
 | Walkthrough | The user story | Performed by |
 |---|---|---|
 | [Review the conditions catalogue](review-the-conditions-catalogue.md) | A surveillance administrator opens the conditions catalogue to see which conditions may be reported, and which of them carry a CDC code. | `Survsys.E2ETests/ReviewTheConditionsCatalogueTests.cs` |
+| [Find a person](find-a-person.md) | An investigator looks up whether a person is already on file before doing any case work on them. | `Survsys.E2ETests/FindAPersonTests.cs` |
+| [Create a case morbidity report](create-a-case-morbidity-report.md) | An investigator opens a case morbidity report on a person already on file, in the legacy two steps, and ends on the report's own form. | `Survsys.E2ETests/CreateACaseMorbidityReportTests.cs` |
+| [Record demographics](record-demographics.md) | An investigator records a patient's demographics on their case morbidity report, saves them, and reads them back. | `Survsys.E2ETests/RecordDemographicsTests.cs` |
 
 ## The contract every entry here is held to
 

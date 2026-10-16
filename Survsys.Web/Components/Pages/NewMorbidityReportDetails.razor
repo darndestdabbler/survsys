@@ -70,12 +70,21 @@ else
                 <MudItem xs="12" sm="4">
                     @* The conditions that may be chosen, which is what the
                        active flag means; the legacy dropdown filters as a
-                       user types, and this one lists them. *@
+                       user types, and this one lists them.
+
+                       Each item names its type, here and on the agency list
+                       below, because the list's own type is the nullable
+                       integer it binds to while an item inferred from a plain
+                       integer value is MudSelectItem<int>: the two compile,
+                       and the first click on an item throws an invalid cast
+                       inside MudBlazor and terminates the circuit. The
+                       create-a-case-morbidity-report walkthrough is what
+                       found it. *@
                     <MudSelect @bind-Value="conditionId" id="report-disease"
                                Label="Disease" Variant="Variant.Outlined">
                         @foreach (var condition in diseases)
                         {
-                            <MudSelectItem Value="@condition.Id">@condition.Name</MudSelectItem>
+                            <MudSelectItem T="int?" Value="@condition.Id">@condition.Name</MudSelectItem>
                         }
                     </MudSelect>
                 </MudItem>
@@ -84,7 +93,7 @@ else
                                Label="Investigating agency" Variant="Variant.Outlined">
                         @foreach (var agency in agencies)
                         {
-                            <MudSelectItem Value="@agency.Id">@agency.Name</MudSelectItem>
+                            <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
                         }
                     </MudSelect>
                 </MudItem>

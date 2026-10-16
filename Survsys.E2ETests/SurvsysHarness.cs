@@ -69,6 +69,25 @@ public sealed class SurvsysHarness : IDisposable
     ];
 
     /// <summary>
+    /// The people <c>Fixtures/persons.sql</c> seeds, as the person search
+    /// lists them when every box is empty: last name then first name, which
+    /// is the order the endpoint promises. Stated here as
+    /// <see cref="SeededConditionsByName"/> is, because this project may not
+    /// reference the integration suite, and in the screen's order rather
+    /// than the fixture's insert order for the same reason.
+    /// </summary>
+    public static readonly string[] SeededPeopleByName =
+    [
+        "Abbott, Jane",
+        "Doe",
+        "Nguyen, An",
+        "Okafor, Chidi",
+        "Rodriguez, Carlos",
+        "Rodriguez, Maria",
+        "Zimmerman, Paul",
+    ];
+
+    /// <summary>
     /// This host's own SQL Server, used when nothing redirects the suite. Its
     /// own database, so a walkthrough run never disturbs the development or
     /// integration data. Integrated security, so there is no credential here
@@ -159,21 +178,52 @@ public sealed class SurvsysHarness : IDisposable
     }
 
     /// <summary>
-    /// The condition rows, into the table the API tier has just migrated into
-    /// existence. Deleted first, so a second run of the suite seeds the same
-    /// seven rows rather than fourteen.
+    /// The two fixtures this suite seeds, in the order they run: the
+    /// conditions first, because a report names one of them.
+    /// </summary>
+    private static readonly string[] Fixtures = ["conditions.sql", "persons.sql"];
+
+    /// <summary>
+    /// The tables the fixtures fill, and the ones that hang off them, in the
+    /// order they can be emptied: each table before the one it references,
+    /// so the reports go before the people and the people before the
+    /// conditions. Cleared before any insert, so a second run of the suite
+    /// seeds the same seven people and seven conditions rather than fourteen
+    /// of each — and no report at all, since a walkthrough that needs one
+    /// creates it, and a report left over from the last run would be one the
+    /// document did not describe.
+    /// </summary>
+    private static readonly string[] TablesInDeletionOrder =
+    [
+        "person_conditions",
+        "parent_guardians",
+        "person_races",
+        "person_aliases",
+        "person_emails",
+        "person_telephones",
+        "person_addresses",
+        "persons",
+        "conditions",
+    ];
+
+    /// <summary>
+    /// The condition and person rows, into the tables the API tier has just
+    /// migrated into existence, after everything those tables and their
+    /// dependants held from the last run is deleted.
     /// </summary>
     private void Seed()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "conditions.sql");
+        var paths = Fixtures
+            .Select(fixture => Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture))
+            .ToList();
 
-        if (!File.Exists(path))
+        foreach (var path in paths.Where(path => !File.Exists(path)))
         {
             throw new InvalidOperationException(
-                $"The condition fixture is not at {path}. It is linked into this project's "
-                + "output from Survsys.IntegrationTests by Survsys.E2ETests.csproj; without "
-                + "it the conditions screen would have no rows and a walkthrough would "
-                + "assert against an empty table.");
+                $"The fixture is not at {path}. Both conditions.sql and persons.sql are "
+                + "linked into this project's output from Survsys.IntegrationTests by "
+                + "Survsys.E2ETests.csproj; without one the screen it fills would have no "
+                + "rows and a walkthrough would assert against an empty table.");
         }
 
         try
@@ -181,22 +231,29 @@ public sealed class SurvsysHarness : IDisposable
             using var connection = new SqlConnection(ConnectionString);
             connection.Open();
 
-            using var clear = connection.CreateCommand();
-            clear.CommandText = "DELETE FROM conditions";
-            clear.ExecuteNonQuery();
+            foreach (var table in TablesInDeletionOrder)
+            {
+                using var clear = connection.CreateCommand();
+                clear.CommandText = $"DELETE FROM {table}";
+                clear.ExecuteNonQuery();
+            }
 
-            using var seed = connection.CreateCommand();
-            seed.CommandText = File.ReadAllText(path);
-            seed.ExecuteNonQuery();
+            foreach (var path in paths)
+            {
+                using var seed = connection.CreateCommand();
+                seed.CommandText = File.ReadAllText(path);
+                seed.ExecuteNonQuery();
+            }
         }
         catch (SqlException unreachable)
         {
             throw new InvalidOperationException(
-                "Survsys.E2ETests needs a reachable SQL Server to seed the conditions the "
-                + $"screen shows, and it could not: {unreachable.Message} This suite does "
-                + "not skip when the server is missing, because a skipped walkthrough suite "
-                + $"reads as a green run. Start SQL Server, or set {ConnectionVariable} to "
-                + "the connection string of one that is running.",
+                "Survsys.E2ETests needs a reachable SQL Server to seed the conditions and "
+                + "the people the screens show, from conditions.sql and persons.sql, and it "
+                + $"could not: {unreachable.Message} This suite does not skip when the "
+                + "server is missing, because a skipped walkthrough suite reads as a green "
+                + $"run. Start SQL Server, or set {ConnectionVariable} to the connection "
+                + "string of one that is running.",
                 unreachable);
         }
     }
@@ -241,6 +298,19 @@ public sealed class SurvsysHarness : IDisposable
             };
 
             start.Environment["ASPNETCORE_URLS"] = baseAddress.TrimEnd('/');
+
+            // The tier runs from build output, and build output serves its
+            // static web assets -- Blazor's own script, MudBlazor's script
+            // and stylesheet -- only in the Development environment; in any
+            // other it answers those requests with nothing, the circuit never
+            // starts, and a screen is there to read but presses nothing.
+            // `dotnet run` would set this from launchSettings.json; the
+            // harness starts the assembly directly, so it sets it here, and
+            // does not leave it to whatever the shell that ran the suite
+            // happened to have. Neither tier branches on the environment, and
+            // the two Development settings files hold only values the
+            // environment below overrides.
+            start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
 
             foreach (var (key, value) in environment)
             {
@@ -442,4 +512,85 @@ public class SurvsysPageTest : PageTest
     {
         RecordVideoDir = VideoDirectory,
     };
+
+    /// <summary>
+    /// Opens a screen and waits until it is interactive.
+    /// </summary>
+    /// <remarks>
+    /// <c>Survsys.Web</c> prerenders every screen and then connects the
+    /// interactive circuit, so for a moment after the page has loaded the
+    /// screen is there to read but a click on it reaches nothing: the
+    /// circuit that would handle it is not yet attached. A walkthrough that
+    /// only reads never notices; one that presses a button presses it into
+    /// that gap and sees nothing happen, which is exactly the render-wait
+    /// flakiness the solution plan named as the enemy of this suite.
+    ///
+    /// The wait is for a signal, never for a time. When Blazor's renderer
+    /// renders a component interactively it marks every element the
+    /// component holds a reference to with a <c>_bl_&lt;n&gt;</c> attribute;
+    /// prerendered markup never carries one, because it is produced on the
+    /// server with no renderer in the browser. MudBlazor's buttons and text
+    /// boxes hold such references and the application bar is on every
+    /// screen, so the first of those attributes to appear is the moment the
+    /// circuit has rendered the screen and will answer a click.
+    /// </remarks>
+    protected async Task Open(string address)
+    {
+        await Page.GotoAsync(address);
+
+        try
+        {
+            await Page.WaitForFunctionAsync(InteractivelyRendered);
+        }
+        catch (TimeoutException never)
+        {
+            throw new InvalidOperationException(
+                $"{address} loaded but never became interactive: no element on it was "
+                + "rendered by Blazor's circuit. The screen is there to read, so the tier "
+                + "is serving; what is missing is the script that starts the circuit or "
+                + "the circuit itself. A tier run from build output serves Blazor's own "
+                + "script and MudBlazor's assets only in the Development environment, "
+                + "which the harness sets when it starts the tier; a browser console "
+                + "would show the script arriving empty, or the circuit failing to "
+                + "connect.",
+                never);
+        }
+    }
+
+    /// <summary>
+    /// One numbered step of a walkthrough document, performed.
+    /// </summary>
+    /// <remarks>
+    /// This is the suite's contract that a failure names the walkthrough and
+    /// the step: whatever goes wrong inside the step leaves naming the
+    /// document and the step number, because "assertion failed" tells whoever
+    /// is looking nothing about which written step of a walkthrough stopped
+    /// working — and the step that stopped working is what someone has to go
+    /// and read. Shared here so that every walkthrough test fails in the same
+    /// words rather than each carrying a copy of them.
+    /// </remarks>
+    protected static async Task Step(string document, int number, string what, Func<Task> perform)
+    {
+        try
+        {
+            await perform();
+        }
+        catch (Exception failed)
+        {
+            throw new InvalidOperationException(
+                $"{document} step {number} ({what}) could not be performed: {failed.Message} "
+                + "A step this test cannot perform is a defect in the application or in that "
+                + "document, never a step to skip or to perform another way.",
+                failed);
+        }
+    }
+
+    /// <summary>
+    /// True once any element on the screen carries the mark Blazor's
+    /// interactive renderer leaves and prerendering does not.
+    /// </summary>
+    private const string InteractivelyRendered =
+        "() => Array.from(document.querySelectorAll('*'))"
+        + ".some(element => Array.from(element.attributes)"
+        + ".some(attribute => attribute.name.startsWith('_bl_')))";
 }

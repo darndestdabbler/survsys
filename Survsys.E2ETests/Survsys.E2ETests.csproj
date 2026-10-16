@@ -40,6 +40,12 @@
     <Content Include="..\Survsys.IntegrationTests\Fixtures\conditions.sql"
              Link="Fixtures\conditions.sql"
              CopyToOutputDirectory="PreserveNewest" />
+    <!-- The same seven people, linked for the same reason: the phase 1
+         walkthroughs name the people the integration suite round-trips, and
+         one fixture is what keeps them naming the same ones. -->
+    <Content Include="..\Survsys.IntegrationTests\Fixtures\persons.sql"
+             Link="Fixtures\persons.sql"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
