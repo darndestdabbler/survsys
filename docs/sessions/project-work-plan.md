@@ -35,7 +35,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 21 | Workflow state machine, work queues and agency sharing | no | 2026-10-16 |
 | 22 | Phase 2 walkthroughs | no | 2026-10-16 |
 | 23 | Release 0.3.0 (release: 0.3.0) | yes | 2026-10-16 |
-| 24 | The Investigation and Administrative tabs | — | not declared |
+| 24 | The Investigation and Administrative tabs | no | 2026-10-16 |
 | 25 | Contacts and exposures | — | not declared |
 | 26 | Notes and tasks | — | not declared |
 | 27 | File attachments | — | not declared |
@@ -237,3 +237,14 @@ Session 22 writes phase 2's three walkthroughs and the three Playwright tests th
 **Releasable: yes.**
 
 Release 0.3.0: the framework packs and publishes what is on the trunk.
+
+### Session 24 — The Investigation and Administrative tabs
+
+**Releasable: no.**
+
+Session 24 opens phase 3 by giving the case morbidity report its Investigation and Administrative data, end to end: schema, endpoints, the two tabs on the report shell, and one integration round-trip. Survsys.Data gains the legacy person_condition columns the Investigation and Administrative saves write, all on the existing PersonCondition entity under their legacy snake_case names -- the four Contact Oriented codes (food_handler, healthcare_worker, group_living, day_care_association), imported_from_id, transmission_mode, risk_factors, risk_factors_notes, other_data_1 and other_data_2 for Investigation, and lhd_case_status_id, state_case_status_id, outbreak_associated, lhd_investigation_start_date, lhd_investigation_completed_date, investigation_outcome_disposition_id, event_name, results_reported_to_clinician_date and cdc_first_verbally_notified_date for Administrative -- with one migration for the lot, every foreign key a plain nullable int as PersonCondition.AgencyId is. Survsys.Contracts and Survsys.Api gain the investigation and administrative wire shapes and their read-and-save endpoints, modelled on the clinical slice: GET and PUT /api/person-conditions/{id}/investigation and .../administrative, each a whole replacement, each refusal a Problem Details, the DbContext behind a queries class the architecture test requires, the projection a static Expression the unit suite proves, and a pure validator the unit suite proves. Survsys.Web gains the Investigation and Administrative tabs on the report shell, each a typed client and a tab component wired into MorbidityReport.razor, reading and saving through those endpoints as the Clinical tab does. Survsys.IntegrationTests gains one round-trip over the existing seeded report proving both saves persist and read back, carrying the values ../nedss/docs/db-snapshots/session-012/ dumps -- food_handler unknown, imported_from_id 11, transmission_mode AB for investigation, and lhd_case_status_id 11, state_case_status_id 11, investigation_outcome_disposition_id 11, outbreak_associated Unknown for administrative.
+
+**Amended after acceptance:**
+
+- 2026-10-16 — step 'data-migration': its files: dotnet ef stamped the migration 20261016062447, a timestamp the plan could not predict (claude-code (anthropic, claude-opus-5))
+- 2026-10-16 — step 'web-tabs': its files: The two new clients get the unit tests named after them, as ClinicalClient has ClinicalClientTests (claude-code (anthropic, claude-opus-5))

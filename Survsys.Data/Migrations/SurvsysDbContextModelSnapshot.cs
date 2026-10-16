@@ -452,6 +452,10 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("case_status");
 
+                    b.Property<DateOnly?>("CdcFirstVerballyNotifiedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("cdc_first_verbally_notified_date");
+
                     b.Property<int>("ConditionId")
                         .HasColumnType("int")
                         .HasColumnName("condition_id");
@@ -464,9 +468,18 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("date")
                         .HasColumnName("date_diagnosed");
 
+                    b.Property<string>("DayCareAssociation")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("day_care_association");
+
                     b.Property<DateOnly?>("DiseaseOnsetDate")
                         .HasColumnType("date")
                         .HasColumnName("disease_onset_date");
+
+                    b.Property<string>("EventName")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("event_name");
 
                     b.Property<DateOnly?>("EventOnsetDate")
                         .HasColumnType("date")
@@ -476,6 +489,41 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("date")
                         .HasColumnName("first_reported_ph_date");
 
+                    b.Property<string>("FoodHandler")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("food_handler");
+
+                    b.Property<string>("GroupLiving")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("group_living");
+
+                    b.Property<string>("HealthcareWorker")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("healthcare_worker");
+
+                    b.Property<int?>("ImportedFromId")
+                        .HasColumnType("int")
+                        .HasColumnName("imported_from_id");
+
+                    b.Property<int?>("InvestigationOutcomeDispositionId")
+                        .HasColumnType("int")
+                        .HasColumnName("investigation_outcome_disposition_id");
+
+                    b.Property<int?>("LhdCaseStatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("lhd_case_status_id");
+
+                    b.Property<DateOnly?>("LhdInvestigationCompletedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("lhd_investigation_completed_date");
+
+                    b.Property<DateOnly?>("LhdInvestigationStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("lhd_investigation_start_date");
+
                     b.Property<int?>("MmwrWeek")
                         .HasColumnType("int")
                         .HasColumnName("mmwr_week");
@@ -483,6 +531,19 @@ namespace Survsys.Data.Migrations
                     b.Property<int?>("MmwrYear")
                         .HasColumnType("int")
                         .HasColumnName("mmwr_year");
+
+                    b.Property<string>("OtherData1")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("other_data_1");
+
+                    b.Property<string>("OtherData2")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("other_data_2");
+
+                    b.Property<string>("OutbreakAssociated")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("outbreak_associated");
 
                     b.Property<int>("PersonId")
                         .HasColumnType("int")
@@ -493,6 +554,27 @@ namespace Survsys.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("record_number");
+
+                    b.Property<DateOnly?>("ResultsReportedToClinicianDate")
+                        .HasColumnType("date")
+                        .HasColumnName("results_reported_to_clinician_date");
+
+                    b.Property<string>("RiskFactors")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("risk_factors");
+
+                    b.Property<string>("RiskFactorsNotes")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("risk_factors_notes");
+
+                    b.Property<int?>("StateCaseStatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("state_case_status_id");
+
+                    b.Property<string>("TransmissionMode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("transmission_mode");
 
                     b.Property<string>("TreatmentGiven")
                         .HasMaxLength(20)

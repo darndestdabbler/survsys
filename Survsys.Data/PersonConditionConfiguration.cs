@@ -40,10 +40,13 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
     /// <see cref="PersonCondition.CaseStatus"/> whose longest value is the
     /// two-letter <c>NC</c>, and the workflow code on
     /// <see cref="PersonCondition.WorkflowState"/> whose longest value is the
-    /// nineteen-character <c>under_investigation</c>. The legacy columns are
-    /// unbounded text; a column that holds a code does not need room for prose,
-    /// and the bound leaves room over the longest value rather than sitting on
-    /// it.
+    /// nineteen-character <c>under_investigation</c>. Session 24 adds the six
+    /// Investigation and Administrative codes to the same bound: the four
+    /// Contact Oriented Yes/No/Unknown codes, the two-letter transmission mode
+    /// and the Yes/No/Unknown outbreak association, none longer than the
+    /// seven-character <c>unknown</c>. The legacy columns are unbounded text; a
+    /// column that holds a code does not need room for prose, and the bound
+    /// leaves room over the longest value rather than sitting on it.
     /// </summary>
     private const int CodeLength = 20;
 
@@ -80,6 +83,55 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
         builder.Property(report => report.WorkflowState)
             .HasColumnName("workflow_state")
             .HasMaxLength(CodeLength);
+
+        // The Investigation tab's columns, added in session 24: the four
+        // Contact Oriented codes, the imported-from key, the transmission-mode
+        // code and the four free-text fields. The codes are bounded like every
+        // code above; the free text is not, because the legacy columns are
+        // unbounded and nothing indexes them.
+        builder.Property(report => report.FoodHandler)
+            .HasColumnName("food_handler")
+            .HasMaxLength(CodeLength);
+        builder.Property(report => report.HealthcareWorker)
+            .HasColumnName("healthcare_worker")
+            .HasMaxLength(CodeLength);
+        builder.Property(report => report.GroupLiving)
+            .HasColumnName("group_living")
+            .HasMaxLength(CodeLength);
+        builder.Property(report => report.DayCareAssociation)
+            .HasColumnName("day_care_association")
+            .HasMaxLength(CodeLength);
+        builder.Property(report => report.ImportedFromId).HasColumnName("imported_from_id");
+        builder.Property(report => report.TransmissionMode)
+            .HasColumnName("transmission_mode")
+            .HasMaxLength(CodeLength);
+        builder.Property(report => report.RiskFactors).HasColumnName("risk_factors");
+        builder.Property(report => report.RiskFactorsNotes).HasColumnName("risk_factors_notes");
+        builder.Property(report => report.OtherData1).HasColumnName("other_data_1");
+        builder.Property(report => report.OtherData2).HasColumnName("other_data_2");
+
+        // The Administrative tab's columns, added in the same session: the two
+        // per-jurisdiction case-status keys, the outbreak-association code, the
+        // investigation dates, the outcome key, the event name and the two
+        // reported dates. The three keys are bare identifiers with no
+        // navigation, exactly as agency_id is above.
+        builder.Property(report => report.LhdCaseStatusId).HasColumnName("lhd_case_status_id");
+        builder.Property(report => report.StateCaseStatusId)
+            .HasColumnName("state_case_status_id");
+        builder.Property(report => report.OutbreakAssociated)
+            .HasColumnName("outbreak_associated")
+            .HasMaxLength(CodeLength);
+        builder.Property(report => report.LhdInvestigationStartDate)
+            .HasColumnName("lhd_investigation_start_date");
+        builder.Property(report => report.LhdInvestigationCompletedDate)
+            .HasColumnName("lhd_investigation_completed_date");
+        builder.Property(report => report.InvestigationOutcomeDispositionId)
+            .HasColumnName("investigation_outcome_disposition_id");
+        builder.Property(report => report.EventName).HasColumnName("event_name");
+        builder.Property(report => report.ResultsReportedToClinicianDate)
+            .HasColumnName("results_reported_to_clinician_date");
+        builder.Property(report => report.CdcFirstVerballyNotifiedDate)
+            .HasColumnName("cdc_first_verbally_notified_date");
 
         // What makes a record number a way of referring to a report. The rule
         // that issues one reads the highest already issued for the year and

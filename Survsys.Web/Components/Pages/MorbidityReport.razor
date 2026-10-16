@@ -27,6 +27,8 @@
 @inject ConditionsClient Conditions
 @inject AgenciesClient Agencies
 @inject ClinicalClient Clinical
+@inject InvestigationClient Investigation
+@inject AdministrativeClient Administrative
 
 <PageTitle>@Title — Survsys</PageTitle>
 
@@ -44,7 +46,8 @@ else if (failure is { } whyNot)
         @whyNot
     </MudAlert>
 }
-else if (report is { } shown && person is not null && clinical is { } clinicalData)
+else if (report is { } shown && person is not null && clinical is { } clinicalData
+         && investigation is { } investigationData && administrative is { } administrativeData)
 {
     @* The header bar: a label and a value per field, each value with the
        identifier a walkthrough names it by. *@
@@ -152,6 +155,22 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <LaboratoryTab ReportId="@shown.Id" />
             </ChildContent>
         </MudTabPanel>
+        <MudTabPanel Text="Investigation">
+            <TabContent>
+                <span id="report-tab-investigation">Investigation</span>
+            </TabContent>
+            <ChildContent>
+                <InvestigationTab ReportId="@shown.Id" Investigation="@investigationData" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Administrative">
+            <TabContent>
+                <span id="report-tab-administrative">Administrative</span>
+            </TabContent>
+            <ChildContent>
+                <AdministrativeTab Report="@shown" Administrative="@administrativeData" />
+            </ChildContent>
+        </MudTabPanel>
     </MudTabs>
 }
 
@@ -169,6 +188,10 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     private IReadOnlyList<AgencyResponse> agencies = [];
 
     private ClinicalResponse? clinical;
+
+    private InvestigationResponse? investigation;
+
+    private AdministrativeResponse? administrative;
 
     private bool loading = true;
 
@@ -209,14 +232,19 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         var conditions = await Conditions.Page(1, Catalogue);
         var listed = await Agencies.All();
         var clinicalData = await Clinical.Find(shown.Id);
+        var investigationData = await Investigation.Find(shown.Id);
+        var administrativeData = await Administrative.Find(shown.Id);
 
         person = who.Value;
         diseases = conditions.Value?.Items ?? [];
         agencies = listed.Value?.Items ?? [];
         clinical = clinicalData.Value;
+        investigation = investigationData.Value;
+        administrative = administrativeData.Value;
 
         // The first ask that failed is the one worth reporting.
-        failure = who.Failure ?? conditions.Failure ?? listed.Failure ?? clinicalData.Failure;
+        failure = who.Failure ?? conditions.Failure ?? listed.Failure ?? clinicalData.Failure
+            ?? investigationData.Failure ?? administrativeData.Failure;
 
         loading = false;
     }

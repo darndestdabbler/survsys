@@ -51,6 +51,23 @@ namespace Survsys.Data;
 /// table, and the two MMWR columns are the arithmetic
 /// <see cref="MmwrWeek.Of(System.DateOnly)"/> works over the event onset date.
 ///
+/// Nineteen more are here as of session 24: the columns the legacy
+/// Investigation and Administrative tabs write, which
+/// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>
+/// maps field by field and
+/// <c>../nedss/docs/db-snapshots/session-012/03-after-investigation-fill.txt</c>
+/// and <c>05-after-admin-fill.txt</c> dump the values of. They are grouped
+/// below in the order those tabs show them: the four Contact Oriented codes,
+/// then the Investigation tab's Other section, then the Administrative tab's
+/// Case / Outbreak, Auditing / Investigation and Reported Dates sections.
+/// Every one is nullable, because every one is blank until an investigator
+/// fills it in and the legacy columns are all nullable. The foreign keys among
+/// them stay plain identifiers as <see cref="AgencyId"/> is, and the coded
+/// fields hold the legacy code as <see cref="TreatmentGiven"/> does; the
+/// reporter, the outbreak link, the queue, the tags, the occupations, the
+/// exposures, the reporting criteria and the associated forms those tabs also
+/// show are each a table of their own and are not here.
+///
 /// There is no behaviour here and no navigation out: nothing in this session
 /// walks from a report to its person or its condition, so the two foreign keys
 /// are the plain identifiers the configuration makes them, and the session
@@ -253,4 +270,331 @@ public class PersonCondition
     /// classification-gated transitions are the deferred, Utah-specific work.
     /// </remarks>
     public string? WorkflowState { get; set; }
+
+    /// <summary>
+    /// Whether the person handles food, as the legacy <c>food_handler</c>
+    /// code — the Investigation tab's first Contact Oriented dropdown, one of
+    /// <c>yes</c>, <c>no</c> or <c>unknown</c>, and null until answered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Investigation tab, Field-to-DB Mapping. A plain string holding the
+    /// legacy code as <see cref="TreatmentGiven"/> does: the legacy column is a
+    /// bare <c>VARCHAR</c> with no reference table behind it, and the value is
+    /// the dropdown's lowercase code —
+    /// <c>../nedss/docs/db-snapshots/session-012/03-after-investigation-fill.txt</c>
+    /// shows <c>unknown</c> written to report 12 after the fill, where the
+    /// screen had shown "Unknown".
+    /// </remarks>
+    public string? FoodHandler { get; set; }
+
+    /// <summary>
+    /// Whether the person works in health care, as the legacy
+    /// <c>healthcare_worker</c> code — the second Contact Oriented dropdown,
+    /// one of <c>yes</c>, <c>no</c> or <c>unknown</c>, and null until answered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Investigation tab, Field-to-DB Mapping, and dumped as <c>unknown</c> in
+    /// <c>../nedss/docs/db-snapshots/session-012/03-after-investigation-fill.txt</c>.
+    /// A plain string holding the legacy code, for the reason
+    /// <see cref="FoodHandler"/> is one.
+    /// </remarks>
+    public string? HealthcareWorker { get; set; }
+
+    /// <summary>
+    /// Whether the person lives in a group setting, as the legacy
+    /// <c>group_living</c> code — the third Contact Oriented dropdown, one of
+    /// <c>yes</c>, <c>no</c> or <c>unknown</c>, and null until answered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Investigation tab, Field-to-DB Mapping, and dumped as <c>unknown</c> in
+    /// <c>../nedss/docs/db-snapshots/session-012/03-after-investigation-fill.txt</c>.
+    /// A plain string holding the legacy code, for the reason
+    /// <see cref="FoodHandler"/> is one.
+    /// </remarks>
+    public string? GroupLiving { get; set; }
+
+    /// <summary>
+    /// Whether the person is associated with a day care, as the legacy
+    /// <c>day_care_association</c> code — the fourth Contact Oriented
+    /// dropdown, one of <c>yes</c>, <c>no</c> or <c>unknown</c>, and null until
+    /// answered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Investigation tab, Field-to-DB Mapping, and dumped as <c>unknown</c> in
+    /// <c>../nedss/docs/db-snapshots/session-012/03-after-investigation-fill.txt</c>.
+    /// A plain string holding the legacy code, for the reason
+    /// <see cref="FoodHandler"/> is one.
+    /// </remarks>
+    public string? DayCareAssociation { get; set; }
+
+    /// <summary>
+    /// Where the condition was imported from, as the legacy
+    /// <c>imported_from_id</c> — the Investigation tab's "Imported from"
+    /// dropdown, whose legacy options are Utah, Outside U.S., Other U.S. State
+    /// and Unknown; null until chosen.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Investigation tab, Field-to-DB Mapping, as a foreign key to the legacy
+    /// <c>imported_from</c> table. A bare nullable identifier rather than a
+    /// navigation, exactly as <see cref="AgencyId"/> is: that table does not
+    /// exist here, and a navigation to a table that does not exist is not a
+    /// thing to write early.
+    /// <c>../nedss/docs/db-snapshots/session-012/03-after-investigation-fill.txt</c>
+    /// shows <c>11</c> written to report 12 by the fill.
+    /// </remarks>
+    public int? ImportedFromId { get; set; }
+
+    /// <summary>
+    /// How the condition was transmitted, as the legacy
+    /// <c>transmission_mode</c> code — the Investigation tab's "Transmission
+    /// mode" dropdown, whose fourteen legacy options run from Airborne to
+    /// Water-borne; null until chosen.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Investigation tab, Field-to-DB Mapping, which lists it as a lookup. The
+    /// legacy column is <c>TEXT</c> referencing the code column of a
+    /// <c>transmission_mode</c> table, so what the row holds is the code and
+    /// not an identifier:
+    /// <c>../nedss/docs/db-snapshots/session-012/03-after-investigation-fill.txt</c>
+    /// shows <c>AB</c>, Airborne, written to report 12. A plain string holding
+    /// that code, because the table behind it does not exist here, as
+    /// <see cref="CaseStatus"/> holds its code with no table behind it.
+    /// </remarks>
+    public string? TransmissionMode { get; set; }
+
+    /// <summary>
+    /// The risk factors noted for this case, as the legacy
+    /// <c>risk_factors</c> free text — the Investigation tab's "Risk factors"
+    /// field; null until entered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Investigation tab, Field-to-DB Mapping, as free text, which the legacy
+    /// <c>text</c> column confirms. Unbounded for that reason. The session-012
+    /// fill left it empty, which is what every row of
+    /// <c>../nedss/docs/db-snapshots/session-012/03-after-investigation-fill.txt</c>
+    /// shows.
+    /// </remarks>
+    public string? RiskFactors { get; set; }
+
+    /// <summary>
+    /// Notes on the risk factors, as the legacy <c>risk_factors_notes</c>
+    /// free text — the Investigation tab's "Risk factors notes" textarea;
+    /// null until entered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Investigation tab, Field-to-DB Mapping, as a textarea over a legacy
+    /// <c>text</c> column. Unbounded, as <see cref="RiskFactors"/> is, and left
+    /// empty by the session-012 fill in
+    /// <c>../nedss/docs/db-snapshots/session-012/03-after-investigation-fill.txt</c>.
+    /// </remarks>
+    public string? RiskFactorsNotes { get; set; }
+
+    /// <summary>
+    /// The first of the two catch-all fields, as the legacy
+    /// <c>other_data_1</c> free text — the Investigation tab's "Other data 1";
+    /// null until entered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Investigation tab, Field-to-DB Mapping, as free text over a legacy
+    /// unbounded <c>VARCHAR</c>. Unbounded here too: a field whose name says
+    /// nothing about its contents cannot say how long they are. Left empty by
+    /// the session-012 fill in
+    /// <c>../nedss/docs/db-snapshots/session-012/03-after-investigation-fill.txt</c>.
+    /// </remarks>
+    public string? OtherData1 { get; set; }
+
+    /// <summary>
+    /// The second catch-all field, as the legacy <c>other_data_2</c> free
+    /// text — the Investigation tab's "Other data 2"; null until entered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Investigation tab, Field-to-DB Mapping, and unbounded for the reason
+    /// <see cref="OtherData1"/> is. Left empty by the session-012 fill in
+    /// <c>../nedss/docs/db-snapshots/session-012/03-after-investigation-fill.txt</c>.
+    /// </remarks>
+    public string? OtherData2 { get; set; }
+
+    /// <summary>
+    /// The local health department's case status, as the legacy
+    /// <c>lhd_case_status_id</c> — the Administrative tab's "LHD case status"
+    /// dropdown; null until chosen.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Administrative tab, Field-to-DB Mapping, as a foreign key to the legacy
+    /// <c>case_status</c> table. Distinct from <see cref="CaseStatus"/>, which
+    /// is the one classification survsys models and holds a code: this and
+    /// <see cref="StateCaseStatusId"/> are the legacy's two per-jurisdiction
+    /// status columns, kept as the identifiers the legacy writes so that the
+    /// legacy data reads straight across. A bare nullable identifier rather
+    /// than a navigation, exactly as <see cref="AgencyId"/> is, because the
+    /// table does not exist here.
+    /// <c>../nedss/docs/db-snapshots/session-012/05-after-admin-fill.txt</c>
+    /// shows <c>11</c> written to report 12 by the fill.
+    /// </remarks>
+    public int? LhdCaseStatusId { get; set; }
+
+    /// <summary>
+    /// The state's case status, as the legacy <c>state_case_status_id</c> —
+    /// the Administrative tab's "State case status" dropdown; null until
+    /// chosen.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Administrative tab, Field-to-DB Mapping, as the second foreign key to
+    /// the legacy <c>case_status</c> table, and a bare nullable identifier for
+    /// the reason <see cref="LhdCaseStatusId"/> is one.
+    /// <c>../nedss/docs/db-snapshots/session-012/05-after-admin-fill.txt</c>
+    /// shows <c>11</c> written to report 12 by the fill.
+    /// </remarks>
+    public int? StateCaseStatusId { get; set; }
+
+    /// <summary>
+    /// Whether this case is associated with an outbreak, as the legacy
+    /// <c>outbreak_associated</c> code — the Administrative tab's "Outbreak
+    /// associated" dropdown, one of <c>Yes</c>, <c>No</c> or <c>Unknown</c>,
+    /// and null until answered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Administrative tab, Field-to-DB Mapping. The legacy column is bare
+    /// <c>text</c> with no reference table behind it, so this is a plain
+    /// string holding the code as <see cref="TreatmentGiven"/> does. The code
+    /// is capitalised where the Contact Oriented codes are lowercase, which is
+    /// the legacy's inconsistency and not this schema's to correct:
+    /// <c>../nedss/docs/db-snapshots/session-012/05-after-admin-fill.txt</c>
+    /// shows <c>Unknown</c> written to report 12 where the same fill wrote
+    /// <c>unknown</c> to <see cref="FoodHandler"/>. The outbreak itself — the
+    /// "Outbreak name" dropdown and its <c>outbreak_id</c> — is not here; that
+    /// is outbreak management's, a later session.
+    /// </remarks>
+    public string? OutbreakAssociated { get; set; }
+
+    /// <summary>
+    /// The date the local health department started its investigation, as
+    /// the legacy <c>lhd_investigation_start_date</c> — the Administrative
+    /// tab's "LHD investigation started" date picker; null until entered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Administrative tab, Field-to-DB Mapping. A <see cref="DateOnly"/> where
+    /// the legacy column is a <c>TIMESTAMP</c>, for the reason
+    /// <see cref="FirstReportedPhDate"/> is one: the legacy screen asks for it
+    /// with a date picker, and a day entered that way has no time of day to
+    /// keep. The session-012 fill left it empty, which is what
+    /// <c>../nedss/docs/db-snapshots/session-012/05-after-admin-fill.txt</c>
+    /// shows.
+    /// </remarks>
+    public DateOnly? LhdInvestigationStartDate { get; set; }
+
+    /// <summary>
+    /// The date the local health department completed its investigation, as
+    /// the legacy <c>lhd_investigation_completed_date</c> — the
+    /// Administrative tab's "LHD investigation completed" date picker; null
+    /// until entered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Administrative tab, Field-to-DB Mapping. A <see cref="DateOnly"/> over a
+    /// legacy <c>TIMESTAMP</c>, for the reason
+    /// <see cref="LhdInvestigationStartDate"/> is one, and left empty by the
+    /// session-012 fill in
+    /// <c>../nedss/docs/db-snapshots/session-012/05-after-admin-fill.txt</c>.
+    /// </remarks>
+    public DateOnly? LhdInvestigationCompletedDate { get; set; }
+
+    /// <summary>
+    /// The outcome of the investigation, as the legacy
+    /// <c>investigation_outcome_disposition_id</c> — the Administrative tab's
+    /// "Investigation outcome" dropdown; null until chosen.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Administrative tab, Field-to-DB Mapping, as a foreign key to the legacy
+    /// <c>disposition</c> table. A bare nullable identifier rather than a
+    /// navigation, exactly as <see cref="AgencyId"/> is, because that table
+    /// does not exist here.
+    /// <c>../nedss/docs/db-snapshots/session-012/05-after-admin-fill.txt</c>
+    /// shows <c>11</c> written to report 12 by the fill.
+    /// </remarks>
+    public int? InvestigationOutcomeDispositionId { get; set; }
+
+    /// <summary>
+    /// A name for the event this report is about, as the legacy
+    /// <c>event_name</c> free text — the Administrative tab's "Event name"
+    /// field; null until entered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Administrative tab, Field-to-DB Mapping, as free text over a legacy
+    /// <c>text</c> column, and unbounded for that reason. Left empty by the
+    /// session-012 fill in
+    /// <c>../nedss/docs/db-snapshots/session-012/05-after-admin-fill.txt</c>.
+    /// </remarks>
+    public string? EventName { get; set; }
+
+    /// <summary>
+    /// The date results were reported to the clinician, as the legacy
+    /// <c>results_reported_to_clinician_date</c> — the Administrative tab's
+    /// "Results reported to LHD" date picker, under the Reported Dates
+    /// section; null until entered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Administrative tab, Field-to-DB Mapping, whose label and column name
+    /// disagree about who was reported to; the column keeps the legacy name
+    /// so that the legacy data reads straight across. A <see cref="DateOnly"/>
+    /// over a legacy <c>TIMESTAMP</c>, for the reason
+    /// <see cref="LhdInvestigationStartDate"/> is one, and left empty by the
+    /// session-012 fill in
+    /// <c>../nedss/docs/db-snapshots/session-012/05-after-admin-fill.txt</c>.
+    /// </remarks>
+    public DateOnly? ResultsReportedToClinicianDate { get; set; }
+
+    /// <summary>
+    /// The date the CDC was first verbally notified, as the legacy
+    /// <c>cdc_first_verbally_notified_date</c> — the Administrative tab's
+    /// "Date CDC verbally notified" date picker, under the Reported Dates
+    /// section; null until entered.
+    /// </summary>
+    /// <remarks>
+    /// Mapped by
+    /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>,
+    /// Administrative tab, Field-to-DB Mapping, which leaves the column "TBD";
+    /// the column is the one the snapshot's header carries under that name,
+    /// which
+    /// <c>../nedss/docs/db-snapshots/session-012/05-after-admin-fill.txt</c>
+    /// shows empty for every row after the fill. A <see cref="DateOnly"/>,
+    /// which here matches the legacy column exactly: this one was added to the
+    /// legacy as a <c>DATE</c> rather than a <c>TIMESTAMP</c>.
+    /// </remarks>
+    public DateOnly? CdcFirstVerballyNotifiedDate { get; set; }
 }

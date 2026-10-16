@@ -36,6 +36,8 @@ builder.Services.AddHttpClient<PersonsClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<AgenciesClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<PersonConditionsClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<ClinicalClient>(http => http.BaseAddress = api);
+builder.Services.AddHttpClient<InvestigationClient>(http => http.BaseAddress = api);
+builder.Services.AddHttpClient<AdministrativeClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<LabsClient>(http => http.BaseAddress = api);
 builder.Services.AddHttpClient<WorkQueueClient>(http => http.BaseAddress = api);
 
