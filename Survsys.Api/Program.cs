@@ -44,6 +44,8 @@ builder.Services.AddClinical();
 builder.Services.AddInvestigation();
 builder.Services.AddAdministrative();
 builder.Services.AddLabs();
+builder.Services.AddExposures();
+builder.Services.AddContactImport();
 builder.Services.AddWorkQueue();
 
 var app = builder.Build();
@@ -88,6 +90,8 @@ app.MapClinical();
 app.MapInvestigation();
 app.MapAdministrative();
 app.MapLabs();
+app.MapExposures();
+app.MapContactImport();
 app.MapWorkQueue();
 
 app.Run();

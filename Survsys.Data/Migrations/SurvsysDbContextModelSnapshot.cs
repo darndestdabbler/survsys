@@ -67,6 +67,195 @@ namespace Survsys.Data.Migrations
                     b.ToTable("conditions", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.Exposure", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AgencyId")
+                        .HasColumnType("int")
+                        .HasColumnName("agency_id");
+
+                    b.Property<int?>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("description");
+
+                    b.Property<DateOnly?>("ExposureEnd")
+                        .HasColumnType("date")
+                        .HasColumnName("exposure_end");
+
+                    b.Property<int?>("ExposurePlaceId")
+                        .HasColumnType("int")
+                        .HasColumnName("exposure_place_id");
+
+                    b.Property<DateOnly?>("ExposureStart")
+                        .HasColumnType("date")
+                        .HasColumnName("exposure_start");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("name");
+
+                    b.Property<int?>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("exposures", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.ExposureContact", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContactType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("contact_type");
+
+                    b.Property<DateOnly?>("DispositionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("disposition_date");
+
+                    b.Property<int?>("DispositionId")
+                        .HasColumnType("int")
+                        .HasColumnName("disposition_id");
+
+                    b.Property<DateOnly?>("ExposureEnd")
+                        .HasColumnType("date")
+                        .HasColumnName("exposure_end");
+
+                    b.Property<int>("ExposureId")
+                        .HasColumnType("int")
+                        .HasColumnName("exposure_id");
+
+                    b.Property<DateOnly?>("ExposureStart")
+                        .HasColumnType("date")
+                        .HasColumnName("exposure_start");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExposureId");
+
+                    b.HasIndex("PersonId");
+
+                    b.ToTable("exposure_contacts", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.ExposurePlace", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("city");
+
+                    b.Property<int?>("ExposurePlaceTypeId")
+                        .HasColumnType("int")
+                        .HasColumnName("exposure_place_type_id");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)")
+                        .HasColumnName("latitude");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("state");
+
+                    b.Property<string>("Street")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("street");
+
+                    b.Property<string>("Zip")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("zip");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("exposure_places", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.ExposureSource", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ExposureId")
+                        .HasColumnType("int")
+                        .HasColumnName("exposure_id");
+
+                    b.Property<int?>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.Property<int?>("PersonId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_id");
+
+                    b.Property<string>("SourceName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("source_name");
+
+                    b.Property<string>("SourceType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("source_type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExposureId");
+
+                    b.ToTable("exposure_sources", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.Lab", b =>
                 {
                     b.Property<int>("Id")
@@ -736,6 +925,30 @@ namespace Survsys.Data.Migrations
                     b.HasIndex("PersonId");
 
                     b.ToTable("person_telephones", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.ExposureContact", b =>
+                {
+                    b.HasOne("Survsys.Data.Exposure", null)
+                        .WithMany()
+                        .HasForeignKey("ExposureId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.ExposureSource", b =>
+                {
+                    b.HasOne("Survsys.Data.Exposure", null)
+                        .WithMany()
+                        .HasForeignKey("ExposureId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Survsys.Data.Lab", b =>

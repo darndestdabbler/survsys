@@ -265,6 +265,21 @@
       "what": "step 'web-tabs': its files",
       "reason": "The two new clients get the unit tests named after them, as ClinicalClient has ClinicalClientTests",
       "by": "claude-code (anthropic, claude-opus-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 25,
+      "dateTime": "2026-10-16T02:50:15.992000-04:00",
+      "task": "Session 25 gives the case morbidity report its Contacts and exposures, end to end: schema, endpoints, the Contacts tab, and a batch CSV contact import whose parser is the stated deliverable. Survsys.Data gains four new entities under the legacy snake_case names of EpiTrax's exposure chain, as declared in legacy/nedss-jpa/src/main/resources/db/migration/V0001__create.sql under ../nedss, each a plural table with its own IEntityTypeConfiguration and DbSet, with one migration named ContactsAndExposures for the lot. Exposure is an exposure event with a place and a time range: its legacy columns (condition_id, agency_id, exposure_place_id, exposure_start, exposure_end, name, description) as plain nullable foreign keys and dates with no navigation, plus person_condition_id, a survsys report-scope column -- legacy scopes an exposure by condition and agency (and outbreak) across every report of that disease, which is outbreak-era work session 50 owns, so this release scopes an exposure to the one report its Contacts tab is open on and sets condition_id and agency_id from that report. ExposurePlace is the legacy exposure_place (exposure_place_type_id, name, street, city, zip, state, latitude, longitude, phone), the place an exposure points at by exposure_place_id. ExposureContact is a contact on an exposure carrying its disposition (exposure_id, person_id, exposure_start, exposure_end, disposition_id, contact_type, disposition_date). ExposureSource is a source on an exposure (exposure_id, person_id, person_condition_id, source_name, source_type). Every coded foreign key stays a plain nullable id and every code a plain string, as PersonCondition.AgencyId and the Clinical slice's codes are, with no reference table and no endpoint listing one. Survsys.Contracts and Survsys.Api gain the exposure wire shapes and their endpoints, modelled on the laboratory slice: GET /api/person-conditions/{id}/exposures lists a report's exposure events paged, GET /api/exposures/{id} reads one whole with its place, contacts and sources, and POST /api/person-conditions/{id}/exposures records one whole in one transaction; the DbContext stays behind an ExposureQueries class the architecture test requires, the entity-to-wire projections are static Expressions the unit suite proves, a pure WhyNotAnExposure validator the unit suite proves turns an unsaveable request into a 400 Problem Details, a report id naming no report is a 404, and a contact or source naming a person not on file is a 400. Survsys.Web gains the Contacts tab on the report shell -- a typed ExposuresClient and a ContactsTab component wired into MorbidityReport.razor after Administrative, listing the report's exposure events with their place, their contacts and each contact's disposition, and recording a new exposure the way the Laboratory tab records a specimen, every element carrying a stable identifier a walkthrough names. Survsys.Api and Survsys.UnitTests gain the batch CSV contact import: a pure ContactImportParser that turns a CSV of contacts into the rows it accepts and the rows it rejects -- a malformed row (wrong column count or an unparseable required field) and a duplicate (a row whose name-and-birth-date key already appeared in the batch) each rejected with a reason naming the line -- proven by ContactImportParserTests named after it covering a malformed row and a duplicate, and a POST /api/person-conditions/{id}/contacts/import endpoint that runs the parser over the posted CSV and answers with what it accepted and rejected, a missing report a 404.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 25,
+      "dateTime": "2026-10-16T03:07:18.644000-04:00",
+      "what": "step 'data-migration': its files",
+      "reason": "dotnet ef timestamped the migration 20261016070705, which the plan could not predict",
+      "by": "claude-code (anthropic, claude-opus-5)"
     }
   ]
 }

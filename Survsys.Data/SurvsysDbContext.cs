@@ -48,6 +48,14 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<PersonConditionShare> PersonConditionShares => Set<PersonConditionShare>();
 
+    public DbSet<Exposure> Exposures => Set<Exposure>();
+
+    public DbSet<ExposurePlace> ExposurePlaces => Set<ExposurePlace>();
+
+    public DbSet<ExposureContact> ExposureContacts => Set<ExposureContact>();
+
+    public DbSet<ExposureSource> ExposureSources => Set<ExposureSource>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

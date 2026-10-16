@@ -171,6 +171,14 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <AdministrativeTab Report="@shown" Administrative="@administrativeData" />
             </ChildContent>
         </MudTabPanel>
+        <MudTabPanel Text="Contacts">
+            <TabContent>
+                <span id="report-tab-contacts">Contacts</span>
+            </TabContent>
+            <ChildContent>
+                <ContactsTab ReportId="@shown.Id" />
+            </ChildContent>
+        </MudTabPanel>
     </MudTabs>
 }
 
