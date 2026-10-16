@@ -1,0 +1,84 @@
+@* The conditions a case can be reported for: the first screen, and the one
+   the first walkthrough is written against.
+
+   Every element the walkthrough will name carries an identifier of its own —
+   `conditions-heading`, `conditions-table`, `conditions-total`,
+   `conditions-loading`, `conditions-error`, and one row per condition keyed
+   by its name. A test selects by those and not by a MudBlazor class or a
+   cell's position, so restyling the screen or reordering a column cannot
+   break a walkthrough that was passing.
+
+   One page of rows, with no sorting, filtering or paging control: what the
+   screen promises is exactly what the first walkthrough performs. *@
+@page "/"
+@page "/conditions"
+@inject ConditionsClient Client
+
+<PageTitle>Conditions — Survsys</PageTitle>
+
+<MudText id="conditions-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Conditions
+</MudText>
+
+@if (asked is null)
+{
+    @* Still asking the API tier. The circuit is interactive, so this is what
+       the screen shows between the first render and the answer. *@
+    <MudProgressCircular id="conditions-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result)
+{
+    <MudText id="conditions-total" Typo="Typo.body2" Class="mb-4">
+        @result.TotalCount condition(s), showing @result.Items.Count.
+    </MudText>
+
+    <MudPaper Elevation="1">
+        <MudSimpleTable id="conditions-table" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>CDC code</th>
+                    <th>Active</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var condition in result.Items)
+                {
+                    <tr data-condition="@condition.Name">
+                        <td data-condition-name>@condition.Name</td>
+                        @* The API returns null for a condition that is not
+                           nationally notifiable and has no code. A screen
+                           shows that as a dash rather than as an empty cell,
+                           so a walkthrough can say what the reader will
+                           see. *@
+                        <td data-condition-cdc-code>@(condition.CdcCode ?? "—")</td>
+                        <td data-condition-active>@(condition.Active ? "Yes" : "No")</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+else
+{
+    @* The tier's contract: an API failure is a message on the screen, never
+       an unhandled exception in a circuit. ConditionsClient hands over the
+       message; this is where it is shown. *@
+    <MudAlert id="conditions-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    private Asked<PagedResult<ConditionResponse>>? asked;
+
+    protected override async Task OnInitializedAsync() =>
+        asked = await Client.Page(1, PageSize);
+
+    /// <summary>
+    /// How many conditions one page of this screen holds. The API tier's own
+    /// default, stated here because a screen that shows a count has to know
+    /// what it asked for.
+    /// </summary>
+    private const int PageSize = 50;
+}
