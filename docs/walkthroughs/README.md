@@ -9,6 +9,9 @@ running Survsys. Perform them in any order; each one stands alone.
 | [Find a person](find-a-person.md) | An investigator looks up whether a person is already on file before doing any case work on them. | `Survsys.E2ETests/FindAPersonTests.cs` |
 | [Create a case morbidity report](create-a-case-morbidity-report.md) | An investigator opens a case morbidity report on a person already on file, in the legacy two steps, and ends on the report's own form. | `Survsys.E2ETests/CreateACaseMorbidityReportTests.cs` |
 | [Record demographics](record-demographics.md) | An investigator records a patient's demographics on their case morbidity report, saves them, and reads them back. | `Survsys.E2ETests/RecordDemographicsTests.cs` |
+| [Enter a laboratory result](enter-a-laboratory-result.md) | An investigator records a specimen, the test run on it and that test's result on a case morbidity report, and reads the specimen back. | `Survsys.E2ETests/EnterALaboratoryResultTests.cs` |
+| [Assign and accept a case](assign-and-accept-a-case.md) | A state user assigns a case morbidity report to the local health department that will investigate it, and that department accepts it from its work queue. | `Survsys.E2ETests/AssignAndAcceptACaseTests.cs` |
+| [Close an investigation](close-an-investigation.md) | A local health department investigator takes an accepted case through its investigation to closed, and reads the report still on file afterwards. | `Survsys.E2ETests/CloseAnInvestigationTests.cs` |
 
 ## The contract every entry here is held to
 

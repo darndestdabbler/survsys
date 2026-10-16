@@ -186,15 +186,31 @@ public sealed class SurvsysHarness : IDisposable
     /// <summary>
     /// The tables the fixtures fill, and the ones that hang off them, in the
     /// order they can be emptied: each table before the one it references,
-    /// so the reports go before the people and the people before the
+    /// so the laboratory rows go before the reports and the people they
+    /// name, the reports before the people, and the people before the
     /// conditions. Cleared before any insert, so a second run of the suite
     /// seeds the same seven people and seven conditions rather than fourteen
-    /// of each — and no report at all, since a walkthrough that needs one
-    /// creates it, and a report left over from the last run would be one the
-    /// document did not describe.
+    /// of each — and no report and no specimen at all, since a walkthrough
+    /// that needs one creates it, and one left over from the last run would
+    /// be one the document did not describe.
     /// </summary>
-    private static readonly string[] TablesInDeletionOrder =
+    /// <remarks>
+    /// The laboratory chain is listed in full rather than left to the
+    /// database's cascades: a specimen names its person with a reference the
+    /// schema refuses to cascade, so a specimen left behind would refuse the
+    /// clearing of the people, and the run after a laboratory walkthrough
+    /// would fail to seed. Results go before tests, tests and susceptibility
+    /// rows before specimens, the links and the shares before the reports
+    /// they hang off, and specimens before the people they name.
+    /// </remarks>
+    public static readonly string[] TablesInDeletionOrder =
     [
+        "person_condition_shares",
+        "person_condition_labs",
+        "lab_test_results",
+        "lab_tests",
+        "lab_resist_tests",
+        "labs",
         "person_conditions",
         "parent_guardians",
         "person_races",
@@ -209,9 +225,12 @@ public sealed class SurvsysHarness : IDisposable
     /// <summary>
     /// The condition and person rows, into the tables the API tier has just
     /// migrated into existence, after everything those tables and their
-    /// dependants held from the last run is deleted.
+    /// dependants held from the last run is deleted. Run once by the
+    /// constructor, and public so that <see cref="SurvsysHarnessTests"/> can
+    /// run it again over whatever the walkthroughs before it left behind and
+    /// prove that the clearing still holds.
     /// </summary>
-    private void Seed()
+    public void Seed()
     {
         var paths = Fixtures
             .Select(fixture => Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture))

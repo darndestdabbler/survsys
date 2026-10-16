@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.Playwright;
 using Xunit;
 
@@ -81,6 +82,51 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
         // chain and not about the fixture.
         await Expect(Page.Locator("#person-search-results [data-person-name]"))
             .ToHaveTextAsync(SurvsysHarness.SeededPeopleByName);
+    }
+
+    /// <summary>
+    /// Seeding leaves what the fixtures fill — the conditions, the people and
+    /// the people's own details — and nothing a walkthrough fills: no report,
+    /// no share, no specimen, no test, no result and no susceptibility row.
+    /// Run here over whatever the walkthroughs before this test left behind —
+    /// a laboratory walkthrough leaves a specimen that names its person — so
+    /// it proves the deletion order holds against a database the suite has
+    /// already used, which is the database every second run starts from.
+    /// </summary>
+    [Fact]
+    public void SeedingLeavesNothingAWalkthroughFills()
+    {
+        harness.Seed();
+
+        // The deletion order runs from the laboratory chain down to the
+        // report and only then to the people's details and the people, so
+        // the tables a walkthrough fills are the ones up to and including the
+        // report's.
+        const string ReportTable = "person_conditions";
+        var filledByWalkthroughs = SurvsysHarness.TablesInDeletionOrder
+            .TakeWhile(table => table != ReportTable)
+            .Append(ReportTable);
+        var leftOver = new List<string>();
+
+        using var connection = new SqlConnection(harness.ConnectionString);
+        connection.Open();
+
+        foreach (var table in filledByWalkthroughs)
+        {
+            using var count = connection.CreateCommand();
+            count.CommandText = $"SELECT COUNT(*) FROM {table}";
+
+            if ((int)count.ExecuteScalar()! is var rows && rows > 0)
+            {
+                leftOver.Add($"{table} holds {rows}");
+            }
+        }
+
+        Assert.True(
+            leftOver.Count == 0,
+            $"Seeding left rows behind: {string.Join("; ", leftOver)}. A walkthrough that "
+            + "needs a report or a specimen creates it, so one still there after seeding is "
+            + "one the next walkthrough's document did not describe.");
     }
 
     /// <summary>
