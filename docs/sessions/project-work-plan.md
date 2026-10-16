@@ -30,7 +30,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 16 | Phase 1 walkthroughs | no | 2026-10-15 |
 | 17 | Release 0.2.0 (release: 0.2.0) | yes | 2026-10-15 |
 | 18 | Clinical and laboratory data — schema and endpoints | no | 2026-10-15 |
-| 19 | Clinical and laboratory screens | — | not declared |
+| 19 | Clinical and laboratory screens | no | 2026-10-15 |
 | 20 | Case classification, status and MMWR week | — | not declared |
 | 21 | Workflow state machine, work queues and agency sharing | — | not declared |
 | 22 | Phase 2 walkthroughs | — | not declared |
@@ -199,3 +199,9 @@ Session 18 opens phase 2 by giving the case morbidity report its clinical and la
 **Amended after acceptance:**
 
 - 2026-10-15 — step 'data-migration': its files: dotnet ef stamped the migration 20261016021641; aligning the planned files to the generated names. (claude-code (anthropic, claude-opus-5))
+
+### Session 19 — Clinical and laboratory screens
+
+**Releasable: no.**
+
+Session 19 puts the case morbidity report's Clinical tab and its manual laboratory entry in front of the user, over the endpoints session 18 built and changing nothing in the API, Data or Contracts tiers. The application tier gains two typed clients beside the four it has, each the only thing in this tier that speaks HTTP about its resource and each with the ApiAsk failure handling every client uses: ClinicalClient over GET and PUT /api/person-conditions/{id}/clinical, and LabsClient over POST and GET /api/person-conditions/{id}/labs and GET /api/labs/{id}; both are registered in Survsys.Web/Program.cs, and both are proved in the unit suite as the other clients are -- the request the screen filled in is the one sent, the answer the API gave is the one handed back, and each failure starts with the client's own prefix. The Clinical tab is Survsys.Web/Components/ClinicalTab.razor, taking the report's ClinicalResponse and copying it into editable fields, with the legacy tab's clinical fields from epitrax-cmr-deep-editing.md section 3 -- disease onset date, date diagnosed, whether treatment was given, the died? answer and the date of death -- where the three Yes/No/Unknown fields are plain text boxes holding the legacy code, as the Demographic tab left the coded fields; Save & Continue builds an UpdateClinicalRequest from the fields and PUTs it whole through ClinicalClient, parsing the date boxes under the invariant culture with a complaint for one that is not a date, and showing the API tier's answer or its failure. The Laboratory tab is Survsys.Web/Components/LaboratoryTab.razor: a list of the report's specimens read through LabsClient, and a manual entry form that builds one specimen with its nested tests, each test with its results, and its antimicrobial susceptibility rows -- specimen, then test, then result -- and POSTs the whole CreateLabRequest at once, the new specimen appearing in the list on success and the client's failure shown otherwise; every coded field (facility and provider ids, specimen source, test type and status, organism, agent and the coded outcomes) stays a plain text box holding the legacy id, because the reference tables behind them do not exist yet. Both tabs mount on the existing report shell, Survsys.Web/Components/Pages/MorbidityReport.razor, as MudTabPanels beside the Demographic tab, and every element a later walkthrough will name carries a stable identifier.

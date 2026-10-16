@@ -26,6 +26,7 @@
 @inject PersonsClient Persons
 @inject ConditionsClient Conditions
 @inject AgenciesClient Agencies
+@inject ClinicalClient Clinical
 
 <PageTitle>@Title — Survsys</PageTitle>
 
@@ -43,7 +44,7 @@ else if (failure is { } whyNot)
         @whyNot
     </MudAlert>
 }
-else if (report is { } shown && person is not null)
+else if (report is { } shown && person is not null && clinical is { } clinicalData)
 {
     @* The header bar: a label and a value per field, each value with the
        identifier a walkthrough names it by. *@
@@ -90,6 +91,22 @@ else if (report is { } shown && person is not null)
                 <DemographicsTab Person="@person" EventOnsetDate="@shown.EventOnsetDate" />
             </ChildContent>
         </MudTabPanel>
+        <MudTabPanel Text="Clinical">
+            <TabContent>
+                <span id="report-tab-clinical">Clinical</span>
+            </TabContent>
+            <ChildContent>
+                <ClinicalTab ReportId="@shown.Id" Clinical="@clinicalData" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Laboratory">
+            <TabContent>
+                <span id="report-tab-laboratory">Laboratory</span>
+            </TabContent>
+            <ChildContent>
+                <LaboratoryTab ReportId="@shown.Id" />
+            </ChildContent>
+        </MudTabPanel>
     </MudTabs>
 }
 
@@ -105,6 +122,8 @@ else if (report is { } shown && person is not null)
     private IReadOnlyList<ConditionResponse> diseases = [];
 
     private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private ClinicalResponse? clinical;
 
     private bool loading = true;
 
@@ -135,13 +154,15 @@ else if (report is { } shown && person is not null)
         var who = await Persons.Find(shown.PersonId);
         var conditions = await Conditions.Page(1, Catalogue);
         var listed = await Agencies.All();
+        var clinicalData = await Clinical.Find(shown.Id);
 
         person = who.Value;
         diseases = conditions.Value?.Items ?? [];
         agencies = listed.Value?.Items ?? [];
+        clinical = clinicalData.Value;
 
         // The first ask that failed is the one worth reporting.
-        failure = who.Failure ?? conditions.Failure ?? listed.Failure;
+        failure = who.Failure ?? conditions.Failure ?? listed.Failure ?? clinicalData.Failure;
 
         loading = false;
     }
