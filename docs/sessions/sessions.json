@@ -870,9 +870,9 @@
     {
       "number": 43,
       "title": "Notification guides and PHIN variable mapping",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-17T06:37:16.228000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-17T06:53:00.377000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
