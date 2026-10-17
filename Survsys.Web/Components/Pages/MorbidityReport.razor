@@ -1,0 +1,459 @@
+@* The case morbidity report's own form: where the legacy creation flow ends,
+   and where every tab of the report lives.
+
+   ../nedss/docs/functional/epitrax-cmr-workflow.md records the form at
+   /event/edit/{recordNumber} as a header bar that stays above every tab and
+   a strip of eight tabs. This is that form, reduced to what this release
+   holds. The address is by the report's identifier, because
+   GET /api/person-conditions/{id} is the endpoint that reads a report back
+   and nothing finds one by its record number yet; the record number is in
+   the header, where the legacy form shows it.
+
+   The header shows only what the report carries -- the patient, the record
+   number, the event type, the disease, the investigating agency and the
+   event date -- and none of the legacy header's actions or workflow fields,
+   because the columns behind those are not on the report and a blank for
+   each would be promising a feature. The strip carries the Demographic tab
+   alone: the other seven arrive with the sessions that own them.
+
+   The person's name and the condition's are read from their own resources,
+   since the report carries identifiers and not names; the disease and the
+   agency come from the same two lists the creation screen offers, which is
+   one ask each. The first ask that fails is the one reported, in the words
+   of the client that made it. *@
+@page "/event/edit/{ReportId:int}"
+@inject PersonConditionsClient Reports
+@inject PersonsClient Persons
+@inject ConditionsClient Conditions
+@inject AgenciesClient Agencies
+@inject ClinicalClient Clinical
+@inject InvestigationClient Investigation
+@inject AdministrativeClient Administrative
+@inject CoreElementsClient CoreElements
+@inject NotificationQueueClient Notifications
+
+<PageTitle>@Title — Survsys</PageTitle>
+
+<MudText id="report-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Case morbidity report
+</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="report-busy" Color="Color.Primary" Indeterminate="true" />
+}
+else if (failure is { } whyNot)
+{
+    <MudAlert id="report-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+else if (report is { } shown && person is not null && clinical is { } clinicalData
+         && investigation is { } investigationData && administrative is { } administrativeData)
+{
+    @* The header bar: a label and a value per field, each value with the
+       identifier a walkthrough names it by. *@
+    <MudPaper id="report-header" Elevation="1" Class="pa-4 mb-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Patient name</MudText>
+                <MudText id="report-header-patient" Typo="Typo.body1">@Named</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Record #</MudText>
+                <MudText id="report-header-record-number" Typo="Typo.body1">@shown.RecordNumber</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Event type</MudText>
+                <MudText id="report-header-event-type" Typo="Typo.body1">Morbidity</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Disease</MudText>
+                <MudText id="report-header-disease" Typo="Typo.body1">@Disease</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Investigating agency</MudText>
+                <MudText id="report-header-agency" Typo="Typo.body1">@Agency</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Event date</MudText>
+                <MudText id="report-header-event-date" Typo="Typo.body1">@EventDate</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">MMWR week</MudText>
+                <MudText id="report-header-mmwr" Typo="Typo.body1">@Mmwr</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Case status</MudText>
+                <MudText id="report-header-case-status" Typo="Typo.body1">@Status</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @* The case status editor: a text box holding the legacy code, as every
+       coded field in this tier is, and the API tier's to validate — a code it
+       refuses is shown here rather than re-checked. The status is a case-level
+       field, so it sits above the tab strip and not inside a tab. *@
+    <MudPaper id="report-status" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Case status</MudText>
+
+        @if (statusSaved is { } savedMessage)
+        {
+            <MudAlert id="report-status-saved" Severity="Severity.Success" Variant="Variant.Filled"
+                      Class="mb-4">
+                @savedMessage
+            </MudAlert>
+        }
+
+        @if (statusError is { } whyNotSaved)
+        {
+            <MudAlert id="report-status-error" Severity="Severity.Error" Variant="Variant.Filled"
+                      Class="mb-4">
+                @whyNotSaved
+            </MudAlert>
+        }
+
+        <MudGrid Spacing="2" Class="align-center">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="statusCode" id="report-status-input"
+                              Label="Case status (C/P/S/NC)" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudButton id="report-status-save" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@savingStatus" OnClick="@SaveStatus">
+                    Save status
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @* The manual CDC-notification action: a case change queues the case for
+       notification on its own, and this queues it again by hand, for a case
+       that must be re-sent. A case-level action, so it sits above the tab strip
+       with the status editor. Each named element carries its own id. *@
+    <MudPaper id="report-notify" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">CDC notification</MudText>
+
+        @if (notifyQueued is { } queuedMessage)
+        {
+            <MudAlert id="report-notify-queued" Severity="Severity.Success" Variant="Variant.Filled"
+                      Class="mb-4">
+                @queuedMessage
+            </MudAlert>
+        }
+
+        @if (notifyError is { } whyNotQueued)
+        {
+            <MudAlert id="report-notify-error" Severity="Severity.Error" Variant="Variant.Filled"
+                      Class="mb-4">
+                @whyNotQueued
+            </MudAlert>
+        }
+
+        <MudText Typo="Typo.body2" Class="mb-2">
+            Queue this case to be notified to CDC. A case change queues it
+            automatically; this queues it again by hand.
+        </MudText>
+
+        <MudButton id="report-notify-queue" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@queuing" OnClick="@QueueForNotification">
+            Queue for notification
+        </MudButton>
+    </MudPaper>
+
+    <MudTabs id="report-tabs" Elevation="1" Rounded="true" ApplyEffectsToContainer="true"
+             TabPanelsClass="pa-4">
+        @* The tab's own identifier is on what the tab shows rather than on
+           the panel: MudTabPanel has an ID parameter of its own, which an id
+           attribute would bind to, and clicking the label is clicking the
+           tab. *@
+        <MudTabPanel Text="Demographic">
+            <TabContent>
+                <span id="report-tab-demographic">Demographic</span>
+            </TabContent>
+            <ChildContent>
+                <DemographicsTab Person="@person" EventOnsetDate="@shown.EventOnsetDate" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Clinical">
+            <TabContent>
+                <span id="report-tab-clinical">Clinical</span>
+            </TabContent>
+            <ChildContent>
+                <ClinicalTab ReportId="@shown.Id" Clinical="@clinicalData" Hidden="@hidden" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Laboratory">
+            <TabContent>
+                <span id="report-tab-laboratory">Laboratory</span>
+            </TabContent>
+            <ChildContent>
+                <LaboratoryTab ReportId="@shown.Id" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Investigation">
+            <TabContent>
+                <span id="report-tab-investigation">Investigation</span>
+            </TabContent>
+            <ChildContent>
+                <InvestigationTab ReportId="@shown.Id" Investigation="@investigationData" Hidden="@hidden" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Administrative">
+            <TabContent>
+                <span id="report-tab-administrative">Administrative</span>
+            </TabContent>
+            <ChildContent>
+                <AdministrativeTab Report="@shown" Administrative="@administrativeData" Hidden="@hidden" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Forms">
+            <TabContent>
+                <span id="report-tab-forms">Forms</span>
+            </TabContent>
+            <ChildContent>
+                <FormsTab ReportId="@shown.Id" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Contacts">
+            <TabContent>
+                <span id="report-tab-contacts">Contacts</span>
+            </TabContent>
+            <ChildContent>
+                <ContactsTab ReportId="@shown.Id" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Notes">
+            <TabContent>
+                <span id="report-tab-notes">Notes</span>
+            </TabContent>
+            <ChildContent>
+                <NotesTab ReportId="@shown.Id" />
+            </ChildContent>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+    /// <summary>The report this form is for, from the address.</summary>
+    [Parameter]
+    public int ReportId { get; set; }
+
+    private PersonConditionResponse? report;
+
+    private PersonDetailResponse? person;
+
+    private IReadOnlyList<ConditionResponse> diseases = [];
+
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private ClinicalResponse? clinical;
+
+    private InvestigationResponse? investigation;
+
+    private AdministrativeResponse? administrative;
+
+    /// <summary>
+    /// The uids of the fields core element configuration hides on this
+    /// report, for its condition and investigating agency.
+    /// </summary>
+    private IReadOnlySet<string> hidden = new HashSet<string>();
+
+    private bool loading = true;
+
+    private string? failure;
+
+    private string? statusCode;
+
+    private bool savingStatus;
+
+    private string? statusSaved;
+
+    private string? statusError;
+
+    private bool queuing;
+
+    private string? notifyQueued;
+
+    private string? notifyError;
+
+    /// <summary>
+    /// How many conditions this screen asks for: the whole catalogue in one
+    /// page, for the reason the creation screen gives.
+    /// </summary>
+    private const int Catalogue = 200;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The report first, because every other ask depends on what it
+        // says; a report that could not be read leaves nothing else to ask.
+        var found = await Reports.Find(ReportId);
+
+        if (found.Value is not { } shown)
+        {
+            failure = found.Failure;
+            loading = false;
+
+            return;
+        }
+
+        report = shown;
+        statusCode = shown.CaseStatus;
+
+        var who = await Persons.Find(shown.PersonId);
+        var conditions = await Conditions.Page(1, Catalogue);
+        var listed = await Agencies.All();
+        var clinicalData = await Clinical.Find(shown.Id);
+        var investigationData = await Investigation.Find(shown.Id);
+        var administrativeData = await Administrative.Find(shown.Id);
+        var hiddenElements = await CoreElements.HiddenOn(shown.Id);
+
+        person = who.Value;
+        diseases = conditions.Value?.Items ?? [];
+        agencies = listed.Value?.Items ?? [];
+        clinical = clinicalData.Value;
+        investigation = investigationData.Value;
+        administrative = administrativeData.Value;
+        hidden = hiddenElements.Value?.ToHashSet() ?? [];
+
+        // The first ask that failed is the one worth reporting.
+        failure = who.Failure ?? conditions.Failure ?? listed.Failure ?? clinicalData.Failure
+            ?? investigationData.Failure ?? administrativeData.Failure ?? hiddenElements.Failure;
+
+        loading = false;
+    }
+
+    /// <summary>What the browser tab says: the record number, once there is one.</summary>
+    private string Title => report is null
+        ? "Case morbidity report"
+        : $"Case morbidity report {report.RecordNumber}";
+
+    /// <summary>
+    /// The person's name as the legacy header bar writes it: last name first.
+    /// </summary>
+    private string Named => person is null
+        ? $"person {report?.PersonId}"
+        : string.IsNullOrWhiteSpace(person.FirstName)
+            ? person.LastName
+            : $"{person.LastName}, {person.FirstName}";
+
+    /// <summary>
+    /// The disease by name, or by identifier where the catalogue page did not
+    /// carry it.
+    /// </summary>
+    private string Disease => diseases
+        .FirstOrDefault(condition => condition.Id == report?.ConditionId)?.Name
+        ?? $"condition {report?.ConditionId}";
+
+    /// <summary>
+    /// The agency by name; "(none)" where none was chosen, which the report
+    /// allows.
+    /// </summary>
+    private string Agency => report?.AgencyId is not { } agencyId
+        ? "(none)"
+        : agencies.FirstOrDefault(agency => agency.Id == agencyId)?.Name
+            ?? $"agency {agencyId}";
+
+    /// <summary>
+    /// The event date, written as the date boxes in this tier take one, or
+    /// "(not recorded)" where the report has none.
+    /// </summary>
+    private string EventDate => report?.EventOnsetDate is { } date
+        ? date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+        : "(not recorded)";
+
+    /// <summary>
+    /// The MMWR week and year together, or "(not calculated)" where the report
+    /// has no onset date to count from.
+    /// </summary>
+    private string Mmwr => report?.MmwrWeek is { } week && report.MmwrYear is { } year
+        ? $"Week {week}, {year}"
+        : "(not calculated)";
+
+    /// <summary>
+    /// The case status code, or "Unknown" where none is set — which is how the
+    /// report carries an unclassified case.
+    /// </summary>
+    private string Status => report?.CaseStatus is { } code && !string.IsNullOrWhiteSpace(code)
+        ? code
+        : "Unknown";
+
+    /// <summary>
+    /// Sets the case status through the API tier and replaces the shown report
+    /// with the answer, so the header reads what was stored and not what was
+    /// typed; the vocabulary rule is the API's, and a code it refuses is shown
+    /// as the failure rather than re-checked here.
+    /// </summary>
+    private async Task SaveStatus()
+    {
+        if (report is not { } current)
+        {
+            return;
+        }
+
+        statusSaved = null;
+        statusError = null;
+        savingStatus = true;
+
+        try
+        {
+            var answered = await Reports.SetStatus(
+                current.Id, new UpdateCaseStatusRequest(Blank(statusCode)));
+
+            if (answered.Value is { } updated)
+            {
+                report = updated;
+                statusCode = updated.CaseStatus;
+                statusSaved = "The case status has been saved.";
+            }
+            else
+            {
+                statusError = answered.Failure;
+            }
+        }
+        finally
+        {
+            savingStatus = false;
+        }
+    }
+
+    /// <summary>The status box's content, trimmed, or null where it holds nothing.</summary>
+    private static string? Blank(string? typed) =>
+        string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
+
+    /// <summary>
+    /// Queues the case for CDC notification by hand, showing when it was queued
+    /// on success or the client's message on failure. The auto-queue already
+    /// queues a case on change; this is for a case that must be re-sent.
+    /// </summary>
+    private async Task QueueForNotification()
+    {
+        if (report is not { } current)
+        {
+            return;
+        }
+
+        notifyQueued = null;
+        notifyError = null;
+        queuing = true;
+
+        try
+        {
+            var answered = await Notifications.Queue(current.Id);
+
+            if (answered.Value is { } row)
+            {
+                notifyQueued = $"This case was queued for notification at "
+                    + $"{row.QueuedAt:yyyy-MM-dd HH:mm}.";
+            }
+            else
+            {
+                notifyError = answered.Failure;
+            }
+        }
+        finally
+        {
+            queuing = false;
+        }
+    }
+}
