@@ -75,11 +75,11 @@ public class RecordDemographicsTests(SurvsysHarness harness) : SurvsysPageTest
 
         // 6. Giardiasis from the Disease list.
         await Step(Document, 6, "choose Giardiasis from Disease", async () =>
-            await Choose("#report-disease", "Disease", "Giardiasis"));
+            await Choose("Disease", "Giardiasis"));
 
         // 7. Utah State from the Investigating agency list.
         await Step(Document, 7, "choose Utah State from Investigating agency", async () =>
-            await Choose("#report-agency", "Investigating agency", "Utah State"));
+            await Choose("Investigating agency", "Utah State"));
 
         // 8. Save & Continue.
         await Step(Document, 8, "press Save & Continue", async () =>
@@ -224,17 +224,17 @@ public class RecordDemographicsTests(SurvsysHarness harness) : SurvsysPageTest
     }
 
     /// <summary>
-    /// Opens the list whose box carries <paramref name="list"/>, chooses the
-    /// item reading <paramref name="item"/> by the words on it, and reads the
-    /// box labelled <paramref name="label"/>, which now shows what was
-    /// chosen — the same way the creation walkthrough's test does it, and
-    /// for the same reasons.
+    /// Opens the list labelled <paramref name="label"/>, chooses the item
+    /// reading <paramref name="item"/> by the words on it, and reads that box,
+    /// which now shows what was chosen — the same way the creation
+    /// walkthrough's test does it, and for the same reasons.
     /// </summary>
-    private async Task Choose(string list, string label, string item)
+    private async Task Choose(string label, string item)
     {
-        await Page.Locator(list).ClickAsync();
+        var box = Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true });
+
+        await box.ClickAsync();
         await Page.GetByRole(AriaRole.Option, new() { Name = item, Exact = true }).ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true }))
-            .ToHaveTextAsync(item);
+        await Expect(box).ToHaveTextAsync(item);
     }
 }

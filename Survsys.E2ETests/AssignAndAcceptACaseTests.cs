@@ -83,11 +83,11 @@ public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
 
         // 6. Listeriosis from the Disease list.
         await Step(Document, 6, "choose Listeriosis from Disease", async () =>
-            await Choose("#report-disease", "Disease", "Listeriosis"));
+            await Choose("Disease", "Listeriosis"));
 
         // 7. Utah State from the Investigating agency list.
         await Step(Document, 7, "choose Utah State from Investigating agency", async () =>
-            await Choose("#report-agency", "Investigating agency", "Utah State"));
+            await Choose("Investigating agency", "Utah State"));
 
         // 8. Save & Continue.
         await Step(Document, 8, "press Save & Continue", async () =>
@@ -129,7 +129,7 @@ public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
         // 11. Davis County on the board: its queue, without this report.
         await Step(Document, 11, "choose Davis County from Agency and read that the report is not in its queue", async () =>
         {
-            await Choose("#agency-queue-select", "Agency", "Davis County");
+            await Choose("Agency", "Davis County");
 
             await Expect(Page.Locator("#work-queue-busy")).ToHaveCountAsync(0);
             await Expect(Page.Locator("#work-queue-error")).ToHaveCountAsync(0);
@@ -140,7 +140,7 @@ public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
         await Step(Document, 12, "type the report's id in Report id and choose Davis County from Assign to agency", async () =>
         {
             await Page.Locator("#agency-queue-assign-report").FillAsync(reportId);
-            await Choose("#agency-queue-assign-agency", "Assign to agency", "Davis County");
+            await Choose("Assign to agency", "Davis County");
         });
 
         // 13. Assign: the message, and the row now on the board.
@@ -169,7 +169,7 @@ public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
         // 15. Davis County's queue: the row, and its Accept button.
         await Step(Document, 15, "choose Davis County from Agency and read the row and its Accept button", async () =>
         {
-            await Choose("#queue-agency-select", "Agency", "Davis County");
+            await Choose("Agency", "Davis County");
 
             await Expect(Page.Locator($"#queue-row-{reportId}-record")).ToHaveTextAsync(recordNumber);
             await Expect(Page.Locator($"#queue-row-{reportId}-workflow")).ToHaveTextAsync("Assigned to LHD");
@@ -196,7 +196,7 @@ public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
             await Page.Locator("#nav-agency-queue").ClickAsync();
             await Expect(Page.Locator("#agency-queue-heading")).ToHaveTextAsync("Agency board");
 
-            await Choose("#agency-queue-select", "Agency", "Davis County");
+            await Choose("Agency", "Davis County");
 
             await Expect(Page.Locator($"#queue-row-{reportId}-record")).ToHaveTextAsync(recordNumber);
             await Expect(Page.Locator($"#queue-row-{reportId}-workflow")).ToHaveTextAsync("Accepted");
@@ -204,19 +204,19 @@ public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
     }
 
     /// <summary>
-    /// Opens the list whose box carries <paramref name="list"/>, chooses the
-    /// item reading <paramref name="item"/> by the words on it, and reads the
-    /// box labelled <paramref name="label"/>, which now shows what was
-    /// chosen — the same way the creation walkthrough's test does it, and
-    /// for the same reasons. The label is matched exactly, which is what
-    /// tells the Agency board's **Agency** list from its **Assign to agency**
-    /// and **Share with agency** lists.
+    /// Opens the list labelled <paramref name="label"/>, chooses the item
+    /// reading <paramref name="item"/> by the words on it, and reads that box,
+    /// which now shows what was chosen — the same way the creation
+    /// walkthrough's test does it, and for the same reasons. The label is
+    /// matched exactly, which is what tells the Agency board's **Agency** list
+    /// from its **Assign to agency** and **Share with agency** lists.
     /// </summary>
-    private async Task Choose(string list, string label, string item)
+    private async Task Choose(string label, string item)
     {
-        await Page.Locator(list).ClickAsync();
+        var box = Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true });
+
+        await box.ClickAsync();
         await Page.GetByRole(AriaRole.Option, new() { Name = item, Exact = true }).ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true }))
-            .ToHaveTextAsync(item);
+        await Expect(box).ToHaveTextAsync(item);
     }
 }

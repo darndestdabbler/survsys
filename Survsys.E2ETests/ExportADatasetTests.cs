@@ -119,12 +119,12 @@ public class ExportADatasetTests(SurvsysHarness harness) : SurvsysPageTest
 
         // 8. The disease — Bartonellosis, which no other walkthrough reports on.
         await Step(Document, 8, "choose Bartonellosis from Disease", async () =>
-            await Choose("#report-disease", "Disease", Condition));
+            await Choose("Disease", Condition));
 
         // 9. The agency, then Save & Continue.
         await Step(Document, 9, "choose Davis County from Investigating agency and save", async () =>
         {
-            await Choose("#report-agency", "Investigating agency", Agency);
+            await Choose("Investigating agency", Agency);
             await Page.Locator("#report-save").ClickAsync();
         });
 
@@ -153,7 +153,7 @@ public class ExportADatasetTests(SurvsysHarness harness) : SurvsysPageTest
             await Page.Locator("#saved-view-column-last_name").ClickAsync();
             await Page.Locator("#saved-view-column-first_name").ClickAsync();
             await Page.Locator("#saved-view-column-condition").ClickAsync();
-            await Choose("#saved-view-condition", "Condition", Condition);
+            await Choose("Condition", Condition);
             await Page.Locator("#saved-view-save").ClickAsync();
             await Expect(Page.Locator("#saved-view-form-heading")).ToHaveTextAsync("New saved view");
         });
@@ -186,16 +186,25 @@ public class ExportADatasetTests(SurvsysHarness harness) : SurvsysPageTest
     }
 
     /// <summary>
-    /// Chooses an item from a MudBlazor select, naming it by the list's id and
-    /// the item by its text, and waits until the list shows the item chosen —
-    /// the same way the other walkthrough tests in this suite do it. The label
-    /// is matched exactly, so the combobox read back is the one named.
+    /// Opens the list labelled <paramref name="label"/>, chooses the item
+    /// reading <paramref name="item"/> by the words on it, and reads that box,
+    /// which now shows what was chosen.
     /// </summary>
-    private async Task Choose(string list, string label, string item)
+    /// <remarks>
+    /// The box is reached by the label the document names it by rather than
+    /// by the identifier the markup puts on the list, because a list that
+    /// already holds a value — even an empty one, as the saved view's
+    /// <strong>Condition</strong> opens on <strong>Any</strong> — renders the
+    /// input carrying that identifier as <c>type="hidden"</c> and shows a
+    /// sibling box beside it. The hidden input cannot be pressed, and it is not
+    /// what the reader presses: the box carrying the label is.
+    /// </remarks>
+    private async Task Choose(string label, string item)
     {
-        await Page.Locator(list).ClickAsync();
+        var box = Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true });
+
+        await box.ClickAsync();
         await Page.GetByRole(AriaRole.Option, new() { Name = item, Exact = true }).ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true }))
-            .ToHaveTextAsync(item);
+        await Expect(box).ToHaveTextAsync(item);
     }
 }

@@ -54,7 +54,7 @@ public class PromoteAMessageToACaseTests(SurvsysHarness harness) : SurvsysPageTe
         // 2. Filter to Queued for review and find the promote message's row.
         await Step(Document, 2, "choose Queued for review and find the elr-promote-example.hl7 row", async () =>
         {
-            await Choose("#staged-messages-filter", "Review state", "Queued for review");
+            await Choose("Review state", "Queued for review");
 
             await Expect(Page.Locator("#staged-messages-table tbody tr").Filter(new() { HasText = PromoteSource }))
                 .ToHaveCountAsync(1);
@@ -73,7 +73,7 @@ public class PromoteAMessageToACaseTests(SurvsysHarness harness) : SurvsysPageTe
         {
             await Expect(Page).ToHaveTitleAsync("Staged message — Survsys");
             await Expect(Page.Locator("#staged-message-review-heading"))
-                .ToHaveTextAsync(new Regex(@"^Staged message \d+$"));
+                .ToHaveTextAsync(new Regex(@"^\s*Staged message \d+\s*$"));
             await Expect(Page.Locator("#staged-message-promote-heading")).ToHaveTextAsync("Promote to a case");
         });
 
@@ -113,11 +113,11 @@ public class PromoteAMessageToACaseTests(SurvsysHarness harness) : SurvsysPageTe
 
         // 8. Listeriosis from the Disease list.
         await Step(Document, 8, "choose Listeriosis from Disease", async () =>
-            await Choose("#staged-message-promote-disease", "Disease", "Listeriosis"));
+            await Choose("Disease", "Listeriosis"));
 
         // 9. Utah State from the Investigating agency list.
         await Step(Document, 9, "choose Utah State from Investigating agency", async () =>
-            await Choose("#staged-message-promote-agency", "Investigating agency", "Utah State"));
+            await Choose("Investigating agency", "Utah State"));
 
         // 10. Promote to a case.
         await Step(Document, 10, "press Promote to a case", async () =>
@@ -162,16 +162,25 @@ public class PromoteAMessageToACaseTests(SurvsysHarness harness) : SurvsysPageTe
     }
 
     /// <summary>
-    /// Opens the list whose box carries <paramref name="list"/>, chooses the
-    /// item reading <paramref name="item"/> by the words on it, and reads the
-    /// box labelled <paramref name="label"/>, which now shows what was chosen
-    /// — the same way the other walkthroughs' tests open a MudBlazor list.
+    /// Opens the list labelled <paramref name="label"/>, chooses the item
+    /// reading <paramref name="item"/> by the words on it, and reads that box,
+    /// which now shows what was chosen.
     /// </summary>
-    private async Task Choose(string list, string label, string item)
+    /// <remarks>
+    /// The box is reached by the label the document names it by rather than
+    /// by the identifier the markup puts on the list, because a list that
+    /// already holds a value — even an empty one, as <strong>Review
+    /// state</strong> opens on <strong>All</strong> — renders the input
+    /// carrying that identifier as <c>type="hidden"</c> and shows a sibling box
+    /// beside it. The hidden input cannot be pressed, and it is not what the
+    /// reader presses: the box carrying the label is.
+    /// </remarks>
+    private async Task Choose(string label, string item)
     {
-        await Page.Locator(list).ClickAsync();
+        var box = Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true });
+
+        await box.ClickAsync();
         await Page.GetByRole(AriaRole.Option, new() { Name = item, Exact = true }).ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true }))
-            .ToHaveTextAsync(item);
+        await Expect(box).ToHaveTextAsync(item);
     }
 }

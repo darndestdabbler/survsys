@@ -60,14 +60,15 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 46 | Auto-queue, reconciliation and the export log | no | 2026-10-17 |
 | 47 | Notification screens | no | 2026-10-17 |
 | 48 | Phase 6 walkthroughs | no | 2026-10-17 |
-| 49 | Release 0.7.0 (release: 0.7.0) | — | not declared |
-| 50 | Outbreak management | — | not declared |
-| 51 | The dynamic form builder | — | not declared |
-| 52 | Treatments and vaccines | — | not declared |
-| 53 | Audit by EF Core interceptors | — | not declared |
-| 54 | IBIS integration and ad-hoc reporting | — | not declared |
-| 55 | Phase 7 walkthroughs and the full walkthrough regression | — | not declared |
-| 56 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 49 | Repair the dropdown steps of five walkthroughs | no | 2026-10-17 |
+| 50 | Release 0.7.0 (release: 0.7.0) | — | not declared |
+| 51 | Outbreak management | — | not declared |
+| 52 | The dynamic form builder | — | not declared |
+| 53 | Treatments and vaccines | — | not declared |
+| 54 | Audit by EF Core interceptors | — | not declared |
+| 55 | IBIS integration and ad-hoc reporting | — | not declared |
+| 56 | Phase 7 walkthroughs and the full walkthrough regression | — | not declared |
+| 57 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -422,3 +423,9 @@ Build the outbound CDC notification screens in Survsys.Web together with the API
 **Releasable: no.**
 
 Document the Phase 6 outbound CDC notification workflow sessions 45 to 47 shipped, as three walkthroughs under docs/walkthroughs/ with the one Playwright test named after each, video recording left on through the harness. First give the end-to-end suite a CDC export log to read: nothing writes the nmi_log table yet, so an export-log SQL fixture seeds a small, self-contained case and its log rows into nmi_log, linked into Survsys.E2ETests and cleared and reseeded by the harness the way the conditions, people and staged messages already are. Then write, in turn, queue-a-case-for-notification (an investigator opens a case morbidity report, queues it for CDC by hand, reads the queued confirmation, and finds the case waiting on the notification queue screen), review-a-generated-message (a reviewer opens the export log, opens one export, and reads its record number, guide, queued and sent times, outcome and the generated message whole) and inspect-the-export-log (a reviewer opens the export log and reads the history of exports, newest first, each with its record number, queued and sent times and outcome). Each document is numbered steps naming controls by the words the MorbidityReport, NotificationQueue, ExportLog and GeneratedMessageReview screens show, and each test performs those steps in their written order and asserts the outcome by the screens' stable identifiers, never by a MudBlazor class or a cell's position.
+
+### Session 49 — Repair the dropdown steps of five walkthroughs
+
+**Releasable: no.**
+
+Make the five walkthrough tests that fail a whole end-to-end run pass again, without changing what any walkthrough does. SaveAView, ExportADataset, ReviewAStagedMessage, PromoteAMessageToACase and ResolveADuplicate open a MudBlazor select by the identifier the markup puts on it, and a select that already holds a value - even the empty Any or All - renders the input carrying that identifier as type="hidden" beside the visible box, so Playwright times out waiting for it to become visible. Each test's private Choose helper becomes the one WorkATaskListTests and AttachADocumentTests already use: it finds the combobox by the accessible label its walkthrough document names it by, presses it, picks the option by its words and reads the box back. The same change is then made to the nine other tests whose Choose helper still opens a select by identifier - they pass today only because their selects open empty - so no walkthrough depends on which value a select opens on.

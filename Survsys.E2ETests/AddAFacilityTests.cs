@@ -79,7 +79,7 @@ public class AddAFacilityTests(SurvsysHarness harness) : SurvsysPageTest
         {
             await Page.Locator("#facility-name").FillAsync(Name);
             await Page.Locator("#facility-short-name").FillAsync(ShortName);
-            await Choose("#facility-agency", "Agency", Agency);
+            await Choose("Agency", Agency);
             await Page.Locator("#facility-street").FillAsync(Street);
             await Page.Locator("#facility-city").FillAsync(City);
             await Page.Locator("#facility-state").FillAsync(TypedState);
@@ -136,16 +136,19 @@ public class AddAFacilityTests(SurvsysHarness harness) : SurvsysPageTest
     }
 
     /// <summary>
-    /// Chooses an item from a MudBlazor select, naming it by the list's id and
-    /// the item by its text, and waits until the list shows the item chosen —
-    /// the same way the other walkthrough tests in this suite do it. The label
-    /// is matched exactly, so the combobox read back is the one named.
+    /// Opens the list labelled <paramref name="label"/>, chooses the item
+    /// reading <paramref name="item"/> by the words on it, and reads that box,
+    /// which now shows what was chosen — the same way the other walkthrough
+    /// tests in this suite do it. The label is matched exactly, so the box
+    /// pressed and read back is the one named, never the hidden input a list
+    /// that already holds a value puts its identifier on.
     /// </summary>
-    private async Task Choose(string list, string label, string item)
+    private async Task Choose(string label, string item)
     {
-        await Page.Locator(list).ClickAsync();
+        var box = Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true });
+
+        await box.ClickAsync();
         await Page.GetByRole(AriaRole.Option, new() { Name = item, Exact = true }).ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true }))
-            .ToHaveTextAsync(item);
+        await Expect(box).ToHaveTextAsync(item);
     }
 }

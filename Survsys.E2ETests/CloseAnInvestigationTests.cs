@@ -84,11 +84,11 @@ public class CloseAnInvestigationTests(SurvsysHarness harness) : SurvsysPageTest
 
         // 6. Lyme disease from the Disease list.
         await Step(Document, 6, "choose Lyme disease from Disease", async () =>
-            await Choose("#report-disease", "Disease", "Lyme disease"));
+            await Choose("Disease", "Lyme disease"));
 
         // 7. Utah State from the Investigating agency list.
         await Step(Document, 7, "choose Utah State from Investigating agency", async () =>
-            await Choose("#report-agency", "Investigating agency", "Utah State"));
+            await Choose("Investigating agency", "Utah State"));
 
         // 8. Save & Continue.
         await Step(Document, 8, "press Save & Continue", async () =>
@@ -123,7 +123,7 @@ public class CloseAnInvestigationTests(SurvsysHarness harness) : SurvsysPageTest
             await Page.Locator("#nav-agency-queue").ClickAsync();
             await Expect(Page.Locator("#agency-queue-heading")).ToHaveTextAsync("Agency board");
 
-            await Choose("#agency-queue-select", "Agency", "Summit County");
+            await Choose("Agency", "Summit County");
 
             await Expect(Page.Locator("#work-queue-busy")).ToHaveCountAsync(0);
             await Expect(Page.Locator("#work-queue-error")).ToHaveCountAsync(0);
@@ -134,7 +134,7 @@ public class CloseAnInvestigationTests(SurvsysHarness harness) : SurvsysPageTest
         await Step(Document, 11, "type the report's id in Report id and choose Summit County from Assign to agency", async () =>
         {
             await Page.Locator("#agency-queue-assign-report").FillAsync(reportId);
-            await Choose("#agency-queue-assign-agency", "Assign to agency", "Summit County");
+            await Choose("Assign to agency", "Summit County");
         });
 
         // 12. Assign: the message, and the row now on the board.
@@ -156,7 +156,7 @@ public class CloseAnInvestigationTests(SurvsysHarness harness) : SurvsysPageTest
             await Page.Locator("#nav-queue").ClickAsync();
             await Expect(Page.Locator("#assignee-queue-heading")).ToHaveTextAsync("Work queue");
 
-            await Choose("#queue-agency-select", "Agency", "Summit County");
+            await Choose("Agency", "Summit County");
         });
 
         // 14. The row, and its Accept button.
@@ -221,19 +221,19 @@ public class CloseAnInvestigationTests(SurvsysHarness harness) : SurvsysPageTest
     }
 
     /// <summary>
-    /// Opens the list whose box carries <paramref name="list"/>, chooses the
-    /// item reading <paramref name="item"/> by the words on it, and reads the
-    /// box labelled <paramref name="label"/>, which now shows what was
-    /// chosen — the same way the creation walkthrough's test does it, and
-    /// for the same reasons. The label is matched exactly, which is what
-    /// tells the Agency board's **Agency** list from its **Assign to agency**
-    /// and **Share with agency** lists.
+    /// Opens the list labelled <paramref name="label"/>, chooses the item
+    /// reading <paramref name="item"/> by the words on it, and reads that box,
+    /// which now shows what was chosen — the same way the creation
+    /// walkthrough's test does it, and for the same reasons. The label is
+    /// matched exactly, which is what tells the Agency board's **Agency** list
+    /// from its **Assign to agency** and **Share with agency** lists.
     /// </summary>
-    private async Task Choose(string list, string label, string item)
+    private async Task Choose(string label, string item)
     {
-        await Page.Locator(list).ClickAsync();
+        var box = Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true });
+
+        await box.ClickAsync();
         await Page.GetByRole(AriaRole.Option, new() { Name = item, Exact = true }).ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true }))
-            .ToHaveTextAsync(item);
+        await Expect(box).ToHaveTextAsync(item);
     }
 }

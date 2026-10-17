@@ -90,7 +90,7 @@ public class ReviewAStagedMessageTests(SurvsysHarness harness) : SurvsysPageTest
 
         await Step(Document, 4, "choose Exception from Review state and read the one exception row", async () =>
         {
-            await Choose("#staged-messages-filter", "Review state", "Exception");
+            await Choose("Review state", "Exception");
 
             var rows = Page.Locator("#staged-messages-table tbody tr");
             await Expect(rows).ToHaveCountAsync(1);
@@ -141,7 +141,7 @@ public class ReviewAStagedMessageTests(SurvsysHarness harness) : SurvsysPageTest
             await Page.Locator("#staged-message-review-back").ClickAsync();
 
             await Expect(Page.Locator("#staged-messages-heading")).ToHaveTextAsync("Staged messages");
-            await Choose("#staged-messages-filter", "Review state", "Queued for review");
+            await Choose("Review state", "Queued for review");
 
             var flagged = Page.Locator("#staged-messages-table tbody tr")
                 .Filter(new() { HasText = QaSource });
@@ -152,16 +152,25 @@ public class ReviewAStagedMessageTests(SurvsysHarness harness) : SurvsysPageTest
     }
 
     /// <summary>
-    /// Opens the list whose box carries <paramref name="list"/>, chooses the
-    /// item reading <paramref name="item"/> by the words on it, and reads the
-    /// box labelled <paramref name="label"/>, which now shows what was chosen
-    /// — the same way the other walkthroughs' tests open a MudBlazor list.
+    /// Opens the list labelled <paramref name="label"/>, chooses the item
+    /// reading <paramref name="item"/> by the words on it, and reads that box,
+    /// which now shows what was chosen.
     /// </summary>
-    private async Task Choose(string list, string label, string item)
+    /// <remarks>
+    /// The box is reached by the label the document names it by rather than
+    /// by the identifier the markup puts on the list, because a list that
+    /// already holds a value — even an empty one, as <strong>Review
+    /// state</strong> opens on <strong>All</strong> — renders the input
+    /// carrying that identifier as <c>type="hidden"</c> and shows a sibling box
+    /// beside it. The hidden input cannot be pressed, and it is not what the
+    /// reader presses: the box carrying the label is.
+    /// </remarks>
+    private async Task Choose(string label, string item)
     {
-        await Page.Locator(list).ClickAsync();
+        var box = Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true });
+
+        await box.ClickAsync();
         await Page.GetByRole(AriaRole.Option, new() { Name = item, Exact = true }).ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true }))
-            .ToHaveTextAsync(item);
+        await Expect(box).ToHaveTextAsync(item);
     }
 }

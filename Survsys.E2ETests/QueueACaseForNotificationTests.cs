@@ -95,12 +95,12 @@ public class QueueACaseForNotificationTests(SurvsysHarness harness) : SurvsysPag
 
         // 8. The disease — Lyme disease, which no other walkthrough reports on Okafor.
         await Step(Document, 8, "choose Lyme disease from Disease", async () =>
-            await Choose("#report-disease", "Disease", Condition));
+            await Choose("Disease", Condition));
 
         // 9. The agency, then Save & Continue.
         await Step(Document, 9, "choose Davis County from Investigating agency and save", async () =>
         {
-            await Choose("#report-agency", "Investigating agency", Agency);
+            await Choose("Investigating agency", Agency);
             await Page.Locator("#report-save").ClickAsync();
         });
 
@@ -168,16 +168,19 @@ public class QueueACaseForNotificationTests(SurvsysHarness harness) : SurvsysPag
     }
 
     /// <summary>
-    /// Chooses an item from a MudBlazor select, naming it by the list's id and
-    /// the item by its text, and waits until the list shows the item chosen —
-    /// the same way the other walkthrough tests in this suite do it. The label
-    /// is matched exactly, so the combobox read back is the one named.
+    /// Opens the list labelled <paramref name="label"/>, chooses the item
+    /// reading <paramref name="item"/> by the words on it, and reads that box,
+    /// which now shows what was chosen — the same way the other walkthrough
+    /// tests in this suite do it. The label is matched exactly, so the box
+    /// pressed and read back is the one named, never the hidden input a list
+    /// that already holds a value puts its identifier on.
     /// </summary>
-    private async Task Choose(string list, string label, string item)
+    private async Task Choose(string label, string item)
     {
-        await Page.Locator(list).ClickAsync();
+        var box = Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true });
+
+        await box.ClickAsync();
         await Page.GetByRole(AriaRole.Option, new() { Name = item, Exact = true }).ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true }))
-            .ToHaveTextAsync(item);
+        await Expect(box).ToHaveTextAsync(item);
     }
 }

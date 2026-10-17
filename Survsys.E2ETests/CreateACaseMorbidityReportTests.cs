@@ -90,12 +90,12 @@ public class CreateACaseMorbidityReportTests(SurvsysHarness harness) : SurvsysPa
 
         // 8. Malaria from the Disease list; the box then reads Malaria.
         await Step(Document, 8, "choose Malaria from Disease", async () =>
-            await Choose("#report-disease", "Disease", "Malaria"));
+            await Choose("Disease", "Malaria"));
 
         // 9. Salt Lake County from the Investigating agency list; the box
         //    then reads Salt Lake County.
         await Step(Document, 9, "choose Salt Lake County from Investigating agency", async () =>
-            await Choose("#report-agency", "Investigating agency", "Salt Lake County"));
+            await Choose("Investigating agency", "Salt Lake County"));
 
         // 10. Save & Continue.
         await Step(Document, 10, "press Save & Continue", async () =>
@@ -124,25 +124,28 @@ public class CreateACaseMorbidityReportTests(SurvsysHarness harness) : SurvsysPa
     }
 
     /// <summary>
-    /// Opens the list whose box carries <paramref name="list"/>, chooses the
-    /// item reading <paramref name="item"/>, as a reader does — by the words
-    /// on it, exactly — and then reads the box labelled
-    /// <paramref name="label"/>, which now shows what was chosen. The reading
-    /// is what the document promises at that step, and it is also what keeps
-    /// the next step from pressing into a list that is still closing.
+    /// Opens the list labelled <paramref name="label"/>, chooses the item
+    /// reading <paramref name="item"/>, as a reader does — by the words on it,
+    /// exactly — and then reads that box, which now shows what was chosen.
+    /// The reading is what the document promises at that step, and it is also
+    /// what keeps the next step from pressing into a list that is still
+    /// closing.
     /// </summary>
     /// <remarks>
-    /// Once something is chosen, the box the reader sees is the combobox
-    /// named by the field's label and showing the chosen words; the element
-    /// carrying the identifier is by then a hidden input holding the raw
-    /// value, which is not what the document tells the reader they will
-    /// read.
+    /// The box is reached by the label the document names it by rather than
+    /// by the identifier the markup puts on the list, because a list that
+    /// already holds a value — even an empty one — renders the input carrying
+    /// that identifier as <c>type="hidden"</c>, holding the raw value, and
+    /// shows a sibling box beside it. The hidden input cannot be pressed, and
+    /// it is not what the reader presses or reads: the box carrying the label
+    /// is.
     /// </remarks>
-    private async Task Choose(string list, string label, string item)
+    private async Task Choose(string label, string item)
     {
-        await Page.Locator(list).ClickAsync();
+        var box = Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true });
+
+        await box.ClickAsync();
         await Page.GetByRole(AriaRole.Option, new() { Name = item, Exact = true }).ClickAsync();
-        await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true }))
-            .ToHaveTextAsync(item);
+        await Expect(box).ToHaveTextAsync(item);
     }
 }
