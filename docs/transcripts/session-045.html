@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 045 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 045 transcript</h1>
+<p class="stamp">Rendered 2026-10-17T11:41:03.702Z by dabbler-ai-router 3.21.0 at 205fba11c405fd3753f1209e61fb388214802793.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-17T07:20:08.458-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 45: Message generation and direct transmission</h3>
+<ol><li>Register.</li><li><code>Survsys.Messaging</code>: <code>ORU^R01</code> generation with nHapi.</li><li><code>Survsys.Api</code>: direct transmission in place of the legacy Mirth export queue, under a timeout, with the outcome recorded.</li><li><code>Survsys.UnitTests</code> and <code>Survsys.IntegrationTests</code>: generation tests against the legacy generated messages, and a transmission test against a local stub endpoint rather than CDC.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Session 045 gives the outbound CDC notification half its message and its wire: ORU^R01 generation with nHapi in Survsys.Messaging, and direct transmission in place of the legacy Mirth export queue in Survsys.Api. Survsys.Messaging gains an outbound generation model -- a notification header (the sending and receiving application and facility as three-part identifiers, the sending time, the processing id, the HL7 version, the profile id and the message control id), a resolved PHIN variable value (its PHIN identifier and display name, its OBX value type, its value, its coded value and code-system OID, its other-specified text, and a sub-id for repeating-group instances) and the generation input that carries the header, the guide profile and the ordered resolved values -- all plain in-memory records so the module keeps the fence against Survsys.Data and Entity Framework Core the architecture test asserts. Over that model Survsys.Messaging gains OruR01Generator, which builds an HL7 v2.5.1 ORU^R01 with nHapi following the legacy NMI segment construction order for the default guide: MSH from the header (MSH.9 fixed to ORU^R01^ORU_R01, the control id and sending time taken from the header so one input generates one deterministic message), PID from the demographic (DEM-prefixed) and death-date variables placed into their named fields per HL7_FIELD_MAPPINGS section 2.2, a single OBR for the default guide (OBR.4 = 68991-9^Epidemiologic Information^LN), and one OBX per remaining resolved variable carrying its identifier, value type and value, then encodes the message to ER7 with a PipeParser. Survsys.Api gains CdcTransmitter, a service that POSTs a generated ER7 message to the configured CDC endpoint over an HttpClient under a configured timeout and returns the transmission outcome -- accepted, rejected, timed out or faulted, with the responding detail and the time it was attempted -- recorded through the logger; its CdcTransmissionOptions bind from a CdcTransmission configuration section that is empty and therefore off by default, as the ElrIntake section is, and Program.cs registers the typed HttpClient and the options. Survsys.UnitTests gains OruR01GeneratorTests, proving the generated ER7 against a legacy generated message fixture for a default-guide case together with the structural invariants of MSH, PID, the single OBR and the per-variable OBX segments; Survsys.IntegrationTests gains CdcTransmitterTests, which stands up a local stub HTTP endpoint on the loopback, points CdcTransmitter at it and asserts the message is delivered and each outcome -- an accepting stub, a rejecting stub and an unresponsive one against the timeout -- is recorded, never reaching CDC.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/f724fe3bdcc103629b5da27bb202fd6862551780"><code>f724fe3bdcc103629b5da27bb202fd6862551780</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Generation model</td><td><p>Survsys.Messaging: the outbound ORU^R01 generation input model, as immutable records over plain in-memory data so the module keeps its fence against Survsys.Data and Entity Framework Core. OruR01GenerationInput.cs: a NotificationIdentifier (Namespace required, Name and Type nullable) for the three-part MSH application and facility identifiers; a NotificationHeader (SendingApp, SendingFacility, ReceivingApp and ReceivingFacility as NotificationIdentifier, SendingTime as DateTimeOffset, ProcessingId, Version, ProfileId and ControlId as strings) carrying everything MSH is built from so one input yields one deterministic message; a NotificationValue (PhinVar identifier and display Name, ValueType for OBX-2, Value, Code and CodeSystemOid, OtherSpecified, and SubId for a repeating-group instance) for one resolved PHIN variable; and OruR01GenerationInput (Header, GuideProfile and an ordered IReadOnlyList of NotificationValue). Add XML documentation in the house style. Write no generator and no test in this step; the project compiles.</p></td><td><span class="mono">Survsys.Messaging/OruR01GenerationInput.cs</span></td><td><code>dotnet build Survsys.Messaging/Survsys.Messaging.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Oru generation</td><td><p>Survsys.Messaging: OruR01Generator.cs, the ORU^R01 generator that builds an HL7 v2.5.1 message from an OruR01GenerationInput with nHapi and encodes it to ER7, following the legacy NMI segment construction order for the default guide described in NMI_XML_GENERATION.md and HL7_FIELD_MAPPINGS.md section 2.2. Build an NHapi.Model.V251.Message.ORU_R01 and populate: MSH from the header -- MSH.3/4/5/6 from the sending and receiving application and facility identifiers, MSH.7 from the sending time, MSH.9 fixed to ORU^R01^ORU_R01, MSH.10 from the header control id, MSH.11 from the processing id, MSH.12 from the version and MSH.21 from the profile id -- so the control id and time come from the input rather than the clock and the output is deterministic; PID from the demographic (DEM-prefixed) and patient-death-date variables, placed into their named PID fields per the mapping table (for example DEM197 to PID.3.1, DEM115 to PID.7, DEM113 to PID.8, DEM155 to PID.22, INV146 to PID.29) and skipped when absent; a single OBR for the default guide with OBR.4 = 68991-9^Epidemiologic Information^LN and OBR.25 from the result-status variable where present; and one OBX per remaining resolved NotificationValue, with OBX set-id incrementing, OBX.2 from the value type, OBX.3 from the variable identifier and name, OBX.5 from the value (its coded value and code-system OID where coded), and OBX.4 from the sub-id for repeating-group instances. Encode with a PipeParser using an empty validation context, as OruR01Parser reads. Expose a public Generate method returning the ER7 string. Change no file from the previous step; the project compiles.</p></td><td><span class="mono">Survsys.Messaging/OruR01Generator.cs</span></td><td><code>dotnet build Survsys.Messaging/Survsys.Messaging.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Generation tests</td><td><p>Survsys.UnitTests: OruR01GeneratorTests.cs, proving OruR01Generator against a legacy generated message. Add the fixture Fixtures/Hl7/oru-r01-notification-chlamydia.hl7 -- the ER7 a default-guide chlamydia notification generates, authored from HL7_FIELD_MAPPINGS.md section 2.2 with a fixed control id and sending time -- which the test project's existing Fixtures/Hl7/*.hl7 glob copies beside the assembly. Build an OruR01GenerationInput with that same header and the resolved values the fixture carries (a handful of DEM demographic values into PID, a result-status value, and several OBX variables including a repeating-group instance with a sub-id), generate the message, and assert its ER7 equals the fixture. Add structural cases proving MSH.9 is ORU^R01^ORU_R01 and the control id and time are the header's, the DEM variables land in their named PID fields, exactly one OBR carries 68991-9^Epidemiologic Information^LN, and each remaining variable becomes one OBX with an incrementing set-id. Change no production code in this step.</p></td><td><span class="mono">Survsys.UnitTests/OruR01GeneratorTests.cs</span><br><span class="mono">Survsys.UnitTests/Fixtures/Hl7/oru-r01-notification-chlamydia.hl7</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~OruR01GeneratorTests --blame-hang-timeout 5m --nologo</code></td><td>yes</td></tr>
+<tr><td>Direct transmission</td><td><p>Survsys.Api: direct transmission in place of the legacy Mirth export queue. CdcTransmitter.cs: a CdcTransmissionOptions (SectionName &quot;CdcTransmission&quot;; an Endpoint string empty by default, which turns transmission off the way an empty ElrIntake drop directory does; a TimeoutSeconds int defaulting to 30); a public CdcTransmissionResult capturing the outcome -- an enum of Accepted, Rejected, TimedOut and Faulted, the responding detail, and the DateTimeOffset it was attempted; and a public CdcTransmitter that is given the typed HttpClient, the options and an ILogger, and whose public Transmit method POSTs the ER7 message body to the configured endpoint under a CancellationToken linked to a timeout of TimeoutSeconds, returning Accepted on a success status, Rejected on a non-success status with the status and body as detail, TimedOut when the timeout elapses, and Faulted on a transport error, logging the outcome before returning it and never throwing. Program.cs: bind CdcTransmissionOptions from its configuration section and register the typed HttpClient for CdcTransmitter, beside the existing ElrIntake wiring. appsettings.json: add a CdcTransmission section with an empty Endpoint and TimeoutSeconds 30, with a comment that an empty endpoint leaves transmission off as the empty ElrIntake drop directory does. Add XML documentation in the house style. Do not persist the outcome to any entity and add no endpoint. The project compiles.</p></td><td><span class="mono">Survsys.Api/CdcTransmitter.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.Api/appsettings.json</span></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Transmission test</td><td><p>Survsys.IntegrationTests: CdcTransmitterTests.cs, proving CdcTransmitter against a local stub endpoint rather than CDC. Add the fixture Fixtures/Hl7/oru-r01-notification-chlamydia.hl7 -- a generated default-guide ER7 notification message -- which the project's existing Fixtures/Hl7/*.hl7 glob copies beside the assembly; the test reads it as the message body, so the suite needs no reference to Survsys.Messaging and no database. In each case stand up a minimal ASP.NET Core host (WebApplication) on a loopback port as the stub, construct CdcTransmitter with CdcTransmissionOptions pointing at the stub's URL and an HttpClient, transmit the fixture message, and assert: a stub returning 200 records Accepted and received the message body unchanged; a stub returning a 4xx or 5xx records Rejected with the status in the detail; and a stub that delays past a short configured TimeoutSeconds records TimedOut. Change no production code in this step.</p></td><td><span class="mono">Survsys.IntegrationTests/CdcTransmitterTests.cs</span><br><span class="mono">Survsys.IntegrationTests/Fixtures/Hl7/oru-r01-notification-chlamydia.hl7</span></td><td><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --filter FullyQualifiedName~CdcTransmitterTests --blame-hang-timeout 5m --nologo</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No reference from Survsys.Messaging to Microsoft.EntityFrameworkCore or to Survsys.Data: the generator and its input model are plain in-memory data the caller supplies, and nothing in this module reads the database, so the architecture fence is unchanged.</li><li>No projection of a real case, its rulesets or its formatted PHIN variables into the generation input, and no API endpoint that resolves a case into a message and transmits it: the generator and the transmitter take the in-memory input or the ER7 message handed to them, and connecting them to real case data is the auto-queue of Session 046.</li><li>No auto-queue on case change, no reconciliation cutoff by MMWR week and year, and no CDC export log table or its migration: the transmission outcome is captured in the returned result and written to the logger, not persisted to a new entity, which is Session 046's work.</li><li>No notification queue, generated-message review or export-log screen, and no queue-a-case-for-notification action on the case screen: those are Session 047's Survsys.Web work.</li><li>Default guide only: a single OBR carrying 68991-9^Epidemiologic Information^LN; the Arbo guide's two-OBR (PERSUBJ and NOTF) variant and the conditional NK1 mother segment are out of scope.</li><li>No NETSS fixed-width text export: whether CDC still requires it is the question Session 046 puts to the operator, and the recorded default until then is that it is not built.</li><li>No real PHINMS or CDC transport and no credential: the transmitter targets a configured URL that is empty and off by default, and the transmission test drives a local loopback stub rather than CDC.</li><li>No change to Survsys.Contracts, Survsys.Web, Survsys.Data, Survsys.E2ETests or any existing source file beyond registering the transmitter and its options in Survsys.Api/Program.cs and adding the CdcTransmission section to appsettings.json.</li><li>The session does not register, perform cross-provider verification, run or record the full test suite, or close out: those are the framework's own work between instructions.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[11:20:08]</span> <span class="muted">run-started</span> session=045 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[11:20:08]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[11:20:08]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[11:28:07]</span> <span class="muted">engine-session</span> id=0ebf8c67-1094-42be-ae48-06fe36879cd9</div>
+<div class="line"><span class="at">[11:28:07]</span> <span class="muted">engine-returned</span> seq=1 exit=<span class="good">0</span> seconds=479 transcript=.dabbler/runs/s45/driver/engine-01.log</div>
+<div class="line"><span class="at">[11:28:07]</span> <span class="muted">plan-accepted</span> steps=[&quot;generation-model&quot;,&quot;oru-generation&quot;,&quot;generation-tests&quot;,&quot;direct-transmission&quot;,&quot;transmission-test&quot;] non_goals=9</div>
+<div class="line"><span class="at">[11:28:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[11:28:08]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=generation-model</div>
+<div class="line"><span class="at">[11:28:08]</span> <span class="muted">engine-invoked</span> seq=2 invocation=2/24 first=false output=stream</div>
+<div class="line"><span class="at">[11:29:08]</span> <span class="muted">engine-returned</span> seq=2 exit=<span class="good">0</span> seconds=60 transcript=.dabbler/runs/s45/driver/engine-02.log</div>
+<div class="line"><span class="at">[11:29:10]</span> <span class="muted">check-passed</span> step=generation-model argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Messaging/Survsys.Messaging.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[11:29:11]</span> <span class="muted">report-accepted</span> seq=2 step=generation-model files=[&quot;Survsys.Messaging/OruR01GenerationInput.cs&quot;] notes=Added outbound ORU^R01 generation input records (header, identifier, value, input) over in-memory data; Messaging builds clean.</div>
+<div class="line"><span class="at">[11:29:11]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=oru-generation</div>
+<div class="line"><span class="at">[11:29:11]</span> <span class="muted">engine-invoked</span> seq=3 invocation=3/24 first=false output=stream</div>
+<div class="line"><span class="at">[11:32:54]</span> <span class="muted">engine-returned</span> seq=3 exit=<span class="good">0</span> seconds=224 transcript=.dabbler/runs/s45/driver/engine-03.log</div>
+<div class="line"><span class="at">[11:32:56]</span> <span class="muted">check-passed</span> step=oru-generation argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Messaging/Survsys.Messaging.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[11:32:57]</span> <span class="muted">report-accepted</span> seq=3 step=oru-generation files=[&quot;Survsys.Messaging/OruR01Generator.cs&quot;] notes=Added nHapi ORU^R01 generator: MSH/PID/single-OBR/per-variable-OBX for the default guide, deterministic from the header, encoded via PipeParser.</div>
+<div class="line"><span class="at">[11:32:57]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=generation-tests</div>
+<div class="line"><span class="at">[11:32:57]</span> <span class="muted">engine-invoked</span> seq=4 invocation=4/24 first=false output=stream</div>
+<div class="line"><span class="at">[11:35:43]</span> <span class="muted">engine-returned</span> seq=4 exit=<span class="good">0</span> seconds=167 transcript=.dabbler/runs/s45/driver/engine-04.log</div>
+<div class="line"><span class="at">[11:35:48]</span> <span class="muted">check-passed</span> step=generation-tests argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~OruR01GeneratorTests&quot;,&quot;--blame-hang-timeout&quot;,&quot;5m&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[11:35:48]</span> <span class="muted">report-accepted</span> seq=4 step=generation-tests files=[&quot;Survsys.UnitTests/OruR01GeneratorTests.cs&quot;,&quot;Survsys.UnitTests/Fixtures/Hl7/oru-r01-notification-chlamydia.hl7&quot;] notes=Generator proved against a default-guide chlamydia fixture plus structural cases for MSH, PID, OBR and per-variable OBX; 5 tests pass.</div>
+<div class="line"><span class="at">[11:35:48]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=direct-transmission</div>
+<div class="line"><span class="at">[11:35:48]</span> <span class="muted">engine-invoked</span> seq=5 invocation=5/24 first=false output=stream</div>
+<div class="line"><span class="at">[11:37:42]</span> <span class="muted">engine-returned</span> seq=5 exit=<span class="good">0</span> seconds=114 transcript=.dabbler/runs/s45/driver/engine-05.log</div>
+<div class="line"><span class="at">[11:37:44]</span> <span class="muted">check-passed</span> step=direct-transmission argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[11:37:45]</span> <span class="muted">report-accepted</span> seq=5 step=direct-transmission files=[&quot;Survsys.Api/CdcTransmitter.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.Api/appsettings.json&quot;] notes=Added CdcTransmitter (typed HttpClient POST under a timeout, outcome logged and returned, off by empty endpoint); wired options and client in Program.cs and the CdcTransmission section in appsettings.</div>
+<div class="line"><span class="at">[11:37:45]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=transmission-test</div>
+<div class="line"><span class="at">[11:37:45]</span> <span class="muted">engine-invoked</span> seq=6 invocation=6/24 first=false output=stream</div>
+<div class="line"><span class="at">[11:39:28]</span> <span class="muted">engine-returned</span> seq=6 exit=<span class="good">0</span> seconds=103 transcript=.dabbler/runs/s45/driver/engine-06.log</div>
+<div class="line"><span class="at">[11:39:33]</span> <span class="muted">check-passed</span> step=transmission-test argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CdcTransmitterTests&quot;,&quot;--blame-hang-timeout&quot;,&quot;5m&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[11:39:34]</span> <span class="muted">report-accepted</span> seq=6 step=transmission-test files=[&quot;Survsys.IntegrationTests/CdcTransmitterTests.cs&quot;,&quot;Survsys.IntegrationTests/Fixtures/Hl7/oru-r01-notification-chlamydia.hl7&quot;] notes=CdcTransmitter proved against a loopback stub: 200 records Accepted with body unchanged, 422 records Rejected with the status in detail, an unresponsive stub records TimedOut; 3 tests pass.</div>
+<div class="line"><span class="at">[11:39:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[11:39:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[11:39:34]</span> <span class="muted">job-started</span> name=verification pid=42820 log=.dabbler/runs/s45/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:40:46]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s45/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[11:40:46]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[11:40:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[11:40:46]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[11:40:46]</span> <span class="muted">job-started</span> name=run of record: unit pid=37332 log=.dabbler/runs/s45/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[11:40:52]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s45/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[11:40:52]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[11:40:57]</span> <span class="muted">landed</span> commit=f724fe3bdcc103629b5da27bb202fd6862551780</div>
+<div class="line"><span class="at">[11:40:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[11:40:57]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[11:40:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[11:40:57]</span> <span class="muted">job-started</span> name=close pid=36752 log=.dabbler/runs/s45/driver/jobs/close.log</div>
+<div class="line"><span class="at">[11:41:03]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s45/driver/jobs/close.log</div>
+<div class="line"><span class="at">[11:41:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>9 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.UnitTests/OruR01GeneratorTests.cs`, `BuildChlamydiaNotification()` exercises `DEM197`, `DEM115`, `DEM113`, `DEM155`, and `NOT118`, leaving the remaining named-field mappings in `OruR01Generator.PlaceInNamedField` (`DEM152` repeating race, `DEM161`/`DEM162`/`DEM163`/`DEM165` patient address components, and `INV146` death date) and the `OtherSpecified` (`CWE.OriginalText`) branch in `WriteObservation` unexercised by a test.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Precondition:** A default `OruR01Generator` instance and the header from `OruR01GeneratorTests.BuildChlamydiaNotification()`.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Input:** Call `Generate` with an `OruR01GenerationInput` whose `Values` list contains two `DEM152` values (`Code: &quot;2106-3&quot;`, `Value: &quot;White&quot;`, `CodeSystemOid: &quot;2.16.840.1.113883.6.238&quot;` and `Code: &quot;2028-9&quot;`, `Value: &quot;Asian&quot;`, `CodeSystemOid: &quot;2.16.840.1.113883.6.238&quot;`), address values `DEM161` (`&quot;Hartford&quot;`), `DEM162` (`&quot;CT&quot;`), `DEM163` (`&quot;06103&quot;`), `DEM165` (`&quot;003&quot;`), death date `INV146` (`&quot;20260110&quot;`), and an unmapped coded variable with `OtherSpecified: &quot;Other organism detail&quot;`.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Expectation:** The `PID` segment should contain two `~`-separated repetitions in `PID-10`, `^^Hartford^CT^06103^^^^003` in `PID-11`, and `20260110` in `PID-29`; none of those seven `DEM`/`INV146` inputs should produce an `OBX` segment; and the single emitted `OBX` segment should carry `Other organism detail` in `OBX-5.9`. Today's code implements these branches, busting any regression in field indices or repetition counters only if a test pins them.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.IntegrationTests/CdcTransmitterTests.cs`, the three tests cover `Accepted`, `Rejected`, and `TimedOut`, but no test pins the `CdcTransmissionStatus.Faulted` path when `CdcTransmissionOptions.Endpoint` is blank (the default off configuration in `appsettings.json`) or unreachable.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Precondition:** A `CdcTransmitter` constructed with `new HttpClient()`, `Options.Create(new CdcTransmissionOptions { Endpoint = &quot;&quot;, TimeoutSeconds = 30 })`, and `NullLogger&lt;CdcTransmitter&gt;.Instance`.</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Input:** Call `await transmitter.Transmit(await FixtureMessage())`.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Expectation:** Returns a `CdcTransmissionResult` with `Status == CdcTransmissionStatus.Faulted` and a non-empty `Detail` explaining that no endpoint is configured, without throwing or making an HTTP request.</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.Api/CdcTransmitter.cs` (lines 14–16), the `&lt;remarks&gt;` comment on `CdcTransmissionOptions` states that `TimeoutSeconds` &quot;falls back to its default rather than to zero when misconfigured&quot;, but `TimeoutSeconds` only has a property initializer (`= 30`) and `CdcTransmitter.Transmit` passes `TimeSpan.FromSeconds(settings.TimeoutSeconds)` directly to `CancellationTokenSource` without clamping `&lt;= 0` to `30`. If a configuration explicitly binds `&quot;TimeoutSeconds&quot;: 0`, the token cancels immediately rather than falling back to 30 seconds.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>5s</td><td>895</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
