@@ -980,9 +980,9 @@
     {
       "number": 48,
       "title": "Phase 6 walkthroughs",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-17T08:41:07.211000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-17T11:13:40.048000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
