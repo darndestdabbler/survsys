@@ -812,9 +812,9 @@
     {
       "number": 40,
       "title": "ELR review screens and promotion to a case",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-17T04:33:41.147000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-17T04:57:55.054000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
