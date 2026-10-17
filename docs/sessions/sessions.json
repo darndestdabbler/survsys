@@ -1002,9 +1002,9 @@
     {
       "number": 49,
       "title": "Repair the dropdown steps of five walkthroughs",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-17T12:52:34.291000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-17T12:59:37.716000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
