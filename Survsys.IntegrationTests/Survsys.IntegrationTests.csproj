@@ -26,6 +26,9 @@
     <Content Include="Fixtures\conditions.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Fixtures\persons.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Fixtures\person-conditions.sql" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The ORU^R01 message the ELR intake test drops into a watched directory,
+         copied beside the test assembly so the test finds it at run time. -->
+    <Content Include="Fixtures\Hl7\*.hl7" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

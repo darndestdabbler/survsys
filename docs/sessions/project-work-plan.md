@@ -50,7 +50,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 36 | `Survsys.Messaging` and HL7 intake parsing | no | 2026-10-17 |
 | 37 | Vocabulary matching | no | 2026-10-17 |
 | 38 | Duplicate detection and person matching | no | 2026-10-17 |
-| 39 | The message queue and the intake service | — | not declared |
+| 39 | The message queue and the intake service | no | 2026-10-17 |
 | 40 | ELR review screens and promotion to a case | — | not declared |
 | 41 | Phase 5 walkthroughs | — | not declared |
 | 42 | Release 0.6.0 (release: 0.6.0) | — | not declared |
@@ -358,3 +358,9 @@ Session 037 gives the system its vocabulary matching: the lookup tables that tur
 **Releasable: no.**
 
 Session 038 gives the system its graylist time-windowed duplicate detection and its person matching, each a pure rule the intake pipeline will call. Survsys.Data gains one entity and one migration: GraylistSpoolEntry onto the legacy EpiTrax graylist_spool table (id, created_at, port nullable, sent, and the event's person_condition_id as a bare nullable id with no navigation, exactly as the existing reference entities hold their ids), with its IEntityTypeConfiguration under the legacy snake_case names, a DbSet on SurvsysDbContext, and the Graylist migration that creates the table. Survsys.Messaging gains two pure rules that take plain in-memory records rather than reaching for a DbContext, so the module keeps the fence the architecture test asserts and references neither Survsys.Data nor Entity Framework Core. GraylistRules is the time-windowed duplicate detection: given a new event's request (its condition and event date) and the waiting graylisted candidates (each a condition and a reference date) and a window of whole days before and after, a candidate matches when its condition equals the request's and its reference date falls inside the window around the event date. PersonMatchRules is the person matching, fuzzy and exact: it classifies a candidate carrying an EpiTrax match score into Exact, Fuzzy, or None by the tiered score thresholds, promoting a fuzzy-band candidate to Exact on a shared medical record number and demoting one with no date of birth to None. Survsys.UnitTests gains GraylistRulesTests and PersonMatchRulesTests, named after the two rule classes, and the graylist tests cover a candidate just inside and just outside the window.
+
+### Session 39 — The message queue and the intake service
+
+**Releasable: no.**
+
+Add the inbound ELR message queue and the service that fills it. In Survsys.Data, a StagedMessage entity records each received lab message — its raw HL7 text, its source and its receipt time — alongside a review-state code, a QA flag and an exception detail, with a MessageReviewStatusRules class holding the queue's review-state vocabulary and the reading of a stored code in the shape of CaseStatusRules, its own EF Core configuration, and a migration. In Survsys.Api, an ElrIntakeService running as an IHostedService inside the API tier polls a configured file-drop directory, parses each dropped message with the existing Survsys.Messaging OruR01Parser, and queues it for review — a parseable message as Entry, a message that fails to parse as Exception carrying its detail — with its own per-message timeout and no dependency on Mirth or any integration engine; the service sits idle when no drop directory is configured, so it changes nothing for a deployment that has not turned it on. Read-only endpoints expose the staged-message queue and a single staged message whole. An integration test carries a message from a dropped file through to queued-for-review against the shared SQL Server fixture, its review states echoing the db-snapshots/session-013 snapshot.

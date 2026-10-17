@@ -82,6 +82,14 @@ builder.Services.AddAttachments();
 builder.Services.AddTasks();
 builder.Services.AddWorkQueue();
 builder.Services.AddSavedViews();
+builder.Services.AddMessageQueue();
+
+// The inbound ELR intake, a background worker that polls a file drop and
+// queues each message for review. Off unless a drop directory is configured,
+// so it is inert for a deployment that has not turned it on.
+builder.Services.Configure<ElrIntakeOptions>(
+    builder.Configuration.GetSection(ElrIntakeOptions.SectionName));
+builder.Services.AddHostedService<ElrIntakeService>();
 
 var app = builder.Build();
 
@@ -150,6 +158,7 @@ app.MapAttachments();
 app.MapTasks();
 app.MapWorkQueue();
 app.MapSavedViews();
+app.MapMessageQueue();
 
 app.Run();
 

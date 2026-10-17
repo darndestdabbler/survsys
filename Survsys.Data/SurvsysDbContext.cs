@@ -94,6 +94,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<GraylistSpoolEntry> GraylistSpool => Set<GraylistSpoolEntry>();
 
+    public DbSet<StagedMessage> StagedMessages => Set<StagedMessage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

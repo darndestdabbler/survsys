@@ -1738,6 +1738,48 @@ namespace Survsys.Data.Migrations
                     b.ToTable("saved_views", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.StagedMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ExceptionDetail")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("exception_detail");
+
+                    b.Property<bool>("QaFlagged")
+                        .HasColumnType("bit")
+                        .HasColumnName("qa_flag");
+
+                    b.Property<string>("RawMessage")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("message");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("received_at");
+
+                    b.Property<string>("ReviewStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("final_status");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("source");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("system_messages", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.User", b =>
                 {
                     b.Property<int>("Id")
