@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 038 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 038 transcript</h1>
+<p class="stamp">Rendered 2026-10-17T08:07:22.063Z by dabbler-ai-router 3.21.0 at 08669150cc4ee367cbd0accf5ffc9d31065b7f13.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-17T03:53:37.857-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 38: Duplicate detection and person matching</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code> and <code>Survsys.Messaging</code>: graylist time-windowed duplicate detection, with its migration and its rule.</li><li><code>Survsys.Messaging</code>: person matching, fuzzy and exact.</li><li><code>Survsys.UnitTests</code>: the tests for both, named after their rule classes, including a match just inside and just outside the graylist window.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Session 038 gives the system its graylist time-windowed duplicate detection and its person matching, each a pure rule the intake pipeline will call. Survsys.Data gains one entity and one migration: GraylistSpoolEntry onto the legacy EpiTrax graylist_spool table (id, created_at, port nullable, sent, and the event's person_condition_id as a bare nullable id with no navigation, exactly as the existing reference entities hold their ids), with its IEntityTypeConfiguration under the legacy snake_case names, a DbSet on SurvsysDbContext, and the Graylist migration that creates the table. Survsys.Messaging gains two pure rules that take plain in-memory records rather than reaching for a DbContext, so the module keeps the fence the architecture test asserts and references neither Survsys.Data nor Entity Framework Core. GraylistRules is the time-windowed duplicate detection: given a new event's request (its condition and event date) and the waiting graylisted candidates (each a condition and a reference date) and a window of whole days before and after, a candidate matches when its condition equals the request's and its reference date falls inside the window around the event date. PersonMatchRules is the person matching, fuzzy and exact: it classifies a candidate carrying an EpiTrax match score into Exact, Fuzzy, or None by the tiered score thresholds, promoting a fuzzy-band candidate to Exact on a shared medical record number and demoting one with no date of birth to None. Survsys.UnitTests gains GraylistRulesTests and PersonMatchRulesTests, named after the two rule classes, and the graylist tests cover a candidate just inside and just outside the window.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/1c008e81abc02b612e018c5ea6ab0214c57072bc"><code>1c008e81abc02b612e018c5ea6ab0214c57072bc</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Graylist table</td><td><p>Survsys.Data: the graylist spool table the duplicate detection draws its pending events from. Add GraylistSpoolEntry onto the legacy EpiTrax graylist_spool table: Id (int), CreatedAt (DateTime, in UTC, when the event was spooled), Port (nullable string, the source port the legacy column carries), Sent (bool, whether the spooled request has been evaluated; the legacy smallint flag modelled as a bool), and PersonConditionId (nullable int, the legacy event_id, the event that triggered the check, held as a bare nullable id with no navigation exactly as AccessRecord.PersonConditionId is). Add its internal IEntityTypeConfiguration mapping it to graylist_spool under legacy snake_case column names (id, created_at, port, sent, person_condition_id) with a sensible bounded length on port, and a DbSet on SurvsysDbContext. Write no migration in this step; the project compiles.</p></td><td><span class="mono">Survsys.Data/GraylistSpoolEntry.cs</span><br><span class="mono">Survsys.Data/GraylistSpoolEntryConfiguration.cs</span><br><span class="mono">Survsys.Data/SurvsysDbContext.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Graylist migration</td><td><p>Generate the Graylist migration with dotnet ef under the migration id 20261017020000_Graylist, creating the graylist_spool table, together with the updated model snapshot. Change no entity or configuration in this step; the migration is exactly what the model from the previous step produces.</p></td><td><span class="mono">Survsys.Data/Migrations/20261017020000_Graylist.cs</span><br><span class="mono">Survsys.Data/Migrations/20261017020000_Graylist.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Graylist rule</td><td><p>Survsys.Messaging: GraylistRules, the time-windowed duplicate detection, pure and taking its inputs as plain in-memory records so the module keeps its fence against Survsys.Data and Entity Framework Core and references neither. In GraylistRules.cs define, as small immutable records and none of them a Survsys.Data entity: GraylistRequest (a new event's ConditionId and its EventDate as a DateOnly), GraylistCandidate (a waiting graylisted message's ConditionId and its ReferenceDate as a DateOnly), and GraylistWindow (DaysBefore and DaysAfter as whole-day ints). Give GraylistWindow a sensible named default. Then the static GraylistRules class: a method that tells whether one candidate matches a request within a window -- its ConditionId equals the request's and its ReferenceDate falls on or within the window, that is on or after EventDate minus DaysBefore and on or before EventDate plus DaysAfter -- and a method that selects, from a sequence of candidates, those that match. The window is inclusive at both bounds, so a candidate exactly on a bound matches and one a day past it does not. Guard the sequence and the records against null. Write no test in this step.</p></td><td><span class="mono">Survsys.Messaging/GraylistRules.cs</span></td><td><code>dotnet build Survsys.Messaging/Survsys.Messaging.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Person match rule</td><td><p>Survsys.Messaging: PersonMatchRules, the person matching fuzzy and exact, pure and taking its inputs as plain in-memory records so the module keeps its fence against Survsys.Data and Entity Framework Core. In PersonMatchRules.cs define a PersonMatchKind enum (Exact, Fuzzy, None), a PersonMatchCandidate record (the candidate's PersonId, its EpiTrax match Score as a double from 0 to 100, its DateOfBirth as a nullable DateOnly, and its MedicalRecordNumbers as a read-only string collection), and the static PersonMatchRules class with the two score thresholds as named constants (auto-match at 95 and no-match at 70). Its Classify method takes a candidate and the incoming message's medical record numbers and returns a PersonMatchKind: a score at or above the auto-match threshold is Exact and a score below the no-match threshold is None; within the fuzzy band between them, a medical record number shared with the incoming message (compared case-insensitively) promotes to Exact, a candidate with no date of birth is None, and anything else is Fuzzy. Guard the inputs against null. Write no test in this step.</p></td><td><span class="mono">Survsys.Messaging/PersonMatchRules.cs</span></td><td><code>dotnet build Survsys.Messaging/Survsys.Messaging.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Graylist rule tests</td><td><p>Survsys.UnitTests/GraylistRulesTests.cs, the test file named after GraylistRules.cs. Build small in-memory requests, candidates and a window and assert: a candidate whose condition differs from the request's does not match however close its date; a candidate whose reference date is just inside the window (on the lower bound and on the upper bound) matches; a candidate whose reference date is just outside the window (one day before the lower bound and one day after the upper bound) does not match; and that selecting over a sequence of candidates returns exactly those that match. Change no production code in this step.</p></td><td><span class="mono">Survsys.UnitTests/GraylistRulesTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~GraylistRulesTests --blame-hang-timeout 5m --nologo</code></td><td>yes</td></tr>
+<tr><td>Person match rule tests</td><td><p>Survsys.UnitTests/PersonMatchRulesTests.cs, the test file named after PersonMatchRules.cs. Build small in-memory candidates and assert the classification: a score at or above the auto-match threshold is Exact; a score below the no-match threshold is None; a fuzzy-band candidate sharing a medical record number with the incoming message is Exact, and the share is found case-insensitively; a fuzzy-band candidate with no shared medical record number and no date of birth is None; and a fuzzy-band candidate with a date of birth and no shared medical record number is Fuzzy. Change no production code in this step.</p></td><td><span class="mono">Survsys.UnitTests/PersonMatchRulesTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~PersonMatchRulesTests --blame-hang-timeout 5m --nologo</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No message queue and no intake service: the staged-message queue table, the message payload, the queue state machine and the spooler and pruner background jobs are session 039's work and are not built here; only the graylist_spool table and the pure matching rule are.</li><li>No reference from Survsys.Messaging to Microsoft.EntityFrameworkCore or to Survsys.Data: both rules take their inputs as in-memory records, and nothing in this module reads the database.</li><li>No graylist rules engine: the vocab_rules_graylist table, the conditions_structured JSON rules, the operator/operand evaluation, the test-type matching, the app-id routing, and the free-text interval parsing (&quot;6 months&quot;, &quot;1 year&quot;) are not built; GraylistRules takes its window as whole days the caller supplies.</li><li>No full EMSA person-match algorithm beyond fuzzy and exact: no EpiTrax findPeople REST call or XML, no phone, email or geocoded-address secondary matching, no last-name-change detection, and no sort-and-bucket orchestration or star-rating UI; the candidate and its score are supplied to the rule.</li><li>No foreign-key constraints or navigations from graylist_spool: the event id stays a bare nullable int, as AccessRecord.PersonConditionId already is.</li><li>No wiring of either rule into Survsys.Api, Survsys.Web, Survsys.Contracts, the ORU^R01 parser, or any endpoint, request or background service, and no writing of a match result back onto a record: the rules are built and tested over data the caller supplies.</li><li>The session does not register, perform cross-provider verification, run or record the full test suite, or close out: those are the framework's own work between instructions.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[07:53:37]</span> <span class="muted">run-started</span> session=038 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[07:53:37]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[07:53:37]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[08:01:22]</span> <span class="muted">engine-session</span> id=2297592c-d18c-432a-9a3d-d17bef1b2b4a</div>
+<div class="line"><span class="at">[08:01:22]</span> <span class="muted">engine-returned</span> seq=1 exit=<span class="good">0</span> seconds=465 transcript=.dabbler/runs/s38/driver/engine-01.log</div>
+<div class="line"><span class="at">[08:01:22]</span> <span class="muted">plan-accepted</span> steps=[&quot;graylist-table&quot;,&quot;graylist-migration&quot;,&quot;graylist-rule&quot;,&quot;person-match-rule&quot;,&quot;graylist-rule-tests&quot;,&quot;person-match-rule-tests&quot;] non_goals=7</div>
+<div class="line"><span class="at">[08:01:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[08:01:23]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=graylist-table</div>
+<div class="line"><span class="at">[08:01:23]</span> <span class="muted">engine-invoked</span> seq=2 invocation=2/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:02:21]</span> <span class="muted">engine-returned</span> seq=2 exit=<span class="good">0</span> seconds=58 transcript=.dabbler/runs/s38/driver/engine-02.log</div>
+<div class="line"><span class="at">[08:02:22]</span> <span class="muted">check-passed</span> step=graylist-table argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[08:02:23]</span> <span class="muted">report-accepted</span> seq=2 step=graylist-table files=[&quot;Survsys.Data/GraylistSpoolEntry.cs&quot;,&quot;Survsys.Data/GraylistSpoolEntryConfiguration.cs&quot;,&quot;Survsys.Data/SurvsysDbContext.cs&quot;] notes=Added GraylistSpoolEntry on graylist_spool with its configuration and DbSet; Data project builds clean.</div>
+<div class="line"><span class="at">[08:02:23]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=graylist-migration</div>
+<div class="line"><span class="at">[08:02:23]</span> <span class="muted">engine-invoked</span> seq=3 invocation=3/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:03:36]</span> <span class="muted">engine-returned</span> seq=3 exit=<span class="good">0</span> seconds=73 transcript=.dabbler/runs/s38/driver/engine-03.log</div>
+<div class="line"><span class="at">[08:03:37]</span> <span class="muted">check-passed</span> step=graylist-migration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[08:03:37]</span> <span class="muted">report-accepted</span> seq=3 step=graylist-migration files=[&quot;Survsys.Data/Migrations/20261017020000_Graylist.cs&quot;,&quot;Survsys.Data/Migrations/20261017020000_Graylist.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=Generated the Graylist migration for graylist_spool via dotnet ef, renamed to id 20261017020000; Data builds clean.</div>
+<div class="line"><span class="at">[08:03:37]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=graylist-rule</div>
+<div class="line"><span class="at">[08:03:37]</span> <span class="muted">engine-invoked</span> seq=4 invocation=4/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:04:17]</span> <span class="muted">engine-returned</span> seq=4 exit=<span class="good">0</span> seconds=39 transcript=.dabbler/runs/s38/driver/engine-04.log</div>
+<div class="line"><span class="at">[08:04:18]</span> <span class="muted">check-passed</span> step=graylist-rule argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Messaging/Survsys.Messaging.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[08:04:18]</span> <span class="muted">report-accepted</span> seq=4 step=graylist-rule files=[&quot;Survsys.Messaging/GraylistRules.cs&quot;] notes=Added pure GraylistRules with GraylistRequest, GraylistCandidate and GraylistWindow records, inclusive-window match and SelectMatches; Messaging builds clean, no Data or EF reference.</div>
+<div class="line"><span class="at">[08:04:18]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=person-match-rule</div>
+<div class="line"><span class="at">[08:04:18]</span> <span class="muted">engine-invoked</span> seq=5 invocation=5/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:04:57]</span> <span class="muted">engine-returned</span> seq=5 exit=<span class="good">0</span> seconds=39 transcript=.dabbler/runs/s38/driver/engine-05.log</div>
+<div class="line"><span class="at">[08:04:59]</span> <span class="muted">check-passed</span> step=person-match-rule argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Messaging/Survsys.Messaging.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[08:04:59]</span> <span class="muted">report-accepted</span> seq=5 step=person-match-rule files=[&quot;Survsys.Messaging/PersonMatchRules.cs&quot;] notes=Added pure PersonMatchRules: PersonMatchKind enum, PersonMatchCandidate record, auto/no-match thresholds, and tiered Classify with case-insensitive MRN promotion and missing-DOB demotion; Messaging builds clean.</div>
+<div class="line"><span class="at">[08:04:59]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=graylist-rule-tests</div>
+<div class="line"><span class="at">[08:04:59]</span> <span class="muted">engine-invoked</span> seq=6 invocation=6/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:05:44]</span> <span class="muted">engine-returned</span> seq=6 exit=<span class="good">0</span> seconds=45 transcript=.dabbler/runs/s38/driver/engine-06.log</div>
+<div class="line"><span class="at">[08:05:48]</span> <span class="muted">check-passed</span> step=graylist-rule-tests argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~GraylistRulesTests&quot;,&quot;--blame-hang-timeout&quot;,&quot;5m&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[08:05:48]</span> <span class="muted">report-accepted</span> seq=6 step=graylist-rule-tests files=[&quot;Survsys.UnitTests/GraylistRulesTests.cs&quot;] notes=Added GraylistRulesTests covering condition mismatch, both window bounds inside, both just outside, and sequence selection; 6 passed.</div>
+<div class="line"><span class="at">[08:05:48]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=person-match-rule-tests</div>
+<div class="line"><span class="at">[08:05:48]</span> <span class="muted">engine-invoked</span> seq=7 invocation=7/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:06:27]</span> <span class="muted">engine-returned</span> seq=7 exit=<span class="good">0</span> seconds=39 transcript=.dabbler/runs/s38/driver/engine-07.log</div>
+<div class="line"><span class="at">[08:06:30]</span> <span class="muted">check-passed</span> step=person-match-rule-tests argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~PersonMatchRulesTests&quot;,&quot;--blame-hang-timeout&quot;,&quot;5m&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[08:06:31]</span> <span class="muted">report-accepted</span> seq=7 step=person-match-rule-tests files=[&quot;Survsys.UnitTests/PersonMatchRulesTests.cs&quot;] notes=Added PersonMatchRulesTests covering ceiling Exact, floor None, fuzzy-band MRN promotion (case-insensitive), missing-DOB None, and plain Fuzzy; 5 passed.</div>
+<div class="line"><span class="at">[08:06:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[08:06:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[08:06:31]</span> <span class="muted">job-started</span> name=verification pid=2188 log=.dabbler/runs/s38/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:07:07]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s38/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:07:07]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[08:07:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[08:07:07]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[08:07:07]</span> <span class="muted">job-started</span> name=run of record: unit pid=38652 log=.dabbler/runs/s38/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:07:12]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s38/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:07:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[08:07:16]</span> <span class="muted">landed</span> commit=1c008e81abc02b612e018c5ea6ab0214c57072bc</div>
+<div class="line"><span class="at">[08:07:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[08:07:16]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[08:07:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[08:07:16]</span> <span class="muted">job-started</span> name=close pid=42668 log=.dabbler/runs/s38/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:07:22]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s38/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:07:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>8 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.UnitTests/PersonMatchRulesTests.cs`, the lower fuzzy-band boundary at `PersonMatchRules.NoMatchScore` (`70.0`) is not pinned: `ScoreBelowNoMatchThresholdIsNone` tests `69.9` and the fuzzy-band tests use `80.0`.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Precondition:** `BirthDate = new DateOnly(1990, 1, 15)`.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Input:** `PersonMatchRules.Classify(new PersonMatchCandidate(PersonId: 1, Score: PersonMatchRules.NoMatchScore, DateOfBirth: BirthDate, MedicalRecordNumbers: []), [])`.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Expectation:** Assert `PersonMatchKind.Fuzzy`; today's code returns `PersonMatchKind.Fuzzy`, whereas mutating `candidate.Score &lt; NoMatchScore` to `&lt;=` would return `PersonMatchKind.None` while all existing tests in `PersonMatchRulesTests` continue to pass.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.UnitTests/PersonMatchRulesTests.cs`, `FuzzyBandWithSharedMedicalRecordNumberIsExactAndCaseInsensitive` passes a non-null `DateOfBirth`, so no test pins that a shared MRN promotes a fuzzy-band candidate to `Exact` even when `DateOfBirth` is `null`.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Precondition:** A fuzzy-band candidate with `DateOfBirth: null` and a matching MRN.</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Input:** `PersonMatchRules.Classify(new PersonMatchCandidate(PersonId: 1, Score: 80.0, DateOfBirth: null, MedicalRecordNumbers: [&quot;mrn-abc&quot;]), [&quot;MRN-ABC&quot;])`.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Expectation:** Assert `PersonMatchKind.Exact`; today's code returns `PersonMatchKind.Exact`, whereas swapping the order of the `SharesMedicalRecordNumber` check and the `candidate.DateOfBirth is null` check would return `PersonMatchKind.None` without failing any existing test.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>5s</td><td>812</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
