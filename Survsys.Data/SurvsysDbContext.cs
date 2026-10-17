@@ -92,6 +92,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<VocabChildLoinc> VocabChildLoincs => Set<VocabChildLoinc>();
 
+    public DbSet<GraylistSpoolEntry> GraylistSpool => Set<GraylistSpoolEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

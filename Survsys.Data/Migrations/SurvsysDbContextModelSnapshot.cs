@@ -862,6 +862,37 @@ namespace Survsys.Data.Migrations
                     b.ToTable("facilities", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.GraylistSpoolEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<int?>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.Property<string>("Port")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("port");
+
+                    b.Property<bool>("Sent")
+                        .HasColumnType("bit")
+                        .HasColumnName("sent");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("graylist_spool", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.Lab", b =>
                 {
                     b.Property<int>("Id")
