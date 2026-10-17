@@ -498,6 +498,13 @@
       "what": "step 'notification-queue-screen': its files",
       "reason": "The hold endpoint is PATCH and ApiAsk had no Patch verb; added one mirroring Put, so the client reaches the endpoint through the tier failure-message contract.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 48,
+      "dateTime": "2026-10-17T08:50:41.798000-04:00",
+      "task": "Document the Phase 6 outbound CDC notification workflow sessions 45 to 47 shipped, as three walkthroughs under docs/walkthroughs/ with the one Playwright test named after each, video recording left on through the harness. First give the end-to-end suite a CDC export log to read: nothing writes the nmi_log table yet, so an export-log SQL fixture seeds a small, self-contained case and its log rows into nmi_log, linked into Survsys.E2ETests and cleared and reseeded by the harness the way the conditions, people and staged messages already are. Then write, in turn, queue-a-case-for-notification (an investigator opens a case morbidity report, queues it for CDC by hand, reads the queued confirmation, and finds the case waiting on the notification queue screen), review-a-generated-message (a reviewer opens the export log, opens one export, and reads its record number, guide, queued and sent times, outcome and the generated message whole) and inspect-the-export-log (a reviewer opens the export log and reads the history of exports, newest first, each with its record number, queued and sent times and outcome). Each document is numbered steps naming controls by the words the MorbidityReport, NotificationQueue, ExportLog and GeneratedMessageReview screens show, and each test performs those steps in their written order and asserts the outcome by the screens' stable identifiers, never by a MudBlazor class or a cell's position.",
+      "releasable": false
     }
   ]
 }

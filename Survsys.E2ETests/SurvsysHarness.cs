@@ -106,6 +106,19 @@ public sealed class SurvsysHarness : IDisposable
     ];
 
     /// <summary>
+    /// The record number of the case <c>Fixtures/nmi-log.sql</c> seeds with
+    /// its CDC export history — one export sent and accepted with its
+    /// generated message, and one queued with no message yet. The handle the
+    /// export log walkthroughs' tests find its rows by, since identity assigns
+    /// the ids. Stated here as <see cref="SeededConditionsByName"/> is, because
+    /// this project may not reference the integration suite.
+    /// </summary>
+    public const string SeededExportLog = "202500048";
+
+    /// <summary>How many exports <c>Fixtures/nmi-log.sql</c> seeds against <see cref="SeededExportLog"/>.</summary>
+    public const int SeededExportLogRows = 2;
+
+    /// <summary>
     /// This host's own SQL Server, used when nothing redirects the suite. Its
     /// own database, so a walkthrough run never disturbs the development or
     /// integration data. Integrated security, so there is no credential here
@@ -264,13 +277,14 @@ public sealed class SurvsysHarness : IDisposable
     }
 
     /// <summary>
-    /// The three fixtures this suite seeds, in the order they run: the
+    /// The four fixtures this suite seeds, in the order they run: the
     /// conditions first, because a report names one of them, then the people,
     /// then the staged messages the ELR walkthroughs act on — which name
-    /// neither a person nor a condition the schema enforces, so they run last
-    /// and could as well run first.
+    /// neither a person nor a condition the schema enforces — and last the
+    /// export history, whose case names a person and a condition the first
+    /// two have already seeded.
     /// </summary>
-    private static readonly string[] Fixtures = ["conditions.sql", "persons.sql", "staged-messages.sql"];
+    private static readonly string[] Fixtures = ["conditions.sql", "persons.sql", "staged-messages.sql", "nmi-log.sql"];
 
     /// <summary>
     /// The tables the fixtures fill, and the ones that hang off them, in the
@@ -279,8 +293,9 @@ public sealed class SurvsysHarness : IDisposable
     /// name, the reports before the people, and the people before the
     /// conditions. Cleared before any insert, so a second run of the suite
     /// seeds the same seven people and seven conditions rather than fourteen
-    /// of each — and no report, no specimen, no exposure, no note, no task,
-    /// no attachment, no facility and no saved view at all, since a
+    /// of each — and no report but the one <c>Fixtures/nmi-log.sql</c> seeds
+    /// with its two exports, and no queued notification, specimen, exposure,
+    /// note, task, attachment, facility or saved view at all, since a
     /// walkthrough that needs one creates it, and one left over from the last
     /// run would be one the document did not describe.
     /// </summary>
@@ -292,6 +307,15 @@ public sealed class SurvsysHarness : IDisposable
     /// would fail to seed. Results go before tests, tests and susceptibility
     /// rows before specimens, the links and the shares before the reports
     /// they hang off, and specimens before the people they name.
+    /// <para>
+    /// The CDC export log (<c>nmi_log</c>) and the notification queue
+    /// (<c>nmi_export_queue</c>) both name their report with a reference the
+    /// schema cascades, so the reports' clearing would take them anyway; they
+    /// are listed before <c>person_conditions</c> so the order says what it
+    /// clears rather than leaving it to the cascade. The queue is filled by
+    /// the queue-a-case walkthrough and the log by <c>Fixtures/nmi-log.sql</c>,
+    /// which reseeds it after the clearing.
+    /// </para>
     /// <para>
     /// The exposure chain is listed in full for the same reason, and it is
     /// the one phase 3 brought that matters most: an exposure contact names
@@ -341,6 +365,8 @@ public sealed class SurvsysHarness : IDisposable
         "lab_tests",
         "lab_resist_tests",
         "labs",
+        "nmi_log",
+        "nmi_export_queue",
         "person_conditions",
         "parent_guardians",
         "person_races",
@@ -370,8 +396,8 @@ public sealed class SurvsysHarness : IDisposable
         foreach (var path in paths.Where(path => !File.Exists(path)))
         {
             throw new InvalidOperationException(
-                $"The fixture is not at {path}. conditions.sql, persons.sql and "
-                + "staged-messages.sql are linked into this project's output from "
+                $"The fixture is not at {path}. conditions.sql, persons.sql, "
+                + "staged-messages.sql and nmi-log.sql are linked into this project's output from "
                 + "Survsys.IntegrationTests by Survsys.E2ETests.csproj; without one the "
                 + "screen it fills would have no rows and a walkthrough would assert against "
                 + "an empty table.");
@@ -400,8 +426,8 @@ public sealed class SurvsysHarness : IDisposable
         {
             throw new InvalidOperationException(
                 "Survsys.E2ETests needs a reachable SQL Server to seed the conditions, the "
-                + "people and the staged messages the screens show, from conditions.sql, "
-                + "persons.sql and staged-messages.sql, and it "
+                + "people, the staged messages and the export log the screens show, from "
+                + "conditions.sql, persons.sql, staged-messages.sql and nmi-log.sql, and it "
                 + $"could not: {unreachable.Message} This suite does not skip when the "
                 + "server is missing, because a skipped walkthrough suite reads as a green "
                 + $"run. Start SQL Server, or set {ConnectionVariable} to the connection "

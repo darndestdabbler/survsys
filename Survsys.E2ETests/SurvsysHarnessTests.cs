@@ -104,7 +104,8 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
 
     /// <summary>
     /// Seeding leaves what the fixtures fill — the conditions, the people and
-    /// the people's own details — and nothing a walkthrough fills: no report,
+    /// the people's own details, and the one report nmi-log.sql seeds with
+    /// its export history — and nothing a walkthrough fills: no other report,
     /// no share, no specimen, no test, no result, no susceptibility row, no
     /// exposure with its place, contacts and sources, no note, no task and no
     /// attachment with its bytes. Run here over whatever the walkthroughs
@@ -134,8 +135,14 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
 
         foreach (var table in filledByWalkthroughs)
         {
+            // The export history nmi-log.sql seeds is the one report, and the
+            // log rows against it, that seeding is meant to leave; anything
+            // else in those two tables is a walkthrough's.
             using var count = connection.CreateCommand();
-            count.CommandText = $"SELECT COUNT(*) FROM {table}";
+            count.CommandText = table is "person_conditions" or "nmi_log"
+                ? $"SELECT COUNT(*) FROM {table} WHERE record_number <> @seeded"
+                : $"SELECT COUNT(*) FROM {table}";
+            count.Parameters.AddWithValue("@seeded", SurvsysHarness.SeededExportLog);
 
             if ((int)count.ExecuteScalar()! is var rows && rows > 0)
             {
@@ -181,6 +188,49 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
         }
 
         Assert.Equal(SurvsysHarness.SeededStagedMessageSources, sources);
+    }
+
+    /// <summary>
+    /// Seeding clears the export log and fills it with exactly the fixture's
+    /// history: the two exports of the seeded case, the newer one queued with
+    /// no message and the older one sent and accepted with its message, and
+    /// one copy of the case they name rather than one per run. Run here over
+    /// whatever the walkthroughs before it left, so it proves the clearing
+    /// takes the last run's log and queue with it.
+    /// </summary>
+    [Fact]
+    public void SeedingReseedsTheExportLog()
+    {
+        harness.Seed();
+
+        using var connection = new SqlConnection(harness.ConnectionString);
+        connection.Open();
+
+        using var reports = connection.CreateCommand();
+        reports.CommandText = "SELECT COUNT(*) FROM person_conditions WHERE record_number = @seeded";
+        reports.Parameters.AddWithValue("@seeded", SurvsysHarness.SeededExportLog);
+        Assert.Equal(1, (int)reports.ExecuteScalar()!);
+
+        using var queued = connection.CreateCommand();
+        queued.CommandText = "SELECT COUNT(*) FROM nmi_export_queue";
+        Assert.Equal(0, (int)queued.ExecuteScalar()!);
+
+        var exports = new List<(bool Sent, bool HasMessage, string? Outcome)>();
+
+        using var read = connection.CreateCommand();
+        read.CommandText = "SELECT record_number, sent_at, xml, outcome FROM nmi_log ORDER BY queue_time DESC";
+
+        using var reader = read.ExecuteReader();
+
+        while (reader.Read())
+        {
+            Assert.Equal(SurvsysHarness.SeededExportLog, reader.GetString(0));
+            exports.Add((!reader.IsDBNull(1), !reader.IsDBNull(2), reader.IsDBNull(3) ? null : reader.GetString(3)));
+        }
+
+        Assert.Equal(SurvsysHarness.SeededExportLogRows, exports.Count);
+        Assert.Equal((false, false, null), exports[0]);
+        Assert.Equal((true, true, "accepted"), exports[1]);
     }
 
     /// <summary>
