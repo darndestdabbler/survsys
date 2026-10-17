@@ -1763,6 +1763,124 @@ namespace Survsys.Data.Migrations
                     b.ToTable("user_roles", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.VocabChildLoinc", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Archived")
+                        .HasColumnType("bit")
+                        .HasColumnName("archived");
+
+                    b.Property<string>("ChildLoinc")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("child_loinc");
+
+                    b.Property<string>("ConceptName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("concept_name");
+
+                    b.Property<int>("LabId")
+                        .HasColumnType("int")
+                        .HasColumnName("lab_id");
+
+                    b.Property<int>("MasterLoincId")
+                        .HasColumnType("int")
+                        .HasColumnName("master_loinc_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LabId", "ChildLoinc")
+                        .IsUnique();
+
+                    b.ToTable("vocab_child_loinc", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.VocabMasterLoinc", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ConceptName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("concept_name");
+
+                    b.Property<int?>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<string>("Loinc")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("loinc");
+
+                    b.Property<bool>("OrganismFromResult")
+                        .HasColumnType("bit")
+                        .HasColumnName("organism_from_result");
+
+                    b.Property<int?>("OrganismId")
+                        .HasColumnType("int")
+                        .HasColumnName("organism_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Loinc")
+                        .IsUnique();
+
+                    b.ToTable("vocab_master_loinc", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.VocabMasterOrganism", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<string>("OrganismName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("organism");
+
+                    b.Property<string>("Snomed")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("snomed");
+
+                    b.Property<string>("SnomedAlt")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("snomed_alt");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Snomed")
+                        .IsUnique();
+
+                    b.ToTable("vocab_master_organism", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.ZipCodeAgency", b =>
                 {
                     b.Property<string>("ZipCode")

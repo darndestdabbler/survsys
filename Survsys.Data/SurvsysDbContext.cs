@@ -86,6 +86,12 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<SavedView> SavedViews => Set<SavedView>();
 
+    public DbSet<VocabMasterLoinc> VocabMasterLoincs => Set<VocabMasterLoinc>();
+
+    public DbSet<VocabMasterOrganism> VocabMasterOrganisms => Set<VocabMasterOrganism>();
+
+    public DbSet<VocabChildLoinc> VocabChildLoincs => Set<VocabChildLoinc>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }
