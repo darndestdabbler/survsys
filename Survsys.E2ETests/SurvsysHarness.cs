@@ -258,10 +258,10 @@ public sealed class SurvsysHarness : IDisposable
     /// name, the reports before the people, and the people before the
     /// conditions. Cleared before any insert, so a second run of the suite
     /// seeds the same seven people and seven conditions rather than fourteen
-    /// of each — and no report, no specimen, no exposure, no note, no task
-    /// and no attachment at all, since a walkthrough that needs one creates
-    /// it, and one left over from the last run would be one the document did
-    /// not describe.
+    /// of each — and no report, no specimen, no exposure, no note, no task,
+    /// no attachment, no facility and no saved view at all, since a
+    /// walkthrough that needs one creates it, and one left over from the last
+    /// run would be one the document did not describe.
     /// </summary>
     /// <remarks>
     /// The laboratory chain is listed in full rather than left to the
@@ -282,11 +282,19 @@ public sealed class SurvsysHarness : IDisposable
     /// goes before the <c>attachment_files</c> row holding its bytes, which
     /// is the row it names. The notes and the tasks name nothing the schema
     /// enforces, and are listed above the reports they are raised against
-    /// because that is where they belong in this order.
+    /// because that is where they belong in this order. A facility names its
+    /// agency by a reference the schema enforces, but the agencies are the
+    /// migration's and the suite never clears them, so a facility is cleared
+    /// on its own and listed first, where nothing the suite clears hangs off
+    /// it. A saved view is cleared the same way and for the same reason: it
+    /// names its user by a reference the schema enforces, but the API tier
+    /// creates the administrator and the suite never clears the users.
     /// </para>
     /// </remarks>
     public static readonly string[] TablesInDeletionOrder =
     [
+        "facilities",
+        "saved_views",
         "attachments",
         "attachment_files",
         "notes",

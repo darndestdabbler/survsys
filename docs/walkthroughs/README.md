@@ -16,6 +16,10 @@ running Survsys. Perform them in any order; each one stands alone.
 | [Add a contact to a case](add-a-contact-to-a-case.md) | An investigator looks up the identifier of the person exposed alongside the patient, then adds them to the case as a contact of an exposure, with their contact type and disposition, and reads them back. | `Survsys.E2ETests/AddAContactToACaseTests.cs` |
 | [Attach a document](attach-a-document.md) | An investigator attaches a file to a case morbidity report, filed under what kind of document it is, and reads it back on the report's Notes tab. | `Survsys.E2ETests/AttachADocumentTests.cs` |
 | [Work a task list](work-a-task-list.md) | An investigator raises the follow-up a case needs as tasks, one of them repeating weekly, then works them off the task list screen and sorts them with its status filter. | `Survsys.E2ETests/WorkATaskListTests.cs` |
+| [Configure an agency](configure-an-agency.md) | A surveillance administrator opens one of the health departments already on file and sets its short name and the zip codes of its jurisdiction, then reads the saved configuration back. | `Survsys.E2ETests/ConfigureAnAgencyTests.cs` |
+| [Add a facility](add-a-facility.md) | A surveillance administrator adds a facility under the agency that owns it, with its address, and reads it back in the facilities list. | `Survsys.E2ETests/AddAFacilityTests.cs` |
+| [Save a view](save-a-view.md) | A user defines a view of the case morbidity reports — its name, the columns it exports and the filters it selects by — saves it, reads it back in the list of views, and edits it to save over it. | `Survsys.E2ETests/SaveAViewTests.cs` |
+| [Export a dataset](export-a-dataset.md) | A user creates a case morbidity report, saves a view that selects it, follows the view's Export CSV link, and reads the downloaded file — its header of the chosen columns and the report's row. | `Survsys.E2ETests/ExportADatasetTests.cs` |
 
 ## The contract every entry here is held to
 
