@@ -63,6 +63,17 @@ public class PrivilegeRulesTests
         Assert.Equal(Privileges.EditCases, PrivilegeRules.RequiredFor(method, path));
     }
 
+    [Theory]
+    [InlineData("GET", "/api/saved-views")]
+    [InlineData("POST", "/api/saved-views")]
+    [InlineData("PUT", "/api/saved-views/2")]
+    [InlineData("DELETE", "/api/saved-views/2")]
+    [InlineData("GET", "/api/saved-views/2/export")]
+    public void RequiredForASavedViewIsViewCasesWhateverTheMethod(string method, string path)
+    {
+        Assert.Equal(Privileges.ViewCases, PrivilegeRules.RequiredFor(method, path));
+    }
+
     [Fact]
     public void RequiredForMatchesWholeSegmentsOnly()
     {

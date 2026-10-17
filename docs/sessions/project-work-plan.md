@@ -44,7 +44,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 30 | Agencies, jurisdictions, facilities and conditions | no | 2026-10-16 |
 | 31 | Core element configuration | no | 2026-10-16 |
 | 32 | Users, roles, privileges and access audit | no | 2026-10-16 |
-| 33 | Saved views and custom exports | — | not declared |
+| 33 | Saved views and custom exports | no | 2026-10-17 |
 | 34 | Phase 4 walkthroughs | — | not declared |
 | 35 | Release 0.5.0 (release: 0.5.0) | — | not declared |
 | 36 | `Survsys.Messaging` and HL7 intake parsing | — | not declared |
@@ -322,3 +322,9 @@ Give Survsys users, roles and privileges, put every API endpoint behind them, an
 **Amended after acceptance:**
 
 - 2026-10-16 — step 'integration': its files: The access record's restrict foreign key to person_conditions would refuse the existing integration tests' and the E2E harness's deletes of reports and persons once a report has been opened; the report becomes a plain column so the audit outlives a deleted report and nothing that clears reports is blocked, which changes the UsersAndRoles migration this unpublished session wrote. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 33 — Saved views and custom exports
+
+**Releasable: no.**
+
+Give each signed-in user saved views of the case morbidity reports, and export a view as a CSV dataset whose columns and filters the user chose. The exportable columns are a fixed catalogue in code, named once in Survsys.Contracts.ExportColumns because both tiers read them: record_number, last_name, first_name, birth_date, condition, agency, workflow_state, case_status, event_onset_date, first_reported_ph_date, mmwr_week, mmwr_year and created_at. Survsys.Data gains saved_views (owning user, name unique per user, the chosen columns in order as one comma-separated column, and the filters: condition, investigating agency, workflow state, case status, and an event onset date range), in one SavedViews migration. Survsys.Api's SavedViewEndpoints list, create, update and delete the caller's own views at /api/saved-views (another user's view is a 404), validated by WhyNotASavedView (name required and at most 100 characters, at least one column, no unknown or repeated column, an onset range that does not run backwards, a known workflow state and case status), and GET /api/saved-views/{id}/export answers the view's reports, filtered and in record-number order, as text/csv; CaseExport.Csv is the pure rule that writes the header and rows with RFC 4180 quoting. PrivilegeRules gives every /api/saved-views request view_cases, because a view is the caller's own and an export is a read. Survsys.Web gains SavedViewsClient, a Saved views screen (the caller's views with an add and edit form choosing name, columns and filters, delete, and an Export CSV link per view) reached from navigation by a view_cases holder, and one web-tier GET /saved-views/{id}/export endpoint that passes the API's CSV to the browser as a file download under the signed-in user's token.

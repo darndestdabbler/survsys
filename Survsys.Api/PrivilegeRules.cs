@@ -19,7 +19,9 @@ namespace Survsys.Api;
 /// agencies, facilities and core elements — is readable by anyone signed in,
 /// because every case screen reads it, and changed with
 /// <see cref="Privileges.ManageReferenceData"/>; who the caller is
-/// (<c>/api/me</c>) needs nothing beyond being signed in; and every other API
+/// (<c>/api/me</c>) needs nothing beyond being signed in; a saved view and its
+/// export need <see cref="Privileges.ViewCases"/> whatever the method, because
+/// a view is the caller's own and changes no case; and every other API
 /// request is a case record, read with <see cref="Privileges.ViewCases"/> and
 /// written with <see cref="Privileges.EditCases"/>.
 /// </remarks>
@@ -35,6 +37,8 @@ public static class PrivilegeRules
         ["/api/conditions", "/api/agencies", "/api/facilities", "/api/core-elements"];
 
     private static readonly string[] AnySignedIn = ["/api/me"];
+
+    private static readonly string[] CaseReadsWhateverTheMethod = ["/api/saved-views"];
 
     /// <summary>
     /// The privilege a request needs, or null where being signed in is enough.
@@ -59,6 +63,11 @@ public static class PrivilegeRules
         if (Under(path, AnySignedIn) || !Under(path, ["/api"]))
         {
             return null;
+        }
+
+        if (Under(path, CaseReadsWhateverTheMethod))
+        {
+            return Privileges.ViewCases;
         }
 
         return reads ? Privileges.ViewCases : Privileges.EditCases;

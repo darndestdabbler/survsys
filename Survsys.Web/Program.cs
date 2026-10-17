@@ -81,6 +81,7 @@ builder.Services.AddHttpClient<TasksClient>(http => http.BaseAddress = api).AddH
 builder.Services.AddHttpClient<WorkQueueClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<UsersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<RolesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<SavedViewsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 
 var app = builder.Build();
 
@@ -145,6 +146,16 @@ app.MapPost("/account/sign-out", async (HttpContext http) =>
         return Results.Redirect(signInPage);
     })
     .WithMetadata(new RequireAntiforgeryTokenAttribute());
+
+// A saved view's export, handed to the browser as a file: a plain link the
+// Saved views screen offers, so the download is the browser's own rather
+// than bytes pushed through the circuit. The API tier is asked under the
+// signed-in person's token, so it decides whose view this is and whether they
+// may read it.
+app.MapGet("/saved-views/{id:int}/export", async (int id, SavedViewsClient views, CancellationToken cancellationToken) =>
+    await views.Export(id, cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"saved-view-{id}.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 

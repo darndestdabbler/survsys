@@ -15,7 +15,8 @@
    Since session 32 an entry is shown only to a person holding the privilege
    its screen needs, read from the claims this tier's cookie carries: the
    conditions catalogue to anyone signed in, because reading reference data
-   needs nothing more; the case screens to view_cases, and a new report to
+   needs nothing more; the case screens — and, since session 33, the saved
+   views and their exports — to view_cases, and a new report to
    edit_cases; the reference data administration to manage_reference_data;
    and the users and roles to manage_users. The API tier enforces the same
    privileges whatever the bar shows. The signed-in person's name and Sign
@@ -61,6 +62,9 @@
                 </MudButton>
                 <MudButton id="nav-tasks" Href="/tasks" Color="Color.Inherit">
                     Tasks
+                </MudButton>
+                <MudButton id="nav-saved-views" Href="/saved-views" Color="Color.Inherit">
+                    Saved views
                 </MudButton>
             }
             @if (Holds(Privileges.ManageReferenceData))

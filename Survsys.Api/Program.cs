@@ -81,6 +81,7 @@ builder.Services.AddNotes();
 builder.Services.AddAttachments();
 builder.Services.AddTasks();
 builder.Services.AddWorkQueue();
+builder.Services.AddSavedViews();
 
 var app = builder.Build();
 
@@ -148,6 +149,7 @@ app.MapNotes();
 app.MapAttachments();
 app.MapTasks();
 app.MapWorkQueue();
+app.MapSavedViews();
 
 app.Run();
 

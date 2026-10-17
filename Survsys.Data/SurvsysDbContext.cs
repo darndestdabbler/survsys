@@ -84,6 +84,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<AccessRecord> AccessRecords => Set<AccessRecord>();
 
+    public DbSet<SavedView> SavedViews => Set<SavedView>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

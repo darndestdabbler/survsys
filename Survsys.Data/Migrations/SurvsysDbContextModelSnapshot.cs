@@ -1648,6 +1648,65 @@ namespace Survsys.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Survsys.Data.SavedView", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AgencyId")
+                        .HasColumnType("int")
+                        .HasColumnName("agency_id");
+
+                    b.Property<string>("CaseStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("case_status");
+
+                    b.Property<string>("Columns")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("columns");
+
+                    b.Property<int?>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<DateOnly?>("OnsetFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("onset_from");
+
+                    b.Property<DateOnly?>("OnsetTo")
+                        .HasColumnType("date")
+                        .HasColumnName("onset_to");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("WorkflowState")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("workflow_state");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("saved_views", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.User", b =>
                 {
                     b.Property<int>("Id")
@@ -1932,6 +1991,15 @@ namespace Survsys.Data.Migrations
                     b.HasOne("Survsys.Data.Role", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.SavedView", b =>
+                {
+                    b.HasOne("Survsys.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
