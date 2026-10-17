@@ -91,6 +91,14 @@ builder.Services.Configure<ElrIntakeOptions>(
     builder.Configuration.GetSection(ElrIntakeOptions.SectionName));
 builder.Services.AddHostedService<ElrIntakeService>();
 
+// Direct transmission of a generated notification to CDC, in place of the
+// legacy Mirth export queue. A typed HttpClient so the transport is injected
+// and testable; off unless an endpoint is configured, so it is inert for a
+// deployment that has not turned it on.
+builder.Services.Configure<CdcTransmissionOptions>(
+    builder.Configuration.GetSection(CdcTransmissionOptions.SectionName));
+builder.Services.AddHttpClient<CdcTransmitter>();
+
 var app = builder.Build();
 
 // Before the first request, not during it: a database behind this assembly's
