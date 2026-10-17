@@ -61,7 +61,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 47 | Notification screens | no | 2026-10-17 |
 | 48 | Phase 6 walkthroughs | no | 2026-10-17 |
 | 49 | Repair the dropdown steps of five walkthroughs | no | 2026-10-17 |
-| 50 | Release 0.7.0 (release: 0.7.0) | — | not declared |
+| 50 | Release 0.7.0 (release: 0.7.0) | yes | 2026-10-17 |
 | 51 | Outbreak management | — | not declared |
 | 52 | The dynamic form builder | — | not declared |
 | 53 | Treatments and vaccines | — | not declared |
@@ -429,3 +429,9 @@ Document the Phase 6 outbound CDC notification workflow sessions 45 to 47 shippe
 **Releasable: no.**
 
 Make the five walkthrough tests that fail a whole end-to-end run pass again, without changing what any walkthrough does. SaveAView, ExportADataset, ReviewAStagedMessage, PromoteAMessageToACase and ResolveADuplicate open a MudBlazor select by the identifier the markup puts on it, and a select that already holds a value - even the empty Any or All - renders the input carrying that identifier as type="hidden" beside the visible box, so Playwright times out waiting for it to become visible. Each test's private Choose helper becomes the one WorkATaskListTests and AttachADocumentTests already use: it finds the combobox by the accessible label its walkthrough document names it by, presses it, picks the option by its words and reads the box back. The same change is then made to the nine other tests whose Choose helper still opens a select by identifier - they pass today only because their selects open empty - so no walkthrough depends on which value a select opens on.
+
+### Session 50 — Release 0.7.0 (release: 0.7.0)
+
+**Releasable: yes.**
+
+Release 0.7.0: the framework packs and publishes what is on the trunk.
