@@ -135,6 +135,18 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<OutbreakUpdate> OutbreakUpdates => Set<OutbreakUpdate>();
 
+    public DbSet<Form> Forms => Set<Form>();
+
+    public DbSet<FormSection> FormSections => Set<FormSection>();
+
+    public DbSet<FormQuestion> FormQuestions => Set<FormQuestion>();
+
+    public DbSet<FormQuestionOption> FormQuestionOptions => Set<FormQuestionOption>();
+
+    public DbSet<FormAssignment> FormAssignments => Set<FormAssignment>();
+
+    public DbSet<FormAnswer> FormAnswers => Set<FormAnswer>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

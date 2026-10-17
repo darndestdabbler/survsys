@@ -448,6 +448,50 @@ internal sealed class PersonConditionQueries(
         notifications.EnqueueAsync(new CaseChanged(reportId, DateTime.UtcNow), cancellationToken);
 
     /// <summary>
+    /// Stages the assignment of the new case's condition's auto-assign forms on
+    /// the context, so the next <c>SaveChangesAsync</c> writes them alongside
+    /// the case's queue entry.
+    /// </summary>
+    /// <remarks>
+    /// A supplemental form marked <see cref="Form.AutoAssign"/> for the case's
+    /// condition is given to the case as it is opened — the one place
+    /// auto-assignment runs. Forms already assigned to the case are skipped, so
+    /// a case that is somehow created against an id that already holds the form
+    /// is not given it twice; a brand-new case holds none, so every auto-assign
+    /// form for its condition is assigned. The assignment time is read once
+    /// here, as the record number's year is.
+    /// </remarks>
+    private async Task AutoAssignForms(PersonCondition report, CancellationToken cancellationToken)
+    {
+        var formIds = await database.Forms
+            .Where(form => form.ConditionId == report.ConditionId && form.AutoAssign)
+            .Select(form => form.Id)
+            .ToListAsync(cancellationToken);
+
+        if (formIds.Count == 0)
+        {
+            return;
+        }
+
+        var alreadyAssigned = await database.FormAssignments
+            .Where(assignment => assignment.PersonConditionId == report.Id
+                && formIds.Contains(assignment.FormId))
+            .Select(assignment => assignment.FormId)
+            .ToListAsync(cancellationToken);
+
+        var assignedAt = DateTimeOffset.UtcNow;
+
+        database.FormAssignments.AddRange(formIds
+            .Except(alreadyAssigned)
+            .Select(formId => new FormAssignment
+            {
+                FormId = formId,
+                PersonConditionId = report.Id,
+                AssignedAt = assignedAt,
+            }));
+    }
+
+    /// <summary>
     /// One report, or null where no report has that id — the answer the
     /// endpoint turns into a 404.
     /// </summary>
@@ -568,8 +612,10 @@ internal sealed class PersonConditionQueries(
         database.PersonConditions.Add(report);
         await database.SaveChangesAsync(cancellationToken);
 
-        // A new case has no id until it is saved, so it is queued after the
-        // insert and in a second save rather than the one above.
+        // A new case has no id until it is saved, so the auto-assigned forms
+        // and the notification queue entry are added after the insert and in a
+        // second save rather than the one above.
+        await AutoAssignForms(report, cancellationToken);
         await QueueForNotification(report.Id, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 

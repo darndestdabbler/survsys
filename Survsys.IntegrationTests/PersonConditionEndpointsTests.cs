@@ -285,6 +285,78 @@ public class PersonConditionEndpointsTests(SqlServerFixture server) : IDisposabl
     /// <summary>
     /// Opens a report that is expected to succeed, and answers with it.
     /// </summary>
+    [Fact]
+    public async Task CreatingACaseAutoAssignsTheConditionsAutoAssignForm()
+    {
+        await Clear();
+        await ClearForms();
+
+        try
+        {
+            var person = await PersonId("Rodriguez, Maria");
+            var condition = await ActiveConditionId();
+            var formId = await BuildForm(condition, autoAssign: true);
+
+            var report = await Open(new CreatePersonConditionRequest(person, condition));
+
+            var assignments = await CaseForms(report.Id);
+            Assert.Equal(formId, Assert.Single(assignments).FormId);
+        }
+        finally
+        {
+            await Clear();
+            await ClearForms();
+        }
+    }
+
+    [Fact]
+    public async Task ANonAutoFormForTheSameConditionIsNotAssigned()
+    {
+        await Clear();
+        await ClearForms();
+
+        try
+        {
+            var person = await PersonId("Rodriguez, Maria");
+            var condition = await ActiveConditionId();
+            var autoFormId = await BuildForm(condition, autoAssign: true);
+            await BuildForm(condition, autoAssign: false);
+
+            var report = await Open(new CreatePersonConditionRequest(person, condition));
+
+            var assignments = await CaseForms(report.Id);
+            Assert.Equal(autoFormId, Assert.Single(assignments).FormId);
+        }
+        finally
+        {
+            await Clear();
+            await ClearForms();
+        }
+    }
+
+    [Fact]
+    public async Task ACaseForAConditionWithNoAutoAssignFormIsLeftWithNone()
+    {
+        await Clear();
+        await ClearForms();
+
+        try
+        {
+            var person = await PersonId("Rodriguez, Maria");
+            var condition = await ActiveConditionId();
+            await BuildForm(condition, autoAssign: false);
+
+            var report = await Open(new CreatePersonConditionRequest(person, condition));
+
+            Assert.Empty(await CaseForms(report.Id));
+        }
+        finally
+        {
+            await Clear();
+            await ClearForms();
+        }
+    }
+
     private async Task<PersonConditionResponse> Open(CreatePersonConditionRequest request)
     {
         using var response = await api.CreateClient()
@@ -293,6 +365,42 @@ public class PersonConditionEndpointsTests(SqlServerFixture server) : IDisposabl
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         return (await response.Content.ReadFromJsonAsync<PersonConditionResponse>(Json))!;
+    }
+
+    /// <summary>Builds a form for a condition, auto-assign or not, and answers its id.</summary>
+    private async Task<int> BuildForm(int conditionId, bool autoAssign)
+    {
+        using var response = await api.CreateClient().PostAsJsonAsync(
+            "/api/forms",
+            new SaveFormRequest($"Supplement {Guid.NewGuid():N}", conditionId, AutoAssign: autoAssign),
+            Json);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        return (await response.Content.ReadFromJsonAsync<FormDetailResponse>(Json))!.Id;
+    }
+
+    /// <summary>The forms assigned to a case.</summary>
+    private async Task<IReadOnlyList<FormAssignmentResponse>> CaseForms(int personConditionId)
+    {
+        using var response = await api.CreateClient().GetAsync($"/api/cases/{personConditionId}/forms");
+        response.EnsureSuccessStatusCode();
+
+        return (await response.Content
+            .ReadFromJsonAsync<IReadOnlyList<FormAssignmentResponse>>(Json))!;
+    }
+
+    /// <summary>
+    /// Takes every form assignment and then every form out of the tables, so a
+    /// test leaves no form behind; the assignments go first because a form a
+    /// case holds cannot be deleted out from under it.
+    /// </summary>
+    private async Task ClearForms()
+    {
+        await using var context = server.NewContext();
+
+        await context.FormAssignments.ExecuteDeleteAsync();
+        await context.Forms.ExecuteDeleteAsync();
     }
 
     /// <summary>

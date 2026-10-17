@@ -928,6 +928,222 @@ namespace Survsys.Data.Migrations
                     b.ToTable("facilities", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.Form", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("AutoAssign")
+                        .HasColumnType("bit")
+                        .HasColumnName("auto_assign");
+
+                    b.Property<int>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConditionId");
+
+                    b.ToTable("forms", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.FormAnswer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("FormAssignmentId")
+                        .HasColumnType("int")
+                        .HasColumnName("form_assignment_id");
+
+                    b.Property<int>("FormQuestionId")
+                        .HasColumnType("int")
+                        .HasColumnName("form_question_id");
+
+                    b.Property<string>("TextAnswer")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("text_answer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FormQuestionId");
+
+                    b.HasIndex("FormAssignmentId", "FormQuestionId")
+                        .IsUnique();
+
+                    b.ToTable("form_answers", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.FormAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("AssignedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("assigned_at");
+
+                    b.Property<int>("FormId")
+                        .HasColumnType("int")
+                        .HasColumnName("form_id");
+
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonConditionId");
+
+                    b.HasIndex("FormId", "PersonConditionId")
+                        .IsUnique();
+
+                    b.ToTable("form_assignments", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.FormQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AnswerType")
+                        .HasColumnType("int")
+                        .HasColumnName("answer_type");
+
+                    b.Property<int>("FormSectionId")
+                        .HasColumnType("int")
+                        .HasColumnName("form_section_id");
+
+                    b.Property<string>("HelpText")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("help_text");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_required");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FormSectionId");
+
+                    b.ToTable("form_questions", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.FormQuestionOption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("code");
+
+                    b.Property<int>("FormQuestionId")
+                        .HasColumnType("int")
+                        .HasColumnName("form_question_id");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("label");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FormQuestionId");
+
+                    b.ToTable("form_question_options", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.FormSection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("FormId")
+                        .HasColumnType("int")
+                        .HasColumnName("form_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FormId");
+
+                    b.ToTable("form_sections", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.GraylistSpoolEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -2720,6 +2936,72 @@ namespace Survsys.Data.Migrations
                         .WithMany()
                         .HasForeignKey("AgencyId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.Form", b =>
+                {
+                    b.HasOne("Survsys.Data.Condition", null)
+                        .WithMany()
+                        .HasForeignKey("ConditionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.FormAnswer", b =>
+                {
+                    b.HasOne("Survsys.Data.FormAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("FormAssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.FormQuestion", null)
+                        .WithMany()
+                        .HasForeignKey("FormQuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.FormAssignment", b =>
+                {
+                    b.HasOne("Survsys.Data.Form", null)
+                        .WithMany()
+                        .HasForeignKey("FormId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.FormQuestion", b =>
+                {
+                    b.HasOne("Survsys.Data.FormSection", null)
+                        .WithMany()
+                        .HasForeignKey("FormSectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.FormQuestionOption", b =>
+                {
+                    b.HasOne("Survsys.Data.FormQuestion", null)
+                        .WithMany()
+                        .HasForeignKey("FormQuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.FormSection", b =>
+                {
+                    b.HasOne("Survsys.Data.Form", null)
+                        .WithMany()
+                        .HasForeignKey("FormId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
