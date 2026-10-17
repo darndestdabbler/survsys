@@ -1,0 +1,139 @@
+@* A condition's administration screen: every column the API puts on the wire,
+   the three lead-in paragraphs included. One screen for both a new condition
+   and an existing one; which it is, is whether the address carries an id.
+   A save goes back to the conditions list. *@
+@page "/conditions/new"
+@page "/conditions/{Id:int}/edit"
+@inject ConditionsClient Conditions
+@inject NavigationManager Navigation
+
+<PageTitle>@Heading — Survsys</PageTitle>
+
+<MudText id="condition-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    @Heading
+</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="condition-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (failure is { } whyNot)
+    {
+        <MudAlert id="condition-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @whyNot
+        </MudAlert>
+    }
+
+    <MudPaper id="condition-form" Elevation="1" Class="pa-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="name" id="condition-name" Label="Name"
+                              Variant="Variant.Outlined" Required="true" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="cdcCode" id="condition-cdc-code" Label="CDC code"
+                              Variant="Variant.Outlined" MaxLength="20" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudCheckBox @bind-Value="active" id="condition-active" Label="Active" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="contactLeadIn" id="condition-contact-lead-in"
+                              Label="Contacts lead-in" Variant="Variant.Outlined" Lines="4" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="placeLeadIn" id="condition-place-lead-in"
+                              Label="Exposure places lead-in" Variant="Variant.Outlined" Lines="4" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="treatmentLeadIn" id="condition-treatment-lead-in"
+                              Label="Treatments lead-in" Variant="Variant.Outlined" Lines="4" />
+            </MudItem>
+        </MudGrid>
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="condition-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                Save
+            </MudButton>
+            <MudButton id="condition-cancel" Variant="Variant.Outlined" Disabled="@saving"
+                       Href="/conditions">
+                Cancel
+            </MudButton>
+        </div>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>The condition being edited, or null for a new one.</summary>
+    [Parameter]
+    public int? Id { get; set; }
+
+    private string? name;
+
+    private string? cdcCode;
+
+    private bool active = true;
+
+    private string? contactLeadIn;
+
+    private string? placeLeadIn;
+
+    private string? treatmentLeadIn;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    private string Heading => Id is null ? "New condition" : "Edit condition";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id is { } id)
+        {
+            var found = await Conditions.Find(id);
+
+            if (found.Value is { } condition)
+            {
+                name = condition.Name;
+                cdcCode = condition.CdcCode;
+                active = condition.Active;
+                contactLeadIn = condition.ContactLeadIn;
+                placeLeadIn = condition.PlaceLeadIn;
+                treatmentLeadIn = condition.TreatmentLeadIn;
+            }
+
+            failure = found.Failure;
+        }
+
+        loading = false;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        failure = null;
+
+        var request = new SaveConditionRequest(
+            name ?? "", active, cdcCode, contactLeadIn, placeLeadIn, treatmentLeadIn);
+
+        var saved = Id is { } id
+            ? await Conditions.Update(id, request)
+            : await Conditions.Create(request);
+
+        saving = false;
+
+        if (saved.Succeeded)
+        {
+            Navigation.NavigateTo("/conditions");
+
+            return;
+        }
+
+        failure = saved.Failure;
+    }
+}

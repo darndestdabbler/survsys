@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 047 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 047 transcript</h1>
+<p class="stamp">Rendered 2026-10-17T12:37:34.718Z by dabbler-ai-router 3.21.0 at 60b76fdc7c5048a0c81da9d7dc284b4e721183a2.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-17T08:02:44.462-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 47: Notification screens</h3>
+<ol><li>Register.</li><li><code>Survsys.Web</code>: the notification queue, the generated-message review screen and the export log screen.</li><li><code>Survsys.Web</code>: queueing a case for notification from the case screen.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Build the outbound CDC notification screens in Survsys.Web together with the API surface they require. Sessions 45 and 46 built the notification queue, the CDC export log and the auto-queue in Survsys.Data and the background transmitter in Survsys.Api, but never exposed a read or write endpoint for any of them, so the screens this session's plan names have nothing to talk to yet. Add, in Survsys.Api and Survsys.Contracts, a paged read of the notification queue with a hold toggle, a manual queue action for one case, and a paged read of the CDC export log with one entry's generated message read whole; then in Survsys.Web the notification-queue screen with its hold control, the export-log screen, the generated-message review screen it links to, and a queue-for-notification action on the case morbidity report screen. Each screen reads through a typed client and shows an API failure as a message on the screen, as the staged-message screens do, and every element a later walkthrough will name carries an identifier of its own.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/485303ebc85f8f77374899e719c2cc809c5a0e84"><code>485303ebc85f8f77374899e719c2cc809c5a0e84</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Notification queue api</td><td><p>In Survsys.Api add NotificationQueueEndpoints.cs with an internal NotificationQueueQueries(SurvsysDbContext) in the same file, as MessageQueueEndpoints does. Map GET /api/notification-queue, one page oldest first by queued time, each row joining the queue entry to its case for the record number, patient name, condition and queued time and the hold flag, returned as PagedResult&lt;NotificationQueueItemResponse&gt;; and PATCH /api/notification-queue/{personConditionId:int}/hold, which reads SetNotificationHoldRequest and raises or lowers the entry's hold, answering with the updated row or 404 when the case has no entry. Add the two contracts to Survsys.Contracts and register the endpoints in Program.cs. Cover the endpoints in Survsys.IntegrationTests/NotificationQueueEndpointsTests.cs: a paged read, and a hold raised then lowered.</p></td><td><span class="mono">Survsys.Contracts/NotificationQueueItemResponse.cs</span><br><span class="mono">Survsys.Contracts/SetNotificationHoldRequest.cs</span><br><span class="mono">Survsys.Api/NotificationQueueEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.IntegrationTests/NotificationQueueEndpointsTests.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code></td><td>yes</td></tr>
+<tr><td>Notification queue screen</td><td><p>In Survsys.Web add NotificationQueueClient.cs, the one HTTP reader of the notification queue, with a paged Page read and a SetHold write, each failing through ApiAsk with its own prefix as MessageQueueClient does. Add Components/Pages/NotificationQueue.razor at /notification-queue: the queued cases oldest first, each row the record number, patient, condition and queued time with a hold toggle, a loading state, an API-failure alert and an empty-queue line, every named element carrying its own id. Add a nav link in Components/Layout/MainLayout.razor and register the client in Program.cs. Test the client's asks and failure wording in Survsys.UnitTests/NotificationQueueClientTests.cs.</p></td><td><span class="mono">Survsys.Web/NotificationQueueClient.cs</span><br><span class="mono">Survsys.Web/Components/Pages/NotificationQueue.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.UnitTests/NotificationQueueClientTests.cs</span><br><span class="mono">Survsys.Web/ApiAsk.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code></td><td>yes</td></tr>
+<tr><td>Export log api</td><td><p>In Survsys.Api add ExportLogEndpoints.cs with an internal ExportLogQueries(SurvsysDbContext) in the same file. Map GET /api/export-log, one page newest first by queued time, each row the record number, guide id, queued time, sent time and outcome returned as PagedResult&lt;CdcExportLogItemResponse&gt;; and GET /api/export-log/{id:int}, one entry whole wrapping that same row with its generated message in CdcExportLogDetailResponse, answering 404 when no entry has the id. Add the two contracts to Survsys.Contracts and register the endpoints in Program.cs. Cover the endpoints in Survsys.IntegrationTests/ExportLogEndpointsTests.cs: a paged read, one entry read whole with its generated message, and a missing id as 404.</p></td><td><span class="mono">Survsys.Contracts/CdcExportLogItemResponse.cs</span><br><span class="mono">Survsys.Contracts/CdcExportLogDetailResponse.cs</span><br><span class="mono">Survsys.Api/ExportLogEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.IntegrationTests/ExportLogEndpointsTests.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code></td><td>yes</td></tr>
+<tr><td>Export log screens</td><td><p>In Survsys.Web add ExportLogClient.cs, the one HTTP reader of the CDC export log, with a paged Page read and a Find for one entry whole, each failing through ApiAsk with its own prefix. Add Components/Pages/ExportLog.razor at /export-log: the exports newest first, each row the record number, queued time, sent time and outcome, linking to the entry's generated-message review, with loading, failure and empty states and each named element carrying its own id. Add Components/Pages/GeneratedMessageReview.razor at /export-log/{id:int}: the entry's summary and the generated message read whole in a preformatted block, with a line standing in where no message has been generated yet, and a link back to the log. Add a nav link in Components/Layout/MainLayout.razor and register the client in Program.cs. Test the client's asks and failure wording in Survsys.UnitTests/ExportLogClientTests.cs.</p></td><td><span class="mono">Survsys.Web/ExportLogClient.cs</span><br><span class="mono">Survsys.Web/Components/Pages/ExportLog.razor</span><br><span class="mono">Survsys.Web/Components/Pages/GeneratedMessageReview.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.UnitTests/ExportLogClientTests.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code></td><td>yes</td></tr>
+<tr><td>Queue a case from the case screen</td><td><p>Add the manual queue-for-notification action. In Survsys.Api extend NotificationQueueEndpoints.cs with POST /api/person-conditions/{id:int}/notification-queue, which upserts the case's notification-queue entry through the same path the auto-queue takes and answers with the queued row, or 404 when no case has the id. In Survsys.Web extend NotificationQueueClient.cs with a Queue write, and add a queue-for-notification control to Components/Pages/MorbidityReport.razor that calls it and shows the queued confirmation or the client's failure, each named element carrying its own id. Cover the POST in Survsys.IntegrationTests/NotificationQueueEndpointsTests.cs and the Queue ask and its failure wording in Survsys.UnitTests/NotificationQueueClientTests.cs.</p></td><td><span class="mono">Survsys.Api/NotificationQueueEndpoints.cs</span><br><span class="mono">Survsys.Web/NotificationQueueClient.cs</span><br><span class="mono">Survsys.Web/Components/Pages/MorbidityReport.razor</span><br><span class="mono">Survsys.IntegrationTests/NotificationQueueEndpointsTests.cs</span><br><span class="mono">Survsys.UnitTests/NotificationQueueClientTests.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No Phase 6 end-to-end walkthrough tests: those belong to session 48, and this session's screens are proven by client and endpoint tests only.</li><li>No change to message generation, direct transmission or the CDC transmitter (session 45), nor to the auto-queue domain event or the reconciliation cutoff (session 46).</li><li>No legacy NETSS fixed-width export: it stays unbuilt until the operator settles the open question recorded in session 46.</li><li>No new columns, configurations or migrations on the notification-queue or export-log tables: the screens read the tables session 46 created as they already stand.</li><li>No release packaging or publishing.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[12:02:44]</span> <span class="muted">run-started</span> session=047 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[12:02:44]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[12:02:44]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[12:10:56]</span> <span class="muted">engine-session</span> id=3db6b41b-7b8c-461b-bb70-ea65991eba5f</div>
+<div class="line"><span class="at">[12:10:56]</span> <span class="muted">engine-returned</span> seq=1 exit=<span class="good">0</span> seconds=492 transcript=.dabbler/runs/s47/driver/engine-01.log</div>
+<div class="line"><span class="at">[12:10:56]</span> <span class="muted">plan-accepted</span> steps=[&quot;notification-queue-api&quot;,&quot;notification-queue-screen&quot;,&quot;export-log-api&quot;,&quot;export-log-screens&quot;,&quot;queue-a-case-from-the-case-screen&quot;] non_goals=5</div>
+<div class="line"><span class="at">[12:10:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[12:10:57]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=notification-queue-api</div>
+<div class="line"><span class="at">[12:10:57]</span> <span class="muted">engine-invoked</span> seq=2 invocation=2/24 first=false output=stream</div>
+<div class="line"><span class="at">[12:20:57]</span> <span class="muted">engine-returned</span> seq=2 exit=<span class="good">0</span> seconds=600 transcript=.dabbler/runs/s47/driver/engine-02.log</div>
+<div class="line"><span class="at">[12:21:00]</span> <span class="muted">check-passed</span> step=notification-queue-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[12:21:00]</span> <span class="muted">report-accepted</span> seq=2 step=notification-queue-api files=[&quot;Survsys.Contracts/NotificationQueueItemResponse.cs&quot;,&quot;Survsys.Contracts/SetNotificationHoldRequest.cs&quot;,&quot;Survsys.Api/NotificationQueueEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.IntegrationTests/NotificationQueueEndpointsTests.cs&quot;] notes=Notification-queue read endpoint and hold PATCH added with two contracts, registered in Program.cs, join written entity-first so EF can translate order and filter; two integration tests pass.</div>
+<div class="line"><span class="at">[12:21:00]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=notification-queue-screen</div>
+<div class="line"><span class="at">[12:21:00]</span> <span class="muted">engine-invoked</span> seq=3 invocation=3/24 first=false output=stream</div>
+<div class="line"><span class="at">[12:25:15]</span> <span class="muted">engine-returned</span> seq=3 exit=<span class="good">0</span> seconds=255 transcript=.dabbler/runs/s47/driver/engine-03.log</div>
+<div class="line"><span class="at">[12:25:17]</span> <span class="muted">check-passed</span> step=notification-queue-screen argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[12:25:18]</span> <span class="muted">report-accepted</span> seq=3 step=notification-queue-screen files=[&quot;Survsys.Web/NotificationQueueClient.cs&quot;,&quot;Survsys.Web/Components/Pages/NotificationQueue.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.UnitTests/NotificationQueueClientTests.cs&quot;,&quot;Survsys.Web/ApiAsk.cs&quot;] notes=Notification-queue client, screen at /notification-queue with per-row hold toggle, nav link and registration; added ApiAsk.Patch for the hold PATCH (step amended). Four client tests pass.</div>
+<div class="line"><span class="at">[12:25:18]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=export-log-api</div>
+<div class="line"><span class="at">[12:25:18]</span> <span class="muted">engine-invoked</span> seq=4 invocation=4/24 first=false output=stream</div>
+<div class="line"><span class="at">[12:28:54]</span> <span class="muted">engine-returned</span> seq=4 exit=<span class="good">0</span> seconds=217 transcript=.dabbler/runs/s47/driver/engine-04.log</div>
+<div class="line"><span class="at">[12:28:56]</span> <span class="muted">check-passed</span> step=export-log-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[12:28:57]</span> <span class="muted">report-accepted</span> seq=4 step=export-log-api files=[&quot;Survsys.Contracts/CdcExportLogItemResponse.cs&quot;,&quot;Survsys.Contracts/CdcExportLogDetailResponse.cs&quot;,&quot;Survsys.Api/ExportLogEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.IntegrationTests/ExportLogEndpointsTests.cs&quot;] notes=Export-log read API: GET list newest-first and GET detail with the generated message, two contracts, registered; three integration tests pass seeding rows against a real case.</div>
+<div class="line"><span class="at">[12:28:57]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=export-log-screens</div>
+<div class="line"><span class="at">[12:28:57]</span> <span class="muted">engine-invoked</span> seq=5 invocation=5/24 first=false output=stream</div>
+<div class="line"><span class="at">[12:31:28]</span> <span class="muted">engine-returned</span> seq=5 exit=<span class="good">0</span> seconds=151 transcript=.dabbler/runs/s47/driver/engine-05.log</div>
+<div class="line"><span class="at">[12:31:30]</span> <span class="muted">check-passed</span> step=export-log-screens argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[12:31:30]</span> <span class="muted">report-accepted</span> seq=5 step=export-log-screens files=[&quot;Survsys.Web/ExportLogClient.cs&quot;,&quot;Survsys.Web/Components/Pages/ExportLog.razor&quot;,&quot;Survsys.Web/Components/Pages/GeneratedMessageReview.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.UnitTests/ExportLogClientTests.cs&quot;] notes=Export-log client, list screen at /export-log linking to the generated-message review at /export-log/{id} with a stand-in for an ungenerated message, nav link and registration; four client tests pass.</div>
+<div class="line"><span class="at">[12:31:30]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=queue-a-case-from-the-case-screen</div>
+<div class="line"><span class="at">[12:31:30]</span> <span class="muted">engine-invoked</span> seq=6 invocation=6/24 first=false output=stream</div>
+<div class="line"><span class="at">[12:36:26]</span> <span class="muted">engine-returned</span> seq=6 exit=<span class="good">0</span> seconds=296 transcript=.dabbler/runs/s47/driver/engine-06.log</div>
+<div class="line"><span class="at">[12:36:28]</span> <span class="muted">check-passed</span> step=queue-a-case-from-the-case-screen argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[12:36:29]</span> <span class="muted">report-accepted</span> seq=6 step=queue-a-case-from-the-case-screen files=[&quot;Survsys.Api/NotificationQueueEndpoints.cs&quot;,&quot;Survsys.Web/NotificationQueueClient.cs&quot;,&quot;Survsys.Web/Components/Pages/MorbidityReport.razor&quot;,&quot;Survsys.IntegrationTests/NotificationQueueEndpointsTests.cs&quot;,&quot;Survsys.UnitTests/NotificationQueueClientTests.cs&quot;] notes=Manual queue-for-notification: POST through the auto-queue path with a shared read-back, client Queue write, a CDC-notification control on the case screen; one integration and two client tests added, all pass.</div>
+<div class="line"><span class="at">[12:36:29]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[12:36:29]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[12:36:29]</span> <span class="muted">job-started</span> name=verification pid=43684 log=.dabbler/runs/s47/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:37:17]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s47/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:37:17]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[12:37:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[12:37:17]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[12:37:17]</span> <span class="muted">job-started</span> name=run of record: unit pid=41136 log=.dabbler/runs/s47/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[12:37:23]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s47/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[12:37:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[12:37:28]</span> <span class="muted">landed</span> commit=485303ebc85f8f77374899e719c2cc809c5a0e84</div>
+<div class="line"><span class="at">[12:37:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[12:37:28]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[12:37:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[12:37:28]</span> <span class="muted">job-started</span> name=close pid=21064 log=.dabbler/runs/s47/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:37:34]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s47/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:37:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>12 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.IntegrationTests/NotificationQueueEndpointsTests.cs`, `APagedReadReturnsTheQueuedCaseWithItsCaseJoined` opens only a single case, so it does not pin the oldest-first ordering (`orderby entry.QueuedAt, entry.PersonConditionId`) claimed by the class summary.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Precondition:** An empty `person_conditions` table and two opened cases (or two `NotificationQueue` entries with distinct `QueuedAt` timestamps, e.g. `t` and `t.AddMinutes(5)`).</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Input:** `GET /api/notification-queue?pageSize=200`.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Expectation:** `page.Items[0]` is the earlier-queued case and `page.Items[1]` is the later-queued case; the current single-row test would still pass if `Page` ordered descending instead of ascending.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.IntegrationTests/NotificationQueueEndpointsTests.cs`, `QueueingACaseByHandPutsItBackInTheQueue` deletes the auto-queued entry before posting to `/api/person-conditions/{id}/notification-queue`, so only the insert branch of the manual re-queue is exercised and not the in-place refresh branch described in `MorbidityReport.razor` (&quot;this queues it again by hand, for a case that must be re-sent&quot;).</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Precondition:** A case opened (and therefore already present in `NotificationQueue` with an earlier `QueuedAt`).</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Input:** `POST /api/person-conditions/{report.Id}/notification-queue` without deleting the existing queue row first.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Expectation:** `200 OK` with a single `NotificationQueue` row for `report.Id` whose `QueuedAt` is updated to the new timestamp rather than failing with a duplicate-key error or leaving the stale timestamp.</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.IntegrationTests/NotificationQueueEndpointsTests.cs` and `Survsys.IntegrationTests/ExportLogEndpointsTests.cs`, neither suite exercises the invalid-page guard (`Paging.WhyNotAPage(page, pageSize)`) on the new endpoints.</td><td>not answered</td></tr>
+<tr><td>9</td><td><strong>minor</strong></td><td>**Precondition:** A running `SurvsysApi` instance.</td><td>not answered</td></tr>
+<tr><td>10</td><td><strong>minor</strong></td><td>**Input:** `GET /api/notification-queue?page=0&amp;pageSize=50` and `GET /api/export-log?page=0&amp;pageSize=50`.</td><td>not answered</td></tr>
+<tr><td>11</td><td><strong>minor</strong></td><td>**Expectation:** Both endpoints return `400 BadRequest` with a problem details payload; if the `Paging.WhyNotAPage` guard were omitted in either handler, EF Core would receive a negative `Skip` offset instead of returning `400`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>5s</td><td>910</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
