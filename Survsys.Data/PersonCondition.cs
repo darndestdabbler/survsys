@@ -494,6 +494,21 @@ public class PersonCondition
     public string? OutbreakAssociated { get; set; }
 
     /// <summary>
+    /// The outbreak this case belongs to, as the legacy
+    /// <c>person_condition.outbreak_id</c> — the Administrative tab's "Outbreak
+    /// name" dropdown; null where the case names no outbreak.
+    /// </summary>
+    /// <remarks>
+    /// This is the link <see cref="OutbreakAssociated"/>'s comment deferred to
+    /// outbreak management: the outbreak-associated code says whether a case is
+    /// associated with an outbreak, and this names which outbreak it is. A real
+    /// foreign key to <see cref="Outbreak"/> that does not cascade — a deleted
+    /// outbreak leaves its cases and nulls the column, so the record is never
+    /// taken with the outbreak it was grouped under.
+    /// </remarks>
+    public int? OutbreakId { get; set; }
+
+    /// <summary>
     /// The date the local health department started its investigation, as
     /// the legacy <c>lhd_investigation_start_date</c> — the Administrative
     /// tab's "LHD investigation started" date picker; null until entered.

@@ -85,6 +85,7 @@ builder.Services.AddSavedViews();
 builder.Services.AddMessageQueue();
 builder.Services.AddNotificationQueue();
 builder.Services.AddExportLog();
+builder.Services.AddOutbreaks();
 
 // The inbound ELR intake, a background worker that polls a file drop and
 // queues each message for review. Off unless a drop directory is configured,
@@ -171,6 +172,7 @@ app.MapSavedViews();
 app.MapMessageQueue();
 app.MapNotificationQueue();
 app.MapExportLog();
+app.MapOutbreaks();
 
 app.Run();
 

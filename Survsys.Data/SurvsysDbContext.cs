@@ -125,6 +125,16 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
     public DbSet<RuleSetExpressionCondition> RuleSetExpressionConditions =>
         Set<RuleSetExpressionCondition>();
 
+    public DbSet<Outbreak> Outbreaks => Set<Outbreak>();
+
+    public DbSet<OutbreakAccess> OutbreakAccess => Set<OutbreakAccess>();
+
+    public DbSet<ReportSection> ReportSections => Set<ReportSection>();
+
+    public DbSet<OutbreakReportSection> OutbreakReportSections => Set<OutbreakReportSection>();
+
+    public DbSet<OutbreakUpdate> OutbreakUpdates => Set<OutbreakUpdate>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

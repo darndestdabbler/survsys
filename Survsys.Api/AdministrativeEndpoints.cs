@@ -17,15 +17,17 @@ namespace Survsys.Api;
 /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>
 /// maps: the two per-jurisdiction case-status keys, the outbreak-association
 /// code, the two LHD investigation dates, the outcome key, the event name and
-/// the two reported dates. All nine are the report's own, so this slice reads
-/// and writes one table, as the investigation slice does. The read-only Event
-/// Information the tab shows is <c>PersonConditionEndpoints</c>'s and is not
-/// repeated here.
+/// the two reported dates, and the outbreak this case belongs to. All are the
+/// report's own, so this slice reads and writes one table, as the
+/// investigation slice does. The read-only Event Information the tab shows is
+/// <c>PersonConditionEndpoints</c>'s and is not repeated here; the outbreak's
+/// name, which the tab shows beside its id, is read across from the
+/// <c>outbreaks</c> table the one case names.
 ///
 /// The handlers are handed <see cref="AdministrativeQueries"/> and not the
 /// <c>DbContext</c>, because the architecture test lets no <c>Survsys.Data</c>
 /// type into an endpoint signature at all. The save is one <c>SaveChanges</c>
-/// over the one row, a whole replacement of the nine fields.
+/// over the one row, a whole replacement of its writable fields.
 /// </remarks>
 public static class AdministrativeEndpoints
 {
@@ -46,10 +48,12 @@ public static class AdministrativeEndpoints
     /// The projection from a report to the administrative wire shape.
     /// </summary>
     /// <remarks>
-    /// One parameter, because all nine fields are the report's own: EF Core
-    /// translates it as the <c>SELECT</c> of the read. A unit test compiles and
-    /// invokes the same expression to prove what it carries. Public because
-    /// the unit suite proves it; nothing else names it.
+    /// One parameter, because every field it maps is the report's own,
+    /// <see cref="AdministrativeResponse.OutbreakName"/> aside, which the read
+    /// fills across from the outbreak the case names. A unit test compiles and
+    /// invokes the expression to prove what it carries. Public because the unit
+    /// suite proves it, and used compiled by both the read and the save so the
+    /// two cannot drift.
     /// </remarks>
     public static readonly Expression<Func<PersonCondition, AdministrativeResponse>> ToResponse =
         report => new AdministrativeResponse(
@@ -62,7 +66,8 @@ public static class AdministrativeEndpoints
             report.InvestigationOutcomeDispositionId,
             report.EventName,
             report.ResultsReportedToClinicianDate,
-            report.CdcFirstVerballyNotifiedDate);
+            report.CdcFirstVerballyNotifiedDate,
+            report.OutbreakId);
 
     /// <summary>
     /// <see cref="ToResponse"/> compiled, for the save, which has the report in
@@ -154,10 +159,14 @@ public static class AdministrativeEndpoints
     {
         if (WhyNotAdministrative(request) is { } why)
         {
-            return TypedResults.Problem(
-                detail: why,
-                statusCode: StatusCodes.Status400BadRequest,
-                title: "The administrative data asked to be saved is not data this endpoint can save.");
+            return Refused(why);
+        }
+
+        if (request.OutbreakId is { } outbreakId
+            && !await administrative.OutbreakExists(outbreakId, cancellationToken))
+        {
+            return Refused($"outbreakId {outbreakId} is not an outbreak this tier knows. The "
+                + "outbreaks are the ones GET /api/outbreaks lists.");
         }
 
         if (await administrative.Save(id, request, cancellationToken) is not { } response)
@@ -167,6 +176,12 @@ public static class AdministrativeEndpoints
 
         return TypedResults.Ok(response);
     }
+
+    private static ProblemHttpResult Refused(string why) =>
+        TypedResults.Problem(
+            detail: why,
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "The administrative data asked to be saved is not data this endpoint can save.");
 
     private static ProblemHttpResult NoSuchReport(int id) =>
         TypedResults.Problem(
@@ -192,18 +207,35 @@ internal sealed class AdministrativeQueries(SurvsysDbContext database)
     /// One report's administrative data, or null where no report has that id
     /// — the answer the endpoint turns into a 404.
     /// </summary>
-    public Task<AdministrativeResponse?> Find(int id, CancellationToken cancellationToken) =>
-        database.PersonConditions
+    public async Task<AdministrativeResponse?> Find(int id, CancellationToken cancellationToken)
+    {
+        var row = await database.PersonConditions
             .Where(report => report.Id == id)
-            .Select(AdministrativeEndpoints.ToResponse)
+            .Select(report => new
+            {
+                Report = report,
+                OutbreakName = database.Outbreaks
+                    .Where(outbreak => outbreak.Id == report.OutbreakId)
+                    .Select(outbreak => outbreak.Name)
+                    .FirstOrDefault(),
+            })
             .SingleOrDefaultAsync(cancellationToken);
+
+        return row is null
+            ? null
+            : AdministrativeEndpoints.Respond(row.Report) with { OutbreakName = row.OutbreakName };
+    }
+
+    /// <summary>Whether an outbreak this tier knows has that id.</summary>
+    public Task<bool> OutbreakExists(int id, CancellationToken cancellationToken) =>
+        database.Outbreaks.AnyAsync(outbreak => outbreak.Id == id, cancellationToken);
 
     /// <summary>
     /// Saves the administrative data onto the report and answers with it as
     /// stored, or null where no report has that id.
     /// </summary>
     /// <remarks>
-    /// All nine fields are set and committed in one
+    /// All ten fields are set and committed in one
     /// <see cref="SurvsysDbContext.SaveChangesAsync(CancellationToken)"/>: the
     /// save is a whole replacement, so a field sent null clears what was
     /// there, as the legacy tab does when a control is blanked.
@@ -230,9 +262,17 @@ internal sealed class AdministrativeQueries(SurvsysDbContext database)
         report.EventName = request.EventName;
         report.ResultsReportedToClinicianDate = request.ResultsReportedToClinicianDate;
         report.CdcFirstVerballyNotifiedDate = request.CdcFirstVerballyNotifiedDate;
+        report.OutbreakId = request.OutbreakId;
 
         await database.SaveChangesAsync(cancellationToken);
 
-        return AdministrativeEndpoints.Respond(report);
+        var outbreakName = report.OutbreakId is { } outbreakId
+            ? await database.Outbreaks
+                .Where(outbreak => outbreak.Id == outbreakId)
+                .Select(outbreak => outbreak.Name)
+                .SingleOrDefaultAsync(cancellationToken)
+            : null;
+
+        return AdministrativeEndpoints.Respond(report) with { OutbreakName = outbreakName };
     }
 }

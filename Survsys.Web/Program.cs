@@ -85,6 +85,7 @@ builder.Services.AddHttpClient<SavedViewsClient>(http => http.BaseAddress = api)
 builder.Services.AddHttpClient<MessageQueueClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<NotificationQueueClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<ExportLogClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<OutbreaksClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 
 var app = builder.Build();
 

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -161,6 +162,106 @@ public class InvestigationAdministrativeEndpointsTests(SqlServerFixture server) 
     }
 
     /// <summary>
+    /// A case names an outbreak through the Administrative tab, reads it back
+    /// with the outbreak's name, and then clears the link by saving it null.
+    /// </summary>
+    [Fact]
+    public async Task ACaseNamesAnOutbreakAndThenClearsIt()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+        var outbreak = await CreateOutbreak("Spring picnic");
+
+        try
+        {
+            using var linked = await client.PutAsJsonAsync(
+                $"/api/person-conditions/{reportId}/administrative",
+                Blank() with { OutbreakId = outbreak.Id },
+                Json);
+            linked.EnsureSuccessStatusCode();
+
+            var withOutbreak = (await linked.Content.ReadFromJsonAsync<AdministrativeResponse>(Json))!;
+            Assert.Equal(outbreak.Id, withOutbreak.OutbreakId);
+            Assert.Equal("Spring picnic", withOutbreak.OutbreakName);
+
+            using var read = await client.GetAsync($"/api/person-conditions/{reportId}/administrative");
+            read.EnsureSuccessStatusCode();
+            var round = (await read.Content.ReadFromJsonAsync<AdministrativeResponse>(Json))!;
+            Assert.Equal(outbreak.Id, round.OutbreakId);
+            Assert.Equal("Spring picnic", round.OutbreakName);
+
+            using var cleared = await client.PutAsJsonAsync(
+                $"/api/person-conditions/{reportId}/administrative",
+                Blank() with { OutbreakId = null },
+                Json);
+            cleared.EnsureSuccessStatusCode();
+            var without = (await cleared.Content.ReadFromJsonAsync<AdministrativeResponse>(Json))!;
+            Assert.Null(without.OutbreakId);
+            Assert.Null(without.OutbreakName);
+        }
+        finally
+        {
+            await ClearAdministrativeOf(reportId);
+            await DeleteOutbreak(outbreak.Id);
+        }
+    }
+
+    /// <summary>
+    /// A case naming an outbreak no outbreak has is refused with a 400, and the
+    /// report's link is left as it was.
+    /// </summary>
+    [Fact]
+    public async Task ACaseNamingAnUnknownOutbreakIsRefused()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            using var response = await client.PutAsJsonAsync(
+                $"/api/person-conditions/{reportId}/administrative",
+                Blank() with { OutbreakId = 987654321 },
+                Json);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+        finally
+        {
+            await ClearAdministrativeOf(reportId);
+        }
+    }
+
+    /// <summary>An outbreak, created through its endpoint, for a case to name.</summary>
+    private async Task<OutbreakDetailResponse> CreateOutbreak(string name)
+    {
+        using var response = await api.CreateClient().PostAsJsonAsync(
+            "/api/outbreaks",
+            new SaveOutbreakRequest(name),
+            Json);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        return (await response.Content.ReadFromJsonAsync<OutbreakDetailResponse>(Json))!;
+    }
+
+    private async Task DeleteOutbreak(int id)
+    {
+        await using var context = server.NewContext();
+
+        await context.Outbreaks.Where(outbreak => outbreak.Id == id).ExecuteDeleteAsync();
+    }
+
+    /// <summary>Administrative data with every field left blank.</summary>
+    private static UpdateAdministrativeRequest Blank() => new(
+        LhdCaseStatusId: null,
+        StateCaseStatusId: null,
+        OutbreakAssociated: null,
+        LhdInvestigationStartDate: null,
+        LhdInvestigationCompletedDate: null,
+        InvestigationOutcomeDispositionId: null,
+        EventName: null,
+        ResultsReportedToClinicianDate: null,
+        CdcFirstVerballyNotifiedDate: null);
+
+    /// <summary>
     /// The seeded report's id, re-seeding the report if a report test in this
     /// collection has cleared it since the fixture was built — the same
     /// re-seed <see cref="LabEndpointsTests"/> makes.
@@ -229,7 +330,7 @@ public class InvestigationAdministrativeEndpointsTests(SqlServerFixture server) 
     }
 
     /// <summary>
-    /// Clears the nine administrative columns this test set, and no other,
+    /// Clears the ten administrative columns this test set, and no other,
     /// for the reason <see cref="ClearInvestigationOf"/> clears its ten.
     /// </summary>
     private async Task ClearAdministrativeOf(int reportId)
@@ -247,6 +348,7 @@ public class InvestigationAdministrativeEndpointsTests(SqlServerFixture server) 
                 .SetProperty(column => column.InvestigationOutcomeDispositionId, (int?)null)
                 .SetProperty(column => column.EventName, (string?)null)
                 .SetProperty(column => column.ResultsReportedToClinicianDate, (DateOnly?)null)
-                .SetProperty(column => column.CdcFirstVerballyNotifiedDate, (DateOnly?)null));
+                .SetProperty(column => column.CdcFirstVerballyNotifiedDate, (DateOnly?)null)
+                .SetProperty(column => column.OutbreakId, (int?)null));
     }
 }

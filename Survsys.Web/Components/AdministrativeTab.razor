@@ -7,8 +7,9 @@
    there too, and is shown here from the report the shell already holds: the
    record number, the MMWR week and year and the date the record was
    created. Case / Outbreak keeps its two case-status ids and the outbreak
-   associated code; the outbreak name, the queue and the tags are each a
-   table of their own and are later sessions' work. Auditing / Investigation
+   associated code, and the outbreak-name picker that links the case to an
+   outbreak; the queue and the tags are each a table of their own and are
+   later sessions' work. Auditing / Investigation
    keeps its two LHD investigation dates, the outcome disposition id and the
    event name. Reported Dates keeps the two dates the tab lets an
    investigator enter; the date first reported to public health is the
@@ -32,6 +33,7 @@
    Every element a walkthrough names carries a stable identifier. *@
 @using System.Globalization
 @inject AdministrativeClient Api
+@inject OutbreaksClient Outbreaks
 
 @if (saved is { } stored)
 {
@@ -100,6 +102,18 @@
                               Label="Outbreak associated (Yes/No/Unknown)" Variant="Variant.Outlined" />
             </MudItem>
         }
+        <MudItem xs="12" sm="4">
+            @* The outbreak this case belongs to. A blank choice clears the
+               link; the API tier refuses an outbreak it does not know. *@
+            <MudSelect T="int?" @bind-Value="outbreakId" id="administrative-outbreak-id"
+                       Label="Outbreak name" Variant="Variant.Outlined" Clearable="true">
+                <MudSelectItem T="int?" Value="@((int?)null)">(none)</MudSelectItem>
+                @foreach (var outbreak in outbreaks)
+                {
+                    <MudSelectItem T="int?" Value="@outbreak.Id">@outbreak.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
     </MudGrid>
 </MudPaper>
 
@@ -218,6 +232,10 @@
 
     private string? cdcFirstVerballyNotifiedDate;
 
+    private int? outbreakId;
+
+    private IReadOnlyList<OutbreakResponse> outbreaks = [];
+
     private bool saving;
 
     private string? saved;
@@ -226,7 +244,18 @@
 
     private string? complaint;
 
-    protected override void OnInitialized() => Load(Administrative);
+    protected override async Task OnInitializedAsync()
+    {
+        Load(Administrative);
+
+        // The outbreak-name picker lists the outbreaks a case can be linked
+        // to. A list that does not load leaves the picker empty rather than
+        // failing the tab, which still shows and saves the rest.
+        if ((await Outbreaks.All()).Value is { } loaded)
+        {
+            outbreaks = loaded.Items;
+        }
+    }
 
     /// <summary>
     /// The moment the record was created, written to the minute with its
@@ -254,6 +283,7 @@
         eventName = administrative.EventName;
         resultsReportedToClinicianDate = Written(administrative.ResultsReportedToClinicianDate);
         cdcFirstVerballyNotifiedDate = Written(administrative.CdcFirstVerballyNotifiedDate);
+        outbreakId = administrative.OutbreakId;
     }
 
     private async Task Save()
@@ -284,7 +314,8 @@
                 InvestigationOutcomeDispositionId: investigationOutcomeDispositionId,
                 EventName: Blank(eventName),
                 ResultsReportedToClinicianDate: reported,
-                CdcFirstVerballyNotifiedDate: notified));
+                CdcFirstVerballyNotifiedDate: notified,
+                OutbreakId: outbreakId));
 
             if (answered.Value is { } stored)
             {

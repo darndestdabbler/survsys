@@ -118,6 +118,7 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
         builder.Property(report => report.LhdCaseStatusId).HasColumnName("lhd_case_status_id");
         builder.Property(report => report.StateCaseStatusId)
             .HasColumnName("state_case_status_id");
+        builder.Property(report => report.OutbreakId).HasColumnName("outbreak_id");
         builder.Property(report => report.OutbreakAssociated)
             .HasColumnName("outbreak_associated")
             .HasMaxLength(CodeLength);
@@ -161,5 +162,14 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
             .HasForeignKey(report => report.ConditionId)
             .IsRequired()
             .OnDelete(DeleteBehavior.Restrict);
+
+        // The outbreak a case names is optional and does not cascade: a
+        // deleted outbreak leaves its cases and nulls the column, so the
+        // record outlives the outbreak it was grouped under rather than being
+        // taken with it.
+        builder.HasOne<Outbreak>()
+            .WithMany()
+            .HasForeignKey(report => report.OutbreakId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

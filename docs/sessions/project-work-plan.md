@@ -62,7 +62,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 48 | Phase 6 walkthroughs | no | 2026-10-17 |
 | 49 | Repair the dropdown steps of five walkthroughs | no | 2026-10-17 |
 | 50 | Release 0.7.0 (release: 0.7.0) | yes | 2026-10-17 |
-| 51 | Outbreak management | — | not declared |
+| 51 | Outbreak management | no | 2026-10-17 |
 | 52 | The dynamic form builder | — | not declared |
 | 53 | Treatments and vaccines | — | not declared |
 | 54 | Audit by EF Core interceptors | — | not declared |
@@ -435,3 +435,9 @@ Make the five walkthrough tests that fail a whole end-to-end run pass again, wit
 **Releasable: yes.**
 
 Release 0.7.0: the framework packs and publishes what is on the trunk.
+
+### Session 51 — Outbreak management
+
+**Releasable: no.**
+
+Give survsys its outbreak management across Survsys.Data, Survsys.Api and Survsys.Web: an outbreak record with its owning agency, condition, outbreak date, number, status and description; multi-agency access that grants other agencies sight of an outbreak; a section-based outbreak report whose text is kept per report section against the seven report sections EpiTrax defines; and an append-only outbreak activity log of timeline updates. Survsys.Data gains the Outbreak, OutbreakAccess, ReportSection, OutbreakReportSection and OutbreakUpdate entities with their configurations and one migration, the report sections seeded as the legacy report_section table seeds them, and person_conditions gains a nullable outbreak_id so a case can name the outbreak it belongs to. Survsys.Api gains the /api/outbreaks slice — outbreak CRUD, its multi-agency access, its report sections, its activity log and the cases linked to it — and the case's Administrative tab learns to read and write the case's outbreak. Survsys.Web gains the outbreaks list and the outbreak detail screen that edits the outbreak, manages its access agencies, writes its report sections and shows its activity log, and the case screen's Case / Outbreak section gains the outbreak-name picker that links a case to an outbreak. The schema is faithful to EpiTrax's outbreak, outbreak_access, report_section, outbreak_report_section and outbreak_update tables, and holds no more than they do.

@@ -1268,6 +1268,165 @@ namespace Survsys.Data.Migrations
                     b.ToTable("nmi_export_queue", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.Outbreak", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AgencyId")
+                        .HasColumnType("int")
+                        .HasColumnName("agency_id");
+
+                    b.Property<int?>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Number")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("number");
+
+                    b.Property<DateOnly?>("OutbreakDate")
+                        .HasColumnType("date")
+                        .HasColumnName("outbreak_date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgencyId");
+
+                    b.HasIndex("ConditionId");
+
+                    b.ToTable("outbreaks", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.OutbreakAccess", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AgencyId")
+                        .HasColumnType("int")
+                        .HasColumnName("agency_id");
+
+                    b.Property<int>("OutbreakId")
+                        .HasColumnType("int")
+                        .HasColumnName("outbreak_id");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgencyId");
+
+                    b.HasIndex("OutbreakId", "AgencyId")
+                        .IsUnique();
+
+                    b.ToTable("outbreak_access", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.OutbreakReportSection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("OutbreakId")
+                        .HasColumnType("int")
+                        .HasColumnName("outbreak_id");
+
+                    b.Property<int>("ReportSectionId")
+                        .HasColumnType("int")
+                        .HasColumnName("report_section_id");
+
+                    b.Property<string>("ReportText")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("report_text");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportSectionId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("OutbreakId", "ReportSectionId")
+                        .IsUnique();
+
+                    b.ToTable("outbreak_report_sections", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.OutbreakUpdate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("OutbreakId")
+                        .HasColumnType("int")
+                        .HasColumnName("outbreak_id");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int")
+                        .HasColumnName("type");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("OutbreakId", "CreatedAt");
+
+                    b.ToTable("outbreak_updates", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.ParentGuardian", b =>
                 {
                     b.Property<int>("Id")
@@ -1564,6 +1723,10 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("outbreak_associated");
 
+                    b.Property<int?>("OutbreakId")
+                        .HasColumnType("int")
+                        .HasColumnName("outbreak_id");
+
                     b.Property<int>("PersonId")
                         .HasColumnType("int")
                         .HasColumnName("person_id");
@@ -1608,6 +1771,8 @@ namespace Survsys.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ConditionId");
+
+                    b.HasIndex("OutbreakId");
 
                     b.HasIndex("PersonId");
 
@@ -1811,6 +1976,63 @@ namespace Survsys.Data.Migrations
                     b.HasKey("PhinVar");
 
                     b.ToTable("phin_var", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.ReportSection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("description");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("report_sections", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Context/Background"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Initiation of Investigation"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Investigation Methods"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Investigation Findings/Results"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Description = "Discussion and/or Conclusions"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Description = "Recommendations for Controlling Disease and/or Preventing/Mitigating Exposure"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Description = "Key Investigators and/or Report Authors"
+                        });
                 });
 
             modelBuilder.Entity("Survsys.Data.Role", b =>
@@ -2546,6 +2768,70 @@ namespace Survsys.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Survsys.Data.Outbreak", b =>
+                {
+                    b.HasOne("Survsys.Data.Agency", null)
+                        .WithMany()
+                        .HasForeignKey("AgencyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Survsys.Data.Condition", null)
+                        .WithMany()
+                        .HasForeignKey("ConditionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Survsys.Data.OutbreakAccess", b =>
+                {
+                    b.HasOne("Survsys.Data.Agency", null)
+                        .WithMany()
+                        .HasForeignKey("AgencyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.Outbreak", null)
+                        .WithMany()
+                        .HasForeignKey("OutbreakId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.OutbreakReportSection", b =>
+                {
+                    b.HasOne("Survsys.Data.Outbreak", null)
+                        .WithMany()
+                        .HasForeignKey("OutbreakId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.ReportSection", null)
+                        .WithMany()
+                        .HasForeignKey("ReportSectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.OutbreakUpdate", b =>
+                {
+                    b.HasOne("Survsys.Data.Outbreak", null)
+                        .WithMany()
+                        .HasForeignKey("OutbreakId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Survsys.Data.ParentGuardian", b =>
                 {
                     b.HasOne("Survsys.Data.Person", null)
@@ -2580,6 +2866,11 @@ namespace Survsys.Data.Migrations
                         .HasForeignKey("ConditionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Survsys.Data.Outbreak", null)
+                        .WithMany()
+                        .HasForeignKey("OutbreakId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Survsys.Data.Person", null)
                         .WithMany()

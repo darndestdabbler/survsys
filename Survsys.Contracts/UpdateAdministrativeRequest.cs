@@ -51,6 +51,11 @@ namespace Survsys.Contracts;
 /// <param name="CdcFirstVerballyNotifiedDate">
 /// The date the CDC was first verbally notified.
 /// </param>
+/// <param name="OutbreakId">
+/// The outbreak this case belongs to, as the Case / Outbreak section's
+/// "Outbreak name" names it; null to name no outbreak or to clear the link.
+/// An outbreak id no outbreak has is refused.
+/// </param>
 public record UpdateAdministrativeRequest(
     int? LhdCaseStatusId,
     int? StateCaseStatusId,
@@ -60,4 +65,5 @@ public record UpdateAdministrativeRequest(
     int? InvestigationOutcomeDispositionId,
     string? EventName,
     DateOnly? ResultsReportedToClinicianDate,
-    DateOnly? CdcFirstVerballyNotifiedDate);
+    DateOnly? CdcFirstVerballyNotifiedDate,
+    int? OutbreakId = null);

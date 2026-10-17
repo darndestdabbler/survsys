@@ -64,6 +64,14 @@ namespace Survsys.Contracts;
 /// The date the CDC was first verbally notified, or null where it has not
 /// been entered.
 /// </param>
+/// <param name="OutbreakId">
+/// The outbreak this case belongs to, as the Case / Outbreak section's
+/// "Outbreak name" names it, or null where the case names no outbreak.
+/// </param>
+/// <param name="OutbreakName">
+/// The name of the outbreak this case belongs to, for the tab to show without
+/// a second read, or null where the case names no outbreak.
+/// </param>
 public record AdministrativeResponse(
     int ReportId,
     int? LhdCaseStatusId,
@@ -74,4 +82,6 @@ public record AdministrativeResponse(
     int? InvestigationOutcomeDispositionId,
     string? EventName,
     DateOnly? ResultsReportedToClinicianDate,
-    DateOnly? CdcFirstVerballyNotifiedDate);
+    DateOnly? CdcFirstVerballyNotifiedDate,
+    int? OutbreakId = null,
+    string? OutbreakName = null);
