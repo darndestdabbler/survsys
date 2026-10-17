@@ -53,7 +53,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 39 | The message queue and the intake service | no | 2026-10-17 |
 | 40 | ELR review screens and promotion to a case | no | 2026-10-17 |
 | 41 | Phase 5 walkthroughs | no | 2026-10-17 |
-| 42 | Release 0.6.0 (release: 0.6.0) | — | not declared |
+| 42 | Release 0.6.0 (release: 0.6.0) | yes | 2026-10-17 |
 | 43 | Notification guides and PHIN variable mapping | — | not declared |
 | 44 | The seven rule set types and repeating groups | — | not declared |
 | 45 | Message generation and direct transmission | — | not declared |
@@ -376,3 +376,9 @@ Put the ELR review and promotion workflow in front of the operator and let a rev
 **Releasable: no.**
 
 Document the Phase 5 ELR review workflow session 40 shipped, as three walkthroughs under docs/walkthroughs/ with the one Playwright test named after each. First give the end-to-end suite staged messages to act on: a staged-messages SQL fixture seeded into system_messages, linked into Survsys.E2ETests and cleared and reseeded by the harness the way conditions and people already are. Then write, in turn, review-a-staged-message (a reviewer opens the staged-message queue, filters it, opens one message and reads its source, received time, review state, QA flag, exception detail and raw HL7), promote-a-message-to-a-case (a reviewer opens a queued message, confirms the person, disease, agency and first-reported date, promotes it and reads back the new case and its batch notification) and resolve-a-duplicate (a reviewer who promotes a message and returns to it finds Survsys already shows it as a case and offers no second promotion, so no duplicate case is opened). Each document is numbered steps naming controls by the words the StagedMessages and StagedMessageReview screens show, and each test performs those steps in order and asserts the outcome by the screens' stable identifiers, with video recording left on through the harness.
+
+### Session 42 — Release 0.6.0 (release: 0.6.0)
+
+**Releasable: yes.**
+
+Release 0.6.0: the framework packs and publishes what is on the trunk.

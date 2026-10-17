@@ -836,31 +836,37 @@
       "title": "Phase 5 walkthroughs",
       "status": "complete",
       "startedAt": "2026-10-17T06:02:03.524000-04:00",
+      "completedAt": "2026-10-17T06:36:26.269000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
         "model": "claude-opus-5-5",
         "identityProvenance": "direct"
       },
-      "frameworkVersion": "3.21.0",
-      "startCommit": "33b6e08b2df17471679f1f2dd91b72caf9826b37",
-      "completedAt": "2026-10-17T06:36:26.269000-04:00",
       "verificationVerdict": "VERIFIED",
       "verification": {
         "rounds": 1,
         "verifierModel": "gemini-4-argon",
         "verifierProvider": "google",
         "transport": "api"
-      }
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "33b6e08b2df17471679f1f2dd91b72caf9826b37"
     },
     {
       "number": 42,
       "title": "Release 0.6.0 (release: 0.6.0)",
-      "status": "not-started",
-      "startedAt": null,
-      "completedAt": null,
-      "orchestrator": null,
-      "verificationVerdict": null
+      "status": "complete",
+      "startedAt": "2026-10-17T06:36:34.461000-04:00",
+      "completedAt": "2026-10-17T06:37:08.120000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": null,
+      "startCommit": "98a0fc282d1e234bae77b0097bda912701e89ea6",
+      "frameworkVersion": "3.21.0",
+      "noChange": true
     },
     {
       "number": 43,
