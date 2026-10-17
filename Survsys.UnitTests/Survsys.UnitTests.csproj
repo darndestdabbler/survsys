@@ -17,10 +17,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- HL7 fixtures the parser tests read, copied beside the test assembly
+         so OruR01ParserTests finds them under Fixtures/Hl7 at run time. -->
+    <None Include="Fixtures\Hl7\*.hl7" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Survsys.Contracts\Survsys.Contracts.csproj" />
     <ProjectReference Include="..\Survsys.Data\Survsys.Data.csproj" />
     <ProjectReference Include="..\Survsys.Api\Survsys.Api.csproj" />
     <ProjectReference Include="..\Survsys.Web\Survsys.Web.csproj" />
+    <ProjectReference Include="..\Survsys.Messaging\Survsys.Messaging.csproj" />
   </ItemGroup>
 
 </Project>

@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Survsys.Data\Survsys.Data.csproj" />
     <ProjectReference Include="..\Survsys.Contracts\Survsys.Contracts.csproj" />
+    <ProjectReference Include="..\Survsys.Messaging\Survsys.Messaging.csproj" />
   </ItemGroup>
 
 </Project>

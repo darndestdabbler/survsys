@@ -47,7 +47,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 33 | Saved views and custom exports | no | 2026-10-17 |
 | 34 | Phase 4 walkthroughs | no | 2026-10-17 |
 | 35 | Release 0.5.0 (release: 0.5.0) | yes | 2026-10-17 |
-| 36 | `Survsys.Messaging` and HL7 intake parsing | — | not declared |
+| 36 | `Survsys.Messaging` and HL7 intake parsing | no | 2026-10-17 |
 | 37 | Vocabulary matching | — | not declared |
 | 38 | Duplicate detection and person matching | — | not declared |
 | 39 | The message queue and the intake service | — | not declared |
@@ -340,3 +340,9 @@ Session 034 adds the four Phase 4 walkthroughs to docs/walkthroughs/ -- configur
 **Releasable: yes.**
 
 Release 0.5.0: the framework packs and publishes what is on the trunk.
+
+### Session 36 — `Survsys.Messaging` and HL7 intake parsing
+
+**Releasable: no.**
+
+Session 036 creates Survsys.Messaging -- the module session 2 cut and left to the session that first needs it -- and gives it ORU^R01 lab-result intake parsing with nHapi. The project is a new net10.0 class library added to Survsys.sln, referencing the nHapi packages and Survsys.Contracts and nothing of the database: never Microsoft.EntityFrameworkCore and never Survsys.Data. Survsys.Api gains a project reference to it, and Survsys.UnitTests gains a third architecture test asserting that fence off the built Survsys.Messaging assembly, alongside the two it already holds. The module parses a raw ER7 HL7 v2.5.1 ORU^R01 message into Survsys.Contracts intake records -- the person from PID as a CreatePersonRequest, the specimen, tests and results from OBR/OBX/SPM as a CreateLabRequest with its nested tests and results -- absorbing the Mirth preprocessing the legacy pipeline performed on the way in (escaped-newline and line-ending normalisation and the documented ER7 cleanup) inline rather than keeping Mirth as a stage, so there is no integration engine, no master XML and no transport. Its tests live in Survsys.UnitTests in the file named after the parser, over HL7 fixtures derived from the legacy message documented under ../nedss/docs/, including one malformed message the parser refuses.

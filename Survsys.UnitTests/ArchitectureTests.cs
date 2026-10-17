@@ -59,6 +59,23 @@ public class ArchitectureTests
             + "and wire shapes stays inside Survsys.Api and never reaches the wire.");
     }
 
+    [Fact]
+    public void SurvsysMessagingReferencesNeitherSurvsysDataNorEntityFrameworkCore()
+    {
+        var forbidden = ReachableFrom("Survsys.Messaging")
+            .Where(name => name == DataAssembly
+                || name.StartsWith(EfCorePrefix, StringComparison.Ordinal))
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(
+            forbidden.Count == 0,
+            $"Survsys.Messaging reaches {string.Join(", ", forbidden)}. The messaging module "
+            + "parses lab messages into Survsys.Contracts intake types and must never reach the "
+            + "database: it takes nHapi and Survsys.Contracts and nothing of Survsys.Data or "
+            + "Entity Framework Core.");
+    }
+
     /// <summary>
     /// Every assembly the named one can reach. Only a Survsys module can carry
     /// a reference onward to Survsys.Data, so the walk recurses into those and
