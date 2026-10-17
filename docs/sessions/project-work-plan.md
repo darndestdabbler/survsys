@@ -46,7 +46,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 32 | Users, roles, privileges and access audit | no | 2026-10-16 |
 | 33 | Saved views and custom exports | no | 2026-10-17 |
 | 34 | Phase 4 walkthroughs | no | 2026-10-17 |
-| 35 | Release 0.5.0 (release: 0.5.0) | — | not declared |
+| 35 | Release 0.5.0 (release: 0.5.0) | yes | 2026-10-17 |
 | 36 | `Survsys.Messaging` and HL7 intake parsing | — | not declared |
 | 37 | Vocabulary matching | — | not declared |
 | 38 | Duplicate detection and person matching | — | not declared |
@@ -334,3 +334,9 @@ Give each signed-in user saved views of the case morbidity reports, and export a
 **Releasable: no.**
 
 Session 034 adds the four Phase 4 walkthroughs to docs/walkthroughs/ -- configure an agency, add a facility, save a view and export a dataset -- each as one document of numbered steps performed against a running Survsys, paired with the one Playwright test named after it in Survsys.E2ETests that performs those steps in their written order, records video and asserts the outcome the document promises, and each linked from the walkthroughs index. The documents describe behaviour already built in earlier sessions -- the Agencies, Facilities and Saved views screens and the saved view's CSV export link -- inferred from the legacy system as the walkthrough contract requires; no application behaviour is added or changed. Where a walkthrough leaves a row behind that a re-run of the suite would see a second time (a facility it adds, a saved view it saves), the end-to-end harness is extended to clear that table before it seeds, exactly as it already does for every other artifact a walkthrough creates.
+
+### Session 35 — Release 0.5.0 (release: 0.5.0)
+
+**Releasable: yes.**
+
+Release 0.5.0: the framework packs and publishes what is on the trunk.

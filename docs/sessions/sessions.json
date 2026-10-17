@@ -698,23 +698,29 @@
         "identityProvenance": "direct"
       },
       "verificationVerdict": "VERIFIED",
-      "startCommit": "179f1d8f28541b8e303c92e7cf4bf9b1cafab286",
-      "frameworkVersion": "3.21.0",
       "verification": {
         "rounds": 1,
         "verifierModel": "gemini-4-argon",
         "verifierProvider": "google",
         "transport": "api"
-      }
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "179f1d8f28541b8e303c92e7cf4bf9b1cafab286"
     },
     {
       "number": 35,
       "title": "Release 0.5.0 (release: 0.5.0)",
-      "status": "not-started",
-      "startedAt": null,
-      "completedAt": null,
-      "orchestrator": null,
-      "verificationVerdict": null
+      "status": "complete",
+      "startedAt": "2026-10-17T03:25:41.874000-04:00",
+      "completedAt": "2026-10-17T03:26:13.100000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": null,
+      "startCommit": "ee9f583bc1ee3b0b4accd16c225005cf0f84f98d",
+      "frameworkVersion": "3.21.0",
+      "noChange": true
     },
     {
       "number": 36,
