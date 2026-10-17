@@ -738,7 +738,37 @@ by `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md` and
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 49: Release 0.7.0 (release: 0.7.0)
+### Session 49: Repair the dropdown steps of five walkthroughs
+
+*Inserted after session 48. A whole end-to-end run before the 0.7.0 release
+fails five walkthroughs written in earlier phases — save a view, export a
+dataset, review a staged message, promote a message to a case, resolve a
+duplicate — and each fails the same way, alone as well as in the suite. Each
+opens a dropdown by the identifier the markup puts on it (`saved-view-condition`,
+`staged-messages-filter`), and a MudBlazor select that already holds a value,
+even the empty **Any** or **All**, renders the input carrying that identifier as
+`type="hidden"` with a visible box beside it, so Playwright waits for a hidden
+input to become visible until it times out. Work a task list and attach a
+document met the same behaviour and open the box by the label their documents
+name it by. The release cannot ship a walkthrough whose test fails, so this
+comes before it.*
+
+1. Register.
+2. `Survsys.E2ETests`: in `SaveAViewTests`, `ExportADatasetTests`,
+   `ReviewAStagedMessageTests`, `PromoteAMessageToACaseTests` and
+   `ResolveADuplicateTests`, open each dropdown by its accessible label — the
+   label its walkthrough document names it by — as `WorkATaskListTests` and
+   `AttachADocumentTests` already do, rather than by its identifier. Every
+   other `Choose` helper that opens a select by identifier gets the same
+   change, so no walkthrough depends on which value a select opens on. No step
+   is skipped or performed by another route, and no document's steps change.
+   `Survsys.Web` is not touched. The tests changed are the walkthroughs' own,
+   so the step's checks perform each of them in a browser, recording video.
+3. Cross-provider verification.
+4. Full test suite, recorded as the run of record.
+5. Close-out.
+
+### Session 50: Release 0.7.0 (release: 0.7.0)
 
 ---
 
@@ -747,7 +777,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 `phase-1.6-feature-matrix.md` sections 5, 7, 8 and 14, and
 `epitrax-table-catalog.md`.*
 
-### Session 50: Outbreak management
+### Session 51: Outbreak management
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: outbreaks with multi-agency access,
@@ -758,7 +788,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 51: The dynamic form builder
+### Session 52: The dynamic form builder
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: condition-specific supplemental forms —
@@ -770,7 +800,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 52: Treatments and vaccines
+### Session 53: Treatments and vaccines
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: treatments with condition-specific
@@ -780,7 +810,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 53: Audit by EF Core interceptors
+### Session 54: Audit by EF Core interceptors
 
 1. Register.
 2. `Survsys.Data`: audit as EF Core `SaveChanges` interceptors, in place of the
@@ -791,7 +821,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 54: IBIS integration and ad-hoc reporting
+### Session 55: IBIS integration and ad-hoc reporting
 
 1. Register.
 2. `Survsys.Api`: the IBIS integration, under a timeout.
@@ -800,7 +830,7 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 55: Phase 7 walkthroughs and the full walkthrough regression
+### Session 56: Phase 7 walkthroughs and the full walkthrough regression
 
 1. Register.
 2. `docs/walkthroughs/`: three documents — open an outbreak and link cases,
@@ -813,4 +843,4 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 56: Release 1.0.0 (release: 1.0.0)
+### Session 57: Release 1.0.0 (release: 1.0.0)
