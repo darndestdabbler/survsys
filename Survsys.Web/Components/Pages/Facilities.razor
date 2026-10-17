@@ -1,0 +1,83 @@
+@* The facilities, for their administration: one page of them in name order,
+   with the agency each sits under by name, each name the way into its edit
+   screen, and New facility for an empty one. *@
+@page "/facilities"
+@inject FacilitiesClient Client
+@inject AgenciesClient Agencies
+
+<PageTitle>Facilities — Survsys</PageTitle>
+
+<MudText id="facilities-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Facilities
+</MudText>
+
+<MudButton id="facilities-new" Variant="Variant.Filled" Color="Color.Primary" Class="mb-4"
+           Href="/facilities/new">
+    New facility
+</MudButton>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="facilities-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result && failure is null)
+{
+    <MudText id="facilities-total" Typo="Typo.body2" Class="mb-4">
+        @result.TotalCount facility(ies), showing @result.Items.Count.
+    </MudText>
+
+    <MudPaper Elevation="1">
+        <MudSimpleTable id="facilities-table" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Agency</th>
+                    <th>City</th>
+                    <th>Zip</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var facility in result.Items)
+                {
+                    <tr data-facility="@facility.Name">
+                        <td data-facility-name>
+                            <MudLink Href="@($"/facilities/{facility.Id}")">@facility.Name</MudLink>
+                        </td>
+                        <td data-facility-agency>@AgencyName(facility.AgencyId)</td>
+                        <td data-facility-city>@(facility.City ?? "—")</td>
+                        <td data-facility-zip>@(facility.Zip ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+else
+{
+    <MudAlert id="facilities-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @failure
+    </MudAlert>
+}
+
+@code {
+    private Asked<PagedResult<FacilityResponse>>? asked;
+
+    private Dictionary<int, string> agencyNames = [];
+
+    private string? failure;
+
+    /// <summary>How many facilities one page of this screen holds.</summary>
+    private const int PageSize = 50;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var agencies = await Agencies.All();
+        asked = await Client.Page(1, PageSize);
+
+        agencyNames = agencies.Value?.Items.ToDictionary(agency => agency.Id, agency => agency.Name) ?? [];
+        failure = asked.Failure ?? agencies.Failure;
+    }
+
+    private string AgencyName(int agencyId) =>
+        agencyNames.TryGetValue(agencyId, out var name) ? name : $"agency {agencyId}";
+}
