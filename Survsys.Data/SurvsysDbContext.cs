@@ -96,6 +96,16 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<StagedMessage> StagedMessages => Set<StagedMessage>();
 
+    public DbSet<PhinVariable> PhinVariables => Set<PhinVariable>();
+
+    public DbSet<NotificationGuide> NotificationGuides => Set<NotificationGuide>();
+
+    public DbSet<ConditionDetail> ConditionDetails => Set<ConditionDetail>();
+
+    public DbSet<GuidePhinVariable> GuidePhinVariables => Set<GuidePhinVariable>();
+
+    public DbSet<GuideLink> GuideLinks => Set<GuideLink>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }

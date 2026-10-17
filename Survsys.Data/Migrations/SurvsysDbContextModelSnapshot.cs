@@ -344,6 +344,21 @@ namespace Survsys.Data.Migrations
                     b.ToTable("conditions", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.ConditionDetail", b =>
+                {
+                    b.Property<int>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<int>("GuideId")
+                        .HasColumnType("int")
+                        .HasColumnName("guide_id");
+
+                    b.HasKey("ConditionId");
+
+                    b.ToTable("condition_detail", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.CoreElement", b =>
                 {
                     b.Property<int>("Id")
@@ -893,6 +908,37 @@ namespace Survsys.Data.Migrations
                     b.ToTable("graylist_spool", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.GuideLink", b =>
+                {
+                    b.Property<int>("GuideId")
+                        .HasColumnType("int")
+                        .HasColumnName("guide_id");
+
+                    b.Property<int>("LinkedGuideId")
+                        .HasColumnType("int")
+                        .HasColumnName("linked_guide_id");
+
+                    b.HasKey("GuideId", "LinkedGuideId");
+
+                    b.ToTable("guide_link", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.GuidePhinVariable", b =>
+                {
+                    b.Property<int>("GuideId")
+                        .HasColumnType("int")
+                        .HasColumnName("guide_id");
+
+                    b.Property<string>("PhinVar")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("phin_var");
+
+                    b.HasKey("GuideId", "PhinVar");
+
+                    b.ToTable("guide_phin_var", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.Lab", b =>
                 {
                     b.Property<int>("Id")
@@ -1120,6 +1166,26 @@ namespace Survsys.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("notes", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.NotificationGuide", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("guide", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.ParentGuardian", b =>
@@ -1609,6 +1675,62 @@ namespace Survsys.Data.Migrations
                     b.HasIndex("PersonId");
 
                     b.ToTable("person_telephones", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.PhinVariable", b =>
+                {
+                    b.Property<string>("PhinVar")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("phin_var");
+
+                    b.Property<string>("CodeSystem")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("code_system");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Hl7DataType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("hl7_data_type");
+
+                    b.Property<string>("Identifier")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("identifier");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("Priority")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("priority");
+
+                    b.Property<int?>("RuleSetConfigId")
+                        .HasColumnType("int")
+                        .HasColumnName("rule_set_config_id");
+
+                    b.Property<int?>("RuleSetId")
+                        .HasColumnType("int")
+                        .HasColumnName("rule_set_id");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.HasKey("PhinVar");
+
+                    b.ToTable("phin_var", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.Role", b =>

@@ -54,7 +54,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 40 | ELR review screens and promotion to a case | no | 2026-10-17 |
 | 41 | Phase 5 walkthroughs | no | 2026-10-17 |
 | 42 | Release 0.6.0 (release: 0.6.0) | yes | 2026-10-17 |
-| 43 | Notification guides and PHIN variable mapping | — | not declared |
+| 43 | Notification guides and PHIN variable mapping | no | 2026-10-17 |
 | 44 | The seven rule set types and repeating groups | — | not declared |
 | 45 | Message generation and direct transmission | — | not declared |
 | 46 | Auto-queue, reconciliation and the export log | — | not declared |
@@ -382,3 +382,9 @@ Document the Phase 5 ELR review workflow session 40 shipped, as three walkthroug
 **Releasable: yes.**
 
 Release 0.6.0: the framework packs and publishes what is on the trunk.
+
+### Session 43 — Notification guides and PHIN variable mapping
+
+**Releasable: no.**
+
+Session 043 gives the outbound CDC notification half its first structure: the notification guides a case is exported under, and the catalogue of CDC PHIN variables each guide carries. Survsys.Data gains five reference tables under the legacy NMI snake_case names, with one migration creating them -- phin_var (a CDC PHIN variable definition: its identifier, description, HL7 data type, priority, status, code system, and the bare ruleset ids a later session fills, holding the 588 CDC variables the legacy snapshot carries), guide (a notification guide by name), condition_detail (the guide assigned to a condition, one per condition), guide_phin_var (which PHIN variables a guide carries), and guide_link (the guides a guide pulls in alongside its own) -- each a bare entity with its internal IEntityTypeConfiguration and a DbSet, the association tables keyed by their natural pairs and every cross-table id left a bare int or string with no navigation, exactly as the existing reference entities do. Survsys.Messaging gains the PHIN variable mapping over that catalogue, built so it takes the guides, their variable memberships, their links and the variable definitions as plain in-memory data rather than reaching for a DbContext -- so the module keeps the fence the architecture test already asserts, referencing neither Survsys.Data nor Entity Framework Core. The mapper resolves, for a condition, the guide it is exported under and then the PHIN variables that guide carries together with the variables of the guides it links, returned distinct and ordered; a condition with no assigned guide resolves to no variables rather than throwing. Survsys.UnitTests gains PhinVariableMapperTests, the tests named after the mapper, covering a condition whose guide carries variables, a guide that pulls variables in through a link, the distinct-and-ordered union, and a condition with no guide.
