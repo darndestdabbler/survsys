@@ -892,9 +892,9 @@
     {
       "number": 44,
       "title": "The seven rule set types and repeating groups",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-17T06:53:09.100000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-17T07:19:58.534000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
