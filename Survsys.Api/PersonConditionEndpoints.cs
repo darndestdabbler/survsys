@@ -181,7 +181,9 @@ public static class PersonConditionEndpoints
     /// so that <c>Program.cs</c> need not name an internal type.
     /// </summary>
     public static IServiceCollection AddPersonConditions(this IServiceCollection services) =>
-        services.AddScoped<PersonConditionQueries>();
+        services
+            .AddScoped<PersonConditionQueries>()
+            .AddScoped<CaseNotificationQueue>();
 
     public static IEndpointRouteBuilder MapPersonConditions(this IEndpointRouteBuilder routes)
     {
@@ -432,8 +434,19 @@ public static class PersonConditionEndpoints
 /// endpoint signature and <c>Survsys.Data</c> that the architecture test
 /// requires.
 /// </remarks>
-internal sealed class PersonConditionQueries(SurvsysDbContext database)
+internal sealed class PersonConditionQueries(
+    SurvsysDbContext database,
+    CaseNotificationQueue notifications)
 {
+    /// <summary>
+    /// Stages the auto-queue of a changed case on the context, so the next
+    /// <c>SaveChangesAsync</c> writes the case's queue entry alongside the
+    /// change. The one place the clock is read for the queued time, as
+    /// <c>Add</c> reads it once for the record number.
+    /// </summary>
+    private Task QueueForNotification(int reportId, CancellationToken cancellationToken) =>
+        notifications.EnqueueAsync(new CaseChanged(reportId, DateTime.UtcNow), cancellationToken);
+
     /// <summary>
     /// One report, or null where no report has that id — the answer the
     /// endpoint turns into a 404.
@@ -555,6 +568,11 @@ internal sealed class PersonConditionQueries(SurvsysDbContext database)
         database.PersonConditions.Add(report);
         await database.SaveChangesAsync(cancellationToken);
 
+        // A new case has no id until it is saved, so it is queued after the
+        // insert and in a second save rather than the one above.
+        await QueueForNotification(report.Id, cancellationToken);
+        await database.SaveChangesAsync(cancellationToken);
+
         return PersonConditionEndpoints.Respond(report);
     }
 
@@ -584,6 +602,7 @@ internal sealed class PersonConditionQueries(SurvsysDbContext database)
         }
 
         report.CaseStatus = request.CaseStatus;
+        await QueueForNotification(report.Id, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         return PersonConditionEndpoints.Respond(report);
@@ -615,6 +634,7 @@ internal sealed class PersonConditionQueries(SurvsysDbContext database)
 
         report.AgencyId = agencyId;
         report.WorkflowState = WorkflowRules.InitialCode;
+        await QueueForNotification(report.Id, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         return PersonConditionEndpoints.Respond(report);
@@ -670,6 +690,7 @@ internal sealed class PersonConditionQueries(SurvsysDbContext database)
         }
 
         report.WorkflowState = workflowCode;
+        await QueueForNotification(report.Id, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         return PersonConditionEndpoints.Respond(report);

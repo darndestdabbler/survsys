@@ -299,6 +299,57 @@ namespace Survsys.Data.Migrations
                     b.ToTable("tasks", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.CdcExportLogEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Detail")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("detail");
+
+                    b.Property<string>("GeneratedMessage")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("xml");
+
+                    b.Property<int?>("GuideId")
+                        .HasColumnType("int")
+                        .HasColumnName("guide_id");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("outcome");
+
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.Property<DateTime>("QueuedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("queue_time");
+
+                    b.Property<string>("RecordNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("record_number");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("sent_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonConditionId");
+
+                    b.ToTable("nmi_log", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.Condition", b =>
                 {
                     b.Property<int>("Id")
@@ -1186,6 +1237,35 @@ namespace Survsys.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("guide", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.NotificationQueueEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Hold")
+                        .HasColumnType("bit")
+                        .HasColumnName("hold");
+
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.Property<DateTime>("QueuedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("queued_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonConditionId")
+                        .IsUnique();
+
+                    b.ToTable("nmi_export_queue", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.ParentGuardian", b =>
@@ -2360,6 +2440,15 @@ namespace Survsys.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Survsys.Data.CdcExportLogEntry", b =>
+                {
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Survsys.Data.CoreElementOverride", b =>
                 {
                     b.HasOne("Survsys.Data.Agency", null)
@@ -2444,6 +2533,15 @@ namespace Survsys.Data.Migrations
                     b.HasOne("Survsys.Data.LabTest", null)
                         .WithMany()
                         .HasForeignKey("LabTestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.NotificationQueueEntry", b =>
+                {
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

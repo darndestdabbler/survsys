@@ -96,6 +96,10 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<StagedMessage> StagedMessages => Set<StagedMessage>();
 
+    public DbSet<NotificationQueueEntry> NotificationQueue => Set<NotificationQueueEntry>();
+
+    public DbSet<CdcExportLogEntry> CdcExportLog => Set<CdcExportLogEntry>();
+
     public DbSet<PhinVariable> PhinVariables => Set<PhinVariable>();
 
     public DbSet<NotificationGuide> NotificationGuides => Set<NotificationGuide>();
