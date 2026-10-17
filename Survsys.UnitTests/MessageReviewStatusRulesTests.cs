@@ -9,12 +9,13 @@ namespace Survsys.UnitTests;
 /// </summary>
 /// <remarks>
 /// Pure throughout, so every case here is the rule itself and not a database
-/// or a host. The states are the three this phase needs from the legacy EMSA
+/// or a host. The states are the four this phase needs from the legacy EMSA
 /// queue state machine, as
 /// <c>../nedss/docs/business-logic/EMSA_MESSAGE_PIPELINE.md</c> lists them —
-/// Entry, Pending and Exception. Unlike a case status there is no empty state:
-/// a staged message is always in one of the three, so an empty or absent code
-/// is among the values the rule refuses rather than a state of its own.
+/// Entry, Pending, Exception and the Assigned state a promoted message reaches.
+/// Unlike a case status there is no empty state: a staged message is always in
+/// one of the four, so an empty or absent code is among the values the rule
+/// refuses rather than a state of its own.
 /// </remarks>
 public class MessageReviewStatusRulesTests
 {
@@ -22,6 +23,7 @@ public class MessageReviewStatusRulesTests
     [InlineData(MessageReviewStatusRules.EntryCode, MessageReviewStatus.Entry)]
     [InlineData(MessageReviewStatusRules.PendingCode, MessageReviewStatus.Pending)]
     [InlineData(MessageReviewStatusRules.ExceptionCode, MessageReviewStatus.Exception)]
+    [InlineData(MessageReviewStatusRules.AssignedCode, MessageReviewStatus.Assigned)]
     public void ReadNamesTheStateEachCodeIsStoredUnder(string code, MessageReviewStatus expected)
     {
         Assert.Equal(expected, MessageReviewStatusRules.Read(code));
@@ -52,7 +54,7 @@ public class MessageReviewStatusRulesTests
     [InlineData("   ")]
     [InlineData("Entry")]
     [InlineData("ENTRY")]
-    [InlineData("assigned")]
+    [InlineData("Assigned")]
     [InlineData("17")]
     [InlineData("X")]
     public void ReadRefusesACodeTheVocabularyDoesNotKnow(string? storedCode)

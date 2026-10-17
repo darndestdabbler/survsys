@@ -99,4 +99,60 @@ public class MessageQueueEndpointsTests
         Assert.Equal(11, response.Id);
         Assert.Equal(MessageReviewStatusRules.EntryCode, response.ReviewStatus);
     }
+
+    /// <summary>
+    /// A message waiting for review can be promoted: Entry and Pending are the
+    /// states a reviewer promotes from, so the rule finds nothing wrong with
+    /// them and the endpoint goes on to open the case. Surrounding whitespace
+    /// is trimmed before the code is read, as a stored value can carry it.
+    /// </summary>
+    [Theory]
+    [InlineData(MessageReviewStatusRules.EntryCode)]
+    [InlineData(MessageReviewStatusRules.PendingCode)]
+    [InlineData(" entry ")]
+    public void WhyNotPromotablePassesAMessageWaitingForReview(string reviewStatus)
+    {
+        Assert.Null(MessageQueueEndpoints.WhyNotPromotable(reviewStatus));
+    }
+
+    /// <summary>
+    /// A message that never parsed cannot be promoted: there is nothing to
+    /// open a case from, so the rule refuses it and names the exception so a
+    /// reviewer reads why.
+    /// </summary>
+    [Fact]
+    public void WhyNotPromotableRefusesAnExceptionedMessage()
+    {
+        var why = MessageQueueEndpoints.WhyNotPromotable(MessageReviewStatusRules.ExceptionCode);
+
+        Assert.NotNull(why);
+        Assert.Contains("exception", why, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// A message already promoted cannot be promoted again: it is already a
+    /// case, so the rule refuses a second report and says so.
+    /// </summary>
+    [Fact]
+    public void WhyNotPromotableRefusesAnAlreadyAssignedMessage()
+    {
+        var why = MessageQueueEndpoints.WhyNotPromotable(MessageReviewStatusRules.AssignedCode);
+
+        Assert.NotNull(why);
+        Assert.Contains("already", why, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// A code the review vocabulary does not know is refused rather than
+    /// treated as promotable, and the message names the value so the row
+    /// holding it can be found.
+    /// </summary>
+    [Fact]
+    public void WhyNotPromotableRefusesAnUnknownCode()
+    {
+        var why = MessageQueueEndpoints.WhyNotPromotable("locked");
+
+        Assert.NotNull(why);
+        Assert.Contains("locked", why, StringComparison.Ordinal);
+    }
 }
