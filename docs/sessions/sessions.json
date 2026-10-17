@@ -666,9 +666,9 @@
     {
       "number": 33,
       "title": "Saved views and custom exports",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-17T02:34:28.451000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-17T02:45:28.173000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
