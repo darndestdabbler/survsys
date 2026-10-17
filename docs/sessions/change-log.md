@@ -263,3 +263,10 @@
 - Orchestrator provider (excluded): anthropic
 - Verifier's read surface: agency: none — this round's verifier could not look at the tree
 - Raw round output: `.dabbler/runs/s46/`
+
+## Session 47 verification — VERIFIED after 1 round(s)
+
+- Verifier: gemini-4-argon (google) over api
+- Orchestrator provider (excluded): anthropic
+- Verifier's read surface: agency: none — this round's verifier could not look at the tree
+- Raw round output: `.dabbler/runs/s47/`

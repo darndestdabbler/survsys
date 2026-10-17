@@ -30,6 +30,7 @@
 @inject InvestigationClient Investigation
 @inject AdministrativeClient Administrative
 @inject CoreElementsClient CoreElements
+@inject NotificationQueueClient Notifications
 
 <PageTitle>@Title — Survsys</PageTitle>
 
@@ -124,6 +125,40 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 </MudButton>
             </MudItem>
         </MudGrid>
+    </MudPaper>
+
+    @* The manual CDC-notification action: a case change queues the case for
+       notification on its own, and this queues it again by hand, for a case
+       that must be re-sent. A case-level action, so it sits above the tab strip
+       with the status editor. Each named element carries its own id. *@
+    <MudPaper id="report-notify" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">CDC notification</MudText>
+
+        @if (notifyQueued is { } queuedMessage)
+        {
+            <MudAlert id="report-notify-queued" Severity="Severity.Success" Variant="Variant.Filled"
+                      Class="mb-4">
+                @queuedMessage
+            </MudAlert>
+        }
+
+        @if (notifyError is { } whyNotQueued)
+        {
+            <MudAlert id="report-notify-error" Severity="Severity.Error" Variant="Variant.Filled"
+                      Class="mb-4">
+                @whyNotQueued
+            </MudAlert>
+        }
+
+        <MudText Typo="Typo.body2" Class="mb-2">
+            Queue this case to be notified to CDC. A case change queues it
+            automatically; this queues it again by hand.
+        </MudText>
+
+        <MudButton id="report-notify-queue" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@queuing" OnClick="@QueueForNotification">
+            Queue for notification
+        </MudButton>
     </MudPaper>
 
     <MudTabs id="report-tabs" Elevation="1" Rounded="true" ApplyEffectsToContainer="true"
@@ -227,6 +262,12 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     private string? statusSaved;
 
     private string? statusError;
+
+    private bool queuing;
+
+    private string? notifyQueued;
+
+    private string? notifyError;
 
     /// <summary>
     /// How many conditions this screen asks for: the whole catalogue in one
@@ -371,4 +412,40 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     /// <summary>The status box's content, trimmed, or null where it holds nothing.</summary>
     private static string? Blank(string? typed) =>
         string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
+
+    /// <summary>
+    /// Queues the case for CDC notification by hand, showing when it was queued
+    /// on success or the client's message on failure. The auto-queue already
+    /// queues a case on change; this is for a case that must be re-sent.
+    /// </summary>
+    private async Task QueueForNotification()
+    {
+        if (report is not { } current)
+        {
+            return;
+        }
+
+        notifyQueued = null;
+        notifyError = null;
+        queuing = true;
+
+        try
+        {
+            var answered = await Notifications.Queue(current.Id);
+
+            if (answered.Value is { } row)
+            {
+                notifyQueued = $"This case was queued for notification at "
+                    + $"{row.QueuedAt:yyyy-MM-dd HH:mm}.";
+            }
+            else
+            {
+                notifyError = answered.Failure;
+            }
+        }
+        finally
+        {
+            queuing = false;
+        }
+    }
 }

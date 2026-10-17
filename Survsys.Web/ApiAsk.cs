@@ -196,6 +196,38 @@ public sealed record ApiAsk(string FailurePrefix, string Expected)
     }
 
     /// <summary>
+    /// Sends the API tier a change to one part of something it holds, and
+    /// answers with what it now holds or with why nothing changed.
+    /// </summary>
+    /// <remarks>
+    /// A partial update, where <see cref="Put{TBody, T}"/> replaces the whole:
+    /// a hold raised or lowered on a queue entry changes the one flag and
+    /// leaves the rest, which is a PATCH and not a PUT. The same
+    /// <see cref="Read{T}"/> and the same catch as every other ask, so a
+    /// change that failed is reported in the same words a load that failed is.
+    /// </remarks>
+    public async Task<Asked<T>> Patch<TBody, T>(
+        HttpClient http,
+        string url,
+        TBody body,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        ArgumentNullException.ThrowIfNull(http);
+
+        try
+        {
+            using var response = await http.PatchAsJsonAsync(url, body, cancellationToken);
+
+            return await Read<T>(response, cancellationToken);
+        }
+        catch (Exception failed) when (Caught(failed, cancellationToken) is { } failure)
+        {
+            return Asked<T>.Failed(failure);
+        }
+    }
+
+    /// <summary>
     /// Asks the API tier to delete something, and answers with null where it
     /// did or with why it did not.
     /// </summary>
