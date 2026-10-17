@@ -20,6 +20,9 @@ running Survsys. Perform them in any order; each one stands alone.
 | [Add a facility](add-a-facility.md) | A surveillance administrator adds a facility under the agency that owns it, with its address, and reads it back in the facilities list. | `Survsys.E2ETests/AddAFacilityTests.cs` |
 | [Save a view](save-a-view.md) | A user defines a view of the case morbidity reports — its name, the columns it exports and the filters it selects by — saves it, reads it back in the list of views, and edits it to save over it. | `Survsys.E2ETests/SaveAViewTests.cs` |
 | [Export a dataset](export-a-dataset.md) | A user creates a case morbidity report, saves a view that selects it, follows the view's Export CSV link, and reads the downloaded file — its header of the chosen columns and the report's row. | `Survsys.E2ETests/ExportADatasetTests.cs` |
+| [Review a staged message](review-a-staged-message.md) | A surveillance reviewer opens the queue of inbound electronic lab reports, filters it to the ones held as exceptions, and opens one to read its source, received time, review state, QA flag, exception detail and the raw message it arrived as. | `Survsys.E2ETests/ReviewAStagedMessageTests.cs` |
+| [Promote a message to a case](promote-a-message-to-a-case.md) | A surveillance reviewer opens a queued staged message, finds the person it is about, confirms the disease, investigating agency and first-reported date, promotes it, and reads back the notification and the link to the new case. | `Survsys.E2ETests/PromoteAMessageToACaseTests.cs` |
+| [Resolve a duplicate](resolve-a-duplicate.md) | A surveillance reviewer promotes a staged message to a case, then returns to the same message and finds Survsys shows it is already a case and offers no second promotion, so no duplicate case is opened. | `Survsys.E2ETests/ResolveADuplicateTests.cs` |
 
 ## The contract every entry here is held to
 

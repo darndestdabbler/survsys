@@ -46,6 +46,13 @@
     <Content Include="..\Survsys.IntegrationTests\Fixtures\persons.sql"
              Link="Fixtures\persons.sql"
              CopyToOutputDirectory="PreserveNewest" />
+    <!-- The staged messages the phase 5 ELR walkthroughs review, promote and
+         find a duplicate of, linked for the same reason: the queue the review
+         screen shows and the message the promotion opens are the same rows
+         whether a person performs the walkthrough or its test does. -->
+    <Content Include="..\Survsys.IntegrationTests\Fixtures\staged-messages.sql"
+             Link="Fixtures\staged-messages.sql"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -151,6 +151,39 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
     }
 
     /// <summary>
+    /// Seeding clears the staged-message queue and fills it with exactly the
+    /// fixture's messages, by their source and in the queue's order, oldest
+    /// first. Run here over whatever the walkthroughs before it left — a
+    /// promotion walkthrough moves a message to the assigned state in place —
+    /// so it proves the clearing takes a promoted message with it and the
+    /// queue starts from the seed, which is the queue every second run begins
+    /// with. The source is what is asserted, because identity assigns the ids
+    /// and a source is the one stable thing a row carries.
+    /// </summary>
+    [Fact]
+    public void SeedingReseedsTheStagedMessages()
+    {
+        harness.Seed();
+
+        var sources = new List<string>();
+
+        using var connection = new SqlConnection(harness.ConnectionString);
+        connection.Open();
+
+        using var read = connection.CreateCommand();
+        read.CommandText = "SELECT source FROM system_messages ORDER BY received_at";
+
+        using var reader = read.ExecuteReader();
+
+        while (reader.Read())
+        {
+            sources.Add(reader.GetString(0));
+        }
+
+        Assert.Equal(SurvsysHarness.SeededStagedMessageSources, sources);
+    }
+
+    /// <summary>
     /// The walkthrough contract's fourth clause: every end-to-end run records
     /// video. The recording is on for every test in the suite because the
     /// base class turns it on, and this is the assertion that says so.

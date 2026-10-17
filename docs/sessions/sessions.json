@@ -822,23 +822,36 @@
         "identityProvenance": "direct"
       },
       "verificationVerdict": "VERIFIED",
-      "startCommit": "e80e07bfc71dbcc4c002d624abe234f6059932e2",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
       "frameworkVersion": "3.21.0",
+      "startCommit": "e80e07bfc71dbcc4c002d624abe234f6059932e2"
+    },
+    {
+      "number": 41,
+      "title": "Phase 5 walkthroughs",
+      "status": "in-progress",
+      "startedAt": "2026-10-17T06:02:03.524000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "33b6e08b2df17471679f1f2dd91b72caf9826b37",
+      "completedAt": null,
+      "verificationVerdict": "VERIFIED",
       "verification": {
         "rounds": 1,
         "verifierModel": "gemini-4-argon",
         "verifierProvider": "google",
         "transport": "api"
       }
-    },
-    {
-      "number": 41,
-      "title": "Phase 5 walkthroughs",
-      "status": "not-started",
-      "startedAt": null,
-      "completedAt": null,
-      "orchestrator": null,
-      "verificationVerdict": null
     },
     {
       "number": 42,

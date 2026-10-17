@@ -88,6 +88,24 @@ public sealed class SurvsysHarness : IDisposable
     ];
 
     /// <summary>
+    /// The staged messages <c>Fixtures/staged-messages.sql</c> seeds, by their
+    /// source — the handle a walkthrough's test finds its own message by,
+    /// since identity assigns the ids and a source is the one stable thing a
+    /// row carries. Stated here as <see cref="SeededConditionsByName"/> is,
+    /// because this project may not reference the integration suite. The order
+    /// is the queue's, oldest received first: the exception, the QA-flagged
+    /// message, the message to promote and the one the duplicate walkthrough
+    /// promotes and revisits.
+    /// </summary>
+    public static readonly string[] SeededStagedMessageSources =
+    [
+        "elr-exception-example.hl7",
+        "elr-qa-example.hl7",
+        "elr-promote-example.hl7",
+        "elr-duplicate-example.hl7",
+    ];
+
+    /// <summary>
     /// This host's own SQL Server, used when nothing redirects the suite. Its
     /// own database, so a walkthrough run never disturbs the development or
     /// integration data. Integrated security, so there is no credential here
@@ -246,10 +264,13 @@ public sealed class SurvsysHarness : IDisposable
     }
 
     /// <summary>
-    /// The two fixtures this suite seeds, in the order they run: the
-    /// conditions first, because a report names one of them.
+    /// The three fixtures this suite seeds, in the order they run: the
+    /// conditions first, because a report names one of them, then the people,
+    /// then the staged messages the ELR walkthroughs act on — which name
+    /// neither a person nor a condition the schema enforces, so they run last
+    /// and could as well run first.
     /// </summary>
-    private static readonly string[] Fixtures = ["conditions.sql", "persons.sql"];
+    private static readonly string[] Fixtures = ["conditions.sql", "persons.sql", "staged-messages.sql"];
 
     /// <summary>
     /// The tables the fixtures fill, and the ones that hang off them, in the
@@ -290,6 +311,17 @@ public sealed class SurvsysHarness : IDisposable
     /// names its user by a reference the schema enforces, but the API tier
     /// creates the administrator and the suite never clears the users.
     /// </para>
+    /// <para>
+    /// The staged messages phase 5 brought are listed last, after the
+    /// conditions and the people: <c>system_messages</c> names neither a
+    /// person nor a condition the schema enforces and nothing hangs off it, so
+    /// its place in this order is free, and last is where it sits with the
+    /// other tables the fixtures fill and keep. It is cleared for a second
+    /// reason the conditions and the people are not — a promoted message is
+    /// moved to the assigned state in place, so a run after a promotion
+    /// walkthrough would start from a queue that is already a case rather than
+    /// from the seed, and the clearing is what puts it back.
+    /// </para>
     /// </remarks>
     public static readonly string[] TablesInDeletionOrder =
     [
@@ -318,6 +350,7 @@ public sealed class SurvsysHarness : IDisposable
         "person_addresses",
         "persons",
         "conditions",
+        "system_messages",
     ];
 
     /// <summary>
@@ -337,10 +370,11 @@ public sealed class SurvsysHarness : IDisposable
         foreach (var path in paths.Where(path => !File.Exists(path)))
         {
             throw new InvalidOperationException(
-                $"The fixture is not at {path}. Both conditions.sql and persons.sql are "
-                + "linked into this project's output from Survsys.IntegrationTests by "
-                + "Survsys.E2ETests.csproj; without one the screen it fills would have no "
-                + "rows and a walkthrough would assert against an empty table.");
+                $"The fixture is not at {path}. conditions.sql, persons.sql and "
+                + "staged-messages.sql are linked into this project's output from "
+                + "Survsys.IntegrationTests by Survsys.E2ETests.csproj; without one the "
+                + "screen it fills would have no rows and a walkthrough would assert against "
+                + "an empty table.");
         }
 
         try
@@ -365,8 +399,9 @@ public sealed class SurvsysHarness : IDisposable
         catch (SqlException unreachable)
         {
             throw new InvalidOperationException(
-                "Survsys.E2ETests needs a reachable SQL Server to seed the conditions and "
-                + "the people the screens show, from conditions.sql and persons.sql, and it "
+                "Survsys.E2ETests needs a reachable SQL Server to seed the conditions, the "
+                + "people and the staged messages the screens show, from conditions.sql, "
+                + "persons.sql and staged-messages.sql, and it "
                 + $"could not: {unreachable.Message} This suite does not skip when the "
                 + "server is missing, because a skipped walkthrough suite reads as a green "
                 + $"run. Start SQL Server, or set {ConnectionVariable} to the connection "
