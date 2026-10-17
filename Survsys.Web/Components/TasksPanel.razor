@@ -1,0 +1,512 @@
+@* The task list a screen draws: tasks by due date, with the status filter and
+   the one action a task takes. Two screens share it — the Notes tab's Tasks
+   section, which is one report's tasks and can add to them, and the task list
+   screen, which is every report's — and they differ only in what they ask of
+   it through its parameters, as the two queue screens share WorkQueuePanel.
+
+   ../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md
+   records the legacy Tasks section as "Task Schedule", "+ Add Task" and a
+   "Show all tasks" filter. The filter is here as the three choices the API
+   tier's status vocabulary allows: the tasks still to do, the ones done, and
+   all of them.
+
+   It carries no rule of its own. What a repeating interval may be, what makes
+   a schedule impossible and which dates one expands to are the API tier's,
+   and a schedule it refuses comes back as the client's message rather than
+   being re-checked here. The status codes are the legacy codes the wire
+   carries, named here as literals because this tier reads Survsys.Contracts
+   and not Survsys.Data, so the class that owns them is not in reach — the
+   same reason WorkQueuePanel spells out the workflow codes.
+
+   The one thing checked before a post is that a date box holds a date, the
+   rule every other tab reads its date boxes by.
+
+   A row carries its own id in its identifier, so a walkthrough can name it:
+   tasks-row-21, tasks-row-21-complete. *@
+@using System.Globalization
+@inject TasksClient Api
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="tasks-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (saved is { } stored)
+{
+    <MudAlert id="tasks-saved" Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+        @stored
+    </MudAlert>
+}
+
+@if (complaint is { } whyNotYet)
+{
+    <MudAlert id="tasks-complaint" Severity="Severity.Warning" Class="mb-4">
+        @whyNotYet
+    </MudAlert>
+}
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+        <MudText Typo="Typo.h6">Tasks</MudText>
+        <MudSelect T="string" Value="@statusFilter" ValueChanged="@Filter" id="tasks-status-filter"
+                   Label="Show" Variant="Variant.Outlined" Margin="Margin.Dense"
+                   Class="tasks-filter" Style="max-width: 16rem">
+            <MudSelectItem T="string" Value="@OpenStatus">To do</MudSelectItem>
+            <MudSelectItem T="string" Value="@CompleteStatus">Done</MudSelectItem>
+            <MudSelectItem T="string" Value="@AllStatuses">All tasks</MudSelectItem>
+        </MudSelect>
+    </div>
+
+    @if (loading)
+    {
+        <MudProgressCircular id="tasks-busy" Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (tasks.Count == 0)
+    {
+        <MudText id="tasks-none" Typo="Typo.body2">No tasks found.</MudText>
+    }
+    else
+    {
+        <MudSimpleTable id="tasks-table" Hover="true" Dense="true">
+            <thead>
+                <tr>
+                    <th>Due</th>
+                    <th>Task</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Schedule</th>
+                    @if (ReportId is null)
+                    {
+                        <th>Report</th>
+                    }
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var task in tasks)
+                {
+                    <tr id="@($"tasks-row-{task.Id}")" @key="task.Id">
+                        <td id="@($"tasks-row-{task.Id}-due-date")">@Shown(Written(task.DueDate))</td>
+                        <td id="@($"tasks-row-{task.Id}-name")">@Shown(task.Name)</td>
+                        <td>@Shown(task.Priority)</td>
+                        <td id="@($"tasks-row-{task.Id}-status")">@Shown(task.Status)</td>
+                        <td id="@($"tasks-row-{task.Id}-schedule")">@Scheduled(task)</td>
+                        @if (ReportId is null)
+                        {
+                            <td id="@($"tasks-row-{task.Id}-report")">@Shown(task.PersonConditionId)</td>
+                        }
+                        <td>
+                            @if (task.Status != CompleteStatus)
+                            {
+                                <MudButton id="@($"tasks-row-{task.Id}-complete")" Size="Size.Small"
+                                           Variant="Variant.Filled" Color="Color.Primary"
+                                           Disabled="@acting" OnClick="@(() => Complete(task))">
+                                    Complete
+                                </MudButton>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+
+        @if (totalCount > PageSize || page > 1)
+        {
+            <div class="d-flex align-center gap-4 mt-2">
+                <MudButton id="tasks-prev" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page <= 1 || loading)" OnClick="@(() => Turn(page - 1))">
+                    Previous
+                </MudButton>
+                <MudText id="tasks-page" Typo="Typo.body2">Page @(page) of @LastPage</MudText>
+                <MudButton id="tasks-next" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page >= LastPage || loading)" OnClick="@(() => Turn(page + 1))">
+                    Next
+                </MudButton>
+            </div>
+        }
+    }
+</MudPaper>
+
+@if (Adding && ReportId is { } report)
+{
+    <MudPaper id="tasks-entry" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Add a task</MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="5">
+                <MudTextField @bind-Value="taskForm.Name" id="tasks-entry-name"
+                              Label="Task" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="taskForm.DueDate" id="tasks-entry-due-date"
+                              Label="Due" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="taskForm.Priority" id="tasks-entry-priority"
+                              Label="Priority" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="taskForm.UserId" id="tasks-entry-user-id"
+                              Label="Assigned to" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Number" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="string" @bind-Value="taskForm.RepeatingInterval"
+                           id="tasks-entry-repeating-interval"
+                           Label="Repeats" Variant="Variant.Outlined" Margin="Margin.Dense">
+                    <MudSelectItem T="string" Value="@NoInterval">Not at all</MudSelectItem>
+                    <MudSelectItem T="string" Value="@Daily">Daily</MudSelectItem>
+                    <MudSelectItem T="string" Value="@Weekly">Weekly</MudSelectItem>
+                    <MudSelectItem T="string" Value="@Monthly">Monthly</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="taskForm.UntilDate" id="tasks-entry-until-date"
+                              Label="Repeats until" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="taskForm.Notes" id="tasks-entry-notes"
+                              Label="Notes" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              Lines="2" />
+            </MudItem>
+        </MudGrid>
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="tasks-entry-record" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@recording" OnClick="@(() => Record(report))">
+                Add task
+            </MudButton>
+        </div>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>
+    /// The report whose tasks are shown, or null for every report's — which is
+    /// what the task list screen asks for.
+    /// </summary>
+    [Parameter]
+    public int? ReportId { get; set; }
+
+    /// <summary>
+    /// Whether the panel offers the "+ Add Task" form. It needs a report to
+    /// record against, so it is shown only where one is in hand however this
+    /// is set.
+    /// </summary>
+    [Parameter]
+    public bool Adding { get; set; }
+
+    /// <summary>The status code of a task still to be done, as the wire carries it.</summary>
+    private const string OpenStatus = "open";
+
+    /// <summary>The status code of a task that has been done.</summary>
+    private const string CompleteStatus = "complete";
+
+    /// <summary>
+    /// What the filter holds for "all tasks": the empty string, because
+    /// MudSelect binds a value and the client reads an empty status as no
+    /// filter at all.
+    /// </summary>
+    private const string AllStatuses = "";
+
+    /// <summary>What the repeats select holds for a task that happens once.</summary>
+    private const string NoInterval = "";
+
+    /// <summary>The daily repeating interval code, as the wire carries it.</summary>
+    private const string Daily = "daily";
+
+    /// <summary>The weekly repeating interval code.</summary>
+    private const string Weekly = "weekly";
+
+    /// <summary>The monthly repeating interval code.</summary>
+    private const string Monthly = "monthly";
+
+    /// <summary>
+    /// How this tier writes a date into a date box and reads one out: the form
+    /// a native date input yields, under the culture the other tier parses it
+    /// with — the same form the other tabs use.
+    /// </summary>
+    private const string DateForm = "yyyy-MM-dd";
+
+    /// <summary>
+    /// How many tasks a page holds. A task list grows without bound as work is
+    /// raised, so it is paged rather than read in one go; the page controls
+    /// walk the pages.
+    /// </summary>
+    private const int PageSize = 50;
+
+    private List<TaskResponse> tasks = [];
+
+    private string statusFilter = OpenStatus;
+
+    private TaskForm taskForm = new();
+
+    private bool loading;
+
+    private bool acting;
+
+    private bool recording;
+
+    private int page = 1;
+
+    private int totalCount;
+
+    private int? loadedReport;
+
+    private bool loaded;
+
+    private string? failure;
+
+    private string? saved;
+
+    private string? complaint;
+
+    /// <summary>
+    /// The last page the list has, counting from one and never below it so an
+    /// empty list still reads "Page 1 of 1".
+    /// </summary>
+    private int LastPage => Math.Max(1, (totalCount + PageSize - 1) / PageSize);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (loaded && loadedReport == ReportId)
+        {
+            return;
+        }
+
+        loaded = true;
+        loadedReport = ReportId;
+        page = 1;
+        await Load();
+    }
+
+    /// <summary>
+    /// Reads the page of tasks the filter and the scope describe: one
+    /// report's where this panel has one, and every report's where it has
+    /// none.
+    /// </summary>
+    private async Task Load()
+    {
+        loading = true;
+        failure = null;
+
+        try
+        {
+            var asked = ReportId is { } report
+                ? await Api.Page(report, Blank(statusFilter), page, PageSize)
+                : await Api.All(Blank(statusFilter), page, PageSize);
+
+            if (asked.Value is { } listed)
+            {
+                tasks = [.. listed.Items];
+                totalCount = listed.TotalCount;
+            }
+            else
+            {
+                failure = asked.Failure;
+                tasks = [];
+                totalCount = 0;
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    /// <summary>
+    /// Shows the tasks of another status. The page goes back to the first,
+    /// because page four of the open tasks is not page four of the done ones.
+    /// </summary>
+    private async Task Filter(string status)
+    {
+        statusFilter = status;
+        page = 1;
+        await Load();
+    }
+
+    private async Task Turn(int to)
+    {
+        page = Math.Clamp(to, 1, LastPage);
+        await Load();
+    }
+
+    /// <summary>
+    /// Marks a task done and puts back what the API tier says the task now
+    /// is, so the row shows what is stored rather than what was clicked.
+    /// </summary>
+    /// <remarks>
+    /// A task filtered out by the status it has just been given stays on the
+    /// screen until the list is read again: it was just acted on, and a row
+    /// that vanished under the pointer would leave a reader wondering whether
+    /// the click took.
+    /// </remarks>
+    private async Task Complete(TaskResponse task)
+    {
+        failure = null;
+        saved = null;
+        acting = true;
+
+        try
+        {
+            var answered = await Api.SetStatus(task.Id, CompleteStatus);
+
+            if (answered.Value is { } done)
+            {
+                tasks[tasks.IndexOf(task)] = done;
+                saved = "The task has been completed.";
+            }
+            else
+            {
+                failure = answered.Failure;
+            }
+        }
+        finally
+        {
+            acting = false;
+        }
+    }
+
+    /// <summary>
+    /// Records what the entry boxes hold against the report this panel is on,
+    /// and shows what was written — which is the whole series where the task
+    /// repeats.
+    /// </summary>
+    private async Task Record(int report)
+    {
+        if (string.IsNullOrWhiteSpace(taskForm.Name))
+        {
+            complaint = "Name the task before adding it.";
+
+            return;
+        }
+
+        if (!TryDate(taskForm.DueDate, "the due date", out var due, out var why)
+            || !TryDate(taskForm.UntilDate, "the repeat-until date", out var until, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        complaint = null;
+        failure = null;
+        saved = null;
+        recording = true;
+
+        try
+        {
+            var answered = await Api.Record(report, new CreateTaskRequest(
+                Name: taskForm.Name.Trim(),
+                Notes: Blank(taskForm.Notes),
+                Priority: Blank(taskForm.Priority),
+                DueDate: due,
+                UserId: taskForm.UserId,
+                Status: OpenStatus,
+                RepeatingInterval: Blank(taskForm.RepeatingInterval),
+                UntilDate: until));
+
+            if (answered.Value is { } recorded)
+            {
+                taskForm = new TaskForm();
+                saved = recorded.Tasks.Count == 1
+                    ? "The task has been added."
+                    : $"The task has been added, as {recorded.Tasks.Count} dated tasks.";
+
+                // The list is read again rather than having the new tasks
+                // pushed into it: they belong in due-date order among what is
+                // already there, and that order is the API tier's.
+                await Load();
+            }
+            else
+            {
+                failure = answered.Failure;
+            }
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// A task's schedule as the list shows it: how often it repeats and until
+    /// when, or a dash for a task that happens once.
+    /// </summary>
+    private static string Scheduled(TaskResponse task)
+    {
+        if (string.IsNullOrWhiteSpace(task.RepeatingInterval))
+        {
+            return "—";
+        }
+
+        return task.UntilDate is { } until
+            ? $"{task.RepeatingInterval} until {Written(until)}"
+            : task.RepeatingInterval;
+    }
+
+    /// <summary>A value as the list shows it, or a dash for what nobody has recorded.</summary>
+    private static string Shown(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "—" : value;
+
+    /// <summary>An identifier as the list shows it, or a dash where none is recorded.</summary>
+    private static string Shown(int? value) =>
+        value is { } id ? id.ToString(CultureInfo.InvariantCulture) : "—";
+
+    /// <summary>A box's content, trimmed, or null where it holds nothing.</summary>
+    private static string? Blank(string? typed) =>
+        string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
+
+    /// <summary>
+    /// A date box read: empty is no date, a date is the date, and anything
+    /// else is a complaint naming the box — the same rule the other tabs read
+    /// their date boxes by.
+    /// </summary>
+    private static bool TryDate(string? typed, string named, out DateOnly? date, out string? why)
+    {
+        date = null;
+        why = null;
+
+        if (string.IsNullOrWhiteSpace(typed))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParseExact(typed.Trim(), DateForm, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var parsed))
+        {
+            date = parsed;
+
+            return true;
+        }
+
+        why = $"Give {named} as yyyy-mm-dd, or leave it empty.";
+
+        return false;
+    }
+
+    /// <summary>A date as a date box holds it.</summary>
+    private static string? Written(DateOnly? date) =>
+        date?.ToString(DateForm, CultureInfo.InvariantCulture);
+
+    /// <summary>One task as its boxes hold it: the dates as text, until they are read.</summary>
+    private sealed class TaskForm
+    {
+        public string? Name { get; set; }
+
+        public string? Notes { get; set; }
+
+        public string? Priority { get; set; }
+
+        public string? DueDate { get; set; }
+
+        public int? UserId { get; set; }
+
+        public string? RepeatingInterval { get; set; } = NoInterval;
+
+        public string? UntilDate { get; set; }
+    }
+}
