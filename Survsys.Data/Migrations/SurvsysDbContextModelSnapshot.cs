@@ -1801,6 +1801,248 @@ namespace Survsys.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Survsys.Data.RuleSet", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("label");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("rule_set", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Label = "staticValue"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Label = "cdcFirstSent"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Label = "cdcDiseaseId"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Label = "fieldValueMap"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Label = "conditionMap"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Label = "notificationStatusResponse"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Label = "repeatingGroup"
+                        });
+                });
+
+            modelBuilder.Entity("Survsys.Data.RuleSetConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FormatType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("format_type");
+
+                    b.Property<bool>("Repeating")
+                        .HasColumnType("bit")
+                        .HasColumnName("repeating");
+
+                    b.Property<string>("ValueSetName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("value_set_name");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("rule_set_config", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.RuleSetData", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DataName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("data_name");
+
+                    b.Property<string>("DataValue")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("data_value");
+
+                    b.Property<int>("RuleSetConfigId")
+                        .HasColumnType("int")
+                        .HasColumnName("rule_set_config_id");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("rule_set_data", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.RuleSetExpression", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ExecutionOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("execution_order");
+
+                    b.Property<string>("OtherSpecified")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("other_specified");
+
+                    b.Property<int>("RuleSetConfigId")
+                        .HasColumnType("int")
+                        .HasColumnName("rule_set_config_id");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("rule_set_expression", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.RuleSetExpressionCondition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AndOr")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("and_or");
+
+                    b.Property<string>("Field")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("field");
+
+                    b.Property<string>("Operator")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("operator");
+
+                    b.Property<int>("RuleSetExpressionId")
+                        .HasColumnType("int")
+                        .HasColumnName("rule_set_expression_id");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("value");
+
+                    b.Property<bool>("ValueIsField")
+                        .HasColumnType("bit")
+                        .HasColumnName("value_is_field");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("rule_set_expression_condition", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.RuleSetField", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("field");
+
+                    b.Property<int>("RuleSetConfigId")
+                        .HasColumnType("int")
+                        .HasColumnName("rule_set_config_id");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("rule_set_field", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.RuleSetValueMap", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("OtherSpecified")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("other_specified");
+
+                    b.Property<int>("RuleSetConfigId")
+                        .HasColumnType("int")
+                        .HasColumnName("rule_set_config_id");
+
+                    b.Property<string>("ValueFrom")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("value_from");
+
+                    b.Property<string>("ValueTo")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("value_to");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("rule_set_value_map", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.SavedView", b =>
                 {
                     b.Property<int>("Id")

@@ -106,6 +106,21 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<GuideLink> GuideLinks => Set<GuideLink>();
 
+    public DbSet<RuleSet> RuleSets => Set<RuleSet>();
+
+    public DbSet<RuleSetConfig> RuleSetConfigs => Set<RuleSetConfig>();
+
+    public DbSet<RuleSetField> RuleSetFields => Set<RuleSetField>();
+
+    public DbSet<RuleSetData> RuleSetData => Set<RuleSetData>();
+
+    public DbSet<RuleSetValueMap> RuleSetValueMaps => Set<RuleSetValueMap>();
+
+    public DbSet<RuleSetExpression> RuleSetExpressions => Set<RuleSetExpression>();
+
+    public DbSet<RuleSetExpressionCondition> RuleSetExpressionConditions =>
+        Set<RuleSetExpressionCondition>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 }
