@@ -1082,9 +1082,9 @@
     {
       "number": 53,
       "title": "Treatments and vaccines",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-17T15:10:28.450000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-17T15:41:44.693000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
