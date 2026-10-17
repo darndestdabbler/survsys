@@ -87,6 +87,8 @@ builder.Services.AddHttpClient<NotificationQueueClient>(http => http.BaseAddress
 builder.Services.AddHttpClient<ExportLogClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<OutbreaksClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<FormsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<TreatmentsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<VaccinesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 
 var app = builder.Build();
 

@@ -215,6 +215,14 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <FormsTab ReportId="@shown.Id" />
             </ChildContent>
         </MudTabPanel>
+        <MudTabPanel Text="Vaccines">
+            <TabContent>
+                <span id="report-tab-vaccines">Vaccines</span>
+            </TabContent>
+            <ChildContent>
+                <VaccinesTab ReportId="@shown.Id" />
+            </ChildContent>
+        </MudTabPanel>
         <MudTabPanel Text="Contacts">
             <TabContent>
                 <span id="report-tab-contacts">Contacts</span>

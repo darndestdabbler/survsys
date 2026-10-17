@@ -410,6 +410,23 @@ namespace Survsys.Data.Migrations
                     b.ToTable("condition_detail", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.ConditionTreatment", b =>
+                {
+                    b.Property<int>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<int>("TreatmentId")
+                        .HasColumnType("int")
+                        .HasColumnName("treatment_id");
+
+                    b.HasKey("ConditionId", "TreatmentId");
+
+                    b.HasIndex("TreatmentId");
+
+                    b.ToTable("condition_treatments", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.CoreElement", b =>
                 {
                     b.Property<int>("Id")
@@ -2138,6 +2155,57 @@ namespace Survsys.Data.Migrations
                     b.ToTable("person_telephones", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.PersonVaccine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly?>("AdministeredDate")
+                        .HasColumnType("date")
+                        .HasColumnName("administered_date");
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("comment");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<int?>("DoseNumber")
+                        .HasColumnType("int")
+                        .HasColumnName("dose_number");
+
+                    b.Property<DateOnly?>("ExpirationDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expiration_date");
+
+                    b.Property<string>("LotNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("lot_number");
+
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.Property<int>("VaccineId")
+                        .HasColumnType("int")
+                        .HasColumnName("vaccine_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonConditionId");
+
+                    b.HasIndex("VaccineId");
+
+                    b.ToTable("person_vaccines", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.PhinVariable", b =>
                 {
                     b.Property<string>("PhinVar")
@@ -2662,6 +2730,38 @@ namespace Survsys.Data.Migrations
                     b.ToTable("system_messages", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.Treatment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit")
+                        .HasColumnName("active");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("DefaultTreatment")
+                        .HasColumnType("bit")
+                        .HasColumnName("default_treatment");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("treatment_name");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("treatments", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.User", b =>
                 {
                     b.Property<int>("Id")
@@ -2716,6 +2816,215 @@ namespace Survsys.Data.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("user_roles", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.Vaccine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("vaccines", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "20",
+                            Description = "DTaP",
+                            SortOrder = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "106",
+                            Description = "DTaP, 5 pertussis antigens",
+                            SortOrder = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Code = "107",
+                            Description = "DTaP, unspecified formulation",
+                            SortOrder = 3
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Code = "146",
+                            Description = "DTaP-IPV-Hib-Hep B",
+                            SortOrder = 4
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Code = "110",
+                            Description = "DTaP-Hep B-IPV",
+                            SortOrder = 5
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Code = "50",
+                            Description = "DTaP-Hib",
+                            SortOrder = 6
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Code = "120",
+                            Description = "DTaP-Hib-IPV",
+                            SortOrder = 7
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Code = "130",
+                            Description = "DTaP-IPV",
+                            SortOrder = 8
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Code = "132",
+                            Description = "DTaP-IPV-Hib-Hep B, historical",
+                            SortOrder = 9
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Code = "01",
+                            Description = "DTP",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Code = "22",
+                            Description = "DTP-Hib",
+                            SortOrder = 11
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Code = "102",
+                            Description = "DTP-Hib-Hep B",
+                            SortOrder = 12
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Code = "04",
+                            Description = "M/R (Measles-Rubella)",
+                            SortOrder = 13
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Code = "05",
+                            Description = "Measles ONLY",
+                            SortOrder = 14
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Code = "03",
+                            Description = "MMR",
+                            SortOrder = 15
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Code = "94",
+                            Description = "MMRV",
+                            SortOrder = 16
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Code = "07",
+                            Description = "Mumps ONLY",
+                            SortOrder = 17
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Code = "998",
+                            Description = "No Vaccine Administered",
+                            SortOrder = 18
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Code = "OTH",
+                            Description = "Other",
+                            SortOrder = 19
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Code = "11",
+                            Description = "Pertussis ONLY",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Code = "06",
+                            Description = "Rubella ONLY",
+                            SortOrder = 21
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Code = "38",
+                            Description = "R/M (Rubella-Mumps)",
+                            SortOrder = 22
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Code = "115",
+                            Description = "Tdap",
+                            SortOrder = 23
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Code = "999",
+                            Description = "Unknown",
+                            SortOrder = 24
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Code = "21",
+                            Description = "Varicella",
+                            SortOrder = 25
+                        });
                 });
 
             modelBuilder.Entity("Survsys.Data.VocabChildLoinc", b =>
@@ -2883,6 +3192,21 @@ namespace Survsys.Data.Migrations
                     b.HasOne("Survsys.Data.PersonCondition", null)
                         .WithMany()
                         .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.ConditionTreatment", b =>
+                {
+                    b.HasOne("Survsys.Data.Condition", null)
+                        .WithMany()
+                        .HasForeignKey("ConditionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.Treatment", null)
+                        .WithMany()
+                        .HasForeignKey("TreatmentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -3209,6 +3533,21 @@ namespace Survsys.Data.Migrations
                         .WithMany("Telephones")
                         .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.PersonVaccine", b =>
+                {
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.Vaccine", null)
+                        .WithMany()
+                        .HasForeignKey("VaccineId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
