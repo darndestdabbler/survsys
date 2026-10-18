@@ -10,7 +10,7 @@ namespace Survsys.Data;
 /// <remarks>
 /// The seeded names are written out because this module references no sibling
 /// and so cannot read <c>Survsys.Contracts.Privileges</c>; they are that
-/// catalogue's four names, and a privilege added to it is given to the
+/// catalogue's names, and a privilege added to it is given to the
 /// Administrator by the migration that adds it.
 /// </remarks>
 internal sealed class RolePrivilegeConfiguration : IEntityTypeConfiguration<RolePrivilege>
@@ -34,6 +34,7 @@ internal sealed class RolePrivilegeConfiguration : IEntityTypeConfiguration<Role
             new RolePrivilege { RoleId = Role.AdministratorId, Privilege = "view_cases" },
             new RolePrivilege { RoleId = Role.AdministratorId, Privilege = "edit_cases" },
             new RolePrivilege { RoleId = Role.AdministratorId, Privilege = "manage_reference_data" },
-            new RolePrivilege { RoleId = Role.AdministratorId, Privilege = "manage_users" });
+            new RolePrivilege { RoleId = Role.AdministratorId, Privilege = "manage_users" },
+            new RolePrivilege { RoleId = Role.AdministratorId, Privilege = "run_reports" });
     }
 }

@@ -21,7 +21,8 @@ namespace Survsys.Api;
 /// <see cref="Privileges.ManageReferenceData"/>; who the caller is
 /// (<c>/api/me</c>) needs nothing beyond being signed in; a saved view and its
 /// export need <see cref="Privileges.ViewCases"/> whatever the method, because
-/// a view is the caller's own and changes no case; and every other API
+/// a view is the caller's own and changes no case; an ad-hoc report needs
+/// <see cref="Privileges.RunReports"/> whatever the method; and every other API
 /// request is a case record, read with <see cref="Privileges.ViewCases"/> and
 /// written with <see cref="Privileges.EditCases"/>.
 /// </remarks>
@@ -39,6 +40,8 @@ public static class PrivilegeRules
     private static readonly string[] AnySignedIn = ["/api/me"];
 
     private static readonly string[] CaseReadsWhateverTheMethod = ["/api/saved-views"];
+
+    private static readonly string[] Reports = ["/api/reports"];
 
     /// <summary>
     /// The privilege a request needs, or null where being signed in is enough.
@@ -68,6 +71,11 @@ public static class PrivilegeRules
         if (Under(path, CaseReadsWhateverTheMethod))
         {
             return Privileges.ViewCases;
+        }
+
+        if (Under(path, Reports))
+        {
+            return Privileges.RunReports;
         }
 
         return reads ? Privileges.ViewCases : Privileges.EditCases;

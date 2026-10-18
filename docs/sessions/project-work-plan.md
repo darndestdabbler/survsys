@@ -66,7 +66,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 52 | The dynamic form builder | no | 2026-10-17 |
 | 53 | Treatments and vaccines | no | 2026-10-17 |
 | 54 | Audit by EF Core interceptors | no | 2026-10-17 |
-| 55 | IBIS integration and ad-hoc reporting | — | not declared |
+| 55 | IBIS integration and ad-hoc reporting | no | 2026-10-18 |
 | 56 | Phase 7 walkthroughs and the full walkthrough regression | — | not declared |
 | 57 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
@@ -463,3 +463,13 @@ Give Survsys.Data a change audit driven by an EF Core SaveChanges interceptor, i
 **Amended after acceptance:**
 
 - 2026-10-17 — step 'audit-integration-tests': its files and checks: The step was blocked on a defect its tests found in the accepted interceptor: an insert's audit row records EF's temporary key (-2147482647) because the key is rendered in SavingChanges, before SQL Server assigns the identity. The interceptor step is accepted and cannot be amended, so this step takes AuditInterceptor.cs to record an inserted row's key once the database has assigned it, keeping the audit in the same transaction as the change. The added check runs the tests the step writes, not only the build. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 55 — IBIS integration and ad-hoc reporting
+
+**Releasable: no.**
+
+Port the two remaining Reporting & Export features of the legacy feature matrix. IBIS integration: PersonCondition gains the legacy person_condition columns sent_to_ibis (bool?) and ibis_updated_at (date?) with one migration (20261017110000_IbisExport); Survsys.Api gains an IbisTransmitter shaped like CdcTransmitter -- an HTTP POST of one case's de-identified record (record number, condition, agency, case status, event onset date, MMWR week and year; no name, birth date or address) as JSON to a configured endpoint under a configured timeout, every outcome returned as a result (Accepted, Rejected, TimedOut, Faulted) rather than thrown, off when no endpoint is configured -- and POST /api/person-conditions/{id}/ibis, which transmits that case and, only when accepted, sets sent_to_ibis and ibis_updated_at; a timeout is a 504 and a rejection or fault a 502, as Problem Details. Ad-hoc reporting: a new privilege run_reports in Privileges.All, which PrivilegeRules requires for everything under /api/reports; GET /api/reports/case-counts?groupBy=<grouping>&from=<date>&to=<date> counts case morbidity reports grouped by one user-chosen dimension (condition, agency, case status, workflow state or MMWR year) over an optional event-onset date range, a grouping it does not know being a 400; and a Reports screen in Survsys.Web, behind a nav entry shown only to holders of run_reports, where the user picks the grouping and the range and reads the counts as a table.
+
+**Amended after acceptance:**
+
+- 2026-10-18 — step 'report-endpoint': its files: The seeded Administrator role must hold run_reports, which RolePrivilegeConfiguration says a privilege's adding migration grants; without it no seeded user can reach /api/reports (the integration tests got 403). (claude-code (anthropic, claude-opus-5-5))

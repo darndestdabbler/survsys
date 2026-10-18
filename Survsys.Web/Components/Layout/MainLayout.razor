@@ -79,6 +79,12 @@
                     Saved views
                 </MudButton>
             }
+            @if (Holds(Privileges.RunReports))
+            {
+                <MudButton id="nav-reports" Href="/reports" Color="Color.Inherit">
+                    Reports
+                </MudButton>
+            }
             @if (Holds(Privileges.ManageReferenceData))
             {
                 <MudButton id="nav-agencies" Href="/agencies" Color="Color.Inherit">

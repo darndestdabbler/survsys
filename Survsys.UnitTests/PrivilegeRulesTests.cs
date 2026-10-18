@@ -74,10 +74,27 @@ public class PrivilegeRulesTests
         Assert.Equal(Privileges.ViewCases, PrivilegeRules.RequiredFor(method, path));
     }
 
+    [Theory]
+    [InlineData("GET", "/api/reports")]
+    [InlineData("POST", "/api/reports")]
+    [InlineData("GET", "/api/reports/case-counts")]
+    [InlineData("POST", "/api/reports/case-counts")]
+    public void RequiredForAReportIsRunReportsWhateverTheMethod(string method, string path)
+    {
+        Assert.Equal(Privileges.RunReports, PrivilegeRules.RequiredFor(method, path));
+    }
+
     [Fact]
     public void RequiredForMatchesWholeSegmentsOnly()
     {
         Assert.Equal(Privileges.ViewCases, PrivilegeRules.RequiredFor("GET", "/api/usersettings"));
+        Assert.Equal(Privileges.ViewCases, PrivilegeRules.RequiredFor("GET", "/api/reportsx"));
+    }
+
+    [Fact]
+    public void AllowsNotACallerWhoViewsCasesToRunAReport()
+    {
+        Assert.False(PrivilegeRules.Allows([Privileges.ViewCases], "GET", "/api/reports/case-counts"));
     }
 
     [Fact]

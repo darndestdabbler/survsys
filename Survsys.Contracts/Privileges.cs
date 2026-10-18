@@ -32,7 +32,13 @@ public static class Privileges
     /// <summary>Administering users and roles, and reading the access audit.</summary>
     public const string ManageUsers = "manage_users";
 
+    /// <summary>
+    /// Running ad-hoc reports: counts of case morbidity reports across every
+    /// case, which is why it is a privilege of its own rather than a case read.
+    /// </summary>
+    public const string RunReports = "run_reports";
+
     /// <summary>Every privilege there is, in the order a screen lists them.</summary>
     public static IReadOnlyList<string> All { get; } =
-        [ViewCases, EditCases, ManageReferenceData, ManageUsers];
+        [ViewCases, EditCases, ManageReferenceData, ManageUsers, RunReports];
 }

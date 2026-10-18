@@ -89,6 +89,8 @@ builder.Services.AddOutbreaks();
 builder.Services.AddForms();
 builder.Services.AddTreatments();
 builder.Services.AddVaccines();
+builder.Services.AddIbis();
+builder.Services.AddReports();
 
 // The inbound ELR intake, a background worker that polls a file drop and
 // queues each message for review. Off unless a drop directory is configured,
@@ -104,6 +106,13 @@ builder.Services.AddHostedService<ElrIntakeService>();
 builder.Services.Configure<CdcTransmissionOptions>(
     builder.Configuration.GetSection(CdcTransmissionOptions.SectionName));
 builder.Services.AddHttpClient<CdcTransmitter>();
+
+// Transmission of a case to IBIS, the external epidemiology reporting system:
+// the same shape as the CDC transmitter, and off the same way until an
+// endpoint is configured.
+builder.Services.Configure<IbisTransmissionOptions>(
+    builder.Configuration.GetSection(IbisTransmissionOptions.SectionName));
+builder.Services.AddHttpClient<IbisTransmitter>();
 
 var app = builder.Build();
 
@@ -179,6 +188,8 @@ app.MapOutbreaks();
 app.MapForms();
 app.MapTreatments();
 app.MapVaccines();
+app.MapIbis();
+app.MapReports();
 
 app.Run();
 

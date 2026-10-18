@@ -133,6 +133,8 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
             .HasColumnName("results_reported_to_clinician_date");
         builder.Property(report => report.CdcFirstVerballyNotifiedDate)
             .HasColumnName("cdc_first_verbally_notified_date");
+        builder.Property(report => report.SentToIbis).HasColumnName("sent_to_ibis");
+        builder.Property(report => report.IbisUpdatedAt).HasColumnName("ibis_updated_at");
 
         // What makes a record number a way of referring to a report. The rule
         // that issues one reads the highest already issued for the year and

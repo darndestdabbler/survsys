@@ -1953,6 +1953,10 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("healthcare_worker");
 
+                    b.Property<DateOnly?>("IbisUpdatedAt")
+                        .HasColumnType("date")
+                        .HasColumnName("ibis_updated_at");
+
                     b.Property<int?>("ImportedFromId")
                         .HasColumnType("int")
                         .HasColumnName("imported_from_id");
@@ -2019,6 +2023,10 @@ namespace Survsys.Data.Migrations
                     b.Property<string>("RiskFactorsNotes")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("risk_factors_notes");
+
+                    b.Property<bool?>("SentToIbis")
+                        .HasColumnType("bit")
+                        .HasColumnName("sent_to_ibis");
 
                     b.Property<int?>("StateCaseStatusId")
                         .HasColumnType("int")
@@ -2422,6 +2430,11 @@ namespace Survsys.Data.Migrations
                         {
                             RoleId = 1,
                             Privilege = "manage_users"
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            Privilege = "run_reports"
                         });
                 });
 

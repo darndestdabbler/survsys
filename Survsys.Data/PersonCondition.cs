@@ -612,4 +612,23 @@ public class PersonCondition
     /// legacy as a <c>DATE</c> rather than a <c>TIMESTAMP</c>.
     /// </remarks>
     public DateOnly? CdcFirstVerballyNotifiedDate { get; set; }
+
+    /// <summary>
+    /// Whether this report has been accepted by IBIS, the external epidemiology
+    /// reporting system, as the legacy <c>sent_to_ibis</c>; null until it is
+    /// first sent.
+    /// </summary>
+    /// <remarks>
+    /// The IBIS export state session 55 adds with <see cref="IbisUpdatedAt"/>:
+    /// set only when IBIS accepts a transmission, never on a refused or failed
+    /// one, so it says what IBIS holds rather than what was attempted.
+    /// </remarks>
+    public bool? SentToIbis { get; set; }
+
+    /// <summary>
+    /// The date IBIS last accepted this report, as the legacy
+    /// <c>ibis_updated_at</c>; null until it is first sent. A
+    /// <see cref="DateOnly"/> because the legacy column is a <c>DATE</c>.
+    /// </summary>
+    public DateOnly? IbisUpdatedAt { get; set; }
 }
