@@ -29,11 +29,21 @@ public sealed class LabsClient(HttpClient http)
     /// <summary>How a failure to record a new specimen starts.</summary>
     public const string RecordFailurePrefix = "The laboratory specimen could not be recorded";
 
+    /// <summary>How a failure to save a correction to a laboratory row starts.</summary>
+    public const string SaveFailurePrefix = "The laboratory record could not be saved";
+
+    /// <summary>How a failure to remove a laboratory row starts.</summary>
+    public const string RemoveFailurePrefix = "The laboratory record could not be removed";
+
     private static readonly ApiAsk Listing = new(ListFailurePrefix, "a page of laboratory specimens");
 
     private static readonly ApiAsk Finding = new(FindFailurePrefix, "a laboratory specimen");
 
     private static readonly ApiAsk Recording = new(RecordFailurePrefix, "the specimen recorded");
+
+    private static readonly ApiAsk Saving = new(SaveFailurePrefix, "the laboratory record as saved");
+
+    private static readonly ApiAsk Removing = new(RemoveFailurePrefix, "the laboratory record removed");
 
     /// <summary>
     /// One page of a report's laboratory specimens, or why there is none.
@@ -67,4 +77,72 @@ public sealed class LabsClient(HttpClient http)
         CancellationToken cancellationToken = default) =>
         Recording.Post<CreateLabRequest, LabDetailResponse>(
             http, $"api/person-conditions/{reportId}/labs", specimen, cancellationToken);
+
+    /// <summary>
+    /// Corrects a specimen's own columns and answers with it as stored, or with
+    /// why nothing was saved.
+    /// </summary>
+    public Task<Asked<LabResponse>> UpdateSpecimen(
+        int labId,
+        UpdateLabRequest specimen,
+        CancellationToken cancellationToken = default) =>
+        Saving.Put<UpdateLabRequest, LabResponse>(
+            http, $"api/labs/{labId}", specimen, cancellationToken);
+
+    /// <summary>
+    /// Corrects a test's own columns and answers with it whole, or with why
+    /// nothing was saved.
+    /// </summary>
+    public Task<Asked<LabTestResponse>> UpdateTest(
+        int testId,
+        UpdateLabTestRequest test,
+        CancellationToken cancellationToken = default) =>
+        Saving.Put<UpdateLabTestRequest, LabTestResponse>(
+            http, $"api/lab-tests/{testId}", test, cancellationToken);
+
+    /// <summary>
+    /// Corrects a test result and answers with it as stored, or with why
+    /// nothing was saved — including the refusal of a second result marked the
+    /// primary one.
+    /// </summary>
+    public Task<Asked<LabTestResultResponse>> UpdateResult(
+        int resultId,
+        CreateLabTestResultRequest result,
+        CancellationToken cancellationToken = default) =>
+        Saving.Put<CreateLabTestResultRequest, LabTestResultResponse>(
+            http, $"api/lab-test-results/{resultId}", result, cancellationToken);
+
+    /// <summary>
+    /// Corrects an antimicrobial susceptibility row and answers with it as
+    /// stored, or with why nothing was saved.
+    /// </summary>
+    public Task<Asked<LabResistTestResponse>> UpdateResist(
+        int resistId,
+        CreateLabResistTestRequest resist,
+        CancellationToken cancellationToken = default) =>
+        Saving.Put<CreateLabResistTestRequest, LabResistTestResponse>(
+            http, $"api/lab-resist-tests/{resistId}", resist, cancellationToken);
+
+    /// <summary>
+    /// Removes a specimen, or answers with why it was not — a specimen that
+    /// still has tests or susceptibility rows is refused, the 409 the API
+    /// answers reaching the screen as the other failures do.
+    /// </summary>
+    public Task<string?> DeleteSpecimen(int labId, CancellationToken cancellationToken = default) =>
+        Removing.Delete(http, $"api/labs/{labId}", cancellationToken);
+
+    /// <summary>
+    /// Removes a test, or answers with why it was not — a test that still has
+    /// results is refused.
+    /// </summary>
+    public Task<string?> DeleteTest(int testId, CancellationToken cancellationToken = default) =>
+        Removing.Delete(http, $"api/lab-tests/{testId}", cancellationToken);
+
+    /// <summary>Removes a test result, or answers with why it was not.</summary>
+    public Task<string?> DeleteResult(int resultId, CancellationToken cancellationToken = default) =>
+        Removing.Delete(http, $"api/lab-test-results/{resultId}", cancellationToken);
+
+    /// <summary>Removes an antimicrobial susceptibility row, or answers with why it was not.</summary>
+    public Task<string?> DeleteResist(int resistId, CancellationToken cancellationToken = default) =>
+        Removing.Delete(http, $"api/lab-resist-tests/{resistId}", cancellationToken);
 }

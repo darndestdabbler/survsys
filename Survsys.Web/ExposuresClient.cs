@@ -29,6 +29,12 @@ public sealed class ExposuresClient(HttpClient http)
     /// <summary>How a failure to record a new exposure starts.</summary>
     public const string RecordFailurePrefix = "The exposure could not be recorded";
 
+    /// <summary>How a failure to save a correction to an exposure row starts.</summary>
+    public const string SaveFailurePrefix = "The exposure record could not be saved";
+
+    /// <summary>How a failure to remove an exposure row starts.</summary>
+    public const string RemoveFailurePrefix = "The exposure record could not be removed";
+
     /// <summary>
     /// The page size <see cref="All"/> walks a report's exposures at: the
     /// largest the API tier allows, so a report's exposures arrive in as few
@@ -41,6 +47,10 @@ public sealed class ExposuresClient(HttpClient http)
     private static readonly ApiAsk Finding = new(FindFailurePrefix, "an exposure");
 
     private static readonly ApiAsk Recording = new(RecordFailurePrefix, "the exposure recorded");
+
+    private static readonly ApiAsk Saving = new(SaveFailurePrefix, "the exposure record as saved");
+
+    private static readonly ApiAsk Removing = new(RemoveFailurePrefix, "the exposure record removed");
 
     /// <summary>One page of a report's exposure events, or why there is none.</summary>
     public Task<Asked<PagedResult<ExposureResponse>>> Page(
@@ -111,4 +121,72 @@ public sealed class ExposuresClient(HttpClient http)
         CancellationToken cancellationToken = default) =>
         Recording.Post<CreateExposureRequest, ExposureDetailResponse>(
             http, $"api/person-conditions/{reportId}/exposures", exposure, cancellationToken);
+
+    /// <summary>
+    /// Corrects an exposure's own columns and answers with it as stored, or
+    /// with why nothing was saved.
+    /// </summary>
+    public Task<Asked<ExposureResponse>> UpdateExposure(
+        int exposureId,
+        UpdateExposureRequest exposure,
+        CancellationToken cancellationToken = default) =>
+        Saving.Put<UpdateExposureRequest, ExposureResponse>(
+            http, $"api/exposures/{exposureId}", exposure, cancellationToken);
+
+    /// <summary>
+    /// Corrects an exposure place and answers with it as stored, or with why
+    /// nothing was saved.
+    /// </summary>
+    public Task<Asked<ExposurePlaceResponse>> UpdatePlace(
+        int placeId,
+        ExposurePlaceRequest place,
+        CancellationToken cancellationToken = default) =>
+        Saving.Put<ExposurePlaceRequest, ExposurePlaceResponse>(
+            http, $"api/exposure-places/{placeId}", place, cancellationToken);
+
+    /// <summary>
+    /// Corrects a contact — its disposition and the date it was dispositioned
+    /// among its columns — and answers with it as stored, or with why nothing
+    /// was saved.
+    /// </summary>
+    public Task<Asked<ExposureContactResponse>> UpdateContact(
+        int contactId,
+        ExposureContactRequest contact,
+        CancellationToken cancellationToken = default) =>
+        Saving.Put<ExposureContactRequest, ExposureContactResponse>(
+            http, $"api/exposure-contacts/{contactId}", contact, cancellationToken);
+
+    /// <summary>
+    /// Corrects a source and answers with it as stored, or with why nothing
+    /// was saved.
+    /// </summary>
+    public Task<Asked<ExposureSourceResponse>> UpdateSource(
+        int sourceId,
+        ExposureSourceRequest source,
+        CancellationToken cancellationToken = default) =>
+        Saving.Put<ExposureSourceRequest, ExposureSourceResponse>(
+            http, $"api/exposure-sources/{sourceId}", source, cancellationToken);
+
+    /// <summary>
+    /// Removes an exposure, or answers with why it was not — an exposure that
+    /// still has contacts or sources is refused, the 409 the API answers
+    /// reaching the screen as the other failures do.
+    /// </summary>
+    public Task<string?> DeleteExposure(int exposureId, CancellationToken cancellationToken = default) =>
+        Removing.Delete(http, $"api/exposures/{exposureId}", cancellationToken);
+
+    /// <summary>
+    /// Removes an exposure place, or answers with why it was not — a place an
+    /// exposure still points at is refused.
+    /// </summary>
+    public Task<string?> DeletePlace(int placeId, CancellationToken cancellationToken = default) =>
+        Removing.Delete(http, $"api/exposure-places/{placeId}", cancellationToken);
+
+    /// <summary>Removes a contact, or answers with why it was not.</summary>
+    public Task<string?> DeleteContact(int contactId, CancellationToken cancellationToken = default) =>
+        Removing.Delete(http, $"api/exposure-contacts/{contactId}", cancellationToken);
+
+    /// <summary>Removes a source, or answers with why it was not.</summary>
+    public Task<string?> DeleteSource(int sourceId, CancellationToken cancellationToken = default) =>
+        Removing.Delete(http, $"api/exposure-sources/{sourceId}", cancellationToken);
 }

@@ -107,6 +107,22 @@ public static class ClinicalEndpoints
     }
 
     /// <summary>
+    /// The MMWR week and year a report's clinical dates place it in, or null
+    /// where there is no date to read one off.
+    /// </summary>
+    /// <remarks>
+    /// The disease onset date is the one a report is reported under where it is
+    /// known, and the date diagnosed stands in for it where it is not, as the
+    /// legacy reads the reporting week off the onset and falls back to the
+    /// diagnosis. Where neither is known there is nothing to recompute, so the
+    /// caller leaves the stored MMWR as it is rather than clearing it. The week
+    /// itself is <see cref="MmwrWeek.Of(DateOnly)"/>'s and no other rule's —
+    /// this only chooses the date. Public because the unit suite proves it.
+    /// </remarks>
+    public static MmwrWeek? MmwrFor(DateOnly? diseaseOnsetDate, DateOnly? dateDiagnosed) =>
+        (diseaseOnsetDate ?? dateDiagnosed) is { } date ? MmwrWeek.Of(date) : null;
+
+    /// <summary>
     /// Registers what the clinical endpoints need of the container. Kept here
     /// with the endpoints so the slice's wiring is in one place, and so that
     /// <c>Program.cs</c> need not name an internal type.
@@ -209,6 +225,15 @@ internal sealed class ClinicalQueries(SurvsysDbContext database)
     /// <see cref="PersonCondition.PersonId"/> rather than by a navigation,
     /// which this schema does not have; a report's person always exists,
     /// because the report's person foreign key requires it.
+    ///
+    /// The MMWR week and year are read off the clinical dates here, by
+    /// <see cref="ClinicalEndpoints.MmwrFor(DateOnly?, DateOnly?)"/>: a save
+    /// that changes the disease onset date, or the date diagnosed where there
+    /// is no onset, moves the report to the MMWR week that date falls in, and
+    /// a save that leaves both unknown leaves the stored MMWR untouched. The
+    /// create reads the MMWR off the event onset date instead; here it follows
+    /// the dates the Clinical tab writes, which is where a correction to them
+    /// arrives.
     /// </remarks>
     public async Task<ClinicalResponse?> Save(
         int id,
@@ -231,6 +256,16 @@ internal sealed class ClinicalQueries(SurvsysDbContext database)
         report.TreatmentGiven = request.TreatmentGiven;
         person.DeathStatus = request.DeathStatus;
         person.DateOfDeath = request.DateOfDeath;
+
+        // The MMWR week and year are read off the dates just written, so a
+        // correction to the onset or the diagnosis date moves the report to
+        // the week it now belongs to; where neither date is given there is
+        // nothing to read one off, and the stored MMWR is left as it is.
+        if (ClinicalEndpoints.MmwrFor(report.DiseaseOnsetDate, report.DateDiagnosed) is { } mmwr)
+        {
+            report.MmwrWeek = mmwr.Week;
+            report.MmwrYear = mmwr.Year;
+        }
 
         await database.SaveChangesAsync(cancellationToken);
 

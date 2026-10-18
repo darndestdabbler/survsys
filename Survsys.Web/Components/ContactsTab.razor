@@ -30,6 +30,7 @@
    contacts-exposure-0, contacts-exposure-0-contact-1 and so on. *@
 @using System.Globalization
 @inject ExposuresClient Api
+@inject IDialogService Dialogs
 
 @if (listFailure is { } whyNoList)
 {
@@ -70,6 +71,7 @@
                 <th>Place</th>
                 <th>Contacts</th>
                 <th>Sources</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -148,12 +150,24 @@
                             </table>
                         }
                     </td>
+                    <td class="d-flex gap-1">
+                        <MudButton id="@($"contacts-exposure-{exposureAt}-edit")" Variant="Variant.Text"
+                                   Size="Size.Small" Disabled="@recording"
+                                   OnClick="@(() => OpenForEdit(exposure))">
+                            Edit
+                        </MudButton>
+                        <MudButton id="@($"contacts-exposure-{exposureAt}-delete")" Variant="Variant.Text"
+                                   Color="Color.Error" Size="Size.Small" Disabled="@recording"
+                                   OnClick="@(() => RemoveExposure(exposure))">
+                            Delete
+                        </MudButton>
+                    </td>
                 </tr>
             }
             @if (exposures.Count == 0)
             {
                 <tr>
-                    <td colspan="6">No exposures recorded yet.</td>
+                    <td colspan="7">No exposures recorded yet.</td>
                 </tr>
             }
         </tbody>
@@ -161,7 +175,14 @@
 </MudPaper>
 
 <MudPaper id="contacts-entry" Elevation="1" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" GutterBottom="true">Record an exposure</MudText>
+    @if (editingId is null)
+    {
+        <MudText Typo="Typo.h6" GutterBottom="true">Record an exposure</MudText>
+    }
+    else
+    {
+        <MudText id="contacts-entry-edit-heading" Typo="Typo.h6" GutterBottom="true">Edit exposure</MudText>
+    }
     <MudGrid Spacing="2">
         <MudItem xs="12" sm="6">
             <MudTextField @bind-Value="exposureForm.Name" id="contacts-entry-name"
@@ -227,6 +248,13 @@
                               Label="Phone" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
         </MudGrid>
+        @if (editingId is not null && editingPlaceId is not null)
+        {
+            <MudButton id="contacts-entry-place-remove" Variant="Variant.Text" Color="Color.Error"
+                       Class="mt-2" Disabled="@recording" OnClick="@RemovePlace">
+                Remove place
+            </MudButton>
+        }
     </div>
 
     <div id="contacts-entry-contacts" class="mt-4">
@@ -267,16 +295,20 @@
                 </MudItem>
                 <MudItem xs="12" sm="1" Class="d-flex align-center">
                     <MudButton id="@($"contacts-entry-contact-remove-{contactAt}")" Variant="Variant.Text"
-                               Color="Color.Error" OnClick="@(() => contacts.RemoveAt(contactAt))">
+                               Color="Color.Error" Disabled="@recording"
+                               OnClick="@(() => RemoveContact(contactAt))">
                         Remove
                     </MudButton>
                 </MudItem>
             </MudGrid>
         }
-        <MudButton id="contacts-entry-contact-add" Variant="Variant.Outlined" Class="mt-2"
-                   OnClick="@(() => contacts.Add(new ContactForm()))">
-            Add contact
-        </MudButton>
+        @if (editingId is null)
+        {
+            <MudButton id="contacts-entry-contact-add" Variant="Variant.Outlined" Class="mt-2"
+                       OnClick="@(() => contacts.Add(new ContactForm()))">
+                Add contact
+            </MudButton>
+        }
     </div>
 
     <div id="contacts-entry-sources" class="mt-4">
@@ -306,23 +338,41 @@
                 </MudItem>
                 <MudItem xs="12" sm="2" Class="d-flex align-center">
                     <MudButton id="@($"contacts-entry-source-remove-{sourceAt}")" Variant="Variant.Text"
-                               Color="Color.Error" OnClick="@(() => sources.RemoveAt(sourceAt))">
+                               Color="Color.Error" Disabled="@recording"
+                               OnClick="@(() => RemoveSource(sourceAt))">
                         Remove
                     </MudButton>
                 </MudItem>
             </MudGrid>
         }
-        <MudButton id="contacts-entry-source-add" Variant="Variant.Outlined" Class="mt-2"
-                   OnClick="@(() => sources.Add(new SourceForm()))">
-            Add source
-        </MudButton>
+        @if (editingId is null)
+        {
+            <MudButton id="contacts-entry-source-add" Variant="Variant.Outlined" Class="mt-2"
+                       OnClick="@(() => sources.Add(new SourceForm()))">
+                Add source
+            </MudButton>
+        }
     </div>
 
     <div class="d-flex gap-2 mt-4">
-        <MudButton id="contacts-entry-record" Variant="Variant.Filled" Color="Color.Primary"
-                   Disabled="@recording" OnClick="@Record">
-            Record exposure
-        </MudButton>
+        @if (editingId is null)
+        {
+            <MudButton id="contacts-entry-record" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@recording" OnClick="@Record">
+                Record exposure
+            </MudButton>
+        }
+        else
+        {
+            <MudButton id="contacts-entry-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@recording" OnClick="@SaveEdit">
+                Save changes
+            </MudButton>
+            <MudButton id="contacts-entry-cancel" Variant="Variant.Outlined"
+                       Disabled="@recording" OnClick="@CancelEdit">
+                Cancel
+            </MudButton>
+        }
     </div>
 </MudPaper>
 
@@ -350,6 +400,12 @@
 
     private bool recording;
 
+    /// <summary>The id of the exposure the form is editing, or null when it is recording a new one.</summary>
+    private int? editingId;
+
+    /// <summary>The id of the open exposure's place, where it has one, so a correction reaches it.</summary>
+    private int? editingPlaceId;
+
     private string? listFailure;
 
     private string? saved;
@@ -358,11 +414,23 @@
 
     private string? complaint;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => Reload();
+
+    /// <summary>
+    /// Reads the report's exposures whole into the list, or why there are none.
+    /// </summary>
+    /// <remarks>
+    /// Every exposure of the report, however many pages the API tier lists them
+    /// over: the client walks the pages, so none is left off the end. Each is
+    /// then read whole, because the contacts are what this tab is for and the
+    /// list carries the event alone; the first read that fails is the one
+    /// reported, and the rest are shown.
+    /// </remarks>
+    private async Task Reload()
     {
-        // Every exposure of the report, however many pages the API tier
-        // lists them over: the client walks the pages, so none is left off
-        // the end of the list.
+        exposures = [];
+        listFailure = null;
+
         var listed = await Api.All(ReportId);
 
         if (listed.Value is not { } events)
@@ -372,9 +440,6 @@
             return;
         }
 
-        // Each exposure whole, because the contacts are what this tab is for
-        // and the list carries the event alone. The first read that fails is
-        // the one reported; the rest are shown.
         foreach (var listedExposure in events)
         {
             var found = await Api.Detail(listedExposure.Id);
@@ -464,6 +529,412 @@
             recording = false;
         }
     }
+
+    /// <summary>
+    /// Opens a listed exposure into the entry form, so its own columns, its
+    /// place, its contacts and its sources can be corrected and removed in
+    /// place. The exposure is already in hand whole, so there is nothing to
+    /// read back.
+    /// </summary>
+    private void OpenForEdit(ExposureDetailResponse whole)
+    {
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+
+        editingId = whole.Id;
+        editingPlaceId = whole.Place?.Id;
+
+        exposureForm = new ExposureForm
+        {
+            Name = whole.Name,
+            Description = whole.Description,
+            ExposureStart = Written(whole.ExposureStart),
+            ExposureEnd = Written(whole.ExposureEnd),
+        };
+
+        placeForm = whole.Place is { } place
+            ? new PlaceForm
+            {
+                ExposurePlaceTypeId = place.ExposurePlaceTypeId,
+                Name = place.Name,
+                Street = place.Street,
+                City = place.City,
+                Zip = place.Zip,
+                State = place.State,
+                Latitude = place.Latitude,
+                Longitude = place.Longitude,
+                Phone = place.Phone,
+            }
+            : new PlaceForm();
+
+        contacts = whole.Contacts.Select(contact => new ContactForm
+        {
+            Id = contact.Id,
+            PersonId = contact.PersonId,
+            ContactType = contact.ContactType,
+            DispositionId = contact.DispositionId,
+            DispositionDate = Written(contact.DispositionDate),
+            ExposureStart = Written(contact.ExposureStart),
+            ExposureEnd = Written(contact.ExposureEnd),
+        }).ToList();
+
+        sources = whole.Sources.Select(source => new SourceForm
+        {
+            Id = source.Id,
+            SourceName = source.SourceName,
+            SourceType = source.SourceType,
+            PersonId = source.PersonId,
+            PersonConditionId = source.PersonConditionId,
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Saves the open exposure's own columns through its PUT, and its place,
+    /// contacts and sources through theirs — a contact's disposition and
+    /// disposition date among what a correction sets — stopping at the first
+    /// the API refuses and showing that refusal as the entry error. The dates
+    /// are all read before any save, so a bad one is a complaint and never a
+    /// half-saved exposure.
+    /// </summary>
+    private async Task SaveEdit()
+    {
+        if (editingId is not { } exposureId)
+        {
+            return;
+        }
+
+        if (!TryDate(exposureForm.ExposureStart, "the exposure start", out var started, out var why)
+            || !TryDate(exposureForm.ExposureEnd, "the exposure end", out var ended, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        for (var c = 0; c < contacts.Count; c++)
+        {
+            if (!TryDate(contacts[c].ExposureStart, $"contact {c + 1}'s from date", out _, out why)
+                || !TryDate(contacts[c].ExposureEnd, $"contact {c + 1}'s to date", out _, out why)
+                || !TryDate(contacts[c].DispositionDate, $"contact {c + 1}'s disposition date", out _, out why))
+            {
+                complaint = why;
+
+                return;
+            }
+        }
+
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+        recording = true;
+
+        try
+        {
+            var exposureSaved = await Api.UpdateExposure(exposureId, new UpdateExposureRequest(
+                Name: Blank(exposureForm.Name),
+                Description: Blank(exposureForm.Description),
+                ExposureStart: started,
+                ExposureEnd: ended,
+                ExposurePlaceId: editingPlaceId));
+
+            if (exposureSaved.Value is null)
+            {
+                entryFailure = exposureSaved.Failure;
+
+                return;
+            }
+
+            if (editingPlaceId is { } placeId)
+            {
+                var placeSaved = await Api.UpdatePlace(placeId, new ExposurePlaceRequest(
+                    ExposurePlaceTypeId: placeForm.ExposurePlaceTypeId,
+                    Name: Blank(placeForm.Name),
+                    Street: Blank(placeForm.Street),
+                    City: Blank(placeForm.City),
+                    Zip: Blank(placeForm.Zip),
+                    State: Blank(placeForm.State),
+                    Latitude: placeForm.Latitude,
+                    Longitude: placeForm.Longitude,
+                    Phone: Blank(placeForm.Phone)));
+
+                if (placeSaved.Value is null)
+                {
+                    entryFailure = placeSaved.Failure;
+
+                    return;
+                }
+            }
+
+            foreach (var contact in contacts)
+            {
+                if (contact.Id is not { } contactId)
+                {
+                    continue;
+                }
+
+                TryDate(contact.ExposureStart, "from", out var from, out _);
+                TryDate(contact.ExposureEnd, "to", out var to, out _);
+                TryDate(contact.DispositionDate, "disposition", out var disposed, out _);
+
+                var contactSaved = await Api.UpdateContact(contactId, new ExposureContactRequest(
+                    PersonId: contact.PersonId,
+                    ExposureStart: from,
+                    ExposureEnd: to,
+                    DispositionId: contact.DispositionId,
+                    ContactType: Blank(contact.ContactType),
+                    DispositionDate: disposed));
+
+                if (contactSaved.Value is null)
+                {
+                    entryFailure = contactSaved.Failure;
+
+                    return;
+                }
+            }
+
+            foreach (var source in sources)
+            {
+                if (source.Id is not { } sourceId)
+                {
+                    continue;
+                }
+
+                var sourceSaved = await Api.UpdateSource(sourceId, new ExposureSourceRequest(
+                    PersonId: source.PersonId,
+                    PersonConditionId: source.PersonConditionId,
+                    SourceName: Blank(source.SourceName),
+                    SourceType: Blank(source.SourceType)));
+
+                if (sourceSaved.Value is null)
+                {
+                    entryFailure = sourceSaved.Failure;
+
+                    return;
+                }
+            }
+
+            editingId = null;
+            editingPlaceId = null;
+            Clear();
+            await Reload();
+            saved = "The exposure has been saved.";
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>Closes the edit form without saving, back to recording a new exposure.</summary>
+    private void CancelEdit()
+    {
+        editingId = null;
+        editingPlaceId = null;
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+        Clear();
+    }
+
+    /// <summary>
+    /// Removes an exposure from its row, once confirmed. An exposure that still
+    /// has contacts or sources is refused by the API, and that refusal is shown
+    /// as the entry error.
+    /// </summary>
+    private async Task RemoveExposure(ExposureDetailResponse exposure)
+    {
+        if (!await Confirm($"Remove exposure {Shown(exposure.Name)}?",
+            "The exposure will be removed. This cannot be undone."))
+        {
+            return;
+        }
+
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+        recording = true;
+
+        try
+        {
+            if (await Api.DeleteExposure(exposure.Id) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            exposures.RemoveAll(listed => listed.Id == exposure.Id);
+
+            if (editingId == exposure.Id)
+            {
+                editingId = null;
+                editingPlaceId = null;
+                Clear();
+            }
+
+            saved = "The exposure has been removed.";
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Removes a contact row: a stored contact, once confirmed, through its own
+    /// route; an unsaved one from the form alone.
+    /// </summary>
+    private async Task RemoveContact(int contactAt)
+    {
+        var contact = contacts[contactAt];
+
+        if (editingId is null || contact.Id is not { } contactId)
+        {
+            contacts.RemoveAt(contactAt);
+
+            return;
+        }
+
+        if (!await Confirm("Remove contact?", "The contact will be removed. This cannot be undone."))
+        {
+            return;
+        }
+
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+        recording = true;
+
+        try
+        {
+            if (await Api.DeleteContact(contactId) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            contacts.RemoveAt(contactAt);
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Removes a source row: a stored source, once confirmed, through its own
+    /// route; an unsaved one from the form alone.
+    /// </summary>
+    private async Task RemoveSource(int sourceAt)
+    {
+        var source = sources[sourceAt];
+
+        if (editingId is null || source.Id is not { } sourceId)
+        {
+            sources.RemoveAt(sourceAt);
+
+            return;
+        }
+
+        if (!await Confirm("Remove source?", "The source will be removed. This cannot be undone."))
+        {
+            return;
+        }
+
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+        recording = true;
+
+        try
+        {
+            if (await Api.DeleteSource(sourceId) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            sources.RemoveAt(sourceAt);
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Removes the open exposure's place, once confirmed: the exposure is
+    /// pointed at no place first, because a place an exposure still points at
+    /// cannot be deleted, and then the now-unreferenced place is removed
+    /// through its own route. A refusal at either step is shown as the entry
+    /// error.
+    /// </summary>
+    private async Task RemovePlace()
+    {
+        if (editingId is not { } exposureId || editingPlaceId is not { } placeId)
+        {
+            return;
+        }
+
+        if (!await Confirm("Remove place?", "The place will be removed from the exposure. This cannot be undone."))
+        {
+            return;
+        }
+
+        if (!TryDate(exposureForm.ExposureStart, "the exposure start", out var started, out var why)
+            || !TryDate(exposureForm.ExposureEnd, "the exposure end", out var ended, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+        recording = true;
+
+        try
+        {
+            var detached = await Api.UpdateExposure(exposureId, new UpdateExposureRequest(
+                Name: Blank(exposureForm.Name),
+                Description: Blank(exposureForm.Description),
+                ExposureStart: started,
+                ExposureEnd: ended,
+                ExposurePlaceId: null));
+
+            if (detached.Value is null)
+            {
+                entryFailure = detached.Failure;
+
+                return;
+            }
+
+            if (await Api.DeletePlace(placeId) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            editingPlaceId = null;
+            placeForm = new PlaceForm();
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Asks the operator to confirm a removal before it is sent, so a delete is
+    /// never one click away. True only where they chose to go ahead.
+    /// </summary>
+    private async Task<bool> Confirm(string title, string message) =>
+        await Dialogs.ShowMessageBoxAsync(title, message, yesText: "Delete", cancelText: "Cancel") == true;
 
     /// <summary>
     /// The place as the boxes hold it, or null where every box is empty: an
@@ -586,6 +1057,9 @@
     /// <summary>One contact as its boxes hold it: a person id, a type and a disposition.</summary>
     private sealed class ContactForm
     {
+        /// <summary>The stored contact's id when editing one, or null for an unsaved contact.</summary>
+        public int? Id { get; set; }
+
         public int? PersonId { get; set; }
         public string? ContactType { get; set; }
         public int? DispositionId { get; set; }
@@ -597,6 +1071,9 @@
     /// <summary>One source as its boxes hold it.</summary>
     private sealed class SourceForm
     {
+        /// <summary>The stored source's id when editing one, or null for an unsaved source.</summary>
+        public int? Id { get; set; }
+
         public string? SourceName { get; set; }
         public string? SourceType { get; set; }
         public int? PersonId { get; set; }

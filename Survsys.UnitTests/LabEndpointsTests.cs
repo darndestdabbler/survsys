@@ -222,4 +222,47 @@ public class LabEndpointsTests
 
         Assert.Null(LabEndpoints.WhyNotALab(request));
     }
+
+    /// <summary>
+    /// A specimen blocked by both its tests and its susceptibility names both,
+    /// each pluralised by its own count and joined with "and".
+    /// </summary>
+    [Fact]
+    public void StillNamesEveryKindOfDependentThatHasAny()
+    {
+        var sentence = LabEndpoints.Still(
+            11, "laboratory specimen", (2, "test"), (1, "susceptibility row"));
+
+        Assert.Equal(
+            "laboratory specimen 11 still has 2 tests and 1 susceptibility row recorded "
+                + "against it and cannot be removed. Remove those first.",
+            sentence);
+    }
+
+    /// <summary>
+    /// A dependent whose count is zero is left out, so a test blocked only by
+    /// its results names the results alone and not a kind it does not have.
+    /// </summary>
+    [Fact]
+    public void StillLeavesOutADependentWithNoRows()
+    {
+        var sentence = LabEndpoints.Still(21, "test", (3, "result"), (0, "susceptibility row"));
+
+        Assert.Equal(
+            "test 21 still has 3 results recorded against it and cannot be removed. "
+                + "Remove those first.",
+            sentence);
+    }
+
+    /// <summary>One of a kind is named in the singular, not as "1 tests".</summary>
+    [Fact]
+    public void StillNamesOneDependentInTheSingular()
+    {
+        var sentence = LabEndpoints.Still(11, "laboratory specimen", (1, "test"), (0, "susceptibility row"));
+
+        Assert.Equal(
+            "laboratory specimen 11 still has 1 test recorded against it and cannot be "
+                + "removed. Remove those first.",
+            sentence);
+    }
 }

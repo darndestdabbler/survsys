@@ -143,6 +143,32 @@ public static class LabEndpoints
     }
 
     /// <summary>
+    /// The sentence a delete refused for its dependents carries: the row named
+    /// by what it is and its id, then each kind of row still recorded against
+    /// it that has any, counted and pluralised and joined with "and". A delete
+    /// is refused rather than cascaded, so the rows hung off a specimen or a
+    /// test are never taken out from under a correction by a foreign key.
+    /// </summary>
+    /// <remarks>
+    /// Public because the unit suite proves it; the queries call it with the
+    /// counts they have just read. A dependent whose count is zero is left out,
+    /// so the sentence names only what actually blocks the delete.
+    /// </remarks>
+    public static string Still(int id, string what, params (int Count, string Noun)[] dependents)
+    {
+        ArgumentNullException.ThrowIfNull(dependents);
+
+        var parts = dependents
+            .Where(dependent => dependent.Count > 0)
+            .Select(dependent => dependent.Count == 1
+                ? $"1 {dependent.Noun}"
+                : $"{dependent.Count} {dependent.Noun}s");
+
+        return $"{what} {id} still has {string.Join(" and ", parts)} recorded against it and "
+            + "cannot be removed. Remove those first.";
+    }
+
+    /// <summary>
     /// Registers what the laboratory endpoints need of the container. Kept here
     /// with the endpoints so the slice's wiring is in one place.
     /// </summary>
@@ -162,6 +188,38 @@ public static class LabEndpoints
         routes.MapGet("/api/labs/{id:int}", GetLab)
             .WithName("GetLab")
             .WithSummary("One laboratory specimen, with its tests, results and susceptibility.");
+
+        routes.MapPut("/api/labs/{id:int}", UpdateLab)
+            .WithName("UpdateLab")
+            .WithSummary("Corrects a laboratory specimen's own columns.");
+
+        routes.MapDelete("/api/labs/{id:int}", DeleteLab)
+            .WithName("DeleteLab")
+            .WithSummary("Removes a laboratory specimen that has no tests or susceptibility rows.");
+
+        routes.MapPut("/api/lab-tests/{id:int}", UpdateLabTest)
+            .WithName("UpdateLabTest")
+            .WithSummary("Corrects a test's own columns.");
+
+        routes.MapDelete("/api/lab-tests/{id:int}", DeleteLabTest)
+            .WithName("DeleteLabTest")
+            .WithSummary("Removes a test that has no results.");
+
+        routes.MapPut("/api/lab-test-results/{id:int}", UpdateLabResult)
+            .WithName("UpdateLabResult")
+            .WithSummary("Corrects a test result.");
+
+        routes.MapDelete("/api/lab-test-results/{id:int}", DeleteLabResult)
+            .WithName("DeleteLabResult")
+            .WithSummary("Removes a test result.");
+
+        routes.MapPut("/api/lab-resist-tests/{id:int}", UpdateLabResist)
+            .WithName("UpdateLabResist")
+            .WithSummary("Corrects an antimicrobial susceptibility row.");
+
+        routes.MapDelete("/api/lab-resist-tests/{id:int}", DeleteLabResist)
+            .WithName("DeleteLabResist")
+            .WithSummary("Removes an antimicrobial susceptibility row.");
 
         return routes;
     }
@@ -230,11 +288,148 @@ public static class LabEndpoints
         return TypedResults.Ok(detail);
     }
 
+    private static async Task<Results<Ok<LabResponse>, ProblemHttpResult>> UpdateLab(
+        LabQueries labs,
+        int id,
+        UpdateLabRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (await labs.UpdateSpecimen(id, request, cancellationToken) is not { } specimen)
+        {
+            return NoSuchLab(id);
+        }
+
+        return TypedResults.Ok(specimen);
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteLab(
+        LabQueries labs,
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        var (found, blocked) = await labs.DeleteSpecimen(id, cancellationToken);
+
+        if (!found)
+        {
+            return NoSuchLab(id);
+        }
+
+        return blocked is { } why ? Dependent(why) : TypedResults.NoContent();
+    }
+
+    private static async Task<Results<Ok<LabTestResponse>, ProblemHttpResult>> UpdateLabTest(
+        LabQueries labs,
+        int id,
+        UpdateLabTestRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (await labs.UpdateTest(id, request, cancellationToken) is not { } test)
+        {
+            return NoSuchTest(id);
+        }
+
+        return TypedResults.Ok(test);
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteLabTest(
+        LabQueries labs,
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        var (found, blocked) = await labs.DeleteTest(id, cancellationToken);
+
+        if (!found)
+        {
+            return NoSuchTest(id);
+        }
+
+        return blocked is { } why ? Dependent(why) : TypedResults.NoContent();
+    }
+
+    private static async Task<Results<Ok<LabTestResultResponse>, ProblemHttpResult>> UpdateLabResult(
+        LabQueries labs,
+        int id,
+        CreateLabTestResultRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (await labs.WhyNotResultEdit(id, request, cancellationToken) is { } why)
+        {
+            return Refused(why);
+        }
+
+        if (await labs.UpdateResult(id, request, cancellationToken) is not { } result)
+        {
+            return NoSuchResult(id);
+        }
+
+        return TypedResults.Ok(result);
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteLabResult(
+        LabQueries labs,
+        int id,
+        CancellationToken cancellationToken = default) =>
+        await labs.DeleteResult(id, cancellationToken)
+            ? TypedResults.NoContent()
+            : NoSuchResult(id);
+
+    private static async Task<Results<Ok<LabResistTestResponse>, ProblemHttpResult>> UpdateLabResist(
+        LabQueries labs,
+        int id,
+        CreateLabResistTestRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (await labs.UpdateResist(id, request, cancellationToken) is not { } resist)
+        {
+            return NoSuchResist(id);
+        }
+
+        return TypedResults.Ok(resist);
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteLabResist(
+        LabQueries labs,
+        int id,
+        CancellationToken cancellationToken = default) =>
+        await labs.DeleteResist(id, cancellationToken)
+            ? TypedResults.NoContent()
+            : NoSuchResist(id);
+
     private static ProblemHttpResult Refused(string why) =>
         TypedResults.Problem(
             detail: why,
             statusCode: StatusCodes.Status400BadRequest,
             title: "The laboratory specimen asked for is not one this endpoint can record.");
+
+    private static ProblemHttpResult Dependent(string why) =>
+        TypedResults.Problem(
+            detail: why,
+            statusCode: StatusCodes.Status409Conflict,
+            title: "The row still has rows recorded against it and cannot be removed.");
+
+    private static ProblemHttpResult NoSuchLab(int id) =>
+        TypedResults.Problem(
+            detail: $"No laboratory specimen has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such laboratory specimen.");
+
+    private static ProblemHttpResult NoSuchTest(int id) =>
+        TypedResults.Problem(
+            detail: $"No test has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such test.");
+
+    private static ProblemHttpResult NoSuchResult(int id) =>
+        TypedResults.Problem(
+            detail: $"No test result has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such test result.");
+
+    private static ProblemHttpResult NoSuchResist(int id) =>
+        TypedResults.Problem(
+            detail: $"No antimicrobial susceptibility row has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such antimicrobial susceptibility row.");
 }
 
 /// <summary>
@@ -440,5 +635,273 @@ internal sealed class LabQueries(SurvsysDbContext database)
             .ToListAsync(cancellationToken);
 
         return new LabDetailResponse(specimen, tests, resistTests);
+    }
+
+    /// <summary>
+    /// Corrects a specimen's own columns and answers with it as stored, or null
+    /// where no specimen has that id. The tests and susceptibility are left as
+    /// they are, because they are corrected through their own routes.
+    /// </summary>
+    public async Task<LabResponse?> UpdateSpecimen(
+        int labId,
+        UpdateLabRequest request,
+        CancellationToken cancellationToken)
+    {
+        var specimen = await database.Labs
+            .SingleOrDefaultAsync(lab => lab.Id == labId, cancellationToken);
+
+        if (specimen is null)
+        {
+            return null;
+        }
+
+        specimen.LabFacilityId = request.LabFacilityId;
+        specimen.ProviderId = request.ProviderId;
+        specimen.DiagnosticFacilityId = request.DiagnosticFacilityId;
+        specimen.ReportingFacilityId = request.ReportingFacilityId;
+        specimen.SpecimenSourceId = request.SpecimenSourceId;
+        specimen.CollectionDate = request.CollectionDate;
+        specimen.AccessionNo = request.AccessionNo;
+        specimen.SpecimenSentToState = request.SpecimenSentToState;
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return LabEndpoints.LabToResponse.Compile().Invoke(specimen);
+    }
+
+    /// <summary>
+    /// Removes a specimen and the join that links it to its report, inside one
+    /// transaction. The answer says whether the specimen was found and, where
+    /// it was, why it could not be removed — a specimen that still has tests or
+    /// susceptibility rows is kept, so that the rows recorded against it are
+    /// never orphaned by a foreign key doing the refusing.
+    /// </summary>
+    public async Task<(bool Found, string? Blocked)> DeleteSpecimen(
+        int labId,
+        CancellationToken cancellationToken)
+    {
+        var specimen = await database.Labs
+            .SingleOrDefaultAsync(lab => lab.Id == labId, cancellationToken);
+
+        if (specimen is null)
+        {
+            return (false, null);
+        }
+
+        var tests = await database.LabTests.CountAsync(test => test.LabId == labId, cancellationToken);
+        var resists = await database.LabResistTests
+            .CountAsync(resist => resist.LabId == labId, cancellationToken);
+
+        if (tests > 0 || resists > 0)
+        {
+            return (true, LabEndpoints.Still(labId, "laboratory specimen", (tests, "test"), (resists, "susceptibility row")));
+        }
+
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+
+        database.PersonConditionLabs.RemoveRange(
+            database.PersonConditionLabs.Where(link => link.LabId == labId));
+        database.Labs.Remove(specimen);
+
+        await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return (true, null);
+    }
+
+    /// <summary>
+    /// Corrects a test's own columns and answers with the test whole — its own
+    /// columns and the results read back — or null where no test has that id.
+    /// </summary>
+    public async Task<LabTestResponse?> UpdateTest(
+        int testId,
+        UpdateLabTestRequest request,
+        CancellationToken cancellationToken)
+    {
+        var test = await database.LabTests
+            .SingleOrDefaultAsync(candidate => candidate.Id == testId, cancellationToken);
+
+        if (test is null)
+        {
+            return null;
+        }
+
+        test.TestTypeId = request.TestTypeId;
+        test.TestStatusId = request.TestStatusId;
+        test.LoincCode = request.LoincCode;
+        test.ReferenceRange = request.ReferenceRange;
+        test.LabTestDate = request.LabTestDate;
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        var results = await database.LabTestResults
+            .Where(result => result.LabTestId == testId)
+            .OrderBy(result => result.Id)
+            .Select(LabEndpoints.ResultToResponse)
+            .ToListAsync(cancellationToken);
+
+        return LabEndpoints.RespondTest(test, results);
+    }
+
+    /// <summary>
+    /// Removes a test, or keeps it with the reason where it still has results
+    /// recorded against it, the answer shaped as <see cref="DeleteSpecimen"/>'s.
+    /// </summary>
+    public async Task<(bool Found, string? Blocked)> DeleteTest(
+        int testId,
+        CancellationToken cancellationToken)
+    {
+        var test = await database.LabTests
+            .SingleOrDefaultAsync(candidate => candidate.Id == testId, cancellationToken);
+
+        if (test is null)
+        {
+            return (false, null);
+        }
+
+        var results = await database.LabTestResults
+            .CountAsync(result => result.LabTestId == testId, cancellationToken);
+
+        if (results > 0)
+        {
+            return (true, LabEndpoints.Still(testId, "test", (results, "result")));
+        }
+
+        database.LabTests.Remove(test);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return (true, null);
+    }
+
+    /// <summary>
+    /// Why a result correction cannot be made, as far as the database can say,
+    /// or null when it can. The one database-bound half of
+    /// <see cref="LabEndpoints.WhyNotALab"/>'s rule: a test marks at most one of
+    /// its results the primary one, so marking a result primary is refused
+    /// where another result on the same test already is. A result that is not
+    /// on file passes here and is a 404 at the update.
+    /// </summary>
+    public async Task<string?> WhyNotResultEdit(
+        int resultId,
+        CreateLabTestResultRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!request.PrimaryLabResult)
+        {
+            return null;
+        }
+
+        var testId = await database.LabTestResults
+            .Where(result => result.Id == resultId)
+            .Select(result => (int?)result.LabTestId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (testId is null)
+        {
+            return null;
+        }
+
+        var alreadyPrimary = await database.LabTestResults.AnyAsync(
+            result => result.LabTestId == testId
+                && result.Id != resultId
+                && result.PrimaryLabResult,
+            cancellationToken);
+
+        return alreadyPrimary
+            ? "another result on this test is already the primary one, and a test has at most "
+                + "one: the primary result is the one a summary shows. Clear the other result's "
+                + "primary mark first, or leave this one unmarked."
+            : null;
+    }
+
+    /// <summary>
+    /// Corrects a result and answers with it as stored, or null where no result
+    /// has that id. The primary-result rule is proven by
+    /// <see cref="WhyNotResultEdit"/> before this is called.
+    /// </summary>
+    public async Task<LabTestResultResponse?> UpdateResult(
+        int resultId,
+        CreateLabTestResultRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await database.LabTestResults
+            .SingleOrDefaultAsync(candidate => candidate.Id == resultId, cancellationToken);
+
+        if (result is null)
+        {
+            return null;
+        }
+
+        result.OrganismId = request.OrganismId;
+        result.ResultValue = request.ResultValue;
+        result.TestResult = request.TestResult;
+        result.Comment = request.Comment;
+        result.Units = request.Units;
+        result.PrimaryLabResult = request.PrimaryLabResult;
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return LabEndpoints.ResultToResponse.Compile().Invoke(result);
+    }
+
+    /// <summary>Removes a result — a leaf — and says whether it was there.</summary>
+    public async Task<bool> DeleteResult(int resultId, CancellationToken cancellationToken)
+    {
+        var result = await database.LabTestResults
+            .SingleOrDefaultAsync(candidate => candidate.Id == resultId, cancellationToken);
+
+        if (result is null)
+        {
+            return false;
+        }
+
+        database.LabTestResults.Remove(result);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Corrects a susceptibility row and answers with it as stored, or null
+    /// where no such row has that id.
+    /// </summary>
+    public async Task<LabResistTestResponse?> UpdateResist(
+        int resistId,
+        CreateLabResistTestRequest request,
+        CancellationToken cancellationToken)
+    {
+        var resist = await database.LabResistTests
+            .SingleOrDefaultAsync(candidate => candidate.Id == resistId, cancellationToken);
+
+        if (resist is null)
+        {
+            return null;
+        }
+
+        resist.OrganismId = request.OrganismId;
+        resist.ResistTestAgentId = request.ResistTestAgentId;
+        resist.ResistTestResultId = request.ResistTestResultId;
+        resist.TestDate = request.TestDate;
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return LabEndpoints.ResistToResponse.Compile().Invoke(resist);
+    }
+
+    /// <summary>Removes a susceptibility row — a leaf — and says whether it was there.</summary>
+    public async Task<bool> DeleteResist(int resistId, CancellationToken cancellationToken)
+    {
+        var resist = await database.LabResistTests
+            .SingleOrDefaultAsync(candidate => candidate.Id == resistId, cancellationToken);
+
+        if (resist is null)
+        {
+            return false;
+        }
+
+        database.LabResistTests.Remove(resist);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return true;
     }
 }

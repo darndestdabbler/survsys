@@ -336,4 +336,80 @@ public class ExposureEndpointsTests
 
         Assert.Null(ExposureEndpoints.WhyNotAnExposure(request));
     }
+
+    /// <summary>
+    /// An exposure correction with its dates in order, with one date, or with
+    /// none is accepted: the edit refuses only an end before a start.
+    /// </summary>
+    [Fact]
+    public void WhyNotAnExposureEditAcceptsDatesInOrderOrAbsent()
+    {
+        Assert.Null(ExposureEndpoints.WhyNotAnExposureEdit(new UpdateExposureRequest()));
+        Assert.Null(ExposureEndpoints.WhyNotAnExposureEdit(
+            new UpdateExposureRequest(ExposureStart: new DateOnly(2026, 3, 8))));
+        Assert.Null(ExposureEndpoints.WhyNotAnExposureEdit(
+            new UpdateExposureRequest(
+                ExposureStart: new DateOnly(2026, 3, 8), ExposureEnd: new DateOnly(2026, 3, 10))));
+    }
+
+    [Fact]
+    public void WhyNotAnExposureEditRefusesAnEndBeforeItsStart()
+    {
+        var why = ExposureEndpoints.WhyNotAnExposureEdit(
+            new UpdateExposureRequest(
+                ExposureStart: new DateOnly(2026, 3, 10), ExposureEnd: new DateOnly(2026, 3, 8)));
+
+        Assert.NotNull(why);
+        Assert.StartsWith(
+            "exposureEnd 2026-03-08 is before exposureStart 2026-03-10", why, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A contact correction keeps the person it must name: an edit with no
+    /// person is refused before the database is asked, the column that holds
+    /// the person being not nullable.
+    /// </summary>
+    [Fact]
+    public void WhyNotAContactEditRefusesAnEditThatDropsThePerson()
+    {
+        var why = ExposureEndpoints.WhyNotAContactEdit(
+            new ExposureContactRequest(ContactType: "household"));
+
+        Assert.NotNull(why);
+        Assert.StartsWith("personId is missing", why, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotAContactEditRefusesAnEndBeforeItsStart()
+    {
+        var why = ExposureEndpoints.WhyNotAContactEdit(
+            new ExposureContactRequest(
+                PersonId: 15,
+                ExposureStart: new DateOnly(2026, 3, 9),
+                ExposureEnd: new DateOnly(2026, 3, 8)));
+
+        Assert.NotNull(why);
+        Assert.StartsWith(
+            "exposureEnd 2026-03-08 is before exposureStart 2026-03-09", why, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A contact correction that names a person and sets its disposition, with
+    /// its dates in order, is accepted before the database is asked: the
+    /// disposition and its date are the correction a contact takes once the
+    /// exposure is on file.
+    /// </summary>
+    [Fact]
+    public void WhyNotAContactEditAcceptsAWellFormedCorrection()
+    {
+        var request = new ExposureContactRequest(
+            PersonId: 15,
+            ExposureStart: new DateOnly(2026, 3, 8),
+            ExposureEnd: new DateOnly(2026, 3, 9),
+            DispositionId: 4,
+            ContactType: "household",
+            DispositionDate: new DateOnly(2026, 3, 12));
+
+        Assert.Null(ExposureEndpoints.WhyNotAContactEdit(request));
+    }
 }

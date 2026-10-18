@@ -614,6 +614,13 @@
       "what": "step 'case-search-against-sql-server': its files",
       "reason": "The SQL Server run showed EF Core cannot compose Where or OrderBy over a positional-record projection: JoinedCase becomes an init-only record bound by member initialiser so the ordered page translates, and its unit tests build it the same way; no other file moves",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 60,
+      "dateTime": "2026-10-18T10:40:03.209000-04:00",
+      "task": "Give a case's child records a way to be corrected and removed. Survsys.Api gains edit and delete over every slice the session plan names: a specimen (PUT and DELETE /api/labs/{id}), a test (/api/lab-tests/{id}), a result (/api/lab-test-results/{id}) and a susceptibility row (/api/lab-resist-tests/{id}); an exposure (/api/exposures/{id}), its place (/api/exposure-places/{id}), a contact (/api/exposure-contacts/{id}, whose disposition and disposition date are the correction the contact takes once the exposure is on file) and a source (/api/exposure-sources/{id}); and an attachment's category (/api/attachments/{id}). Each edit reads the row, refuses on the wire what it can judge without the database and writes the change in one save; each delete removes a leaf row, and a delete of a row another row depends on -- a specimen that still has tests or susceptibility rows, a test that still has results, an exposure that still has contacts or sources, a place an exposure still points at -- is refused with a Problem Details rather than left to the database, so the AuditInterceptor's one audit row per changed row stands for a change that actually landed. The clinical save (PUT /api/person-conditions/{id}/clinical) recomputes the stored MMWR week and year from the disease onset date, or the date diagnosed where there is no onset, by MmwrWeek.Of, whenever either date changes. Survsys.Web gives the Laboratory and Contacts tabs row-level edit and delete over the specimens and exposures (and their nested rows) they list, and the Notes tab's strikethrough -- the only mutation a note takes -- is placed behind a confirmation, with every delete confirmed before it is sent. Survsys.IntegrationTests proves each route's update and delete against SQL Server, including the audit row each one writes and a dependent delete refused with a Problem Details.",
+      "releasable": false
     }
   ]
 }

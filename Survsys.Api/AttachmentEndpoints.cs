@@ -41,8 +41,16 @@ namespace Survsys.Api;
 /// default would cut a large upload off first, and the caller would read a
 /// bare refusal instead of the sentence naming the field.
 ///
-/// There is no PUT and no DELETE. An attachment is stored once, and what the
-/// session plan's section asks for is upload, listing and download.
+/// <strong>An attachment's bytes are stored once and never change.</strong>
+/// <c>PUT /api/attachments/{id}</c> corrects the one thing about an attachment
+/// that is a filing decision rather than a fact of the stored file — the
+/// correspondence category — and leaves the filename, content type, size and
+/// bytes exactly as they were stored; it refuses a category outside the fixed
+/// vocabulary through <see cref="WhyNotACategory"/>, the category half of
+/// <see cref="WhyNotAnAttachment"/>. <c>DELETE /api/attachments/{id}</c> removes
+/// the attachment and the <c>attachment_files</c> row it points at together,
+/// inside one transaction, so neither the metadata nor the bytes it describes
+/// is ever left without the other.
 /// </remarks>
 public static class AttachmentEndpoints
 {
@@ -228,6 +236,24 @@ public static class AttachmentEndpoints
     }
 
     /// <summary>
+    /// Why a category an attachment would be refiled under is not one this
+    /// endpoint files under, or null when it is one of the five.
+    /// </summary>
+    /// <remarks>
+    /// The category half of <see cref="WhyNotAnAttachment"/>, over the one
+    /// field <c>PUT /api/attachments/{id}</c> corrects: the bytes and the rest
+    /// of the file's metadata are not a correction's to touch, so the edit asks
+    /// only whether the new category is one of the five. The same sentence the
+    /// upload gives, so a caller reads one answer to the one question whichever
+    /// route it asked. Public because the unit suite proves it.
+    /// </remarks>
+    public static string? WhyNotACategory(string? category) =>
+        Categories.Contains(category ?? string.Empty)
+            ? null
+            : $"category '{category}' is not one an attachment is filed under. Give "
+                + $"{string.Join(", ", Categories)}.";
+
+    /// <summary>
     /// The media type a declared content type names, without the parameters
     /// after it.
     /// </summary>
@@ -270,6 +296,14 @@ public static class AttachmentEndpoints
         routes.MapGet("/api/attachments/{id:int}/content", GetAttachmentContent)
             .WithName("GetAttachmentContent")
             .WithSummary("The stored bytes of one attachment.");
+
+        routes.MapPut("/api/attachments/{id:int}", UpdateAttachment)
+            .WithName("UpdateAttachment")
+            .WithSummary("Refiles an attachment under another correspondence category.");
+
+        routes.MapDelete("/api/attachments/{id:int}", DeleteAttachment)
+            .WithName("DeleteAttachment")
+            .WithSummary("Removes an attachment and its stored file.");
 
         return routes;
     }
@@ -346,11 +380,49 @@ public static class AttachmentEndpoints
             fileDownloadName: content.Filename);
     }
 
+    private static async Task<Results<Ok<AttachmentResponse>, ProblemHttpResult>> UpdateAttachment(
+        AttachmentQueries attachments,
+        int id,
+        UpdateAttachmentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (WhyNotACategory(request.Category) is { } why)
+        {
+            return TypedResults.Problem(
+                detail: why,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The attachment asked to be refiled is not one this endpoint can refile.");
+        }
+
+        if (await attachments.Refile(id, request.Category!, cancellationToken) is not { } attachment)
+        {
+            return NoSuchAttachment(id);
+        }
+
+        return TypedResults.Ok(attachment);
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteAttachment(
+        AttachmentQueries attachments,
+        int id,
+        CancellationToken cancellationToken = default) =>
+        await attachments.Delete(id, cancellationToken)
+            ? TypedResults.NoContent()
+            : NoSuchAttachment(id);
+
     private static ProblemHttpResult NoSuchReport(int id) =>
         TypedResults.Problem(
             detail: $"No case morbidity report has id {id}.",
             statusCode: StatusCodes.Status404NotFound,
             title: "There is no such case morbidity report.");
+
+    private static ProblemHttpResult NoSuchAttachment(int id) =>
+        TypedResults.Problem(
+            detail: $"No attachment has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such attachment.");
 }
 
 /// <summary>
@@ -487,6 +559,68 @@ internal sealed class AttachmentQueries(SurvsysDbContext database)
                where attachment.Id == attachmentId
                select new StoredFile(file.Data!, attachment.ContentType!, attachment.Filename!))
             .SingleOrDefaultAsync(cancellationToken);
+
+    /// <summary>
+    /// Refiles an attachment under another category and answers with its
+    /// metadata as stored, or null where no attachment has that id. The bytes,
+    /// filename, content type and size are untouched, because a correction of
+    /// the filing decision is not a correction of the file.
+    /// </summary>
+    public async Task<AttachmentResponse?> Refile(
+        int attachmentId,
+        string category,
+        CancellationToken cancellationToken)
+    {
+        var attachment = await database.Attachments
+            .SingleOrDefaultAsync(candidate => candidate.Id == attachmentId, cancellationToken);
+
+        if (attachment is null)
+        {
+            return null;
+        }
+
+        attachment.Category = category;
+        await database.SaveChangesAsync(cancellationToken);
+
+        return AttachmentEndpoints.Respond(attachment);
+    }
+
+    /// <summary>
+    /// Removes an attachment and the <c>attachment_files</c> row it points at,
+    /// inside one transaction, and says whether the attachment was there.
+    /// </summary>
+    /// <remarks>
+    /// The metadata is removed before the bytes it points at, which is the
+    /// order the foreign key requires; EF Core orders the two deletes of one
+    /// save that way of its own accord, and the transaction makes them land
+    /// together, so neither the row nor the file it describes is ever left
+    /// without the other. The file is removed by a keyed stub rather than by
+    /// reading it back, so a delete does not pull a stored file into memory to
+    /// throw it away.
+    /// </remarks>
+    public async Task<bool> Delete(int attachmentId, CancellationToken cancellationToken)
+    {
+        var attachment = await database.Attachments
+            .SingleOrDefaultAsync(candidate => candidate.Id == attachmentId, cancellationToken);
+
+        if (attachment is null)
+        {
+            return false;
+        }
+
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+
+        var fileStub = new AttachmentFile { Id = attachment.AttachmentFileId };
+        database.AttachmentFiles.Attach(fileStub);
+
+        database.Attachments.Remove(attachment);
+        database.AttachmentFiles.Remove(fileStub);
+
+        await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return true;
+    }
 
     /// <summary>
     /// The uploaded file, read into memory.

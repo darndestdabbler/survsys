@@ -187,6 +187,62 @@ public static class ExposureEndpoints
     }
 
     /// <summary>
+    /// Why an exposure correction is not one this endpoint can make, as far as
+    /// can be said without the database, or null when nothing is wrong with it.
+    /// </summary>
+    /// <remarks>
+    /// The database-free half of <see cref="WhyNotAnExposure"/> over an
+    /// exposure's own columns: a time range that ends before it starts, where
+    /// both ends are given. Public because the unit suite proves it; nothing
+    /// outside this file calls it.
+    /// </remarks>
+    public static string? WhyNotAnExposureEdit(UpdateExposureRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request is { ExposureStart: { } start, ExposureEnd: { } end } && end < start)
+        {
+            return $"exposureEnd {end:yyyy-MM-dd} is before exposureStart {start:yyyy-MM-dd}, and "
+                + "an exposure ends no earlier than it starts. Give the dates in order, or leave "
+                + "one out.";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Why a contact correction is not one this endpoint can make, as far as
+    /// can be said without the database, or null when nothing is wrong with it.
+    /// </summary>
+    /// <remarks>
+    /// The database-free half of <see cref="WhyNotAnExposure"/> over a single
+    /// contact: a contact names a person — the column that holds it is not
+    /// nullable, so an edit may not drop it — and its time at the exposure ends
+    /// no earlier than it starts, where both ends are given. Whether the person
+    /// named is on file is not here, because that needs a query. Public because
+    /// the unit suite proves it; nothing outside this file calls it.
+    /// </remarks>
+    public static string? WhyNotAContactEdit(ExposureContactRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request.PersonId is null)
+        {
+            return "personId is missing, and a contact is the record of an existing person "
+                + "against the exposure: name the person, by the id a person search returns.";
+        }
+
+        if (request is { ExposureStart: { } from, ExposureEnd: { } to } && to < from)
+        {
+            return $"exposureEnd {to:yyyy-MM-dd} is before exposureStart {from:yyyy-MM-dd}, and a "
+                + "contact's time at an exposure ends no earlier than it starts. Give the dates "
+                + "in order, or leave one out.";
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Registers what the exposure endpoints need of the container. Kept here
     /// with the endpoints so the slice's wiring is in one place.
     /// </summary>
@@ -206,6 +262,38 @@ public static class ExposureEndpoints
         routes.MapGet("/api/exposures/{id:int}", GetExposure)
             .WithName("GetExposure")
             .WithSummary("One exposure event, with its place, its contacts and its sources.");
+
+        routes.MapPut("/api/exposures/{id:int}", UpdateExposure)
+            .WithName("UpdateExposure")
+            .WithSummary("Corrects an exposure's own columns.");
+
+        routes.MapDelete("/api/exposures/{id:int}", DeleteExposure)
+            .WithName("DeleteExposure")
+            .WithSummary("Removes an exposure that has no contacts or sources.");
+
+        routes.MapPut("/api/exposure-places/{id:int}", UpdateExposurePlace)
+            .WithName("UpdateExposurePlace")
+            .WithSummary("Corrects an exposure place.");
+
+        routes.MapDelete("/api/exposure-places/{id:int}", DeleteExposurePlace)
+            .WithName("DeleteExposurePlace")
+            .WithSummary("Removes an exposure place no exposure points at.");
+
+        routes.MapPut("/api/exposure-contacts/{id:int}", UpdateExposureContact)
+            .WithName("UpdateExposureContact")
+            .WithSummary("Corrects a contact, including its disposition and the date it was dispositioned.");
+
+        routes.MapDelete("/api/exposure-contacts/{id:int}", DeleteExposureContact)
+            .WithName("DeleteExposureContact")
+            .WithSummary("Removes a contact.");
+
+        routes.MapPut("/api/exposure-sources/{id:int}", UpdateExposureSource)
+            .WithName("UpdateExposureSource")
+            .WithSummary("Corrects a source.");
+
+        routes.MapDelete("/api/exposure-sources/{id:int}", DeleteExposureSource)
+            .WithName("DeleteExposureSource")
+            .WithSummary("Removes a source.");
 
         return routes;
     }
@@ -279,17 +367,175 @@ public static class ExposureEndpoints
         return TypedResults.Ok(detail);
     }
 
+    private static async Task<Results<Ok<ExposureResponse>, ProblemHttpResult>> UpdateExposure(
+        ExposureQueries exposures,
+        int id,
+        UpdateExposureRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotAnExposureEdit(request) is { } why)
+        {
+            return Refused(why);
+        }
+
+        if (await exposures.UpdateExposure(id, request, cancellationToken) is not { } exposure)
+        {
+            return NoSuchExposure(id);
+        }
+
+        return TypedResults.Ok(exposure);
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteExposure(
+        ExposureQueries exposures,
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        var (found, blocked) = await exposures.DeleteExposure(id, cancellationToken);
+
+        if (!found)
+        {
+            return NoSuchExposure(id);
+        }
+
+        return blocked is { } why ? Dependent(why) : TypedResults.NoContent();
+    }
+
+    private static async Task<Results<Ok<ExposurePlaceResponse>, ProblemHttpResult>> UpdateExposurePlace(
+        ExposureQueries exposures,
+        int id,
+        ExposurePlaceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (await exposures.UpdatePlace(id, request, cancellationToken) is not { } place)
+        {
+            return NoSuchPlace(id);
+        }
+
+        return TypedResults.Ok(place);
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteExposurePlace(
+        ExposureQueries exposures,
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        var (found, blocked) = await exposures.DeletePlace(id, cancellationToken);
+
+        if (!found)
+        {
+            return NoSuchPlace(id);
+        }
+
+        return blocked is { } why ? Dependent(why) : TypedResults.NoContent();
+    }
+
+    private static async Task<Results<Ok<ExposureContactResponse>, ProblemHttpResult>> UpdateExposureContact(
+        ExposureQueries exposures,
+        int id,
+        ExposureContactRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotAContactEdit(request) is { } why)
+        {
+            return Refused(why);
+        }
+
+        if (request.PersonId is { } personId
+            && !await exposures.PersonOnFile(personId, cancellationToken))
+        {
+            return Refused($"personId {personId} is not a person on file. A contact is the record "
+                + "of an existing person against the exposure: find the person first, with "
+                + "GET /api/persons.");
+        }
+
+        if (await exposures.UpdateContact(id, request, cancellationToken) is not { } contact)
+        {
+            return NoSuchContact(id);
+        }
+
+        return TypedResults.Ok(contact);
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteExposureContact(
+        ExposureQueries exposures,
+        int id,
+        CancellationToken cancellationToken = default) =>
+        await exposures.DeleteContact(id, cancellationToken)
+            ? TypedResults.NoContent()
+            : NoSuchContact(id);
+
+    private static async Task<Results<Ok<ExposureSourceResponse>, ProblemHttpResult>> UpdateExposureSource(
+        ExposureQueries exposures,
+        int id,
+        ExposureSourceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.PersonId is { } personId
+            && !await exposures.PersonOnFile(personId, cancellationToken))
+        {
+            return Refused($"personId {personId} is not a person on file. A source that names a "
+                + "person names one that exists: find the person first, with GET /api/persons, or "
+                + "name the source by sourceName alone.");
+        }
+
+        if (await exposures.UpdateSource(id, request, cancellationToken) is not { } source)
+        {
+            return NoSuchSource(id);
+        }
+
+        return TypedResults.Ok(source);
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteExposureSource(
+        ExposureQueries exposures,
+        int id,
+        CancellationToken cancellationToken = default) =>
+        await exposures.DeleteSource(id, cancellationToken)
+            ? TypedResults.NoContent()
+            : NoSuchSource(id);
+
     private static ProblemHttpResult Refused(string why) =>
         TypedResults.Problem(
             detail: why,
             statusCode: StatusCodes.Status400BadRequest,
             title: "The exposure asked for is not one this endpoint can record.");
 
+    private static ProblemHttpResult Dependent(string why) =>
+        TypedResults.Problem(
+            detail: why,
+            statusCode: StatusCodes.Status409Conflict,
+            title: "The row still has rows recorded against it and cannot be removed.");
+
     private static ProblemHttpResult NoSuchReport(int id) =>
         TypedResults.Problem(
             detail: $"No case morbidity report has id {id}.",
             statusCode: StatusCodes.Status404NotFound,
             title: "There is no such case morbidity report.");
+
+    private static ProblemHttpResult NoSuchExposure(int id) =>
+        TypedResults.Problem(
+            detail: $"No exposure has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such exposure.");
+
+    private static ProblemHttpResult NoSuchPlace(int id) =>
+        TypedResults.Problem(
+            detail: $"No exposure place has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such exposure place.");
+
+    private static ProblemHttpResult NoSuchContact(int id) =>
+        TypedResults.Problem(
+            detail: $"No contact has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such contact.");
+
+    private static ProblemHttpResult NoSuchSource(int id) =>
+        TypedResults.Problem(
+            detail: $"No source has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such source.");
 }
 
 /// <summary>
@@ -532,5 +778,249 @@ internal sealed class ExposureQueries(SurvsysDbContext database)
             .ToListAsync(cancellationToken);
 
         return ExposureEndpoints.RespondDetail(exposure, place, contacts, sources);
+    }
+
+    /// <summary>Whether a person has that id — the check a contact's or source's edit makes.</summary>
+    public Task<bool> PersonOnFile(int personId, CancellationToken cancellationToken) =>
+        database.Persons.AnyAsync(person => person.Id == personId, cancellationToken);
+
+    /// <summary>
+    /// Corrects an exposure's own columns — including which place it points at,
+    /// by id, or none — and answers with it as stored, or null where no
+    /// exposure has that id. The contacts and sources, and a place's own
+    /// columns, are corrected through their own routes; here the exposure row
+    /// is set, so pointing it at no place is how a place is detached before it
+    /// is removed.
+    /// </summary>
+    public async Task<ExposureResponse?> UpdateExposure(
+        int exposureId,
+        UpdateExposureRequest request,
+        CancellationToken cancellationToken)
+    {
+        var exposure = await database.Exposures
+            .SingleOrDefaultAsync(candidate => candidate.Id == exposureId, cancellationToken);
+
+        if (exposure is null)
+        {
+            return null;
+        }
+
+        exposure.Name = request.Name;
+        exposure.Description = request.Description;
+        exposure.ExposureStart = request.ExposureStart;
+        exposure.ExposureEnd = request.ExposureEnd;
+        exposure.ExposurePlaceId = request.ExposurePlaceId;
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return ExposureEndpoints.ExposureToResponse.Compile().Invoke(exposure);
+    }
+
+    /// <summary>
+    /// Removes an exposure, or keeps it with the reason where contacts or
+    /// sources still hang off it, so the rows recorded against it are never
+    /// orphaned by a foreign key doing the refusing. The place the exposure
+    /// pointed at is left on file to be removed through its own route.
+    /// </summary>
+    public async Task<(bool Found, string? Blocked)> DeleteExposure(
+        int exposureId,
+        CancellationToken cancellationToken)
+    {
+        var exposure = await database.Exposures
+            .SingleOrDefaultAsync(candidate => candidate.Id == exposureId, cancellationToken);
+
+        if (exposure is null)
+        {
+            return (false, null);
+        }
+
+        var contacts = await database.ExposureContacts
+            .CountAsync(contact => contact.ExposureId == exposureId, cancellationToken);
+        var sources = await database.ExposureSources
+            .CountAsync(source => source.ExposureId == exposureId, cancellationToken);
+
+        if (contacts > 0 || sources > 0)
+        {
+            var parts = new List<string>();
+            if (contacts > 0)
+            {
+                parts.Add(contacts == 1 ? "1 contact" : $"{contacts} contacts");
+            }
+
+            if (sources > 0)
+            {
+                parts.Add(sources == 1 ? "1 source" : $"{sources} sources");
+            }
+
+            return (true, $"exposure {exposureId} still has {string.Join(" and ", parts)} recorded "
+                + "against it and cannot be removed. Remove those first.");
+        }
+
+        database.Exposures.Remove(exposure);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return (true, null);
+    }
+
+    /// <summary>
+    /// Corrects a place and answers with it as stored, or null where no place
+    /// has that id.
+    /// </summary>
+    public async Task<ExposurePlaceResponse?> UpdatePlace(
+        int placeId,
+        ExposurePlaceRequest request,
+        CancellationToken cancellationToken)
+    {
+        var place = await database.ExposurePlaces
+            .SingleOrDefaultAsync(candidate => candidate.Id == placeId, cancellationToken);
+
+        if (place is null)
+        {
+            return null;
+        }
+
+        place.ExposurePlaceTypeId = request.ExposurePlaceTypeId;
+        place.Name = request.Name;
+        place.Street = request.Street;
+        place.City = request.City;
+        place.Zip = request.Zip;
+        place.State = request.State;
+        place.Latitude = request.Latitude;
+        place.Longitude = request.Longitude;
+        place.Phone = request.Phone;
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return ExposureEndpoints.PlaceToResponse.Compile().Invoke(place);
+    }
+
+    /// <summary>
+    /// Removes a place, or keeps it with the reason where an exposure still
+    /// points at it: a place is shared by the exposures that name it, and one
+    /// removed from under them would leave a dangling reference.
+    /// </summary>
+    public async Task<(bool Found, string? Blocked)> DeletePlace(
+        int placeId,
+        CancellationToken cancellationToken)
+    {
+        var place = await database.ExposurePlaces
+            .SingleOrDefaultAsync(candidate => candidate.Id == placeId, cancellationToken);
+
+        if (place is null)
+        {
+            return (false, null);
+        }
+
+        var pointing = await database.Exposures
+            .CountAsync(exposure => exposure.ExposurePlaceId == placeId, cancellationToken);
+
+        if (pointing > 0)
+        {
+            var exposures = pointing == 1 ? "1 exposure" : $"{pointing} exposures";
+            var those = pointing == 1 ? "that exposure" : "those exposures";
+
+            return (true, $"exposure place {placeId} is still pointed at by {exposures} and cannot "
+                + $"be removed. Point {those} at another place or remove it first.");
+        }
+
+        database.ExposurePlaces.Remove(place);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return (true, null);
+    }
+
+    /// <summary>
+    /// Corrects a contact — its disposition and the date it was dispositioned
+    /// among its columns — and answers with it as stored, or null where no
+    /// contact has that id. The person the contact names is validated before
+    /// this is called and is never cleared here.
+    /// </summary>
+    public async Task<ExposureContactResponse?> UpdateContact(
+        int contactId,
+        ExposureContactRequest request,
+        CancellationToken cancellationToken)
+    {
+        var contact = await database.ExposureContacts
+            .SingleOrDefaultAsync(candidate => candidate.Id == contactId, cancellationToken);
+
+        if (contact is null)
+        {
+            return null;
+        }
+
+        contact.PersonId = request.PersonId
+            ?? throw new InvalidOperationException(
+                "A contact edit with no person reached the recording; the validator refuses one.");
+        contact.ExposureStart = request.ExposureStart;
+        contact.ExposureEnd = request.ExposureEnd;
+        contact.DispositionId = request.DispositionId;
+        contact.ContactType = request.ContactType;
+        contact.DispositionDate = request.DispositionDate;
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return ExposureEndpoints.ContactToResponse.Compile().Invoke(contact);
+    }
+
+    /// <summary>Removes a contact — a leaf — and says whether it was there.</summary>
+    public async Task<bool> DeleteContact(int contactId, CancellationToken cancellationToken)
+    {
+        var contact = await database.ExposureContacts
+            .SingleOrDefaultAsync(candidate => candidate.Id == contactId, cancellationToken);
+
+        if (contact is null)
+        {
+            return false;
+        }
+
+        database.ExposureContacts.Remove(contact);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Corrects a source and answers with it as stored, or null where no source
+    /// has that id. A person the source names is validated before this is
+    /// called; a source may name none.
+    /// </summary>
+    public async Task<ExposureSourceResponse?> UpdateSource(
+        int sourceId,
+        ExposureSourceRequest request,
+        CancellationToken cancellationToken)
+    {
+        var source = await database.ExposureSources
+            .SingleOrDefaultAsync(candidate => candidate.Id == sourceId, cancellationToken);
+
+        if (source is null)
+        {
+            return null;
+        }
+
+        source.PersonId = request.PersonId;
+        source.PersonConditionId = request.PersonConditionId;
+        source.SourceName = request.SourceName;
+        source.SourceType = request.SourceType;
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return ExposureEndpoints.SourceToResponse.Compile().Invoke(source);
+    }
+
+    /// <summary>Removes a source — a leaf — and says whether it was there.</summary>
+    public async Task<bool> DeleteSource(int sourceId, CancellationToken cancellationToken)
+    {
+        var source = await database.ExposureSources
+            .SingleOrDefaultAsync(candidate => candidate.Id == sourceId, cancellationToken);
+
+        if (source is null)
+        {
+            return false;
+        }
+
+        database.ExposureSources.Remove(source);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return true;
     }
 }

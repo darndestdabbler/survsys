@@ -31,6 +31,7 @@
    can name it: notes-note-0, notes-note-0-strikethrough and so on. *@
 @using System.Globalization
 @inject NotesClient Api
+@inject IDialogService Dialogs
 
 <AttachmentsPanel ReportId="@ReportId" />
 
@@ -253,6 +254,18 @@
     /// </remarks>
     private async Task Strike(int at, bool struckthrough)
     {
+        // Striking a note through is this tab's delete, so it is confirmed
+        // first, like the Laboratory and Contacts tabs' deletes. Restoring a
+        // struck note is not a delete and asks nothing. Where the operator
+        // cancels, nothing is sent and the box goes back to the stored state
+        // it was ticked away from.
+        if (struckthrough && !await ConfirmStrike())
+        {
+            StateHasChanged();
+
+            return;
+        }
+
         entryFailure = null;
         saved = null;
         striking = true;
@@ -275,6 +288,18 @@
             striking = false;
         }
     }
+
+    /// <summary>
+    /// Asks the operator to confirm striking a note through before it is sent,
+    /// so the soft delete is never one click away. True only where they chose
+    /// to go ahead.
+    /// </summary>
+    private async Task<bool> ConfirmStrike() =>
+        await Dialogs.ShowMessageBoxAsync(
+            "Strike this note through?",
+            "The note will be struck through. You can restore it afterwards.",
+            yesText: "Strike through",
+            cancelText: "Cancel") == true;
 
     /// <summary>A value as the list shows it, or a dash for what nobody has recorded.</summary>
     private static string Shown(string? value) =>

@@ -314,6 +314,166 @@ public class ExposuresClientTests
         Assert.NotEqual(ExposuresClient.ListFailurePrefix, ExposuresClient.RecordFailurePrefix);
     }
 
+    [Fact]
+    public async Task UpdateExposurePutsTheExposuresUrlWithTheBodyAndHandsItBack()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new ExposuresClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+            return Answer(HttpStatusCode.OK,
+                """{"id":31,"name":"Parish hall potluck","description":"Corrected","exposureStart":"2026-03-08","exposureEnd":"2026-03-10","exposurePlaceId":41}""");
+        }));
+
+        var saved = await client.UpdateExposure(31, new UpdateExposureRequest(
+            Name: "Parish hall potluck",
+            Description: "Corrected",
+            ExposureStart: new DateOnly(2026, 3, 8),
+            ExposureEnd: new DateOnly(2026, 3, 10)));
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/exposures/31", sent?.RequestUri?.ToString());
+        Assert.Contains("\"name\":\"Parish hall potluck\"", body, StringComparison.Ordinal);
+
+        Assert.True(saved.Succeeded);
+        Assert.Equal("Parish hall potluck", saved.Value?.Name);
+    }
+
+    [Fact]
+    public async Task UpdatePlacePutsThePlacesOwnUrlWithTheBody()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new ExposuresClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+            return Answer(HttpStatusCode.OK,
+                """{"id":41,"exposurePlaceTypeId":3,"name":"St Mark's parish hall","street":"12 Chapel St","city":"Hartford","zip":null,"state":"CT","latitude":null,"longitude":null,"phone":null}""");
+        }));
+
+        var saved = await client.UpdatePlace(41, new ExposurePlaceRequest(
+            ExposurePlaceTypeId: 3, Name: "St Mark's parish hall", Street: "12 Chapel St",
+            City: "Hartford", State: "CT"));
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/exposure-places/41", sent?.RequestUri?.ToString());
+        Assert.Contains("\"street\":\"12 Chapel St\"", body, StringComparison.Ordinal);
+
+        Assert.True(saved.Succeeded);
+        Assert.Equal("12 Chapel St", saved.Value?.Street);
+    }
+
+    [Fact]
+    public async Task UpdateContactPutsTheContactsOwnUrlWithItsDisposition()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new ExposuresClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+            return Answer(HttpStatusCode.OK,
+                """{"id":51,"exposureId":31,"personId":15,"exposureStart":null,"exposureEnd":null,"dispositionId":4,"contactType":"household","dispositionDate":"2026-03-12"}""");
+        }));
+
+        var saved = await client.UpdateContact(51, new ExposureContactRequest(
+            PersonId: 15, DispositionId: 4, ContactType: "household",
+            DispositionDate: new DateOnly(2026, 3, 12)));
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/exposure-contacts/51", sent?.RequestUri?.ToString());
+        Assert.Contains("\"dispositionId\":4", body, StringComparison.Ordinal);
+        Assert.Contains("\"dispositionDate\":\"2026-03-12\"", body, StringComparison.Ordinal);
+
+        Assert.True(saved.Succeeded);
+        Assert.Equal(4, saved.Value?.DispositionId);
+    }
+
+    [Fact]
+    public async Task UpdateSourcePutsTheSourcesOwnUrlWithTheBody()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new ExposuresClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+            return Answer(HttpStatusCode.OK,
+                """{"id":61,"exposureId":31,"personId":null,"personConditionId":null,"sourceName":"Well water","sourceType":"environmental"}""");
+        }));
+
+        var saved = await client.UpdateSource(61, new ExposureSourceRequest(
+            SourceName: "Well water", SourceType: "environmental"));
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/exposure-sources/61", sent?.RequestUri?.ToString());
+        Assert.Contains("\"sourceName\":\"Well water\"", body, StringComparison.Ordinal);
+
+        Assert.True(saved.Succeeded);
+        Assert.Equal("Well water", saved.Value?.SourceName);
+    }
+
+    [Fact]
+    public async Task DeleteEachRowDeletesItsOwnUrlAndAnswersNullWhenRemoved()
+    {
+        var urls = new List<string?>();
+
+        var client = new ExposuresClient(Transport(request =>
+        {
+            urls.Add(request.RequestUri?.ToString());
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }));
+
+        Assert.Null(await client.DeleteExposure(31));
+        Assert.Null(await client.DeletePlace(41));
+        Assert.Null(await client.DeleteContact(51));
+        Assert.Null(await client.DeleteSource(61));
+
+        Assert.Equal(
+            [
+                "http://api.example.test/api/exposures/31",
+                "http://api.example.test/api/exposure-places/41",
+                "http://api.example.test/api/exposure-contacts/51",
+                "http://api.example.test/api/exposure-sources/61",
+            ],
+            urls);
+    }
+
+    [Fact]
+    public async Task ADependentDeleteRefusedCarriesTheRemovePrefixAndTheStatusNotTheBody()
+    {
+        var failure = await new ExposuresClient(Transport(_ => Answer(
+                HttpStatusCode.Conflict,
+                """{ "status": 409, "detail": "exposure 31 still has 1 contact recorded against it and cannot be removed." }""")))
+            .DeleteExposure(31);
+
+        Assert.NotNull(failure);
+        Assert.StartsWith(ExposuresClient.RemoveFailurePrefix, failure);
+        Assert.Contains("409", failure);
+        Assert.DoesNotContain("still has", failure, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ASaveRefusedCarriesTheSavePrefixAndTheStatusNotTheBody()
+    {
+        var saved = await new ExposuresClient(Transport(_ => Answer(
+                HttpStatusCode.BadRequest,
+                """{ "status": 400, "detail": "personId 987654 is not a person on file." }""")))
+            .UpdateContact(51, new ExposureContactRequest(PersonId: 987654));
+
+        Assert.False(saved.Succeeded);
+        Assert.StartsWith(ExposuresClient.SaveFailurePrefix, saved.Failure);
+        Assert.Contains("400", saved.Failure);
+        Assert.DoesNotContain("987654", saved.Failure!, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// One page of bare exposures with the given ids, as the API tier writes
     /// it, carrying the page number and the total the client reads to decide

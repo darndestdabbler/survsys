@@ -250,6 +250,381 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     /// <summary>
+    /// A specimen's own columns are corrected through <c>PUT /api/labs/{id}</c>:
+    /// the response and a fresh read both carry the new values, and the save is
+    /// audited as an update of the specimen's row.
+    /// </summary>
+    [Fact]
+    public async Task ASpecimenEditChangesItsColumnsAndIsAudited()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            var labId = (await Record(client, reportId,
+                new CreateLabRequest(LabFacilityId: 11, AccessionNo: "LAB-2026-011"))).Specimen.Id;
+
+            using var put = await client.PutAsJsonAsync($"/api/labs/{labId}",
+                new UpdateLabRequest(
+                    LabFacilityId: 99,
+                    ProviderId: 13,
+                    AccessionNo: "LAB-2026-011-CORRECTED",
+                    SpecimenSentToState: true),
+                Json);
+
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+            var updated = (await put.Content.ReadFromJsonAsync<LabResponse>(Json))!;
+            Assert.Equal(99, updated.LabFacilityId);
+            Assert.Equal("LAB-2026-011-CORRECTED", updated.AccessionNo);
+            Assert.True(updated.SpecimenSentToState);
+
+            // The person and the report the specimen belongs to are untouched.
+            Assert.Equal(reportId, updated.PersonConditionId);
+
+            using var read = await client.GetAsync($"/api/labs/{labId}");
+            read.EnsureSuccessStatusCode();
+            var round = (await read.Content.ReadFromJsonAsync<LabDetailResponse>(Json))!;
+            Assert.Equal(99, round.Specimen.LabFacilityId);
+            Assert.Equal("LAB-2026-011-CORRECTED", round.Specimen.AccessionNo);
+
+            Assert.Contains("Update", await AuditOperations("labs", labId));
+        }
+        finally
+        {
+            await ClearSpecimensOf(reportId);
+        }
+    }
+
+    /// <summary>
+    /// A test's own columns are corrected through <c>PUT /api/lab-tests/{id}</c>,
+    /// leaving its results in place, and the save is audited.
+    /// </summary>
+    [Fact]
+    public async Task ATestEditChangesItsColumnsAndKeepsItsResultsAndIsAudited()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            var detail = await Record(client, reportId, new CreateLabRequest(
+                AccessionNo: "LAB-2026-011",
+                Tests:
+                [
+                    new CreateLabTestRequest(
+                        TestTypeId: 3,
+                        LoincCode: "5195-3",
+                        Results: [new CreateLabTestResultRequest(TestResult: "Positive/Reactive", PrimaryLabResult: true)]),
+                ]));
+
+            var testId = detail.Tests.Single().Id;
+
+            using var put = await client.PutAsJsonAsync($"/api/lab-tests/{testId}",
+                new UpdateLabTestRequest(TestTypeId: 4, TestStatusId: 2, LoincCode: "1988-5"),
+                Json);
+
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+            var updated = (await put.Content.ReadFromJsonAsync<LabTestResponse>(Json))!;
+            Assert.Equal(4, updated.TestTypeId);
+            Assert.Equal(2, updated.TestStatusId);
+            Assert.Equal("1988-5", updated.LoincCode);
+
+            // The result the test had is still hung off it after the edit.
+            var keptResult = Assert.Single(updated.Results);
+            Assert.Equal("Positive/Reactive", keptResult.TestResult);
+
+            Assert.Contains("Update", await AuditOperations("lab_tests", testId));
+        }
+        finally
+        {
+            await ClearSpecimensOf(reportId);
+        }
+    }
+
+    /// <summary>
+    /// A result is corrected through <c>PUT /api/lab-test-results/{id}</c> and
+    /// the save is audited.
+    /// </summary>
+    [Fact]
+    public async Task AResultEditChangesItAndIsAudited()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            var detail = await Record(client, reportId, new CreateLabRequest(
+                AccessionNo: "LAB-2026-011",
+                Tests:
+                [
+                    new CreateLabTestRequest(
+                        Results: [new CreateLabTestResultRequest(TestResult: "Pending", PrimaryLabResult: true)]),
+                ]));
+
+            var resultId = detail.Tests.Single().Results.Single().Id;
+
+            using var put = await client.PutAsJsonAsync($"/api/lab-test-results/{resultId}",
+                new CreateLabTestResultRequest(
+                    OrganismId: 5, ResultValue: "1200", TestResult: "Positive/Reactive",
+                    Units: "U/L", PrimaryLabResult: true),
+                Json);
+
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+            var updated = (await put.Content.ReadFromJsonAsync<LabTestResultResponse>(Json))!;
+            Assert.Equal("Positive/Reactive", updated.TestResult);
+            Assert.Equal("1200", updated.ResultValue);
+            Assert.Equal(5, updated.OrganismId);
+
+            Assert.Contains("Update", await AuditOperations("lab_test_results", resultId));
+        }
+        finally
+        {
+            await ClearSpecimensOf(reportId);
+        }
+    }
+
+    /// <summary>
+    /// Marking a result the primary one is refused, as a 400 Problem Details,
+    /// where another result on the same test already is: a test shows one
+    /// primary result and no more.
+    /// </summary>
+    [Fact]
+    public async Task AResultEditRefusedWhenAnotherResultIsAlreadyPrimary()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            var detail = await Record(client, reportId, new CreateLabRequest(
+                AccessionNo: "LAB-2026-011",
+                Tests:
+                [
+                    new CreateLabTestRequest(
+                        Results:
+                        [
+                            new CreateLabTestResultRequest(TestResult: "Positive/Reactive", PrimaryLabResult: true),
+                            new CreateLabTestResultRequest(TestResult: "Negative/Non-reactive"),
+                        ]),
+                ]));
+
+            var secondResultId = detail.Tests.Single().Results[1].Id;
+
+            using var put = await client.PutAsJsonAsync($"/api/lab-test-results/{secondResultId}",
+                new CreateLabTestResultRequest(TestResult: "Negative/Non-reactive", PrimaryLabResult: true),
+                Json);
+
+            Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+            Assert.Equal("application/problem+json", put.Content.Headers.ContentType?.MediaType);
+
+            using var problem = JsonDocument.Parse(await put.Content.ReadAsStringAsync());
+            Assert.Contains("already the primary one",
+                problem.RootElement.GetProperty("detail").GetString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            await ClearSpecimensOf(reportId);
+        }
+    }
+
+    /// <summary>
+    /// A susceptibility row is corrected through
+    /// <c>PUT /api/lab-resist-tests/{id}</c> and the save is audited.
+    /// </summary>
+    [Fact]
+    public async Task ASusceptibilityEditChangesItAndIsAudited()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            var detail = await Record(client, reportId, new CreateLabRequest(
+                AccessionNo: "LAB-2026-011",
+                ResistTests: [new CreateLabResistTestRequest(OrganismId: 5, ResistTestAgentId: 7)]));
+
+            var resistId = detail.ResistTests.Single().Id;
+
+            using var put = await client.PutAsJsonAsync($"/api/lab-resist-tests/{resistId}",
+                new CreateLabResistTestRequest(
+                    OrganismId: 5, ResistTestAgentId: 8, ResistTestResultId: 2,
+                    TestDate: new DateOnly(2026, 3, 11)),
+                Json);
+
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+            var updated = (await put.Content.ReadFromJsonAsync<LabResistTestResponse>(Json))!;
+            Assert.Equal(8, updated.ResistTestAgentId);
+            Assert.Equal(2, updated.ResistTestResultId);
+            Assert.Equal(new DateOnly(2026, 3, 11), updated.TestDate);
+
+            Assert.Contains("Update", await AuditOperations("lab_resist_tests", resistId));
+        }
+        finally
+        {
+            await ClearSpecimensOf(reportId);
+        }
+    }
+
+    /// <summary>
+    /// The leaves delete freely and each delete is audited: a result and a
+    /// susceptibility row are removed with a 204, gone on the next read, and
+    /// recorded as a delete of their row.
+    /// </summary>
+    [Fact]
+    public async Task ALeafResultAndSusceptibilityDeleteAndAreAudited()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            var detail = await Record(client, reportId, new CreateLabRequest(
+                AccessionNo: "LAB-2026-011",
+                Tests:
+                [
+                    new CreateLabTestRequest(
+                        Results: [new CreateLabTestResultRequest(TestResult: "Positive/Reactive")]),
+                ],
+                ResistTests: [new CreateLabResistTestRequest(OrganismId: 5)]));
+
+            var resultId = detail.Tests.Single().Results.Single().Id;
+            var resistId = detail.ResistTests.Single().Id;
+
+            using var deleteResult = await client.DeleteAsync($"/api/lab-test-results/{resultId}");
+            Assert.Equal(HttpStatusCode.NoContent, deleteResult.StatusCode);
+
+            using var deleteResist = await client.DeleteAsync($"/api/lab-resist-tests/{resistId}");
+            Assert.Equal(HttpStatusCode.NoContent, deleteResist.StatusCode);
+
+            using var read = await client.GetAsync($"/api/labs/{detail.Specimen.Id}");
+            read.EnsureSuccessStatusCode();
+            var round = (await read.Content.ReadFromJsonAsync<LabDetailResponse>(Json))!;
+            Assert.Empty(round.Tests.Single().Results);
+            Assert.Empty(round.ResistTests);
+
+            Assert.Contains("Delete", await AuditOperations("lab_test_results", resultId));
+            Assert.Contains("Delete", await AuditOperations("lab_resist_tests", resistId));
+        }
+        finally
+        {
+            await ClearSpecimensOf(reportId);
+        }
+    }
+
+    /// <summary>
+    /// A test with its results already removed deletes with a 204, and a
+    /// specimen with nothing left against it deletes with a 204, its join to
+    /// the report going with it and the delete audited.
+    /// </summary>
+    [Fact]
+    public async Task ATestAndThenItsSpecimenDeleteWhenNothingDependsOnThem()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        var labId = (await Record(client, reportId, new CreateLabRequest(
+            AccessionNo: "LAB-2026-011",
+            Tests: [new CreateLabTestRequest(TestTypeId: 3)]))).Specimen.Id;
+
+        int testId;
+
+        using (var readTests = await client.GetAsync($"/api/labs/{labId}"))
+        {
+            readTests.EnsureSuccessStatusCode();
+            var detail = (await readTests.Content.ReadFromJsonAsync<LabDetailResponse>(Json))!;
+            testId = detail.Tests.Single().Id;
+
+            using var deleteTest = await client.DeleteAsync($"/api/lab-tests/{testId}");
+            Assert.Equal(HttpStatusCode.NoContent, deleteTest.StatusCode);
+        }
+
+        // The test delete is a delete route like the others, and it is audited.
+        Assert.Contains("Delete", await AuditOperations("lab_tests", testId));
+
+        using var deleteLab = await client.DeleteAsync($"/api/labs/{labId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteLab.StatusCode);
+
+        // The specimen is gone, and so is the join that linked it to the report.
+        using var readGone = await client.GetAsync($"/api/labs/{labId}");
+        Assert.Equal(HttpStatusCode.NotFound, readGone.StatusCode);
+
+        await using var context = server.NewContext();
+        Assert.False(await context.PersonConditionLabs.AnyAsync(
+            link => link.PersonConditionId == reportId && link.LabId == labId));
+
+        Assert.Contains("Delete", await AuditOperations("labs", labId));
+    }
+
+    /// <summary>
+    /// A specimen that still has a test, and a test that still has a result,
+    /// are each refused with a 409 Problem Details naming what depends on them
+    /// rather than left to a foreign key to cascade.
+    /// </summary>
+    [Fact]
+    public async Task ADeleteIsRefusedWhileRowsDependOnIt()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            var detail = await Record(client, reportId, new CreateLabRequest(
+                AccessionNo: "LAB-2026-011",
+                Tests:
+                [
+                    new CreateLabTestRequest(
+                        Results: [new CreateLabTestResultRequest(TestResult: "Positive/Reactive")]),
+                ]));
+
+            var labId = detail.Specimen.Id;
+            var testId = detail.Tests.Single().Id;
+
+            using var deleteLab = await client.DeleteAsync($"/api/labs/{labId}");
+            Assert.Equal(HttpStatusCode.Conflict, deleteLab.StatusCode);
+            Assert.Equal("application/problem+json", deleteLab.Content.Headers.ContentType?.MediaType);
+            using (var problem = JsonDocument.Parse(await deleteLab.Content.ReadAsStringAsync()))
+            {
+                var detailText = problem.RootElement.GetProperty("detail").GetString();
+                Assert.Contains("still has 1 test", detailText, StringComparison.Ordinal);
+            }
+
+            using var deleteTest = await client.DeleteAsync($"/api/lab-tests/{testId}");
+            Assert.Equal(HttpStatusCode.Conflict, deleteTest.StatusCode);
+            using (var problem = JsonDocument.Parse(await deleteTest.Content.ReadAsStringAsync()))
+            {
+                Assert.Contains("still has 1 result",
+                    problem.RootElement.GetProperty("detail").GetString(), StringComparison.Ordinal);
+            }
+
+            // Refused, so everything is still there to be read.
+            using var read = await client.GetAsync($"/api/labs/{labId}");
+            read.EnsureSuccessStatusCode();
+        }
+        finally
+        {
+            await ClearSpecimensOf(reportId);
+        }
+    }
+
+    /// <summary>
+    /// An edit or a delete of a row nobody has is a 404 Problem Details, the
+    /// resource named in the route not being there to change.
+    /// </summary>
+    [Fact]
+    public async Task AnEditOrDeleteOfARowNobodyHasIsA404()
+    {
+        var client = api.CreateClient();
+
+        using var put = await client.PutAsJsonAsync("/api/labs/987654",
+            new UpdateLabRequest(LabFacilityId: 1), Json);
+        Assert.Equal(HttpStatusCode.NotFound, put.StatusCode);
+
+        using var delete = await client.DeleteAsync("/api/lab-tests/987654");
+        Assert.Equal(HttpStatusCode.NotFound, delete.StatusCode);
+    }
+
+    /// <summary>
     /// Records a specimen that is expected to succeed, and answers with it.
     /// </summary>
     private async Task<LabDetailResponse> Record(
@@ -314,6 +689,23 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
         await context.SaveChangesAsync();
 
         return report.Id;
+    }
+
+    /// <summary>
+    /// The operations audited against a table for one single-column key, in the
+    /// order they were written — the AuditInterceptor's rows read back through
+    /// a fresh context, so an update or a delete can be shown to have been
+    /// recorded as well as to have happened.
+    /// </summary>
+    private async Task<List<string>> AuditOperations(string table, int key)
+    {
+        await using var context = server.NewContext();
+
+        return await context.Set<AuditEntry>()
+            .Where(entry => entry.TableName == table && entry.KeyValues == key.ToString())
+            .OrderBy(entry => entry.Id)
+            .Select(entry => entry.Operation)
+            .ToListAsync();
     }
 
     /// <summary>The person a report is about, read straight from the report.</summary>

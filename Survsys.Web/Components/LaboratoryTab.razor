@@ -24,6 +24,7 @@
    name it: lab-entry-test-0-result-1 and so on. *@
 @using System.Globalization
 @inject LabsClient Api
+@inject IDialogService Dialogs
 
 @if (listFailure is { } whyNoList)
 {
@@ -66,13 +67,15 @@
                 <th>Diagnostic</th>
                 <th>Reporting</th>
                 <th>Sent to state</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             @for (var n = 0; n < specimens.Count; n++)
             {
-                var specimen = specimens[n];
-                <tr id="@($"lab-specimen-{n}")" @key="specimen.Id">
+                var rowAt = n;
+                var specimen = specimens[rowAt];
+                <tr id="@($"lab-specimen-{rowAt}")" @key="specimen.Id">
                     <td>@Shown(specimen.AccessionNo)</td>
                     <td>@Shown(Written(specimen.CollectionDate))</td>
                     <td>@Shown(specimen.SpecimenSourceId)</td>
@@ -81,12 +84,24 @@
                     <td>@Shown(specimen.DiagnosticFacilityId)</td>
                     <td>@Shown(specimen.ReportingFacilityId)</td>
                     <td>@Flag(specimen.SpecimenSentToState)</td>
+                    <td class="d-flex gap-1">
+                        <MudButton id="@($"lab-specimen-{rowAt}-edit")" Variant="Variant.Text"
+                                   Size="Size.Small" Disabled="@recording"
+                                   OnClick="@(() => OpenForEdit(specimen))">
+                            Edit
+                        </MudButton>
+                        <MudButton id="@($"lab-specimen-{rowAt}-delete")" Variant="Variant.Text"
+                                   Color="Color.Error" Size="Size.Small" Disabled="@recording"
+                                   OnClick="@(() => RemoveSpecimen(specimen))">
+                            Delete
+                        </MudButton>
+                    </td>
                 </tr>
             }
             @if (specimens.Count == 0)
             {
                 <tr>
-                    <td colspan="8">No specimens recorded yet.</td>
+                    <td colspan="9">No specimens recorded yet.</td>
                 </tr>
             }
         </tbody>
@@ -94,7 +109,14 @@
 </MudPaper>
 
 <MudPaper id="lab-entry" Elevation="1" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" GutterBottom="true">Record a specimen</MudText>
+    @if (editingId is null)
+    {
+        <MudText Typo="Typo.h6" GutterBottom="true">Record a specimen</MudText>
+    }
+    else
+    {
+        <MudText id="lab-entry-edit-heading" Typo="Typo.h6" GutterBottom="true">Edit specimen</MudText>
+    }
     <MudGrid Spacing="2">
         <MudItem xs="12" sm="3">
             <MudTextField @bind-Value="specimenForm.AccessionNo" id="lab-entry-accession-no"
@@ -212,29 +234,35 @@
                             </MudItem>
                             <MudItem xs="12" sm="1" Class="d-flex align-center">
                                 <MudButton id="@($"lab-entry-test-{testAt}-result-remove-{resultAt}")"
-                                           Variant="Variant.Text" Color="Color.Error"
-                                           OnClick="@(() => test.Results.RemoveAt(resultAt))">
+                                           Variant="Variant.Text" Color="Color.Error" Disabled="@recording"
+                                           OnClick="@(() => RemoveResult(test, resultAt))">
                                     Remove
                                 </MudButton>
                             </MudItem>
                         </MudGrid>
                     }
-                    <MudButton id="@($"lab-entry-test-{testAt}-result-add")" Variant="Variant.Outlined"
-                               Class="mt-1" OnClick="@(() => test.Results.Add(new ResultForm()))">
-                        Add result
-                    </MudButton>
+                    @if (editingId is null)
+                    {
+                        <MudButton id="@($"lab-entry-test-{testAt}-result-add")" Variant="Variant.Outlined"
+                                   Class="mt-1" OnClick="@(() => test.Results.Add(new ResultForm()))">
+                            Add result
+                        </MudButton>
+                    }
                 </div>
 
                 <MudButton id="@($"lab-entry-test-remove-{testAt}")" Variant="Variant.Text" Color="Color.Error"
-                           Class="mt-2" OnClick="@(() => tests.RemoveAt(testAt))">
+                           Class="mt-2" Disabled="@recording" OnClick="@(() => RemoveTest(testAt))">
                     Remove test
                 </MudButton>
             </MudPaper>
         }
-        <MudButton id="lab-entry-test-add" Variant="Variant.Outlined" Class="mt-2"
-                   OnClick="@(() => tests.Add(new TestForm()))">
-            Add test
-        </MudButton>
+        @if (editingId is null)
+        {
+            <MudButton id="lab-entry-test-add" Variant="Variant.Outlined" Class="mt-2"
+                       OnClick="@(() => tests.Add(new TestForm()))">
+                Add test
+            </MudButton>
+        }
     </div>
 
     <div id="lab-entry-resist-tests" class="mt-4">
@@ -266,23 +294,41 @@
                 </MudItem>
                 <MudItem xs="12" sm="1" Class="d-flex align-center">
                     <MudButton id="@($"lab-entry-resist-remove-{resistAt}")" Variant="Variant.Text"
-                               Color="Color.Error" OnClick="@(() => resistTests.RemoveAt(resistAt))">
+                               Color="Color.Error" Disabled="@recording"
+                               OnClick="@(() => RemoveResist(resistAt))">
                         Remove
                     </MudButton>
                 </MudItem>
             </MudGrid>
         }
-        <MudButton id="lab-entry-resist-add" Variant="Variant.Outlined" Class="mt-2"
-                   OnClick="@(() => resistTests.Add(new ResistForm()))">
-            Add susceptibility
-        </MudButton>
+        @if (editingId is null)
+        {
+            <MudButton id="lab-entry-resist-add" Variant="Variant.Outlined" Class="mt-2"
+                       OnClick="@(() => resistTests.Add(new ResistForm()))">
+                Add susceptibility
+            </MudButton>
+        }
     </div>
 
     <div class="d-flex gap-2 mt-4">
-        <MudButton id="lab-entry-record" Variant="Variant.Filled" Color="Color.Primary"
-                   Disabled="@recording" OnClick="@Record">
-            Record specimen
-        </MudButton>
+        @if (editingId is null)
+        {
+            <MudButton id="lab-entry-record" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@recording" OnClick="@Record">
+                Record specimen
+            </MudButton>
+        }
+        else
+        {
+            <MudButton id="lab-entry-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@recording" OnClick="@SaveEdit">
+                Save changes
+            </MudButton>
+            <MudButton id="lab-entry-cancel" Variant="Variant.Outlined"
+                       Disabled="@recording" OnClick="@CancelEdit">
+                Cancel
+            </MudButton>
+        }
     </div>
 </MudPaper>
 
@@ -315,6 +361,9 @@
 
     private bool recording;
 
+    /// <summary>The id of the specimen the form is editing, or null when it is recording a new one.</summary>
+    private int? editingId;
+
     private string? listFailure;
 
     private string? saved;
@@ -323,7 +372,10 @@
 
     private string? complaint;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => Reload();
+
+    /// <summary>Reads the report's specimens into the list, or why there are none.</summary>
+    private async Task Reload()
     {
         var listed = await Api.Page(ReportId, 1, APageful);
 
@@ -426,6 +478,414 @@
         }
     }
 
+    /// <summary>
+    /// Opens a listed specimen into the entry form, loaded whole, so its own
+    /// columns, its tests, their results and its susceptibility can be
+    /// corrected and removed in place.
+    /// </summary>
+    private async Task OpenForEdit(LabResponse specimen)
+    {
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+
+        var detail = await Api.Detail(specimen.Id);
+
+        if (detail.Value is not { } whole)
+        {
+            entryFailure = detail.Failure;
+
+            return;
+        }
+
+        editingId = whole.Specimen.Id;
+        specimenForm = new SpecimenForm
+        {
+            AccessionNo = whole.Specimen.AccessionNo,
+            CollectionDate = Written(whole.Specimen.CollectionDate),
+            SpecimenSourceId = whole.Specimen.SpecimenSourceId,
+            LabFacilityId = whole.Specimen.LabFacilityId,
+            ProviderId = whole.Specimen.ProviderId,
+            DiagnosticFacilityId = whole.Specimen.DiagnosticFacilityId,
+            ReportingFacilityId = whole.Specimen.ReportingFacilityId,
+            SentToState = whole.Specimen.SpecimenSentToState,
+        };
+
+        tests = [];
+
+        foreach (var test in whole.Tests)
+        {
+            var form = new TestForm
+            {
+                Id = test.Id,
+                TestTypeId = test.TestTypeId,
+                TestStatusId = test.TestStatusId,
+                LoincCode = test.LoincCode,
+                ReferenceRange = test.ReferenceRange,
+                LabTestDate = Written(test.LabTestDate),
+            };
+
+            foreach (var result in test.Results)
+            {
+                form.Results.Add(new ResultForm
+                {
+                    Id = result.Id,
+                    OrganismId = result.OrganismId,
+                    ResultValue = result.ResultValue,
+                    TestResult = result.TestResult,
+                    Comment = result.Comment,
+                    Units = result.Units,
+                    Primary = result.PrimaryLabResult,
+                });
+            }
+
+            tests.Add(form);
+        }
+
+        resistTests = whole.ResistTests.Select(resist => new ResistForm
+        {
+            Id = resist.Id,
+            OrganismId = resist.OrganismId,
+            AgentId = resist.ResistTestAgentId,
+            ResultId = resist.ResistTestResultId,
+            TestDate = Written(resist.TestDate),
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Saves the open specimen's own columns through its PUT, and each of its
+    /// tests, results and susceptibility rows through theirs, stopping at the
+    /// first the API refuses and showing that refusal as the entry error. The
+    /// dates are all read before any save, so a bad one is a complaint and
+    /// never a half-saved specimen.
+    /// </summary>
+    private async Task SaveEdit()
+    {
+        if (editingId is not { } labId)
+        {
+            return;
+        }
+
+        if (!TryDate(specimenForm.CollectionDate, "the collection date", out var collected, out var why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        for (var t = 0; t < tests.Count; t++)
+        {
+            if (!TryDate(tests[t].LabTestDate, $"test {t + 1}'s test date", out _, out why))
+            {
+                complaint = why;
+
+                return;
+            }
+        }
+
+        for (var s = 0; s < resistTests.Count; s++)
+        {
+            if (!TryDate(resistTests[s].TestDate, $"susceptibility {s + 1}'s test date", out _, out why))
+            {
+                complaint = why;
+
+                return;
+            }
+        }
+
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+        recording = true;
+
+        try
+        {
+            var specimenSaved = await Api.UpdateSpecimen(labId, new UpdateLabRequest(
+                LabFacilityId: specimenForm.LabFacilityId,
+                ProviderId: specimenForm.ProviderId,
+                DiagnosticFacilityId: specimenForm.DiagnosticFacilityId,
+                ReportingFacilityId: specimenForm.ReportingFacilityId,
+                SpecimenSourceId: specimenForm.SpecimenSourceId,
+                CollectionDate: collected,
+                AccessionNo: Blank(specimenForm.AccessionNo),
+                SpecimenSentToState: specimenForm.SentToState));
+
+            if (specimenSaved.Value is null)
+            {
+                entryFailure = specimenSaved.Failure;
+
+                return;
+            }
+
+            foreach (var test in tests)
+            {
+                if (test.Id is not { } testId)
+                {
+                    continue;
+                }
+
+                TryDate(test.LabTestDate, "test date", out var tested, out _);
+
+                var testSaved = await Api.UpdateTest(testId, new UpdateLabTestRequest(
+                    TestTypeId: test.TestTypeId,
+                    TestStatusId: test.TestStatusId,
+                    LoincCode: Blank(test.LoincCode),
+                    ReferenceRange: Blank(test.ReferenceRange),
+                    LabTestDate: tested));
+
+                if (testSaved.Value is null)
+                {
+                    entryFailure = testSaved.Failure;
+
+                    return;
+                }
+
+                foreach (var result in test.Results)
+                {
+                    if (result.Id is not { } resultId)
+                    {
+                        continue;
+                    }
+
+                    var resultSaved = await Api.UpdateResult(resultId, new CreateLabTestResultRequest(
+                        OrganismId: result.OrganismId,
+                        ResultValue: Blank(result.ResultValue),
+                        TestResult: Blank(result.TestResult),
+                        Comment: Blank(result.Comment),
+                        Units: Blank(result.Units),
+                        PrimaryLabResult: result.Primary));
+
+                    if (resultSaved.Value is null)
+                    {
+                        entryFailure = resultSaved.Failure;
+
+                        return;
+                    }
+                }
+            }
+
+            foreach (var resist in resistTests)
+            {
+                if (resist.Id is not { } resistId)
+                {
+                    continue;
+                }
+
+                TryDate(resist.TestDate, "test date", out var tested, out _);
+
+                var resistSaved = await Api.UpdateResist(resistId, new CreateLabResistTestRequest(
+                    OrganismId: resist.OrganismId,
+                    ResistTestAgentId: resist.AgentId,
+                    ResistTestResultId: resist.ResultId,
+                    TestDate: tested));
+
+                if (resistSaved.Value is null)
+                {
+                    entryFailure = resistSaved.Failure;
+
+                    return;
+                }
+            }
+
+            editingId = null;
+            Clear();
+            await Reload();
+            saved = "The specimen has been saved.";
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>Closes the edit form without saving, back to recording a new specimen.</summary>
+    private void CancelEdit()
+    {
+        editingId = null;
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+        Clear();
+    }
+
+    /// <summary>
+    /// Removes a specimen from its row, once confirmed. A specimen that still
+    /// has tests or susceptibility rows is refused by the API, and that refusal
+    /// is shown as the entry error.
+    /// </summary>
+    private async Task RemoveSpecimen(LabResponse specimen)
+    {
+        if (!await Confirm($"Remove specimen {Shown(specimen.AccessionNo)}?",
+            "The specimen will be removed. This cannot be undone."))
+        {
+            return;
+        }
+
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+        recording = true;
+
+        try
+        {
+            if (await Api.DeleteSpecimen(specimen.Id) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            specimens.RemoveAll(listed => listed.Id == specimen.Id);
+
+            if (editingId == specimen.Id)
+            {
+                editingId = null;
+                Clear();
+            }
+
+            saved = "The specimen has been removed.";
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Removes a test row: a stored test, once confirmed, through its own route
+    /// (a test with results the API refuses, shown as the entry error); an
+    /// unsaved one from the form alone.
+    /// </summary>
+    private async Task RemoveTest(int testAt)
+    {
+        var test = tests[testAt];
+
+        if (editingId is null || test.Id is not { } testId)
+        {
+            tests.RemoveAt(testAt);
+
+            return;
+        }
+
+        if (!await Confirm("Remove test?", "The test will be removed. This cannot be undone."))
+        {
+            return;
+        }
+
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+        recording = true;
+
+        try
+        {
+            if (await Api.DeleteTest(testId) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            tests.RemoveAt(testAt);
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Removes a result row: a stored result, once confirmed, through its own
+    /// route; an unsaved one from the form alone.
+    /// </summary>
+    private async Task RemoveResult(TestForm test, int resultAt)
+    {
+        var result = test.Results[resultAt];
+
+        if (editingId is null || result.Id is not { } resultId)
+        {
+            test.Results.RemoveAt(resultAt);
+
+            return;
+        }
+
+        if (!await Confirm("Remove result?", "The result will be removed. This cannot be undone."))
+        {
+            return;
+        }
+
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+        recording = true;
+
+        try
+        {
+            if (await Api.DeleteResult(resultId) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            test.Results.RemoveAt(resultAt);
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Removes a susceptibility row: a stored one, once confirmed, through its
+    /// own route; an unsaved one from the form alone.
+    /// </summary>
+    private async Task RemoveResist(int resistAt)
+    {
+        var resist = resistTests[resistAt];
+
+        if (editingId is null || resist.Id is not { } resistId)
+        {
+            resistTests.RemoveAt(resistAt);
+
+            return;
+        }
+
+        if (!await Confirm("Remove susceptibility?",
+            "The susceptibility row will be removed. This cannot be undone."))
+        {
+            return;
+        }
+
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+        recording = true;
+
+        try
+        {
+            if (await Api.DeleteResist(resistId) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            resistTests.RemoveAt(resistAt);
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Asks the operator to confirm a removal before it is sent, so a delete is
+    /// never one click away. True only where they chose to go ahead.
+    /// </summary>
+    private async Task<bool> Confirm(string title, string message) =>
+        await Dialogs.ShowMessageBoxAsync(title, message, yesText: "Delete", cancelText: "Cancel") == true;
+
     /// <summary>Empties the entry form after a specimen is recorded.</summary>
     private void Clear()
     {
@@ -502,6 +962,9 @@
     /// <summary>One test as its boxes hold it, with the results under it.</summary>
     private sealed class TestForm
     {
+        /// <summary>The stored test's id when editing one, or null for an unsaved test.</summary>
+        public int? Id { get; set; }
+
         public int? TestTypeId { get; set; }
         public int? TestStatusId { get; set; }
         public string? LoincCode { get; set; }
@@ -513,6 +976,9 @@
     /// <summary>One result as its boxes hold it.</summary>
     private sealed class ResultForm
     {
+        /// <summary>The stored result's id when editing one, or null for an unsaved result.</summary>
+        public int? Id { get; set; }
+
         public int? OrganismId { get; set; }
         public string? ResultValue { get; set; }
         public string? TestResult { get; set; }
@@ -524,6 +990,9 @@
     /// <summary>One antimicrobial susceptibility row as its boxes hold it.</summary>
     private sealed class ResistForm
     {
+        /// <summary>The stored row's id when editing one, or null for an unsaved row.</summary>
+        public int? Id { get; set; }
+
         public int? OrganismId { get; set; }
         public int? AgentId { get; set; }
         public int? ResultId { get; set; }

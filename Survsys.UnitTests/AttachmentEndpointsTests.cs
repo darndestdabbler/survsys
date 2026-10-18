@@ -165,6 +165,41 @@ public class AttachmentEndpointsTests
     }
 
     /// <summary>
+    /// A refile accepts each of the five categories, the question the edit asks
+    /// of a correction being only whether the new category is one of them.
+    /// </summary>
+    [Theory]
+    [InlineData(AttachmentEndpoints.CorrespondenceCategory)]
+    [InlineData(AttachmentEndpoints.LabCategory)]
+    [InlineData(AttachmentEndpoints.LetterCategory)]
+    [InlineData(AttachmentEndpoints.XRayCategory)]
+    [InlineData(AttachmentEndpoints.OtherCategory)]
+    public void WhyNotACategoryAcceptsEachOfTheFive(string category) =>
+        Assert.Null(AttachmentEndpoints.WhyNotACategory(category));
+
+    /// <summary>
+    /// A refile to a category that is not one of the five, or to none, is
+    /// refused with the sentence the upload gives.
+    /// </summary>
+    [Fact]
+    public void WhyNotACategoryRefusesACategoryOutsideTheFive()
+    {
+        var why = AttachmentEndpoints.WhyNotACategory("radiology");
+
+        Assert.NotNull(why);
+        Assert.Contains("category 'radiology' is not one", why, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotACategoryRefusesNoCategory()
+    {
+        var why = AttachmentEndpoints.WhyNotACategory(null);
+
+        Assert.NotNull(why);
+        Assert.Contains("is not one an attachment is filed under", why, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// One attachment this tier stores, with whichever part of it the case
     /// under test replaces.
     /// </summary>

@@ -172,4 +172,51 @@ public class ClinicalEndpointsTests
                 null, null, null, death, new DateOnly(2026, 3, 20))),
             StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The MMWR is read off the disease onset date where one is given, by
+    /// <see cref="MmwrWeek.Of(DateOnly)"/> — the Fourth of July 2026 is in
+    /// MMWR week 26.
+    /// </summary>
+    [Fact]
+    public void MmwrForReadsTheOnsetDateWhenGiven()
+    {
+        Assert.Equal(
+            new MmwrWeek(26, 2026),
+            ClinicalEndpoints.MmwrFor(new DateOnly(2026, 7, 4), new DateOnly(2026, 1, 1)));
+    }
+
+    /// <summary>
+    /// The date diagnosed stands in for the onset where there is no onset: the
+    /// diagnosis date is read instead, not ignored.
+    /// </summary>
+    [Fact]
+    public void MmwrForFallsBackToTheDiagnosisDateWhenThereIsNoOnset()
+    {
+        Assert.Equal(
+            new MmwrWeek(26, 2026),
+            ClinicalEndpoints.MmwrFor(null, new DateOnly(2026, 7, 4)));
+    }
+
+    /// <summary>
+    /// The onset wins where both are given: it is the date a report is
+    /// reported under, and the diagnosis only stands in for a missing one.
+    /// </summary>
+    [Fact]
+    public void MmwrForPrefersTheOnsetDateOverTheDiagnosisDate()
+    {
+        Assert.Equal(
+            MmwrWeek.Of(new DateOnly(2026, 7, 4)),
+            ClinicalEndpoints.MmwrFor(new DateOnly(2026, 7, 4), new DateOnly(2026, 3, 1)));
+    }
+
+    /// <summary>
+    /// With neither date there is nothing to recompute, so the answer is null
+    /// and the caller leaves the stored MMWR as it is.
+    /// </summary>
+    [Fact]
+    public void MmwrForIsNullWhenNeitherDateIsGiven()
+    {
+        Assert.Null(ClinicalEndpoints.MmwrFor(null, null));
+    }
 }
