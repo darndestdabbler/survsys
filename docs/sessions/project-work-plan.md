@@ -65,7 +65,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 51 | Outbreak management | no | 2026-10-17 |
 | 52 | The dynamic form builder | no | 2026-10-17 |
 | 53 | Treatments and vaccines | no | 2026-10-17 |
-| 54 | Audit by EF Core interceptors | — | not declared |
+| 54 | Audit by EF Core interceptors | no | 2026-10-17 |
 | 55 | IBIS integration and ad-hoc reporting | — | not declared |
 | 56 | Phase 7 walkthroughs and the full walkthrough regression | — | not declared |
 | 57 | Release 1.0.0 (release: 1.0.0) | — | not declared |
@@ -453,3 +453,13 @@ Give survsys its dynamic form builder across Survsys.Data, Survsys.Api and Survs
 **Releasable: no.**
 
 Give survsys treatments and vaccines across Survsys.Data, Survsys.Api and Survsys.Web. Survsys.Data gains a lean treatment catalogue (Treatment: a named treatment with its active and default-treatment flags), condition-specific treatment lists (ConditionTreatment: the treatments a condition offers, as a join), a vaccine catalogue seeded via HasData from the legacy CDC vaccine codes (Vaccine: code and description), and per-case vaccine records (PersonVaccine: a vaccine administered to a case, with its dose number, administered and expiration dates, lot number and comment), each with its IEntityTypeConfiguration, all in one migration. Survsys.Api gains the /api/treatments slice -- listing, reading, creating and saving a treatment together with the conditions it is listed for, and reading a condition's treatment list -- and the /api/vaccines slice -- reading the vaccine catalogue and listing, adding, editing and removing a case's vaccine records, with the chosen vaccine validated against the catalogue and the record's fields bounded. Survsys.Web gains the Treatments administration screen (a treatments list and an editor that sets a treatment's name, its flags and the conditions it belongs to) and the Vaccines case tab (a tab on the case that lists and records the vaccines administered, each chosen from the catalogue). The schema is a lean reading of EpiTrax's treatment, condition_treatment, vaccine and person_vaccine tables (legacy/nedss-jpa/src/main/resources/db/migration/V0001__create.sql and V0169__create_vaccine_tables.sql under ../nedss), holding only what a condition-specific treatment list and a case's vaccine records need.
+
+### Session 54 — Audit by EF Core interceptors
+
+**Releasable: no.**
+
+Give Survsys.Data a change audit driven by an EF Core SaveChanges interceptor, in place of the legacy PostgreSQL row triggers, and prove it in Survsys.IntegrationTests. Survsys.Data gains a lean AuditEntry entity (its IEntityTypeConfiguration mapping it to the audit_entries table: the audited table name, the primary key of the affected row, the operation -- Insert, Update or Delete -- and the UTC time it occurred), registered as a DbSet on SurvsysDbContext and created by one migration (20261017100000_AuditEntries) that sorts after 20261017090000_TreatmentsAndVaccines. An AuditInterceptor, an ISaveChangesInterceptor registered in SurvsysDbContext.OnConfiguring so it applies to every context the application and the suite build alike, snapshots the ChangeTracker's Added, Modified and Deleted entries before the save, and adds one AuditEntry per entry (skipping AuditEntry itself) carrying that entry's table name, primary key, operation and the current UTC time -- so each audit row is saved inside the same SaveChanges and the same transaction as the change it records. Survsys.IntegrationTests gains AuditInterceptorTests proving an audit row is written for each of an insert, an update and a delete carrying the right table, key and operation, and that no audit row persists when the save is enrolled in a transaction that is rolled back.
+
+**Amended after acceptance:**
+
+- 2026-10-17 — step 'audit-integration-tests': its files and checks: The step was blocked on a defect its tests found in the accepted interceptor: an insert's audit row records EF's temporary key (-2147482647) because the key is rendered in SavingChanges, before SQL Server assigns the identity. The interceptor step is accepted and cannot be amended, so this step takes AuditInterceptor.cs to record an inserted row's key once the database has assigned it, keeping the audit in the same transaction as the change. The added check runs the tests the step writes, not only the build. (claude-code (anthropic, claude-opus-5-5))

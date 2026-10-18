@@ -84,6 +84,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<AccessRecord> AccessRecords => Set<AccessRecord>();
 
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+
     public DbSet<SavedView> SavedViews => Set<SavedView>();
 
     public DbSet<VocabMasterLoinc> VocabMasterLoincs => Set<VocabMasterLoinc>();
@@ -157,4 +159,10 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
+
+    // The change audit rides on every context, the application's and the
+    // suite's alike, so neither call site has to remember it. It stands in for
+    // the legacy PostgreSQL row triggers; see AuditInterceptor.
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
+        optionsBuilder.AddInterceptors(new AuditInterceptor());
 }

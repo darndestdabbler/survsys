@@ -230,6 +230,44 @@ namespace Survsys.Data.Migrations
                     b.ToTable("attachment_files", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.AuditEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("KeyValues")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("key_values");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("TableName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("table_name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TableName", "OccurredAt");
+
+                    b.ToTable("audit_entries", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.CaseTask", b =>
                 {
                     b.Property<int>("Id")
