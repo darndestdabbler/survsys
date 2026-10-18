@@ -70,7 +70,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 56 | Repair the three endpoint queries SQL Server cannot translate | no | 2026-10-18 |
 | 57 | Phase 7 walkthroughs and the full walkthrough regression | no | 2026-10-18 |
 | 58 | Release 0.8.0 (release: 0.8.0) | yes | 2026-10-18 |
-| 59 | Case search and getting back to a case | — | not declared |
+| 59 | Case search and getting back to a case | no | 2026-10-18 |
 | 60 | Correcting and removing a case's child records | — | not declared |
 | 61 | The full investigation workflow | — | not declared |
 | 62 | Event types, contact cases and the contact import | — | not declared |
@@ -539,3 +539,13 @@ Document the Phase 7 workflows sessions 51 to 53 shipped as three walkthroughs u
 **Releasable: yes.**
 
 Release 0.8.0: the framework packs and publishes what is on the trunk.
+
+### Session 59 — Case search and getting back to a case
+
+**Releasable: no.**
+
+Give the application a way to find a case and get back to it. Survsys.Api gains GET /api/cases, a paged search over the case morbidity reports bound from the query string the way GET /api/persons is: a record-number prefix, patient last- and first-name prefixes, a condition, an investigating agency, a workflow state, a case status, and an inclusive event-onset date range (from, to), plus a personId so one endpoint also lists a person's cases; every criterion is optional, and the page comes back newest record number first as one row per case carrying its id, record number, patient id and name, disease, agency, workflow state (the initial code where none is stored, as the work queue reads it), case status, MMWR week and year and onset date, joined from persons, conditions and agencies by key since the entity carries no navigations. Survsys.Web gains a CasesClient that builds that query string, an Events screen at /events in the navigation bar that runs the search from a form with those criteria and opens a case from its row's record number, and a person screen at /people/{id} reached from the People results that shows the person's demographics and lists their cases, each a link to the case; the record numbers on the work queues and the task list's report column become links to /event/edit/{id}, and the name on every People results row becomes a link to the person screen, with every existing identifier and visible text left exactly as it is so the walkthroughs still read. Survsys.IntegrationTests proves the search against SQL Server with cases the test creates itself: the empty search, each filter alone, the filters combined, and paging; this session reaches SQL Server in that step, which the unit run of record does not.
+
+**Amended after acceptance:**
+
+- 2026-10-18 — step 'case-search-against-sql-server': its files: The SQL Server run showed EF Core cannot compose Where or OrderBy over a positional-record projection: JoinedCase becomes an init-only record bound by member initialiser so the ordered page translates, and its unit tests build it the same way; no other file moves (claude-code (anthropic, claude-opus-5-5))

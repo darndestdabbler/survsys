@@ -599,6 +599,21 @@
       "dateTime": "2026-10-18T09:50:26.065000-04:00",
       "task": "Release 0.8.0: the framework packs and publishes what is on the trunk.",
       "releasable": true
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 59,
+      "dateTime": "2026-10-18T10:04:33.836000-04:00",
+      "task": "Give the application a way to find a case and get back to it. Survsys.Api gains GET /api/cases, a paged search over the case morbidity reports bound from the query string the way GET /api/persons is: a record-number prefix, patient last- and first-name prefixes, a condition, an investigating agency, a workflow state, a case status, and an inclusive event-onset date range (from, to), plus a personId so one endpoint also lists a person's cases; every criterion is optional, and the page comes back newest record number first as one row per case carrying its id, record number, patient id and name, disease, agency, workflow state (the initial code where none is stored, as the work queue reads it), case status, MMWR week and year and onset date, joined from persons, conditions and agencies by key since the entity carries no navigations. Survsys.Web gains a CasesClient that builds that query string, an Events screen at /events in the navigation bar that runs the search from a form with those criteria and opens a case from its row's record number, and a person screen at /people/{id} reached from the People results that shows the person's demographics and lists their cases, each a link to the case; the record numbers on the work queues and the task list's report column become links to /event/edit/{id}, and the name on every People results row becomes a link to the person screen, with every existing identifier and visible text left exactly as it is so the walkthroughs still read. Survsys.IntegrationTests proves the search against SQL Server with cases the test creates itself: the empty search, each filter alone, the filters combined, and paging; this session reaches SQL Server in that step, which the unit run of record does not.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 59,
+      "dateTime": "2026-10-18T10:16:34.533000-04:00",
+      "what": "step 'case-search-against-sql-server': its files",
+      "reason": "The SQL Server run showed EF Core cannot compose Where or OrderBy over a positional-record projection: JoinedCase becomes an init-only record bound by member initialiser so the ordered page translates, and its unit tests build it the same way; no other file moves",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

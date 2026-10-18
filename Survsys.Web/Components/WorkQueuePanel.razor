@@ -81,7 +81,10 @@ else
                 @foreach (var row in Shown)
                 {
                     <tr id="@($"queue-row-{row.Id}")">
-                        <td id="@($"queue-row-{row.Id}-record")">@row.RecordNumber</td>
+                        @* The record number opens the case: the queue is where an
+                           investigator finds the reports that are theirs, and a row
+                           that only named one would leave them to type its address. *@
+                        <td id="@($"queue-row-{row.Id}-record")"><a href="@($"/event/edit/{row.Id}")">@row.RecordNumber</a></td>
                         <td>@ConditionName(row.ConditionId)</td>
                         <td id="@($"queue-row-{row.Id}-workflow")">@Label(row.WorkflowState)</td>
                         <td>@(row.CaseStatus ?? "Unknown")</td>

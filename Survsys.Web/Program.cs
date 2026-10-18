@@ -79,6 +79,7 @@ builder.Services.AddHttpClient<NotesClient>(http => http.BaseAddress = api).AddH
 builder.Services.AddHttpClient<AttachmentsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<TasksClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<WorkQueueClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<CasesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<UsersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<RolesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<SavedViewsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();

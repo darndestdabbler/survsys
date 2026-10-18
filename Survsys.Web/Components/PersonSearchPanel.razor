@@ -150,7 +150,11 @@ else if (asked?.Value is { } people)
                     {
                         <tr data-person="@person.Id">
                             <td data-person-id>@person.Id</td>
-                            <td data-person-name>@Named(person)</td>
+                            @* The name opens the person's own screen, wherever this
+                               panel is: on the People screen that is the point, and on
+                               the creation and contact screens it is a way to check
+                               who a row is before acting on it. *@
+                            <td data-person-name><a href="@($"/people/{person.Id}")">@Named(person)</a></td>
                             @* A dash rather than an empty cell for what nobody
                                has said, so a walkthrough can say what the
                                reader will see. *@

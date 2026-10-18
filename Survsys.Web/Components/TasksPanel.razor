@@ -95,7 +95,16 @@
                         <td id="@($"tasks-row-{task.Id}-schedule")">@Scheduled(task)</td>
                         @if (ReportId is null)
                         {
-                            <td id="@($"tasks-row-{task.Id}-report")">@Shown(task.PersonConditionId)</td>
+                            @* The report's number opens the case the task is about;
+                               a task about no case shows the dash as before. *@
+                            <td id="@($"tasks-row-{task.Id}-report")">@if (task.PersonConditionId is { } reportId)
+                                {
+                                    <a href="@($"/event/edit/{reportId}")">@reportId</a>
+                                }
+                                else
+                                {
+                                    @Shown(task.PersonConditionId)
+                                }</td>
                         }
                         <td>
                             @if (task.Status != CompleteStatus)
