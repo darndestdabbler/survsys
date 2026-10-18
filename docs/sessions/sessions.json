@@ -1228,9 +1228,9 @@
     {
       "number": 60,
       "title": "Correcting and removing a case's child records",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-18T10:29:07.547000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-18T11:26:30.988000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
