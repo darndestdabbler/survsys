@@ -69,7 +69,50 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 55 | IBIS integration and ad-hoc reporting | no | 2026-10-18 |
 | 56 | Repair the three endpoint queries SQL Server cannot translate | no | 2026-10-18 |
 | 57 | Phase 7 walkthroughs and the full walkthrough regression | no | 2026-10-18 |
-| 58 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 58 | Release 0.8.0 (release: 0.8.0) | yes | 2026-10-18 |
+| 59 | Case search and getting back to a case | — | not declared |
+| 60 | Correcting and removing a case's child records | — | not declared |
+| 61 | The full investigation workflow | — | not declared |
+| 62 | Event types, contact cases and the contact import | — | not declared |
+| 63 | Treatments, encounters, occupation and pregnancy on a case | — | not declared |
+| 64 | The reference code lists behind every coded field | — | not declared |
+| 65 | Delete, print and lock a case, and private notes | — | not declared |
+| 66 | Phase 8 walkthroughs | — | not declared |
+| 67 | Release 0.9.0 (release: 0.9.0) | — | not declared |
+| 68 | Person identifiers, name history and address history | — | not declared |
+| 69 | Person matching in the running application | — | not declared |
+| 70 | Duplicate persons and merging them | — | not declared |
+| 71 | Phase 9 walkthroughs | — | not declared |
+| 72 | Release 0.10.0 (release: 0.10.0) | — | not declared |
+| 73 | Parsed messages, the parser seam and MLLP | — | not declared |
+| 74 | Vocabulary and rules at intake | — | not declared |
+| 75 | The graylist, automatic assignment and the full queue | — | not declared |
+| 76 | Labs from messages, and updating an existing case | — | not declared |
+| 77 | Exceptions, reprocessing, notifications and statistics | — | not declared |
+| 78 | Connecticut ELR conformance | — | not declared |
+| 79 | Phase 10 walkthroughs | — | not declared |
+| 80 | Release 0.11.0 (release: 0.11.0) | — | not declared |
+| 81 | The notification queue worker and the export log | — | not declared |
+| 82 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
+| 83 | Guide, rule set and value set administration | — | not declared |
+| 84 | Transport to CDC | — | not declared |
+| 85 | Phase 11 walkthroughs | — | not declared |
+| 86 | Release 0.12.0 (release: 0.12.0) | — | not declared |
+| 87 | Audit with its user and values, and its screens | — | not declared |
+| 88 | Jurisdiction-scoped access and sign-in protection | — | not declared |
+| 89 | Classification rules on save | — | not declared |
+| 90 | IBIS, ad-hoc reporting and system configuration | — | not declared |
+| 91 | Phase 12 walkthroughs | — | not declared |
+| 92 | Release 0.13.0 (release: 0.13.0) | — | not declared |
+| 93 | eICR and RR parsing and document intake | — | not declared |
+| 94 | eCR validation and the eICR viewer | — | not declared |
+| 95 | Reportability and condition mapping | — | not declared |
+| 96 | Cases from eCR | — | not declared |
+| 97 | eCR senders and data quality | — | not declared |
+| 98 | Phase 13 walkthroughs | — | not declared |
+| 99 | Release 0.14.0 (release: 0.14.0) | — | not declared |
+| 100 | The parity check and the documentation for 1.0.0 | — | not declared |
+| 101 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -490,3 +533,9 @@ Document the Phase 7 workflows sessions 51 to 53 shipped as three walkthroughs u
 **Amended after acceptance:**
 
 - 2026-10-18 — step 'the-full-walkthrough-regression': its files: The read-through found drift: the report form's tabs grew from one, three and seven to nine and its header to eight fields; the conditions screen gained New condition; the app bar says Notifications; sign-in and users exist; the onset filters are boxes, not Any lists; ExportADatasetTests merged steps 14 and 15; and the form walkthrough's Bartonellosis case would enter the export walkthrough's Bartonellosis CSV, so it moved to Lyme disease (claude-code (anthropic, claude-opus-5-5))
+
+### Session 58 — Release 0.8.0 (release: 0.8.0)
+
+**Releasable: yes.**
+
+Release 0.8.0: the framework packs and publishes what is on the trunk.

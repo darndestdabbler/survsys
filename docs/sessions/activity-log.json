@@ -592,6 +592,13 @@
       "what": "step 'the-full-walkthrough-regression': its files",
       "reason": "The read-through found drift: the report form's tabs grew from one, three and seven to nine and its header to eight fields; the conditions screen gained New condition; the app bar says Notifications; sign-in and users exist; the onset filters are boxes, not Any lists; ExportADatasetTests merged steps 14 and 15; and the form walkthrough's Bartonellosis case would enter the export walkthrough's Bartonellosis CSV, so it moved to Lyme disease",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 58,
+      "dateTime": "2026-10-18T09:50:26.065000-04:00",
+      "task": "Release 0.8.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }
