@@ -1,0 +1,124 @@
+@* Step one of the legacy two-step creation flow, at the legacy address: find
+   the person the report is about, or put them on file.
+
+   ../nedss/docs/functional/epitrax-cmr-workflow.md records the flow as
+   "Search first → results table → if no match, 'Create Person and CMR'
+   button appears", and that is what this screen is. The form and the results
+   are PersonSearchPanel, the same component /people shows, because the legacy
+   application uses one form for both; what differs is what a row offers and
+   what is offered when nobody was found, and those are what this screen
+   passes in.
+
+   A person is created here and the report is created on the next screen,
+   which is the legacy flow's own division: "Person is created separately from
+   the CMR — two-step process creates person first, then links via
+   person_condition.person_id". So this screen's "Create person and CMR"
+   creates the person and then goes on to step two for them, where the report
+   itself is opened. *@
+@page "/morbidity/create"
+@inject PersonsClient Persons
+@inject NavigationManager Navigation
+
+<PageTitle>New case morbidity report — Survsys</PageTitle>
+
+<MudText id="new-report-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    New case morbidity report
+</MudText>
+
+<MudText id="new-report-lead-in" Typo="Typo.body2" Class="mb-4">
+    Step 1 of 2. Find the person this report is about. If they are not on file
+    yet, search for them first and then create them.
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    @* Creating the person failed. PersonsClient hands over the message; this
+       is where it is shown, as every failure in this tier is. *@
+    <MudAlert id="new-report-error" Severity="Severity.Error" Variant="Variant.Filled"
+              Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+<PersonSearchPanel RowAction="@ReportOn" WhenNobodyFound="@CreateThem" />
+
+@code {
+    private string? failure;
+
+    private bool creating;
+
+    /// <summary>
+    /// What each person found offers: opening a report about them, which is
+    /// step two.
+    /// </summary>
+    private RenderFragment<PersonResponse> ReportOn => person =>
+        @<MudButton id="@($"new-report-for-{person.Id}")"
+                    data-new-report-for="@person.Id"
+                    Variant="Variant.Filled"
+                    Color="Color.Primary"
+                    Size="Size.Small"
+                    Href="@($"/morbidity/create/{person.Id}")">
+            Create CMR
+        </MudButton>;
+
+    /// <summary>
+    /// What a search that found nobody offers: the legacy "Create Person and
+    /// CMR" button, which puts the person on file from the criteria just
+    /// searched with and then goes on to step two for them.
+    /// </summary>
+    private RenderFragment<PersonSearchCriteria> CreateThem => criteria =>
+        @<div class="mb-4">
+            <MudButton id="new-report-create-person" Variant="Variant.Filled"
+                       Color="Color.Primary" Disabled="@creating"
+                       OnClick="@(() => Create(criteria))">
+                Create person and CMR
+            </MudButton>
+        </div>;
+
+    /// <summary>
+    /// Creates the person the search did not find, from what was searched
+    /// for, and goes on to step two for them.
+    /// </summary>
+    /// <remarks>
+    /// The telephone is not among what is carried across, because a person's
+    /// telephone is a row of its own and <c>POST /api/persons</c> takes the
+    /// person's own columns alone: a number searched with is recorded on the
+    /// Demographics screen, which is a later session's.
+    /// </remarks>
+    private async Task Create(PersonSearchCriteria criteria)
+    {
+        if (string.IsNullOrWhiteSpace(criteria.LastName))
+        {
+            failure = "Search by at least a last name before creating a person: a last "
+                + "name is the one part of a name this system requires.";
+
+            return;
+        }
+
+        failure = null;
+        creating = true;
+
+        try
+        {
+            var created = await Persons.Create(new CreatePersonRequest(
+                LastName: criteria.LastName,
+                FirstName: criteria.FirstName,
+                MiddleName: criteria.MiddleName,
+                BirthDate: criteria.BirthDate,
+                BirthGender: criteria.BirthGender));
+
+            if (created.Value is { } person)
+            {
+                Navigation.NavigateTo($"/morbidity/create/{person.Id}");
+            }
+            else
+            {
+                failure = created.Failure;
+            }
+        }
+        finally
+        {
+            creating = false;
+        }
+    }
+}

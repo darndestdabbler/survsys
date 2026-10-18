@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 032 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 032 transcript</h1>
+<p class="stamp">Rendered 2026-10-16T20:20:22.103Z by dabbler-ai-router 3.21.0 at 800468d112a6591b20ea50ee57ffb8c84245fb8b.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-16T15:56:18.193-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 32: Users, roles, privileges and access audit</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code> and <code>Survsys.Api</code>: users, roles and privileges with their migration; authorisation on every endpoint; and the access audit record.</li><li><code>Survsys.Web</code>: sign-in, the user and role administration screens, and privilege-gated navigation.</li><li><code>Survsys.UnitTests</code> and <code>Survsys.IntegrationTests</code>: the privilege rules named after their rule class, and an integration test that an unprivileged caller is refused rather than served.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Give Survsys users, roles and privileges, put every API endpoint behind them, and record who opened which case. The privileges are a fixed catalogue the code checks, named once in Survsys.Contracts.Privileges because both tiers read them: view_cases, edit_cases, manage_reference_data and manage_users. Survsys.Data gains users (user name, display name, password hash, active), roles (name), user_roles, role_privileges (role and privilege name) and access_records (user, case morbidity report, when), in one UsersAndRoles migration that seeds an Administrator role holding every privilege. Survsys.Api authenticates with ASP.NET Core's own bearer tokens: POST /api/sign-in (anonymous) checks the password with the framework's PasswordHasher and issues a token whose claims are the user's id, name and the privileges of their roles; GET /api/me answers who the caller is. One fallback authorisation policy covers every endpoint already mapped and every one mapped later: the caller must be signed in, and PrivilegeRules, a pure rule over the request's method and path, names the privilege the request needs (reference data and core elements are readable by any signed-in user and written with manage_reference_data; users, roles and the access audit need manage_users; every other API read needs view_cases and every other write edit_cases); an anonymous caller is answered 401 and an unprivileged one 403, as Problem Details. At startup the API ensures the administrator Survsys:Administrator:UserName and :Password name exists when both are configured, so a fresh database has someone who can sign in, and no credential lives in a file. UserEndpoints and RoleEndpoints list, create and update users (roles, active flag, a new password) and roles (their privileges), and GET /api/privileges lists the catalogue. Opening a case morbidity report writes an access record, and GET /api/access-audit pages them newest first, optionally for one report. Survsys.Web signs a person in with a statically rendered sign-in page that posts to the tier, keeps the API token and the privileges in its authentication cookie, sends the token on every API call through one delegating handler, requires a signed-in user for every screen, offers sign-out, shows each navigation entry only to a user holding the privilege its screen needs, and gains the user and role administration screens. The integration suite signs its client in as the configured administrator and proves an anonymous and an unprivileged caller are refused; the end-to-end harness starts the API with an administrator and signs the browser in before each walkthrough, and each walkthrough's Before you start says the reader signs in first.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/4be6be69ecb188fb29bf03a8885d8ce6bbdf427f"><code>4be6be69ecb188fb29bf03a8885d8ce6bbdf427f</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Data</td><td><p>Survsys.Contracts: Privileges, the four privilege name constants and All. Survsys.Data: the User, Role, UserRole, RolePrivilege and AccessRecord entities with their configurations (unique user name and role name, role privileges keyed by role and privilege, the Administrator role seeded with every privilege, access records indexed by report and time) and their DbSets.</p></td><td></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Migration</td><td><p>Generate the UsersAndRoles migration with dotnet ef under the migration id 20261016210000_UsersAndRoles, and the updated model snapshot.</p></td><td></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Api authorisation</td><td><p>Survsys.Api: PrivilegeRules.RequiredFor(method, path), the privilege a request needs or null for any signed-in user, and PrivilegeRules.Allows(held privileges, method, path), with PrivilegeRulesTests covering a reference-data read and write, a users, roles and access-audit request, a case read and a case write, and a caller holding the privilege or not; Program.cs adding bearer-token authentication, the fallback policy built on PrivilegeRules, anonymous health and sign-in, and the configured administrator ensured at startup; AccountEndpoints with POST /api/sign-in and GET /api/me, its public helpers (the claims a user signs in with) tested in AccountEndpointsTests; Survsys.Contracts SignInRequest and CurrentUserResponse.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~AccountEndpointsTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Api users roles</td><td><p>Survsys.Api: UserEndpoints (GET /api/users, POST /api/users, PUT /api/users/{id} with display name, active flag, roles and an optional new password) and RoleEndpoints (GET /api/roles, POST /api/roles, PUT /api/roles/{id} with name and privileges, GET /api/privileges), each with its WhyNot validator (missing or over-long names, a duplicate name, an unknown role or privilege, a new user with no password) and ToResponse, registered in Program.cs, tested in UserEndpointsTests and RoleEndpointsTests; Survsys.Contracts UserResponse, SaveUserRequest, RoleResponse and SaveRoleRequest.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~UserEndpointsTests|FullyQualifiedName~RoleEndpointsTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Api access audit</td><td><p>Survsys.Api: GET /api/person-conditions/{id} writes an access record for the signed-in user when it serves the report; AccessAuditEndpoints with GET /api/access-audit, paged newest first and optionally for one report, with its ToResponse, registered in Program.cs and tested in AccessAuditEndpointsTests; Survsys.Contracts AccessRecordResponse.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~AccessAuditEndpointsTests|FullyQualifiedName~PersonConditionEndpointsTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Integration</td><td><p>Survsys.IntegrationTests: SurvsysApi configures the administrator it starts the API with and signs every client it creates in as that administrator, so the existing tests are served as before; PrivilegeRulesTests proves against the real host that an anonymous caller is answered 401, a signed-in user whose role lacks view_cases is answered 403 on a case read rather than served, the same user is served a reference-data read, the administrator is served the case read, and opening a report writes an access record. The check builds the project; running the suite is the framework's.</p></td><td></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Web sign in</td><td><p>Survsys.Web: AccountClient (sign in, who am I) tested in AccountClientTests; ApiTokenHandler, the delegating handler that sends the signed-in user's API token on every typed client, with CircuitServicesAccessor so it reaches the circuit's user, tested in ApiTokenHandlerTests; Program.cs adding cookie authentication, a fallback policy requiring a signed-in user, the sign-in and sign-out endpoints, and the handler on every typed client; App.razor rendering the sign-in page statically and every other page interactively; SignIn.razor with stable element identifiers; Routes.razor and _Imports.razor for the authorisation components.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~AccountClientTests|FullyQualifiedName~ApiTokenHandlerTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Web administration</td><td><p>Survsys.Web: UsersClient and RolesClient (list, create, update, and the privilege catalogue), registered in Program.cs and tested in UsersClientTests and RolesClientTests; the Users screen (each user with name, display name, roles and active, an add and edit form with roles and a new password) and the Roles screen (each role with its privileges, an add and edit form), with stable element identifiers; MainLayout showing each navigation entry only to a user holding the privilege its screen needs, the Users and Roles entries to manage_users, and the signed-in user's name with a sign-out button.</p></td><td></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~UsersClientTests|FullyQualifiedName~RolesClientTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Walkthroughs sign in</td><td><p>Survsys.E2ETests: the harness starts the API tier with a configured administrator and signs a browser in through the sign-in page once, and SurvsysPageTest opens every walkthrough's browser context with that signed-in state; SurvsysHarnessTests asserts that an unsigned browser is sent to the sign-in page. docs/walkthroughs: each walkthrough's Before you start gains the item that the reader signs in as a user whose role holds every privilege, such as the administrator the API tier was started with, and says how that administrator is configured.</p></td><td></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No agency- or jurisdiction-scoped roles (the legacy user_agency_role), no condition-level permissions (user_condition) and no sealed-record access (user_broken_seal): a role's privileges apply everywhere.</li><li>No privilege editor and no privilege table: the four privileges are a catalogue in code, because only code can enforce one; a role chooses among them.</li><li>No password history, expiry, complexity policy, lockout, password reset by email, refresh tokens or external identity provider: a token lives for the sign-in and a role change takes effect at the user's next sign-in.</li><li>No field masking or record-level filtering of what a privileged caller is served: authorisation decides whether a request is answered, never what is left out of the answer.</li><li>No access audit screen: the access record is written and readable from GET /api/access-audit; only a report being opened is recorded, not every read of every resource.</li><li>No change to any endpoint's route, request or response shape, and no saved views, exports or new walkthroughs: those are sessions 33 and 34.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[19:56:18]</span> <span class="muted">run-started</span> session=032 mode=pull</div>
+<div class="line"><span class="at">[19:56:18]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[19:59:59]</span> <span class="muted">run-resumed</span> session=032 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[19:59:59]</span> <span class="muted">plan-accepted</span> steps=[&quot;data&quot;,&quot;migration&quot;,&quot;api-authorisation&quot;,&quot;api-users-roles&quot;,&quot;api-access-audit&quot;,&quot;integration&quot;,&quot;web-sign-in&quot;,&quot;web-administration&quot;,&quot;walkthroughs-sign-in&quot;] non_goals=6</div>
+<div class="line"><span class="at">[19:59:59]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[20:00:00]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=data</div>
+<div class="line"><span class="at">[20:01:06]</span> <span class="muted">run-resumed</span> session=032 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:01:08]</span> <span class="muted">check-passed</span> step=data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[20:01:08]</span> <span class="muted">report-accepted</span> seq=2 step=data files=[] notes=Privileges catalogue in Contracts; users, roles, user_roles, role_privileges (Administrator seeded with all four) and access_records entities, configurations and DbSets</div>
+<div class="line"><span class="at">[20:01:08]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=migration</div>
+<div class="line"><span class="at">[20:01:33]</span> <span class="muted">run-resumed</span> session=032 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:01:35]</span> <span class="muted">check-passed</span> step=migration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[20:01:35]</span> <span class="muted">report-accepted</span> seq=3 step=migration files=[] notes=UsersAndRoles migration generated with dotnet ef and renamed to 20261016210000_UsersAndRoles; snapshot updated</div>
+<div class="line"><span class="at">[20:01:35]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=api-authorisation</div>
+<div class="line"><span class="at">[20:03:39]</span> <span class="muted">run-resumed</span> session=032 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:03:43]</span> <span class="muted">check-passed</span> step=api-authorisation argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~AccountEndpointsTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[20:03:43]</span> <span class="muted">report-accepted</span> seq=4 step=api-authorisation files=[] notes=PrivilegeRules as the bearer-token fallback policy over every endpoint; /api/sign-in and /api/me; configured administrator ensured at startup</div>
+<div class="line"><span class="at">[20:03:43]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=api-users-roles</div>
+<div class="line"><span class="at">[20:05:36]</span> <span class="muted">run-resumed</span> session=032 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:05:39]</span> <span class="muted">check-passed</span> step=api-users-roles argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~UserEndpointsTests|FullyQualifiedName~RoleEndpointsTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[20:05:40]</span> <span class="muted">report-accepted</span> seq=5 step=api-users-roles files=[] notes=UserEndpoints and RoleEndpoints with validators and ToResponse, GET /api/privileges, registered in Program.cs</div>
+<div class="line"><span class="at">[20:05:40]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=api-access-audit</div>
+<div class="line"><span class="at">[20:06:34]</span> <span class="muted">run-resumed</span> session=032 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:06:38]</span> <span class="muted">check-passed</span> step=api-access-audit argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~AccessAuditEndpointsTests|FullyQualifiedName~PersonConditionEndpointsTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[20:06:38]</span> <span class="muted">report-accepted</span> seq=6 step=api-access-audit files=[] notes=GET /api/person-conditions/{id} records an access for the signed-in user; GET /api/access-audit pages records newest first, optionally per report</div>
+<div class="line"><span class="at">[20:06:38]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=integration</div>
+<div class="line"><span class="at">[20:09:51]</span> <span class="muted">run-resumed</span> session=032 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:09:53]</span> <span class="muted">check-passed</span> step=integration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[20:09:53]</span> <span class="muted">report-accepted</span> seq=7 step=integration files=[] notes=SurvsysApi signs every client in as a configured administrator; PrivilegeRulesTests prove 401 anonymous, 403 unprivileged case read, 200 reference read and admin read, refused wrong password, and an access record on opening a report; access_records' report is now a plain column (amended) so report deletes are not blocked. Whole integration suite 93/93 locally.</div>
+<div class="line"><span class="at">[20:09:53]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=web-sign-in</div>
+<div class="line"><span class="at">[20:14:09]</span> <span class="muted">run-resumed</span> session=032 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:14:13]</span> <span class="muted">check-passed</span> step=web-sign-in argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~AccountClientTests|FullyQualifiedName~ApiTokenHandlerTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[20:14:13]</span> <span class="muted">report-accepted</span> seq=8 step=web-sign-in files=[] notes=Cookie sign-in through a statically rendered /sign-in page posting to /account/sign-in; AccountClient obtains the API token and the user; ApiTokenHandler sends it on every typed client via CircuitServicesAccessor; fallback policy requires a signed-in user; smoke-tested live (redirect, refusal, sign-in, 401 at the API)</div>
+<div class="line"><span class="at">[20:14:13]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=web-administration</div>
+<div class="line"><span class="at">[20:16:05]</span> <span class="muted">run-resumed</span> session=032 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:16:07]</span> <span class="muted">check-passed</span> step=web-administration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[20:16:10]</span> <span class="muted">check-passed</span> step=web-administration argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~UsersClientTests|FullyQualifiedName~RolesClientTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[20:16:10]</span> <span class="muted">report-accepted</span> seq=9 step=web-administration files=[] notes=UsersClient and RolesClient; Users and Roles screens with stable ids; MainLayout shows each entry only to holders of its screen's privilege, plus the signed-in name and Sign out</div>
+<div class="line"><span class="at">[20:16:10]</span> <span class="muted">instruction-issued</span> seq=10 kind=step step=walkthroughs-sign-in</div>
+<div class="line"><span class="at">[20:18:33]</span> <span class="muted">run-resumed</span> session=032 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:18:35]</span> <span class="muted">check-passed</span> step=walkthroughs-sign-in argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[20:18:38]</span> <span class="muted">check-passed</span> step=walkthroughs-sign-in argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;]</div>
+<div class="line"><span class="at">[20:18:39]</span> <span class="muted">report-accepted</span> seq=10 step=walkthroughs-sign-in files=[] notes=Harness starts the API with an administrator, signs a browser in through the Sign in page once and opens every context with that state; harness test proves an unsigned browser is sent to Sign in; every walkthrough's Before you start gains the signed-in item. Whole E2E suite 17/17 locally.</div>
+<div class="line"><span class="at">[20:18:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[20:18:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[20:18:40]</span> <span class="muted">job-started</span> name=verification pid=51460 log=.dabbler/runs/s32/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:20:02]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s32/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:20:02]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[20:20:02]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[20:20:02]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[20:20:04]</span> <span class="muted">job-started</span> name=run of record: unit pid=45768 log=.dabbler/runs/s32/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[20:20:10]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s32/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[20:20:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[20:20:14]</span> <span class="muted">landed</span> commit=4be6be69ecb188fb29bf03a8885d8ce6bbdf427f</div>
+<div class="line"><span class="at">[20:20:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[20:20:14]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[20:20:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[20:20:15]</span> <span class="muted">job-started</span> name=close pid=46288 log=.dabbler/runs/s32/driver/jobs/close.log</div>
+<div class="line"><span class="at">[20:20:22]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s32/driver/jobs/close.log</div>
+<div class="line"><span class="at">[20:20:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>12 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.IntegrationTests/PrivilegeRulesTests.cs`, `AWrongPasswordIsRefused` verifies password refusal, but nothing in the diff tests `PUT /api/users/{id}` or verifies that deactivating a user prevents sign-in. Proposed test case:</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Precondition:** Create a user via `POST /api/users` with `new SaveUserRequest(&quot;deactivated-reader&quot;, &quot;Deactivated Reader&quot;, Active: true, RoleIds: [], Password: &quot;reader-password&quot;)`, then update that user via `PUT /api/users/{id}` with `new SaveUserRequest(&quot;deactivated-reader&quot;, &quot;Deactivated Reader&quot;, Active: false, RoleIds: [])`.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Input:** Send `POST /api/sign-in` with `new SignInRequest(&quot;deactivated-reader&quot;, &quot;reader-password&quot;)` on an anonymous client.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Expectation:** Assert `HttpStatusCode.Unauthorized`; if `UserQueries.Save` failed to persist `Active = false` or `AccountQueries.SignIn` omitted the `&amp;&amp; user.Active` predicate, the endpoint would return `200 OK` with an access token instead.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.IntegrationTests/PrivilegeRulesTests.cs`, `OpeningAReportWritesAnAccessRecordNamingTheAdministrator` opens one report once and queries `/api/access-audit?personConditionId={reportId}`, which does not pin the descending sort order (`OrderByDescending(record =&gt; record.AccessedAt).ThenByDescending(record =&gt; record.Id)`) or verify that `personConditionId` filters out other reports' access records. Proposed test case:</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Precondition:** Create two reports `reportA` and `reportB` via `POST /api/person-conditions`; call `GET /api/person-conditions/{reportA}`, then `GET /api/person-conditions/{reportB}`, then `GET /api/person-conditions/{reportA}` again.</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Input:** Request `GET /api/access-audit?pageSize=10` and `GET /api/access-audit?personConditionId={reportA}`.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Expectation:** Assert that in the unfiltered page the first three items have `PersonConditionId` values `[reportA, reportB, reportA]` with `Items[0].Id &gt; Items[2].Id`, and that the filtered response for `reportA` has `TotalCount == 2` and `Assert.All(audit.Items, item =&gt; Assert.Equal(reportA, item.PersonConditionId))` (which would fail if the `Where` filter in `AccessAuditQueries.Page` were omitted or inverted).</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.UnitTests/PrivilegeRulesTests.cs`, `RequiredFor` is tested for `GET`, `HEAD`, `POST`, `PUT`, and `DELETE`, but not `OPTIONS` (which `PrivilegeRules.RequiredFor` treats as a read via `HttpMethods.IsOptions(method)`). Proposed test case:</td><td>not answered</td></tr>
+<tr><td>9</td><td><strong>minor</strong></td><td>**Precondition:** Pure rule invocation on `PrivilegeRules`.</td><td>not answered</td></tr>
+<tr><td>10</td><td><strong>minor</strong></td><td>**Input:** Call `PrivilegeRules.RequiredFor(&quot;OPTIONS&quot;, &quot;/api/persons&quot;)` and `PrivilegeRules.RequiredFor(&quot;OPTIONS&quot;, &quot;/api/conditions&quot;)`.</td><td>not answered</td></tr>
+<tr><td>11</td><td><strong>minor</strong></td><td>**Expectation:** Assert `Privileges.ViewCases` for `/api/persons` and `null` for `/api/conditions`; if `HttpMethods.IsOptions(method)` were omitted, those calls would return `Privileges.EditCases` and `Privileges.ManageReferenceData` respectively.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>4s</td><td>752</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
