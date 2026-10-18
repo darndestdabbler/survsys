@@ -728,13 +728,14 @@ internal sealed class FormQueries(SurvsysDbContext database)
                 database.Forms,
                 assignment => assignment.FormId,
                 form => form.Id,
-                (assignment, form) => new FormAssignmentResponse(
-                    assignment.Id,
-                    form.Id,
-                    form.Name,
-                    assignment.AssignedAt))
-            .OrderBy(assignment => assignment.AssignedAt)
-            .ThenBy(assignment => assignment.Id)
+                (assignment, form) => new { Assignment = assignment, Form = form })
+            .OrderBy(row => row.Assignment.AssignedAt)
+            .ThenBy(row => row.Assignment.Id)
+            .Select(row => new FormAssignmentResponse(
+                row.Assignment.Id,
+                row.Form.Id,
+                row.Form.Name,
+                row.Assignment.AssignedAt))
             .ToListAsync(cancellationToken);
     }
 

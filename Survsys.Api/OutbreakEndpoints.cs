@@ -814,9 +814,10 @@ internal sealed class OutbreakQueries(SurvsysDbContext database)
                 database.Agencies,
                 access => access.AgencyId,
                 agency => agency.Id,
-                (access, agency) => new OutbreakAccessResponse(agency.Id, agency.Name))
-            .OrderBy(access => access.AgencyName)
-            .ThenBy(access => access.AgencyId)
+                (access, agency) => agency)
+            .OrderBy(agency => agency.Name)
+            .ThenBy(agency => agency.Id)
+            .Select(agency => new OutbreakAccessResponse(agency.Id, agency.Name))
             .ToListAsync(cancellationToken);
 
     /// <summary>

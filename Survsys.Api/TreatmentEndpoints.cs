@@ -449,9 +449,10 @@ internal sealed class TreatmentQueries(SurvsysDbContext database)
                 database.Conditions,
                 link => link.ConditionId,
                 condition => condition.Id,
-                (link, condition) => new TreatmentConditionResponse(condition.Id, condition.Name))
+                (link, condition) => condition)
             .OrderBy(condition => condition.Name)
             .ThenBy(condition => condition.Id)
+            .Select(condition => new TreatmentConditionResponse(condition.Id, condition.Name))
             .ToListAsync(cancellationToken);
 
     /// <summary>A treatment and the count of conditions it is listed for, carried out of a query.</summary>

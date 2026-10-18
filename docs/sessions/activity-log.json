@@ -570,6 +570,13 @@
       "what": "step 'report-endpoint': its files",
       "reason": "The seeded Administrator role must hold run_reports, which RolePrivilegeConfiguration says a privilege's adding migration grants; without it no seeded user can reach /api/reports (the integration tests got 403).",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 56,
+      "dateTime": "2026-10-18T05:27:47.537000-04:00",
+      "task": "Repair the three Survsys.Api queries SQL Server cannot translate, each of which projects into a positional response record and then orders by a property of that record. In OutbreakQueries.AccessRows (OutbreakEndpoints.cs) order the joined agency rows by agency.Name then agency.Id before projecting into OutbreakAccessResponse; in TreatmentQueries.Detail (TreatmentEndpoints.cs) order the joined conditions by condition.Name then condition.Id before projecting into TreatmentConditionResponse; in FormQueries.Assignments (FormEndpoints.cs) order by assignment.AssignedAt then assignment.Id before projecting into FormAssignmentResponse. A sweep of every OrderBy/ThenBy in Survsys.Api found no other query ordering after a positional-record projection (ReportQueries orders an anonymous type, which translates), so these three are the whole change. The order each endpoint returns is unchanged, and the existing integration suite -- 174 of 174, with the 20 that fail today among them and no test changed -- is the proof.",
+      "releasable": false
     }
   ]
 }

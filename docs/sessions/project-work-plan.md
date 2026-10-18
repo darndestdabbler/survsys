@@ -67,8 +67,9 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 53 | Treatments and vaccines | no | 2026-10-17 |
 | 54 | Audit by EF Core interceptors | no | 2026-10-17 |
 | 55 | IBIS integration and ad-hoc reporting | no | 2026-10-18 |
-| 56 | Phase 7 walkthroughs and the full walkthrough regression | — | not declared |
-| 57 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 56 | Repair the three endpoint queries SQL Server cannot translate | no | 2026-10-18 |
+| 57 | Phase 7 walkthroughs and the full walkthrough regression | — | not declared |
+| 58 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -473,3 +474,9 @@ Port the two remaining Reporting & Export features of the legacy feature matrix.
 **Amended after acceptance:**
 
 - 2026-10-18 — step 'report-endpoint': its files: The seeded Administrator role must hold run_reports, which RolePrivilegeConfiguration says a privilege's adding migration grants; without it no seeded user can reach /api/reports (the integration tests got 403). (claude-code (anthropic, claude-opus-5-5))
+
+### Session 56 — Repair the three endpoint queries SQL Server cannot translate
+
+**Releasable: no.**
+
+Repair the three Survsys.Api queries SQL Server cannot translate, each of which projects into a positional response record and then orders by a property of that record. In OutbreakQueries.AccessRows (OutbreakEndpoints.cs) order the joined agency rows by agency.Name then agency.Id before projecting into OutbreakAccessResponse; in TreatmentQueries.Detail (TreatmentEndpoints.cs) order the joined conditions by condition.Name then condition.Id before projecting into TreatmentConditionResponse; in FormQueries.Assignments (FormEndpoints.cs) order by assignment.AssignedAt then assignment.Id before projecting into FormAssignmentResponse. A sweep of every OrderBy/ThenBy in Survsys.Api found no other query ordering after a positional-record projection (ReportQueries orders an anonymous type, which translates), so these three are the whole change. The order each endpoint returns is unchanged, and the existing integration suite -- 174 of 174, with the 20 that fail today among them and no test changed -- is the proof.
