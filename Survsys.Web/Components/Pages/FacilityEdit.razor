@@ -1,0 +1,186 @@
+@* A facility's administration screen: its name, the agency it sits under,
+   and its address. One screen for both a new facility and an existing one,
+   which it is being whether the address carries an id. A save goes back to
+   the facilities list. *@
+@page "/facilities/new"
+@page "/facilities/{Id:int}"
+@inject FacilitiesClient Facilities
+@inject AgenciesClient Agencies
+@inject NavigationManager Navigation
+
+<PageTitle>@Heading — Survsys</PageTitle>
+
+<MudText id="facility-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    @Heading
+</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="facility-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (failure is { } whyNot)
+    {
+        <MudAlert id="facility-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @whyNot
+        </MudAlert>
+    }
+
+    @if (complaint is { } whyNotYet)
+    {
+        <MudAlert id="facility-complaint" Severity="Severity.Warning" Class="mb-4">
+            @whyNotYet
+        </MudAlert>
+    }
+
+    <MudPaper id="facility-form" Elevation="1" Class="pa-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="name" id="facility-name" Label="Name"
+                              Variant="Variant.Outlined" Required="true" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="shortName" id="facility-short-name" Label="Short name"
+                              Variant="Variant.Outlined" MaxLength="50" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                @* Each item names its type, because the list binds a nullable
+                   integer: see the creation screen's agency list. *@
+                <MudSelect @bind-Value="agencyId" id="facility-agency" Label="Agency"
+                           Variant="Variant.Outlined">
+                    @foreach (var agency in agencies)
+                    {
+                        <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="street" id="facility-street" Label="Street"
+                              Variant="Variant.Outlined" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="city" id="facility-city" Label="City"
+                              Variant="Variant.Outlined" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="6" sm="1">
+                <MudTextField @bind-Value="state" id="facility-state" Label="State"
+                              Variant="Variant.Outlined" MaxLength="2" />
+            </MudItem>
+            <MudItem xs="6" sm="2">
+                <MudTextField @bind-Value="zip" id="facility-zip" Label="Zip"
+                              Variant="Variant.Outlined" MaxLength="10" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="phone" id="facility-phone" Label="Phone"
+                              Variant="Variant.Outlined" MaxLength="30" />
+            </MudItem>
+        </MudGrid>
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="facility-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                Save
+            </MudButton>
+            <MudButton id="facility-cancel" Variant="Variant.Outlined" Disabled="@saving"
+                       Href="/facilities">
+                Cancel
+            </MudButton>
+        </div>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>The facility being edited, or null for a new one.</summary>
+    [Parameter]
+    public int? Id { get; set; }
+
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private string? name;
+
+    private string? shortName;
+
+    private int? agencyId;
+
+    private string? street;
+
+    private string? city;
+
+    private string? state;
+
+    private string? zip;
+
+    private string? phone;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    private string? complaint;
+
+    private string Heading => Id is null ? "New facility" : "Edit facility";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var listed = await Agencies.All();
+        agencies = listed.Value?.Items ?? [];
+        failure = listed.Failure;
+
+        if (Id is { } id)
+        {
+            var found = await Facilities.Find(id);
+
+            if (found.Value is { } facility)
+            {
+                name = facility.Name;
+                shortName = facility.ShortName;
+                agencyId = facility.AgencyId;
+                street = facility.Street;
+                city = facility.City;
+                state = facility.State;
+                zip = facility.Zip;
+                phone = facility.Phone;
+            }
+
+            failure = found.Failure ?? failure;
+        }
+
+        loading = false;
+    }
+
+    private async Task Save()
+    {
+        complaint = null;
+
+        if (agencyId is not { } agency)
+        {
+            complaint = "Choose the agency this facility sits under.";
+
+            return;
+        }
+
+        saving = true;
+        failure = null;
+
+        var request = new SaveFacilityRequest(
+            name ?? "", agency, shortName, street, city, state, zip, phone);
+
+        var saved = Id is { } id
+            ? await Facilities.Update(id, request)
+            : await Facilities.Create(request);
+
+        saving = false;
+
+        if (saved.Succeeded)
+        {
+            Navigation.NavigateTo("/facilities");
+
+            return;
+        }
+
+        failure = saved.Failure;
+    }
+}
