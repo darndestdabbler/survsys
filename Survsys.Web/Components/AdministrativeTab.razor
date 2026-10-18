@@ -1,0 +1,415 @@
+@* The Administrative tab of a case morbidity report: the report's
+   administrative data, with the read-only Event Information above it,
+   editable and saved whole.
+
+   ../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md
+   records the legacy tab's five sections. Event Information is read-only
+   there too, and is shown here from the report the shell already holds: the
+   record number, the MMWR week and year and the date the record was
+   created. Case / Outbreak keeps its two case-status ids and the outbreak
+   associated code, and the outbreak-name picker that links the case to an
+   outbreak; the queue and the tags are each a table of their own and are
+   later sessions' work. Auditing / Investigation
+   keeps its two LHD investigation dates, the outcome disposition id and the
+   event name. Reported Dates keeps the two dates the tab lets an
+   investigator enter; the date first reported to public health is the
+   report's own and is read on the shell. The Reporter section is a separate
+   record and is omitted rather than shown as blanks that promise a feature.
+
+   The administrative data arrives as a parameter and is copied into fields
+   on initialisation, so that typing changes the fields and never the record
+   the shell holds. Save & Continue builds an UpdateAdministrativeRequest
+   from the fields and sends it as one PUT; what comes back replaces the
+   fields, so the screen shows what was stored and not what it sent.
+
+   The three ids are numeric boxes holding the legacy identifiers and the
+   outbreak associated code is a text box holding the legacy code, as the
+   Clinical tab holds its coded fields: the reference tables behind the
+   legacy dropdowns do not exist yet. The coded-value rule and the rule that
+   an investigation is not completed before it started stay the API tier's;
+   an answer it refuses is shown as the client's message rather than
+   re-checked here.
+
+   Every element a walkthrough names carries a stable identifier. *@
+@using System.Globalization
+@inject AdministrativeClient Api
+@inject OutbreaksClient Outbreaks
+
+@if (saved is { } stored)
+{
+    <MudAlert id="administrative-saved" Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+        @stored
+    </MudAlert>
+}
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="administrative-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (complaint is { } whyNotYet)
+{
+    <MudAlert id="administrative-complaint" Severity="Severity.Warning" Class="mb-4">
+        @whyNotYet
+    </MudAlert>
+}
+
+<MudPaper id="administrative-event" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Event Information</MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="3">
+            <MudText Typo="Typo.caption">Record number</MudText>
+            <MudText id="administrative-record-number" Typo="Typo.body1">@Report.RecordNumber</MudText>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudText Typo="Typo.caption">MMWR year</MudText>
+            <MudText id="administrative-mmwr-year" Typo="Typo.body1">@Shown(Report.MmwrYear)</MudText>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudText Typo="Typo.caption">MMWR week</MudText>
+            <MudText id="administrative-mmwr-week" Typo="Typo.body1">@Shown(Report.MmwrWeek)</MudText>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudText Typo="Typo.caption">Date record created</MudText>
+            <MudText id="administrative-created-at" Typo="Typo.body1">@Created</MudText>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper id="administrative-case" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Case / Outbreak</MudText>
+    <MudGrid Spacing="2">
+        @if (Shows("lhd_case_status"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="lhdCaseStatusId" id="administrative-lhd-case-status-id"
+                                 Label="LHD case status (id)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("state_case_status"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="stateCaseStatusId" id="administrative-state-case-status-id"
+                                 Label="State case status (id)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("outbreak_associated"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="outbreakAssociated" id="administrative-outbreak-associated"
+                              Label="Outbreak associated (Yes/No/Unknown)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        <MudItem xs="12" sm="4">
+            @* The outbreak this case belongs to. A blank choice clears the
+               link; the API tier refuses an outbreak it does not know. *@
+            <MudSelect T="int?" @bind-Value="outbreakId" id="administrative-outbreak-id"
+                       Label="Outbreak name" Variant="Variant.Outlined" Clearable="true">
+                <MudSelectItem T="int?" Value="@((int?)null)">(none)</MudSelectItem>
+                @foreach (var outbreak in outbreaks)
+                {
+                    <MudSelectItem T="int?" Value="@outbreak.Id">@outbreak.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper id="administrative-investigation" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Auditing / Investigation</MudText>
+    <MudGrid Spacing="2">
+        @if (Shows("lhd_investigation_start_date"))
+        {
+            <MudItem xs="12" sm="4">
+                @* Native date inputs, for the reason the Clinical tab's are:
+                   what one yields is what the other tier parses. *@
+                <MudTextField @bind-Value="lhdInvestigationStartDate" id="administrative-lhd-investigation-start-date"
+                              Label="LHD investigation started" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+        @if (Shows("lhd_investigation_completed_date"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="lhdInvestigationCompletedDate" id="administrative-lhd-investigation-completed-date"
+                              Label="LHD investigation completed" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+        @if (Shows("investigation_outcome"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="investigationOutcomeDispositionId" id="administrative-investigation-outcome-disposition-id"
+                                 Label="Investigation outcome (disposition id)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("event_name"))
+        {
+            <MudItem xs="12">
+                <MudTextField @bind-Value="eventName" id="administrative-event-name"
+                              Label="Event name" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+    </MudGrid>
+</MudPaper>
+
+<MudPaper id="administrative-reported" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Reported Dates</MudText>
+    <MudGrid Spacing="2">
+        @if (Shows("results_reported_to_clinician_date"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="resultsReportedToClinicianDate" id="administrative-results-reported-to-clinician-date"
+                              Label="Results reported to LHD" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+        @if (Shows("cdc_first_verbally_notified_date"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="cdcFirstVerballyNotifiedDate" id="administrative-cdc-first-verbally-notified-date"
+                              Label="Date CDC verbally notified" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+    </MudGrid>
+</MudPaper>
+
+<div class="d-flex gap-2">
+    <MudButton id="administrative-save" Variant="Variant.Filled" Color="Color.Primary"
+               Disabled="@saving" OnClick="@Save">
+        Save &amp; Continue
+    </MudButton>
+</div>
+
+@* The report's workflow history, newest first, as the API tier answers it:
+   read-only, since a move is recorded when it is made and never edited. The
+   codes are shown by the labels the Workflow Options panel uses. *@
+<MudPaper id="administrative-history" Elevation="1" Class="pa-4 mt-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Workflow history</MudText>
+    @if (History.Count == 0)
+    {
+        <MudText id="administrative-history-none" Typo="Typo.body2">No workflow moves yet</MudText>
+    }
+    else
+    {
+        <MudSimpleTable Dense="true">
+            <thead>
+                <tr>
+                    <th>When</th>
+                    <th>Who</th>
+                    <th>Move</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var index = 0; index < History.Count; index++)
+                {
+                    var entry = History[index];
+                    <tr id="@($"administrative-history-{index}")">
+                        <td>@entry.OccurredAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
+                        <td>@entry.UserDisplayName</td>
+                        <td>@Pages.MorbidityReport.MoveLabel(entry.Transition)</td>
+                        <td>@Pages.MorbidityReport.WorkflowLabel(entry.FromState)</td>
+                        <td>@Pages.MorbidityReport.WorkflowLabel(entry.ToState)</td>
+                        <td>@entry.Note</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudPaper>
+
+@code {
+    /// <summary>
+    /// The report itself, as the shell read it: the Event Information section
+    /// reads the record number, the MMWR week and year and the creation date
+    /// from here, and the saves go to its id.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public PersonConditionResponse Report { get; set; } = default!;
+
+    /// <summary>The report's administrative data, as the shell read it.</summary>
+    [Parameter, EditorRequired]
+    public AdministrativeResponse Administrative { get; set; } = default!;
+
+    /// <summary>
+    /// The uids of the fields core element configuration hides on this
+    /// report. A hidden field is left off the tab, and its value still goes
+    /// back as it was read, because the tab saves the whole record.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<string> Hidden { get; set; } = new HashSet<string>();
+
+    /// <summary>The report's workflow moves, newest first, as the shell read them.</summary>
+    [Parameter]
+    public IReadOnlyList<WorkflowHistoryEntryResponse> History { get; set; } = [];
+
+    private bool Shows(string uid) => !Hidden.Contains(uid);
+
+    /// <summary>
+    /// How this tier writes a date into a date box and reads one out: the form
+    /// a native date input yields, under the culture the other tier parses it
+    /// with — the same form the Clinical tab uses.
+    /// </summary>
+    private const string DateForm = "yyyy-MM-dd";
+
+    private int? lhdCaseStatusId;
+
+    private int? stateCaseStatusId;
+
+    private string? outbreakAssociated;
+
+    private string? lhdInvestigationStartDate;
+
+    private string? lhdInvestigationCompletedDate;
+
+    private int? investigationOutcomeDispositionId;
+
+    private string? eventName;
+
+    private string? resultsReportedToClinicianDate;
+
+    private string? cdcFirstVerballyNotifiedDate;
+
+    private int? outbreakId;
+
+    private IReadOnlyList<OutbreakResponse> outbreaks = [];
+
+    private bool saving;
+
+    private string? saved;
+
+    private string? failure;
+
+    private string? complaint;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Load(Administrative);
+
+        // The outbreak-name picker lists the outbreaks a case can be linked
+        // to. A list that does not load leaves the picker empty rather than
+        // failing the tab, which still shows and saves the rest.
+        if ((await Outbreaks.All()).Value is { } loaded)
+        {
+            outbreaks = loaded.Items;
+        }
+    }
+
+    /// <summary>
+    /// The moment the record was created, written to the minute with its
+    /// offset, so a reader sees which hour it was created in.
+    /// </summary>
+    private string Created =>
+        Report.CreatedAt.ToString("yyyy-MM-dd HH:mm zzz", CultureInfo.InvariantCulture);
+
+    /// <summary>An MMWR number, or "(not calculated)" where the report has none.</summary>
+    private static string Shown(int? number) =>
+        number is { } value ? value.ToString(CultureInfo.InvariantCulture) : "(not calculated)";
+
+    /// <summary>
+    /// Copies the administrative data into the fields: on arrival, and again
+    /// with what a save answered.
+    /// </summary>
+    private void Load(AdministrativeResponse administrative)
+    {
+        lhdCaseStatusId = administrative.LhdCaseStatusId;
+        stateCaseStatusId = administrative.StateCaseStatusId;
+        outbreakAssociated = administrative.OutbreakAssociated;
+        lhdInvestigationStartDate = Written(administrative.LhdInvestigationStartDate);
+        lhdInvestigationCompletedDate = Written(administrative.LhdInvestigationCompletedDate);
+        investigationOutcomeDispositionId = administrative.InvestigationOutcomeDispositionId;
+        eventName = administrative.EventName;
+        resultsReportedToClinicianDate = Written(administrative.ResultsReportedToClinicianDate);
+        cdcFirstVerballyNotifiedDate = Written(administrative.CdcFirstVerballyNotifiedDate);
+        outbreakId = administrative.OutbreakId;
+    }
+
+    private async Task Save()
+    {
+        if (!TryDate(lhdInvestigationStartDate, "the LHD investigation start date", out var started, out var why)
+            || !TryDate(lhdInvestigationCompletedDate, "the LHD investigation completed date", out var completed, out why)
+            || !TryDate(resultsReportedToClinicianDate, "the results reported date", out var reported, out why)
+            || !TryDate(cdcFirstVerballyNotifiedDate, "the CDC verbally notified date", out var notified, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        complaint = null;
+        failure = null;
+        saved = null;
+        saving = true;
+
+        try
+        {
+            var answered = await Api.Save(Report.Id, new UpdateAdministrativeRequest(
+                LhdCaseStatusId: lhdCaseStatusId,
+                StateCaseStatusId: stateCaseStatusId,
+                OutbreakAssociated: Blank(outbreakAssociated),
+                LhdInvestigationStartDate: started,
+                LhdInvestigationCompletedDate: completed,
+                InvestigationOutcomeDispositionId: investigationOutcomeDispositionId,
+                EventName: Blank(eventName),
+                ResultsReportedToClinicianDate: reported,
+                CdcFirstVerballyNotifiedDate: notified,
+                OutbreakId: outbreakId));
+
+            if (answered.Value is { } stored)
+            {
+                Load(stored);
+                saved = "The administrative data has been saved.";
+            }
+            else
+            {
+                failure = answered.Failure;
+            }
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    /// <summary>A box's content, trimmed, or null where it holds nothing.</summary>
+    private static string? Blank(string? typed) =>
+        string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
+
+    /// <summary>
+    /// A date box read: empty is no date, a date is the date, and anything
+    /// else is a complaint naming the box — the same rule the Clinical tab
+    /// reads its date boxes by.
+    /// </summary>
+    private static bool TryDate(string? typed, string named, out DateOnly? date, out string? why)
+    {
+        date = null;
+        why = null;
+
+        if (string.IsNullOrWhiteSpace(typed))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParseExact(typed.Trim(), DateForm, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var parsed))
+        {
+            date = parsed;
+
+            return true;
+        }
+
+        why = $"Give {named} as yyyy-mm-dd, or leave it empty.";
+
+        return false;
+    }
+
+    /// <summary>A date as a date box holds it.</summary>
+    private static string? Written(DateOnly? date) =>
+        date?.ToString(DateForm, CultureInfo.InvariantCulture);
+}
