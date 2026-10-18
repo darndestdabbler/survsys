@@ -830,7 +830,41 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 56: Phase 7 walkthroughs and the full walkthrough regression
+### Session 56: Repair the three endpoint queries SQL Server cannot translate
+
+*Inserted after session 55. The integration suite fails 20 of its 174 tests on
+the trunk, every one with a 500 from the API. Three queries throw EF Core's
+"The LINQ expression … could not be translated", and each has the same shape:
+it projects rows into a positional record (`OutbreakAccessResponse`, the
+treatment's condition rows, the case's form assignments), then orders by a
+property of that record (`AgencyName`, `Name`, `AssignedAt`). EF cannot map a
+constructor argument back to a column, so the `OrderBy` after the projection
+has nothing to translate. The failing paths are
+`OutbreakQueries.AccessRows` (`OutbreakEndpoints.cs`), reached by every
+outbreak detail, create, save and access call; `TreatmentQueries.Detail`
+(`TreatmentEndpoints.cs`), reached by every treatment create, save and read;
+and `FormQueries.Assignments` (`FormEndpoints.cs`), reached by listing a
+case's forms and by the auto-assign on case creation. Sessions 51 to 53 shipped
+them. Nothing failed at their close because a session's run of record is the
+unit suite, which does not reach SQL Server. The Phase 7 walkthroughs open an
+outbreak, complete a form and record a treatment through exactly these paths,
+so this comes before them.*
+
+1. Register.
+2. `Survsys.Api`: in each of the three queries, order by the entity's or the
+   joined row's own columns before projecting into the response record, so the
+   ordering translates to SQL; the order each endpoint returns is unchanged.
+   Look for any other query in `Survsys.Api` that orders by a property of a
+   positional-record projection, and give it the same change. No endpoint's
+   route, contract or response changes.
+3. `Survsys.IntegrationTests`: the existing tests are the proof. The whole
+   integration suite passes, 174 of 174, with the 20 that fail today among them
+   and no test changed to get there.
+4. Cross-provider verification.
+5. Full test suite, recorded as the run of record.
+6. Close-out.
+
+### Session 57: Phase 7 walkthroughs and the full walkthrough regression
 
 1. Register.
 2. `docs/walkthroughs/`: three documents — open an outbreak and link cases,
@@ -843,4 +877,4 @@ release that claims parity. Specified by `epitrax-core-workflows.md`,
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 57: Release 1.0.0 (release: 1.0.0)
+### Session 58: Release 1.0.0 (release: 1.0.0)
