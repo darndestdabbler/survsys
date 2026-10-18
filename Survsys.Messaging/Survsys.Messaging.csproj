@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The intake module: it turns a raw HL7 v2.5.1 message from a lab into
+       the Survsys.Contracts intake records the rest of the system already
+       speaks. It references nHapi to parse and Survsys.Contracts to land the
+       result, and nothing of the database: never Survsys.Data and never
+       Entity Framework Core, so the parse can never reach past the wire
+       shapes. The architecture test reads that fence off this assembly. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="nHapi.Base" Version="3.2.3" />
+    <PackageReference Include="nHapi.Model.V251" Version="3.2.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Survsys.Contracts\Survsys.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

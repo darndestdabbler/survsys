@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 033 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 033 transcript</h1>
+<p class="stamp">Rendered 2026-10-17T06:45:31.938Z by dabbler-ai-router 3.21.0 at 192432b68a98058994f6fa34e46278ff877f2f88.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-17T02:34:38.989-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 33: Saved views and custom exports</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code> and <code>Survsys.Api</code>: saved views, and custom exports with user-defined columns and filters, with their migration and endpoints.</li><li><code>Survsys.Web</code>: the saved-view and export screens.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Give each signed-in user saved views of the case morbidity reports, and export a view as a CSV dataset whose columns and filters the user chose. The exportable columns are a fixed catalogue in code, named once in Survsys.Contracts.ExportColumns because both tiers read them: record_number, last_name, first_name, birth_date, condition, agency, workflow_state, case_status, event_onset_date, first_reported_ph_date, mmwr_week, mmwr_year and created_at. Survsys.Data gains saved_views (owning user, name unique per user, the chosen columns in order as one comma-separated column, and the filters: condition, investigating agency, workflow state, case status, and an event onset date range), in one SavedViews migration. Survsys.Api's SavedViewEndpoints list, create, update and delete the caller's own views at /api/saved-views (another user's view is a 404), validated by WhyNotASavedView (name required and at most 100 characters, at least one column, no unknown or repeated column, an onset range that does not run backwards, a known workflow state and case status), and GET /api/saved-views/{id}/export answers the view's reports, filtered and in record-number order, as text/csv; CaseExport.Csv is the pure rule that writes the header and rows with RFC 4180 quoting. PrivilegeRules gives every /api/saved-views request view_cases, because a view is the caller's own and an export is a read. Survsys.Web gains SavedViewsClient, a Saved views screen (the caller's views with an add and edit form choosing name, columns and filters, delete, and an Export CSV link per view) reached from navigation by a view_cases holder, and one web-tier GET /saved-views/{id}/export endpoint that passes the API's CSV to the browser as a file download under the signed-in user's token.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/7c7631569006aa89738c1dae98411f8560ea098c"><code>7c7631569006aa89738c1dae98411f8560ea098c</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Data</td><td><p>Survsys.Contracts: ExportColumns, the column name constants and All in catalogue order. Survsys.Data: the SavedView entity (id, user, name, columns, condition, agency, workflow state, case status, onset from, onset to) with SavedViewConfiguration (snake_case saved_views table, name unique per user, cascade from users) and its DbSet.</p></td><td><span class="mono">Survsys.Contracts/ExportColumns.cs</span><br><span class="mono">Survsys.Data/SavedView.cs</span><br><span class="mono">Survsys.Data/SavedViewConfiguration.cs</span><br><span class="mono">Survsys.Data/SurvsysDbContext.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Migration</td><td><p>Generate the SavedViews migration with dotnet ef under the migration id 20261017000000_SavedViews, and the updated model snapshot.</p></td><td><span class="mono">Survsys.Data/Migrations/20261017000000_SavedViews.cs</span><br><span class="mono">Survsys.Data/Migrations/20261017000000_SavedViews.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Api</td><td><p>Survsys.Api: CaseExport.Csv(columns, rows), the header and rows with RFC 4180 quoting, tested in CaseExportTests (a comma, a quote, a line break, an empty value); SavedViewEndpoints with GET, POST, PUT and DELETE /api/saved-views for the caller's own views and GET /api/saved-views/{id}/export as text/csv, WhyNotASavedView and ToResponse tested in SavedViewEndpointsTests, registered in Program.cs; PrivilegeRules giving /api/saved-views view_cases for every method, with PrivilegeRulesTests updated; Survsys.Contracts SavedViewResponse and SaveSavedViewRequest.</p></td><td><span class="mono">Survsys.Api/CaseExport.cs</span><br><span class="mono">Survsys.Api/SavedViewEndpoints.cs</span><br><span class="mono">Survsys.Api/PrivilegeRules.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.Contracts/SavedViewResponse.cs</span><br><span class="mono">Survsys.Contracts/SaveSavedViewRequest.cs</span><br><span class="mono">Survsys.UnitTests/CaseExportTests.cs</span><br><span class="mono">Survsys.UnitTests/SavedViewEndpointsTests.cs</span><br><span class="mono">Survsys.UnitTests/PrivilegeRulesTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CaseExportTests|FullyQualifiedName~SavedViewEndpointsTests|FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Integration</td><td><p>Survsys.IntegrationTests: SavedViewEndpointsTests proves against the real host that a saved view is listed for the user who saved it and not for another user, that another user's view is a 404, and that its export is CSV holding the chosen columns and only the reports its filters select. The check builds the project; running the suite is the framework's.</p></td><td><span class="mono">Survsys.IntegrationTests/SavedViewEndpointsTests.cs</span></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Web</td><td><p>Survsys.Web: SavedViewsClient (list, create, update, delete, export) tested in SavedViewsClientTests; Program.cs registering it with the token handler and mapping GET /saved-views/{id}/export, which returns the API's CSV as a file download; the SavedViews screen (the caller's views with their columns and filters, an add and edit form with name, column checkboxes in catalogue order and the filters, delete, and an Export CSV link per view) with stable element identifiers; MainLayout showing its navigation entry to a view_cases holder.</p></td><td><span class="mono">Survsys.Web/SavedViewsClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.Web/Components/Pages/SavedViews.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span><br><span class="mono">Survsys.UnitTests/SavedViewsClientTests.cs</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~SavedViewsClientTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No views shared between users or agencies, no public or default views, and no folders: a saved view belongs to the user who saved it.</li><li>No ad-hoc query builder, arbitrary SQL, expressions or joins beyond the column catalogue: columns and filters are chosen from the fixed lists in code.</li><li>No export format other than CSV, no scheduled, queued or emailed exports, no export history or audit, and no AVR or IBIS reporting.</li><li>No saved views or filters on the existing Work queue, Agency board or People screens: those screens are unchanged.</li><li>No walkthroughs or end-to-end tests for saving a view or exporting a dataset: those are session 34.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[06:34:39]</span> <span class="muted">run-started</span> session=033 mode=pull</div>
+<div class="line"><span class="at">[06:34:39]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[06:36:31]</span> <span class="muted">run-resumed</span> session=033 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[06:36:31]</span> <span class="muted">plan-accepted</span> steps=[&quot;data&quot;,&quot;migration&quot;,&quot;api&quot;,&quot;integration&quot;,&quot;web&quot;] non_goals=5</div>
+<div class="line"><span class="at">[06:36:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[06:36:31]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=data</div>
+<div class="line"><span class="at">[06:37:28]</span> <span class="muted">run-resumed</span> session=033 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:37:30]</span> <span class="muted">check-passed</span> step=data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[06:37:30]</span> <span class="muted">report-accepted</span> seq=2 step=data files=[&quot;Survsys.Contracts/ExportColumns.cs&quot;,&quot;Survsys.Data/SavedView.cs&quot;,&quot;Survsys.Data/SavedViewConfiguration.cs&quot;,&quot;Survsys.Data/SurvsysDbContext.cs&quot;] notes=ExportColumns catalogue; SavedView entity and saved_views configuration (unique name per user, cascade from users, filters as plain columns); DbSet added.</div>
+<div class="line"><span class="at">[06:37:30]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=migration</div>
+<div class="line"><span class="at">[06:38:02]</span> <span class="muted">run-resumed</span> session=033 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:38:03]</span> <span class="muted">check-passed</span> step=migration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[06:38:03]</span> <span class="muted">report-accepted</span> seq=3 step=migration files=[&quot;Survsys.Data/Migrations/20261017000000_SavedViews.cs&quot;,&quot;Survsys.Data/Migrations/20261017000000_SavedViews.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=SavedViews migration generated by dotnet ef and renamed to 20261017000000_SavedViews; snapshot updated.</div>
+<div class="line"><span class="at">[06:38:03]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=api</div>
+<div class="line"><span class="at">[06:40:31]</span> <span class="muted">run-resumed</span> session=033 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:40:35]</span> <span class="muted">check-passed</span> step=api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseExportTests|FullyQualifiedName~SavedViewEndpointsTests|FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[06:40:35]</span> <span class="muted">report-accepted</span> seq=4 step=api files=[&quot;Survsys.Api/CaseExport.cs&quot;,&quot;Survsys.Api/SavedViewEndpoints.cs&quot;,&quot;Survsys.Api/PrivilegeRules.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.Contracts/SavedViewResponse.cs&quot;,&quot;Survsys.Contracts/SaveSavedViewRequest.cs&quot;,&quot;Survsys.UnitTests/CaseExportTests.cs&quot;,&quot;Survsys.UnitTests/SavedViewEndpointsTests.cs&quot;,&quot;Survsys.UnitTests/PrivilegeRulesTests.cs&quot;] notes=SavedViewEndpoints (caller-owned CRUD and CSV export), CaseExport (RFC 4180 with formula-safe values), saved views need view_cases for every method; unit tests added.</div>
+<div class="line"><span class="at">[06:40:35]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=integration</div>
+<div class="line"><span class="at">[06:41:30]</span> <span class="muted">run-resumed</span> session=033 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:41:33]</span> <span class="muted">check-passed</span> step=integration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[06:41:34]</span> <span class="muted">report-accepted</span> seq=5 step=integration files=[&quot;Survsys.IntegrationTests/SavedViewEndpointsTests.cs&quot;] notes=SavedViewEndpointsTests: listed only for its owner; another user's view is 404 on export, save and delete; export is text/csv with the chosen header and only the filtered condition's reports. Ran green locally.</div>
+<div class="line"><span class="at">[06:41:34]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=web</div>
+<div class="line"><span class="at">[06:43:58]</span> <span class="muted">run-resumed</span> session=033 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:44:00]</span> <span class="muted">check-passed</span> step=web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[06:44:03]</span> <span class="muted">check-passed</span> step=web argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~SavedViewsClientTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[06:44:03]</span> <span class="muted">report-accepted</span> seq=6 step=web files=[&quot;Survsys.Web/SavedViewsClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.Web/Components/Pages/SavedViews.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;,&quot;Survsys.UnitTests/SavedViewsClientTests.cs&quot;] notes=SavedViewsClient (list, create, update, delete, CSV export) with tests; web-tier GET /saved-views/{id}/export file download; Saved views screen with columns, filters, edit, delete and Export CSV link; nav entry for view_cases.</div>
+<div class="line"><span class="at">[06:44:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[06:44:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[06:44:05]</span> <span class="muted">job-started</span> name=verification pid=16268 log=.dabbler/runs/s33/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[06:45:13]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s33/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[06:45:13]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[06:45:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[06:45:13]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[06:45:14]</span> <span class="muted">job-started</span> name=run of record: unit pid=16180 log=.dabbler/runs/s33/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[06:45:20]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s33/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[06:45:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[06:45:24]</span> <span class="muted">landed</span> commit=7c7631569006aa89738c1dae98411f8560ea098c</div>
+<div class="line"><span class="at">[06:45:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[06:45:24]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[06:45:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[06:45:25]</span> <span class="muted">job-started</span> name=close pid=17084 log=.dabbler/runs/s33/driver/jobs/close.log</div>
+<div class="line"><span class="at">[06:45:31]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s33/driver/jobs/close.log</div>
+<div class="line"><span class="at">[06:45:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>18 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.Api/SavedViewEndpoints.cs`, `WhyNotASavedView` checks for unknown columns with `if (columns.FirstOrDefault(c =&gt; !ExportColumns.All.Contains(c, StringComparer.Ordinal)) is { } unknown)`. Because `FirstOrDefault` returns `null` both when nothing matches and when the matching element is itself `null`, a request with a `null` element in `Columns` bypasses the `{ } unknown` non-null pattern.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Precondition:** No database state required (pure validation call).</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Input:** `SavedViewEndpoints.WhyNotASavedView(new SaveSavedViewRequest(&quot;Open salmonella&quot;, [null!]))` (or `[ExportColumns.RecordNumber, null!]`).</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Expectation:** Should return a non-null refusal message stating that `Columns` holds an unknown column; today's code returns `null` (valid).</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.IntegrationTests/SavedViewEndpointsTests.cs`, duplicate-name rejection (`SavedViewQueries.WhyNotKnown`) and the self-update exemption (`view.Id != id`) are not exercised by any test in the diff.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Precondition:** A signed-in user who has already created a saved view named `&quot;Open salmonella&quot;` with id `view.Id`.</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Input:**</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>`POST /api/saved-views` by the same user with `new SaveSavedViewRequest(&quot;  Open salmonella  &quot;, [ExportColumns.RecordNumber])`.</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>`PUT /api/saved-views/{view.Id}` by the same user with `new SaveSavedViewRequest(&quot;Open salmonella&quot;, [ExportColumns.RecordNumber, ExportColumns.LastName])`.</td><td>not answered</td></tr>
+<tr><td>9</td><td><strong>minor</strong></td><td>**Expectation:** The `POST` returns `400 Bad Request` with detail containing `&quot;already another of your saved views&quot;`, while the `PUT` against the same `view.Id` returns `200 OK` with the updated columns.</td><td>not answered</td></tr>
+<tr><td>10</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.IntegrationTests/SavedViewEndpointsTests.cs`, `PUT /api/saved-views/{id}` and `DELETE /api/saved-views/{id}` are only tested for a non-owning user (`404 NotFound`); no integration test pins that the owning user can update or delete their own view.</td><td>not answered</td></tr>
+<tr><td>11</td><td><strong>minor</strong></td><td>**Precondition:** A signed-in user with a created view `view` (`Columns: [&quot;record_number&quot;]`).</td><td>not answered</td></tr>
+<tr><td>12</td><td><strong>minor</strong></td><td>**Input:** `PUT /api/saved-views/{view.Id}` with `new SaveSavedViewRequest(&quot;Renamed view&quot;, [ExportColumns.LastName])`, followed by `DELETE /api/saved-views/{view.Id}`, followed by `GET /api/saved-views`.</td><td>not answered</td></tr>
+<tr><td>13</td><td><strong>minor</strong></td><td>**Expectation:** `PUT` returns `200 OK` with `Name == &quot;Renamed view&quot;` and `Columns == [&quot;last_name&quot;]`, `DELETE` returns `204 NoContent`, and the subsequent `GET /api/saved-views` does not contain `view.Id`.</td><td>not answered</td></tr>
+<tr><td>14</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.IntegrationTests/SavedViewEndpointsTests.cs`, `TheExportIsCsvOfTheChosenColumnsOverOnlyTheReportsTheFiltersSelect` only exercises the `ConditionId` filter. The remaining filter branches in `SavedViewQueries.Export` — `AgencyId`, `CaseStatus`, `OnsetFrom`, `OnsetTo`, and especially the `WorkflowState == WorkflowRules.InitialCode` branch that matches reports whose stored `WorkflowState` is `null` or whitespace — have no test in the diff.</td><td>not answered</td></tr>
+<tr><td>15</td><td><strong>minor</strong></td><td>**Precondition:** Two reports for the same condition: one newly created (stored `WorkflowState` is `null` or `&quot;assigned_to_lhd&quot;`) with `EventOnsetDate = 2026-03-10`, and one transitioned to `&quot;accepted&quot;` with `EventOnsetDate = 2026-01-15`.</td><td>not answered</td></tr>
+<tr><td>16</td><td><strong>minor</strong></td><td>**Input:** Create a saved view with `WorkflowState: &quot;assigned_to_lhd&quot;`, `OnsetFrom: 2026-03-01`, `OnsetTo: 2026-03-31`, and `GET /api/saved-views/{view.Id}/export`.</td><td>not answered</td></tr>
+<tr><td>17</td><td><strong>minor</strong></td><td>**Expectation:** The exported CSV includes the initial-state report within the March onset window and excludes the `&quot;accepted&quot;` January report, with rows ordered by `record_number`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>4s</td><td>792</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
