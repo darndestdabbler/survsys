@@ -1250,7 +1250,7 @@
     {
       "number": 61,
       "title": "The full investigation workflow",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-18T11:26:42.532000-04:00",
       "orchestrator": {
         "engine": "claude-code",
@@ -1260,7 +1260,7 @@
       },
       "frameworkVersion": "3.21.0",
       "startCommit": "dd3784f045feb8a45ef21ca6d3d31c025ea82a00",
-      "completedAt": null,
+      "completedAt": "2026-10-18T12:39:25.269000-04:00",
       "verificationVerdict": "VERIFIED",
       "verification": {
         "rounds": 2,
