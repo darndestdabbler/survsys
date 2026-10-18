@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 055 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 055 transcript</h1>
+<p class="stamp">Rendered 2026-10-18T08:12:53.921Z by dabbler-ai-router 3.21.0 at 5b9adad7ef65c09425845a57e96d5e05c0c95ebf.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-18T03:59:40.843-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 55: IBIS integration and ad-hoc reporting</h3>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: the IBIS integration, under a timeout.</li><li><code>Survsys.Api</code> and <code>Survsys.Web</code>: ad-hoc reporting, privilege-gated.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Port the two remaining Reporting &amp; Export features of the legacy feature matrix. IBIS integration: PersonCondition gains the legacy person_condition columns sent_to_ibis (bool?) and ibis_updated_at (date?) with one migration (20261017110000_IbisExport); Survsys.Api gains an IbisTransmitter shaped like CdcTransmitter -- an HTTP POST of one case's de-identified record (record number, condition, agency, case status, event onset date, MMWR week and year; no name, birth date or address) as JSON to a configured endpoint under a configured timeout, every outcome returned as a result (Accepted, Rejected, TimedOut, Faulted) rather than thrown, off when no endpoint is configured -- and POST /api/person-conditions/{id}/ibis, which transmits that case and, only when accepted, sets sent_to_ibis and ibis_updated_at; a timeout is a 504 and a rejection or fault a 502, as Problem Details. Ad-hoc reporting: a new privilege run_reports in Privileges.All, which PrivilegeRules requires for everything under /api/reports; GET /api/reports/case-counts?groupBy=&lt;grouping&gt;&amp;from=&lt;date&gt;&amp;to=&lt;date&gt; counts case morbidity reports grouped by one user-chosen dimension (condition, agency, case status, workflow state or MMWR year) over an optional event-onset date range, a grouping it does not know being a 400; and a Reports screen in Survsys.Web, behind a nav entry shown only to holders of run_reports, where the user picks the grouping and the range and reads the counts as a table.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/69037b8e904e26dce7293b1d7f5930c56cc3cf1d"><code>69037b8e904e26dce7293b1d7f5930c56cc3cf1d</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Ibis schema</td><td><p>Add the two legacy IBIS columns to the case morbidity report and their migration. On Survsys.Data/PersonCondition.cs add SentToIbis (bool?) and IbisUpdatedAt (DateOnly?, the legacy column is a DATE), documented in the entity's remarks as the IBIS export state session 55 adds; in PersonConditionConfiguration.cs map them to sent_to_ibis and ibis_updated_at the way the neighbouring columns are mapped. Add the migration with the EF Core tooling (dotnet ef migrations add IbisExport) named 20261017110000_IbisExport so it sorts after 20261017100000_AuditEntries, letting the tool regenerate SurvsysDbContextModelSnapshot; its Down drops the two columns. Nothing else changes.</p></td><td><span class="mono">Survsys.Data/PersonCondition.cs</span><br><span class="mono">Survsys.Data/PersonConditionConfiguration.cs</span><br><span class="mono">Survsys.Data/Migrations/20261017110000_IbisExport.cs</span><br><span class="mono">Survsys.Data/Migrations/20261017110000_IbisExport.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Ibis transmitter</td><td><p>Add Survsys.Api/IbisTransmitter.cs, following CdcTransmitter.cs closely: IbisTransmissionOptions (section &quot;IbisTransmission&quot;, Endpoint null by default so it is off, TimeoutSeconds default 30), an IbisCaseRecord record (RecordNumber, Condition, Agency, CaseStatus, EventOnsetDate, MmwrWeek, MmwrYear -- de-identified: no name, birth date or address), IbisTransmissionStatus (Accepted, Rejected, TimedOut, Faulted), IbisTransmissionResult (Status, Detail, AttemptedAt), and IbisTransmitter(HttpClient, IOptions&lt;IbisTransmissionOptions&gt;, ILogger&lt;IbisTransmitter&gt;) with Transmit(IbisCaseRecord, CancellationToken) that POSTs the record as JSON under the timeout and maps every outcome to a result exactly as CdcTransmitter does, letting only the caller's own cancellation through. Register it in Survsys.Api/Program.cs beside the CDC transmitter (Configure the options, AddHttpClient&lt;IbisTransmitter&gt;()). Add Survsys.IntegrationTests/IbisTransmitterTests.cs, following CdcTransmitterTests' loopback stub, proving: an accepting stub gives Accepted and receives the record as JSON; a 4xx/5xx stub gives Rejected with the status in the detail; a stub slower than a 1-second timeout gives TimedOut; no endpoint configured gives Faulted without a request.</p></td><td><span class="mono">Survsys.Api/IbisTransmitter.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.IntegrationTests/IbisTransmitterTests.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code><br><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo --filter FullyQualifiedName~IbisTransmitterTests</code></td><td>yes</td></tr>
+<tr><td>Ibis endpoint</td><td><p>Add Survsys.Api/IbisEndpoints.cs with MapIbis mapping POST /api/person-conditions/{id:int}/ibis (gated by the existing rule as a case write, EditCases), and an internal IbisQueries holding the DbContext as the other slices do. The handler reads the case's IbisCaseRecord (404 Problem Details when no case has that id), transmits it with IbisTransmitter, and only when the result is Accepted sets SentToIbis = true and IbisUpdatedAt to today and saves; it returns 200 with a new Survsys.Contracts/IbisTransmissionResponse (Status as text, Detail, AttemptedAt, SentToIbis, IbisUpdatedAt) when accepted, 504 Problem Details carrying the detail when timed out, and 502 Problem Details when rejected or faulted, the case left unchanged in each failure. Call app.MapIbis() in Survsys.Api/Program.cs (and register IbisQueries the way the slices register theirs). Add Survsys.IntegrationTests/IbisEndpointsTests.cs, using SurvsysApi and the SQL Server fixture with IbisTransmission:Endpoint pointed at a loopback stub, proving: an accepting stub marks the case sent with today's date and the stub received its record number; a rejecting stub returns 502 and leaves sent_to_ibis unset; an unknown case is 404.</p></td><td><span class="mono">Survsys.Api/IbisEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.Contracts/IbisTransmissionResponse.cs</span><br><span class="mono">Survsys.IntegrationTests/IbisEndpointsTests.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code><br><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo --filter FullyQualifiedName~IbisEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Report privilege</td><td><p>Add Privileges.RunReports = &quot;run_reports&quot; to Survsys.Contracts/Privileges.cs (documented as running ad-hoc reports) and append it to Privileges.All. In Survsys.Api/PrivilegeRules.cs require RunReports for every request under /api/reports whatever the method, ahead of the case-record fallthrough, and update the class remarks to say so. Update Survsys.UnitTests/PrivilegeRulesTests.cs: /api/reports and a path below it need RunReports for GET and POST, a ViewCases holder is not allowed there, and /api/reportsx falls through to the case rule.</p></td><td><span class="mono">Survsys.Contracts/Privileges.cs</span><br><span class="mono">Survsys.Api/PrivilegeRules.cs</span><br><span class="mono">Survsys.UnitTests/PrivilegeRulesTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo --filter FullyQualifiedName~PrivilegeRulesTests</code></td><td>yes</td></tr>
+<tr><td>Report endpoint</td><td><p>Add the ad-hoc case-count report to Survsys.Api. In Survsys.Contracts add ReportGroupings.cs (constants condition, agency, case_status, workflow_state, mmwr_year and an All list, read by both tiers as ExportColumns is) and CaseCountResponse.cs (Group as text, null where the case has no value, and Count). Add Survsys.Api/ReportEndpoints.cs with MapReports mapping GET /api/reports/case-counts?groupBy=&amp;from=&amp;to=, a public static WhyNotAReport(groupBy, from, to) returning the reason a request is not one (an unknown grouping, or from after to) or null, which the handler turns into a 400 Problem Details, and an internal ReportQueries that counts PersonCondition rows (event onset date within the optional inclusive range) grouped by the chosen dimension in the database, ordered by count descending then group. Call app.MapReports() and register ReportQueries in Survsys.Api/Program.cs. Add Survsys.UnitTests/ReportEndpointsTests.cs for WhyNotAReport and Survsys.IntegrationTests/ReportEndpointsTests.cs proving against the fixture's seeded cases that grouping by condition counts each condition's cases, that the date range narrows the counts, and that an unknown grouping is 400.</p></td><td><span class="mono">Survsys.Contracts/ReportGroupings.cs</span><br><span class="mono">Survsys.Contracts/CaseCountResponse.cs</span><br><span class="mono">Survsys.Api/ReportEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.UnitTests/ReportEndpointsTests.cs</span><br><span class="mono">Survsys.IntegrationTests/ReportEndpointsTests.cs</span><br><span class="mono">Survsys.Data/RolePrivilegeConfiguration.cs</span><br><span class="mono">Survsys.Data/Migrations/20261017120000_RunReportsPrivilege.cs</span><br><span class="mono">Survsys.Data/Migrations/20261017120000_RunReportsPrivilege.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo --filter FullyQualifiedName~ReportEndpointsTests</code><br><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo --filter FullyQualifiedName~ReportEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Report screen</td><td><p>Add the Reports screen to Survsys.Web. Survsys.Web/ReportsClient.cs, following ExportLogClient and ApiAsk, with CaseCounts(groupBy, from, to) asking GET api/reports/case-counts and a public failure prefix; register it in Survsys.Web/Program.cs as the other clients are. Survsys.Web/Components/Pages/Reports.razor at /reports: a grouping select over ReportGroupings.All, optional from and to dates, a Run button, and a table of group and count (a null group shown as &quot;(none)&quot;), with the client's failure shown as the other pages show theirs. In Survsys.Web/Components/Layout/MainLayout.razor add a nav-reports entry shown only when the user holds Privileges.RunReports. Add Survsys.UnitTests/ReportsClientTests.cs following ExportLogClientTests: the query string carries the grouping and the dates only when given, the counts are read back, and a failure carries the prefix.</p></td><td><span class="mono">Survsys.Web/ReportsClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.Web/Components/Pages/Reports.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span><br><span class="mono">Survsys.UnitTests/ReportsClientTests.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo --filter FullyQualifiedName~ReportsClientTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No IBIS scheduling, batching, retry or queue: a case is transmitted when the endpoint is called, once, and the outcome is returned and logged; there is no background service and no IBIS export log table.</li><li>No IBIS screen in Survsys.Web: the integration is the API tier's, as the session plan states; no button or tab is added to the morbidity report.</li><li>No free-form query language, SQL text, saved reports, charts or CSV for ad-hoc reports: a report is a count grouped by one dimension from a fixed list over an optional date range; saved views and CSV exports stay as they are.</li><li>No change to the existing privileges, to how any existing route is gated, or to the saved-view export.</li><li>No new walkthrough or E2E test, and no release or packaging change: dabbler.yaml is untouched and nothing is published.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[07:59:40]</span> <span class="muted">run-started</span> session=055 mode=pull</div>
+<div class="line"><span class="at">[07:59:40]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[08:02:29]</span> <span class="muted">run-resumed</span> session=055 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[08:02:29]</span> <span class="muted">plan-accepted</span> steps=[&quot;ibis-schema&quot;,&quot;ibis-transmitter&quot;,&quot;ibis-endpoint&quot;,&quot;report-privilege&quot;,&quot;report-endpoint&quot;,&quot;report-screen&quot;] non_goals=5</div>
+<div class="line"><span class="at">[08:02:29]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[08:02:30]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=ibis-schema</div>
+<div class="line"><span class="at">[08:03:23]</span> <span class="muted">run-resumed</span> session=055 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:03:25]</span> <span class="muted">check-passed</span> step=ibis-schema argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[08:03:25]</span> <span class="muted">report-accepted</span> seq=2 step=ibis-schema files=[&quot;Survsys.Data/PersonCondition.cs&quot;,&quot;Survsys.Data/PersonConditionConfiguration.cs&quot;,&quot;Survsys.Data/Migrations/20261017110000_IbisExport.cs&quot;,&quot;Survsys.Data/Migrations/20261017110000_IbisExport.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=Added SentToIbis and IbisUpdatedAt mapped to sent_to_ibis and ibis_updated_at, with the generated IbisExport migration renamed to 20261017110000.</div>
+<div class="line"><span class="at">[08:03:25]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=ibis-transmitter</div>
+<div class="line"><span class="at">[08:04:25]</span> <span class="muted">run-resumed</span> session=055 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:04:28]</span> <span class="muted">check-passed</span> step=ibis-transmitter argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[08:04:33]</span> <span class="muted">check-passed</span> step=ibis-transmitter argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~IbisTransmitterTests&quot;]</div>
+<div class="line"><span class="at">[08:04:33]</span> <span class="muted">report-accepted</span> seq=3 step=ibis-transmitter files=[&quot;Survsys.Api/IbisTransmitter.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.IntegrationTests/IbisTransmitterTests.cs&quot;] notes=IbisTransmitter mirrors CdcTransmitter, POSTing a de-identified IbisCaseRecord as JSON under a timeout; registered in Program.cs; four stub tests pass.</div>
+<div class="line"><span class="at">[08:04:33]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=ibis-endpoint</div>
+<div class="line"><span class="at">[08:06:19]</span> <span class="muted">run-resumed</span> session=055 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:06:22]</span> <span class="muted">check-passed</span> step=ibis-endpoint argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[08:06:30]</span> <span class="muted">check-passed</span> step=ibis-endpoint argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~IbisEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[08:06:30]</span> <span class="muted">report-accepted</span> seq=4 step=ibis-endpoint files=[&quot;Survsys.Api/IbisEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.Contracts/IbisTransmissionResponse.cs&quot;,&quot;Survsys.IntegrationTests/IbisEndpointsTests.cs&quot;] notes=POST /api/person-conditions/{id}/ibis transmits the case and marks it sent only on acceptance (tracked save, so audited); 504 on timeout, 502 on rejection/fault, 404 unknown; three integration tests pass.</div>
+<div class="line"><span class="at">[08:06:30]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=report-privilege</div>
+<div class="line"><span class="at">[08:07:08]</span> <span class="muted">run-resumed</span> session=055 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:07:12]</span> <span class="muted">check-passed</span> step=report-privilege argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~PrivilegeRulesTests&quot;]</div>
+<div class="line"><span class="at">[08:07:12]</span> <span class="muted">report-accepted</span> seq=5 step=report-privilege files=[&quot;Survsys.Contracts/Privileges.cs&quot;,&quot;Survsys.Api/PrivilegeRules.cs&quot;,&quot;Survsys.UnitTests/PrivilegeRulesTests.cs&quot;] notes=Added Privileges.RunReports to All; PrivilegeRules requires it under /api/reports whatever the method; tests cover the rule, whole-segment matching and a ViewCases holder refused.</div>
+<div class="line"><span class="at">[08:07:12]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=report-endpoint</div>
+<div class="line"><span class="at">[08:09:53]</span> <span class="muted">run-resumed</span> session=055 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:09:56]</span> <span class="muted">check-passed</span> step=report-endpoint argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[08:10:00]</span> <span class="muted">check-passed</span> step=report-endpoint argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ReportEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[08:10:08]</span> <span class="muted">check-passed</span> step=report-endpoint argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ReportEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[08:10:09]</span> <span class="muted">report-accepted</span> seq=6 step=report-endpoint files=[&quot;Survsys.Contracts/ReportGroupings.cs&quot;,&quot;Survsys.Contracts/CaseCountResponse.cs&quot;,&quot;Survsys.Api/ReportEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.UnitTests/ReportEndpointsTests.cs&quot;,&quot;Survsys.IntegrationTests/ReportEndpointsTests.cs&quot;,&quot;Survsys.Data/RolePrivilegeConfiguration.cs&quot;,&quot;Survsys.Data/Migrations/20261017120000_RunReportsPrivilege.cs&quot;,&quot;Survsys.Data/Migrations/20261017120000_RunReportsPrivilege.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=GET /api/reports/case-counts groups case counts in the database by one ReportGroupings dimension over an optional onset range; 400 via WhyNotAReport; Administrator seeded with run_reports by migration 20261017120000 (amended in).</div>
+<div class="line"><span class="at">[08:10:09]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=report-screen</div>
+<div class="line"><span class="at">[08:11:29]</span> <span class="muted">run-resumed</span> session=055 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:11:32]</span> <span class="muted">check-passed</span> step=report-screen argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[08:11:36]</span> <span class="muted">check-passed</span> step=report-screen argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ReportsClientTests&quot;]</div>
+<div class="line"><span class="at">[08:11:36]</span> <span class="muted">report-accepted</span> seq=7 step=report-screen files=[&quot;Survsys.Web/ReportsClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.Web/Components/Pages/Reports.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;,&quot;Survsys.UnitTests/ReportsClientTests.cs&quot;] notes=ReportsClient asks case-counts with dates only when given; /reports page picks grouping and onset range and shows group/count; nav-reports shown only to run_reports holders; client tests pass.</div>
+<div class="line"><span class="at">[08:11:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[08:11:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[08:11:38]</span> <span class="muted">job-started</span> name=verification pid=18968 log=.dabbler/runs/s55/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:12:30]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s55/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:12:30]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[08:12:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[08:12:30]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[08:12:32]</span> <span class="muted">job-started</span> name=run of record: unit pid=35580 log=.dabbler/runs/s55/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:12:39]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s55/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:12:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[08:12:44]</span> <span class="muted">landed</span> commit=69037b8e904e26dce7293b1d7f5930c56cc3cf1d</div>
+<div class="line"><span class="at">[08:12:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[08:12:44]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[08:12:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[08:12:45]</span> <span class="muted">job-started</span> name=close pid=22720 log=.dabbler/runs/s55/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:12:53]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s55/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:12:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `IbisTransmitter` does not make the configured timeout authoritative when it exceeds `HttpClient`’s default 100-second timeout. `Program.cs` registers `AddHttpClient&lt;IbisTransmitter&gt;()` without changing `HttpClient.Timeout`, while `IbisTransmitter` only adds its own cancellation token.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** An invalid negative configured timeout can throw before the transmitter reaches its result-returning error handling. `CancellationTokenSource(TimeSpan.FromSeconds(settings.TimeoutSeconds))` is constructed before the `try` block.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>5s</td><td>1022</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
