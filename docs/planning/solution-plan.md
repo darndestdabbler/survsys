@@ -419,9 +419,11 @@ The NMI half.
 
 *Specified by:* `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md`, `nmi-ui-overview.md`, `db-snapshots/session-015/nmi-*`.
 
-### Phase 7 — Outbreaks, forms, treatments, audit → **1.0.0**
+### Phase 7 — Outbreaks, forms, treatments, audit → **0.8.0**
 
-The remainder, and the first release that claims parity.
+Planned as the remainder and the first release that claims parity, at 1.0.0.
+The gap analysis after it ([`gap-analysis.md`](gap-analysis.md)) found that it
+cannot claim parity, and the operator moved 1.0.0 to the end of phase 14.
 
 - Outbreak management with multi-agency access, section-based outbreak reports, activity log.
 - The dynamic form builder: condition-specific supplemental forms, nested sections and questions, text and coded answers, auto-assignment on condition selection.
@@ -431,3 +433,23 @@ The remainder, and the first release that claims parity.
 - *Walkthroughs:* open an outbreak and link cases, complete a supplemental form, record a treatment.
 
 *Specified by:* `epitrax-core-workflows.md`, `phase-1.6-feature-matrix.md` §5, §7, §8, §14, `epitrax-table-catalog.md`.
+
+### Phases 8 to 14 — closing the gaps → **0.9.0 to 1.0.0**
+
+Added on 2026-10-18 from [`gap-analysis.md`](gap-analysis.md). The operator
+chose to close the gaps before claiming parity, and to add electronic case
+reporting, the Connecticut ELR rules, full NMI and a master person record.
+
+| Phase | What it closes | Release |
+|---|---|---|
+| 8 — Case access and editing | case search, editing and deleting child records, the full workflow, event types and contact cases, per-case treatments, encounters, occupation and pregnancy, reference code lists, delete, print and lock | 0.9.0 |
+| 9 — Master person record | identifiers, name and address history, person matching in the application, duplicate merge | 0.10.0 |
+| 10 — Inbound ELR to parity | parsed and stored messages, MLLP and ACKs, vocabulary and rules at intake, the graylist and full queue, labs from messages and case update, retry and statistics, Connecticut conformance | 0.11.0 |
+| 11 — Outbound CDC to parity | the queue worker, auto-queue on every change, queue actions and reconciliation, guide and value-set administration, transport | 0.12.0 |
+| 12 — Audit, access, classification, reporting | audit with user and values and its screens, jurisdiction-scoped access, lockout, persisted keys, classification on save, IBIS, ad-hoc reporting, system configuration | 0.13.0 |
+| 13 — Electronic case reporting | eICR and RR intake, validation and viewing, reportability and condition mapping, cases from eCR, senders and data quality; specified by [`ecr-requirements.md`](ecr-requirements.md) | 0.14.0 |
+| 14 — Parity | the parity check, the full walkthrough regression and the guides | **1.0.0** |
+
+Deferred cut 2 holds for MLLP and eCR intake: both are hosted services in the
+API tier. The parser seam phase 10 adds is the one new abstraction, and it is
+justified by a second format arriving in phase 13, not speculatively.

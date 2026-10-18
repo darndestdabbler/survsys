@@ -772,8 +772,10 @@ comes before it.*
 
 ---
 
-*Phase 7 — outbreaks, forms, treatments and audit → release 1.0.0, the first
-release that claims parity. Specified by `epitrax-core-workflows.md`,
+*Phase 7 — outbreaks, forms, treatments and audit → release 0.8.0. Planned as
+1.0.0, the first release that claims parity; the gap analysis after session 57
+(`docs/planning/gap-analysis.md`) showed it cannot claim it, and the operator
+moved 1.0.0 to the end of phase 14. Specified by `epitrax-core-workflows.md`,
 `phase-1.6-feature-matrix.md` sections 5, 7, 8 and 14, and
 `epitrax-table-catalog.md`.*
 
@@ -877,4 +879,625 @@ so this comes before them.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 58: Release 1.0.0 (release: 1.0.0)
+### Session 58: Release 0.8.0 (release: 0.8.0)
+
+---
+
+*Sessions 59 to 101 were planned on 2026-10-18 from
+`docs/planning/gap-analysis.md`, an audit of the code against the legacy
+feature matrix, the business-logic documents and the specifications under
+`../nedss/docs/`. Several pipelines are built as tested libraries that nothing
+in the running application calls, and core case work is missing. The operator
+chose to ship phase 7 as 0.8.0, to close the gaps in phases 8 to 13, to add
+electronic case reporting, the Connecticut ELR rules, full NMI and a master
+person record, and to release 1.0.0 last. Every phase ends on its walkthroughs
+and a release, as phases 0 to 7 did. A session that reaches SQL Server says so
+in its tests step, because a session's run of record is the unit suite, which
+does not (the lesson of session 56).*
+
+*Phase 8 — case access and case editing → release 0.9.0. Specified by
+`epitrax-core-workflows.md`, `epitrax-cmr-workflow.md`,
+`epitrax-cmr-deep-editing.md`, `session-012-investigation-admin-contacts-notes.md`
+and `phase-1.6-feature-matrix.md` §1–§8.*
+
+### Session 59: Case search and getting back to a case
+
+1. Register.
+2. `Survsys.Api`: a paged case search over the case morbidity reports — by
+   record number, patient name, disease, investigating agency, workflow state,
+   case status and a date range — returning one row per case with its patient,
+   disease, agency, state and MMWR week.
+3. `Survsys.Web`: an Events screen in the navigation bar that runs the search
+   and opens a case from its row; the record numbers on the work queues, the
+   task list and the People results become links to the case; a person screen
+   reached from People that shows the person's demographics and lists their
+   cases.
+4. `Survsys.IntegrationTests`: the search against SQL Server, each filter alone
+   and combined, and paging.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 60: Correcting and removing a case's child records
+
+1. Register.
+2. `Survsys.Api`: edit and delete routes for specimens, tests, results and
+   susceptibility rows, exposures, exposure places, contacts and sources, and
+   attachments; a contact's disposition and its date updated after the
+   exposure is saved; MMWR week and year recalculated whenever the onset or
+   diagnosis date changes, by the rule `MmwrWeek` already implements.
+3. `Survsys.Web`: edit and delete on the Laboratory, Contacts and Notes tabs'
+   rows, each delete confirmed first.
+4. `Survsys.IntegrationTests`: each route's update and delete against SQL
+   Server, including the audit row each one writes and a delete of a row
+   another row depends on refused with a Problem Details.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 61: The full investigation workflow
+
+1. Register.
+2. `Survsys.Data` and `Survsys.Api`: the legacy workflow's remaining
+   transitions — route to another agency, assign to an investigator, do not
+   investigate, reopen, approve and reject by the state — each gated by its
+   privilege, and a transition history row (who, when, from, to, note) for
+   every transition, with its migration.
+3. `Survsys.Web`: the report's Workflow Options carrying only the transitions
+   the case's state and the user's privileges allow, an investigator picker,
+   and the transition history on the Administrative tab.
+4. `Survsys.UnitTests` and `Survsys.IntegrationTests`: every allowed and every
+   refused transition of `WorkflowRules`, and the history row each writes.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 62: Event types, contact cases and the contact import
+
+1. Register.
+2. `Survsys.Data` and `Survsys.Api`: an event type on every case — morbidity,
+   contact or assessment — with its migration, existing cases becoming
+   morbidity reports; a contact added as a contact event of its own, its person
+   found by search or created new; a contact event promoted to a morbidity
+   report.
+3. `Survsys.Api` and `Survsys.Web`: the batch CSV contact import saving what it
+   validates, as contact events under the chosen exposure, behind an upload
+   screen on the Contacts tab that shows each refused row and why.
+4. `Survsys.IntegrationTests`: a contact event's creation and promotion, and an
+   import of good and refused rows.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 63: Treatments, encounters, occupation and pregnancy on a case
+
+1. Register.
+2. `Survsys.Data` and `Survsys.Api`: per-case treatments chosen from the
+   condition's treatment list (or the whole catalogue) with dates and dose;
+   healthcare encounters; occupation; pregnancy with its due date and delivery
+   facility; vaccine manufacturer and information source; and the report
+   header's investigator, brief note and separate state and local case status;
+   with their migration and endpoints.
+3. `Survsys.Web`: a Treatments tab and an Encounters tab, the new fields on
+   the Clinical, Investigation and Vaccines tabs, and the header fields.
+4. `Survsys.IntegrationTests`: each new route against SQL Server.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 64: The reference code lists behind every coded field
+
+1. Register.
+2. `Survsys.Data`: code tables, with their migration, for every field typed as
+   a free-text code today — specimen source, test type, organism, test result,
+   disposition, contact type, task category and priority, race, ethnicity,
+   language, county, case status, imported-from, attachment category and the
+   rest the gap analysis lists — seeded from the legacy codes in
+   `../nedss/docs/db-snapshots/`, existing values left as they are.
+3. `Survsys.Api` and `Survsys.Web`: one code-list endpoint, a screen to
+   maintain the lists under Administration, and a select box in place of each
+   free-text code on every tab, test types filtered by the case's condition.
+4. `Survsys.E2ETests`: every walkthrough whose steps type a code chooses it
+   from its list instead, document and test changed together.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 65: Delete, print and lock a case, and private notes
+
+1. Register.
+2. `Survsys.Data` and `Survsys.Api`: a case deleted softly and restored, a
+   "show deleted" filter on the case search, a note's privacy, attachments on
+   an outbreak, and an edit lock taken when a user opens a case to edit and
+   released on save or timeout, with their migration.
+3. `Survsys.Web`: the report opening read-only with an Edit button, the lock's
+   holder shown to anyone else, delete and restore, and a printable view of
+   the whole case for the browser to print or save as PDF.
+4. `Survsys.IntegrationTests`: deletion, restoring, the lock's contention and
+   its timeout.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 66: Phase 8 walkthroughs
+
+1. Register.
+2. `docs/walkthroughs/`: five documents — find a case, correct a laboratory
+   result, route a case to another agency, promote a contact to a case, record
+   a case treatment.
+3. `Survsys.E2ETests`: the five Playwright tests named after them.
+4. Cross-provider verification.
+5. Full test suite, recorded as the run of record.
+6. Close-out.
+
+### Session 67: Release 0.9.0 (release: 0.9.0)
+
+---
+
+*Phase 9 — the master person record → release 0.10.0. Specified by
+`EMSA_PERSON_MATCHING.md`, `phase-1.6-cross-system-data-model.md` and
+`CT_SITE_REQUIREMENTS.md`. Phases 10 and 13 match inbound people against it.*
+
+### Session 68: Person identifiers, name history and address history
+
+1. Register.
+2. `Survsys.Data` and `Survsys.Api`: person identifiers (type, value,
+   assigning authority by CLIA or OID), a name history kept when a person's
+   name changes, and an address rule of one current address with the rest
+   historic by their dates, with their migration; addresses normalised on save
+   (case, whitespace, zip plus four, state code) and the county taken from the
+   zip where it is blank.
+3. `Survsys.Web`: identifiers and name history on the Demographics tab and the
+   person screen; person search finding a person by alias, former name or
+   identifier.
+4. `Survsys.UnitTests` and `Survsys.IntegrationTests`: the normalisation rules,
+   and search by each new route.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 69: Person matching in the running application
+
+1. Register.
+2. `Survsys.Api`: a person-match endpoint that scores candidates with
+   `PersonMatchRules` from name, birth date, sex, identifiers and address, the
+   thresholds for an exact match, a probable match and no match set in
+   configuration.
+3. `Survsys.Web`: person search showing each candidate's score and why, and
+   the staged-message review proposing its best match, with "create new
+   person" beside it.
+4. `Survsys.IntegrationTests`: the endpoint's verdict on the legacy match
+   cases in `EMSA_PERSON_MATCHING.md`.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 70: Duplicate persons and merging them
+
+1. Register.
+2. `Survsys.Api`: candidate duplicate pairs found by the matcher, and a merge
+   that keeps one person, moves the other's cases, labs, contacts, vaccines,
+   identifiers, names and addresses onto them, keeps the merged-away record as
+   a merged tombstone, and audits the merge, in one transaction.
+3. `Survsys.Web`: a duplicates screen and a side-by-side merge screen,
+   privilege-gated.
+4. `Survsys.IntegrationTests`: a merge's every moved row, and a failed merge
+   leaving both persons unchanged.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 71: Phase 9 walkthroughs
+
+1. Register.
+2. `docs/walkthroughs/`: three documents — find a person by a former name,
+   record a person's address history, merge duplicate persons.
+3. `Survsys.E2ETests`: the three Playwright tests named after them.
+4. Cross-provider verification.
+5. Full test suite, recorded as the run of record.
+6. Close-out.
+
+### Session 72: Release 0.10.0 (release: 0.10.0)
+
+---
+
+*Phase 10 — inbound ELR to parity → release 0.11.0. The EMSA half finished: the
+libraries phase 5 built are wired into intake. Specified by
+`EMSA_MESSAGE_PIPELINE.md`, `EMSA_RULES_ENGINE.md`, `EMSA_VOCABULARY_SYSTEM.md`,
+`EMSA_PERSON_MATCHING.md`, `EMSA_EPITRAX_CONTRACT.md`, `HL7_FIELD_MAPPINGS.md`,
+`MIRTH_REPLACEMENT_SPEC.md`, `emsa-ui-overview.md` and
+`CT_SITE_REQUIREMENTS.md` §1.*
+
+### Session 73: Parsed messages, the parser seam and MLLP
+
+1. Register.
+2. `Survsys.Messaging` and `Survsys.Data`: a parser seam that takes raw
+   message text to the parsed fields intake keeps, with `OruR01Parser` its HL7
+   v2 implementation and room for a CDA one in phase 13; a message type and
+   format on every staged message; the parsed demographics, sending facility,
+   orders, results and specimens stored, one staged message per OBR; with the
+   migration.
+3. `Survsys.Api`: an MLLP listener beside the file drop, off unless
+   configured, answering each message with an ACK or a NAK; a message from a
+   sending facility (MSH-4) that is not on file held as an exception.
+4. `Survsys.UnitTests` and `Survsys.IntegrationTests`: the OBR split, ACK and
+   NAK framing, and an unknown sender.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 74: Vocabulary and rules at intake
+
+1. Register.
+2. `Survsys.Api`: intake translating each result through `VocabularyMatcher`'s
+   child, master and application tiers to its condition, organism and
+   interpretation; the message filter and case-management rules evaluated by
+   `ExpressionEvaluator`; the investigating agency chosen from the patient's
+   zip.
+3. `Survsys.Api` and `Survsys.Web`: vocabulary screens for master and child
+   LOINC, organisms, specimens and results, with lab-specific overrides, CSV
+   import and export, and the rules on a condition's screen.
+4. `Survsys.IntegrationTests`: the legacy vocabulary and rule cases from the
+   EMSA documents.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 75: The graylist, automatic assignment and the full queue
+
+1. Register.
+2. `Survsys.Data` and `Survsys.Api`: the remaining legacy queue states —
+   pending, locked, QA, out of state, semi-automatic, unprocessed and the gray
+   cluster — with their migration; a message person-matched and rule-matched
+   with confidence assigned without a reviewer, and one without confidence
+   sent to pending; the graylist holding a result with no case to attach to,
+   a hosted service releasing it when a case appears and pruning it after its
+   window.
+3. `Survsys.Web`: the queue filtered by every state, and move, delete, retry
+   and bulk actions.
+4. `Survsys.IntegrationTests`: an automatic assignment, a graylisted message
+   released and one pruned.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 76: Labs from messages, and updating an existing case
+
+1. Register.
+2. `Survsys.Api`: promotion writing the message's specimen, tests, results and
+   susceptibilities and its person data onto the case, in one transaction with
+   the message's assignment, so a failure leaves neither and a second
+   promotion is impossible.
+3. `Survsys.Api`: a message for a person with an open case on the condition
+   updates that case — by the whitelist rules, the "not a case" check, and lab
+   comparison as add, update, duplicate or exception, with test-status upgrade
+   and lab knitting — and a person mismatch sends the message to pending.
+4. `Survsys.IntegrationTests`: each lab comparison outcome, and a promotion
+   that fails part-way.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 77: Exceptions, reprocessing, notifications and statistics
+
+1. Register.
+2. `Survsys.Data` and `Survsys.Api`: typed exceptions with the legacy
+   categories and whether each may be retried, reprocessing of retryable ones
+   by a hosted service and by hand, and the message audit trail of every state
+   a message passes through, with their migration.
+3. `Survsys.Api` and `Survsys.Web`: batch notification e-mail of assigned
+   messages to the agency's contacts over configured SMTP, and an intake
+   statistics screen by sender, state and day.
+4. `Survsys.IntegrationTests`: a retried exception and its audit trail.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 78: Connecticut ELR conformance
+
+1. Register.
+2. `Survsys.Messaging`: a conformance profile engine for the usage codes R,
+   RE, O and X and the conditional C(R/X), C(RE/X), C(R/RE) and C(R/O), with a
+   failed check recorded on the message as an exception or a warning by its
+   usage.
+3. `Survsys.Messaging` and `Survsys.Api`: the Connecticut profile from
+   `CT-ELR-HL7-251_Implementation_Guide_v1.0.pdf` — the CT OIDs per
+   environment in configuration, CLIA or OID in PID-3, ORC-2/3, OBR-2/3 and
+   SPM-2, OBR-16, OBR-17, ORC-24 and OBX-2 required, a patient town checked
+   against the 169 CT towns, and NK1 required on a child's blood-lead result —
+   chosen per sender.
+4. `Survsys.UnitTests`: a passing and a failing message for every CT rule.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 79: Phase 10 walkthroughs
+
+1. Register.
+2. `docs/walkthroughs/`: four documents — find a message assigned
+   automatically, update an existing case from a laboratory message, release
+   a graylisted message, maintain a LOINC mapping.
+3. `Survsys.E2ETests`: the four Playwright tests named after them.
+4. Cross-provider verification.
+5. Full test suite, recorded as the run of record.
+6. Close-out.
+
+### Session 80: Release 0.11.0 (release: 0.11.0)
+
+---
+
+*Phase 11 — outbound CDC notification to parity → release 0.12.0. The NMI half
+finished: the generator, mapper and transmitter phase 6 built are put to work.
+Specified by `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md`
+and `nmi-ui-overview.md`. NETSS stays unbuilt until the operator records CDC's
+answer in `docs/planning/netss-export-question.md`.*
+
+### Session 81: The notification queue worker and the export log
+
+1. Register.
+2. `Survsys.Api`: a hosted service that takes each released entry off
+   `nmi_export_queue`, builds its message with `PhinVariableMapper`, the rule
+   sets, `RepeatingGroupProcessor` and `OruR01Generator`, sends it with
+   `CdcTransmitter`, and writes the outcome to `nmi_log` with its detail and
+   severities; the processing id (production, training, debug) and the queue
+   type (production, onboarding, batch) in configuration; and a "process
+   queue now" action.
+3. `Survsys.Web`: the export log showing each run's detail, and the generated
+   message of an export the worker made.
+4. `Survsys.IntegrationTests`: a queued case through to its log row against a
+   stub CDC endpoint, and a refused send logged as a failure.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 82: Auto-queue on every change, queue actions and reconciliation
+
+1. Register.
+2. `Survsys.Api`: a case queued for notification on every change that reaches
+   a notified variable — labs, clinical, investigation, administrative and
+   demographics — when the condition's print criteria pass; the print
+   criteria per condition, with their migration.
+3. `Survsys.Api` and `Survsys.Web`: remove from the queue, retract a sent
+   notification (NOT118 = X), resend, export specific records or an MMWR
+   range, and the reconciliation cutoff stored and set on screen.
+4. `Survsys.IntegrationTests`: each queue action and the cutoff's effect.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 83: Guide, rule set and value set administration
+
+1. Register.
+2. `Survsys.Api` and `Survsys.Web`: screens for notification guides, their
+   PHIN variables and variable defaults, and rule sets; guide JSON import and
+   export; PHIN value sets and units of measure, imported from CSV with a
+   preview.
+3. `Survsys.Messaging`: hepatitis lab grouping, organism and test-type
+   overrides, the arbovirus two-OBR message and the NK1 mother segment.
+4. `Survsys.UnitTests`: each generator change, against the legacy examples in
+   `NMI_XML_GENERATION.md`.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 84: Transport to CDC
+
+1. Register.
+2. `Survsys.Api`: a transport chosen in configuration — the HTTP post that
+   exists, or files written to a folder that a PHINMS or AIMS sender picks up
+   — and batch-file tracking of what each file carried.
+3. `Survsys.Api`: retention of the export log by a configured age, and the
+   transport's credentials read from configuration, never stored.
+4. `Survsys.IntegrationTests`: the file transport's output and its batch
+   record.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 85: Phase 11 walkthroughs
+
+1. Register.
+2. `docs/walkthroughs/`: three documents — send a case to CDC, retract a
+   notification, configure a notification guide. Review a generated message
+   and inspect the export log are rewritten to read rows the worker made,
+   not seeded ones.
+3. `Survsys.E2ETests`: the three Playwright tests named after them, and the
+   two rewritten tests.
+4. Cross-provider verification.
+5. Full test suite, recorded as the run of record.
+6. Close-out.
+
+### Session 86: Release 0.12.0 (release: 0.12.0)
+
+---
+
+*Phase 12 — audit, access, classification and reporting → release 0.13.0.
+Specified by `phase-1.6-cross-cutting-patterns.md`, `CLASSIFICATION_RULES.md`
+and `phase-1.6-feature-matrix.md` §11–§14.*
+
+### Session 87: Audit with its user and values, and its screens
+
+1. Register.
+2. `Survsys.Data`: the audit interceptor recording the signed-in user and the
+   values before and after as JSON, with its migration; sign-ins, exports and
+   searches audited, and vocabulary changes among the audited tables.
+3. `Survsys.Web`: an audit screen of a case's history and of a table's, and an
+   access-audit screen, both privilege-gated.
+4. `Survsys.IntegrationTests`: an insert, update and delete each recorded with
+   user and values, and a rolled-back save recording nothing.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 88: Jurisdiction-scoped access and sign-in protection
+
+1. Register.
+2. `Survsys.Api`: a user's case access scoped to their agencies' jurisdictions
+   and to cases shared with them, every case route and the case search
+   refusing the rest; the Forms and Treatments writes needing the privilege
+   the navigation bar already asks for.
+3. `Survsys.Api` and `Survsys.Web`: account lockout after failed sign-ins, and
+   data protection keys persisted to a configured folder on both tiers, so a
+   sign-in survives an app-pool recycle and a second server.
+4. `Survsys.IntegrationTests`: a case out of the user's jurisdiction refused
+   on every route, and lockout.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 89: Classification rules on save
+
+1. Register.
+2. `Survsys.Data`: the validation and classification rules of
+   `CLASSIFICATION_RULES.md` run on every case save — chlamydia, gonorrhea,
+   hepatitis C, influenza, syphilis, measles and COVID — with out-of-state
+   status from the patient's address and the jurisdiction taken from it.
+3. `Survsys.Api`: contacts of chlamydia, gonorrhea and syphilis cases closed
+   when the rule says, and each rule's outcome shown to the user on save.
+4. `Survsys.UnitTests`: every rule's cases from `CLASSIFICATION_RULES.md`.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 90: IBIS, ad-hoc reporting and system configuration
+
+1. Register.
+2. `Survsys.Web`: a Send to IBIS action on the report, privilege-gated, over
+   the endpoint session 55 built.
+3. `Survsys.Api` and `Survsys.Web`: ad-hoc reporting over the saved views —
+   counts grouped by any of a view's columns, shown on screen and exported —
+   and condition configuration's notification guide, print criteria and
+   intake flags.
+4. `Survsys.Data`, `Survsys.Api` and `Survsys.Web`: system configuration
+   settings stored in the database and edited on an Administration screen.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 91: Phase 12 walkthroughs
+
+1. Register.
+2. `docs/walkthroughs/`: four documents — review a case's audit history, run
+   an ad-hoc report, send a case to IBIS, see a case classified on save.
+3. `Survsys.E2ETests`: the four Playwright tests named after them.
+4. Cross-provider verification.
+5. Full test suite, recorded as the run of record.
+6. Close-out.
+
+### Session 92: Release 0.13.0 (release: 0.13.0)
+
+---
+
+*Phase 13 — electronic case reporting → release 0.14.0. Specified by
+`docs/planning/ecr-requirements.md`, `CT_SITE_REQUIREMENTS.md` §2 and the CT DPH
+eCR documents in `../nedss/docs/specs/site-specs/`. Its items marked
+**[confirm]** are confirmed with the APHL eCR service desk before the session
+that depends on them, and a session that finds one wrong amends this phase.*
+
+### Session 93: eICR and RR parsing and document intake
+
+1. Register.
+2. `Survsys.Messaging`: a CDA parser behind phase 10's parser seam, reading
+   eICR R1.1 and R3.1/3.1.1 and RR 1.1 by templateId with LINQ to XML, into
+   the patient, encounter, problems, results, medications, pregnancy, travel,
+   occupation, and the RR's conditions with their determinations and
+   responsible agencies.
+3. `Survsys.Api`: intake of eICR and RR documents from configured folders, a
+   test and a production feed kept apart, the raw XML stored unchanged, each
+   document taken once by its id, an RR paired with its eICR, and an eICR's
+   versions grouped by setId and ordered by version number.
+4. `Survsys.UnitTests`: the HL7 IG examples of each version parsed, and a
+   re-sent version grouped with its first.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 94: eCR validation and the eICR viewer
+
+1. Register.
+2. `Survsys.Messaging`: validation against the CDA schema and the HL7
+   schematron, its findings stored on the document without blocking it.
+3. `Survsys.Web`: an eCR queue and a document screen showing the eICR through
+   the HL7 CDA stylesheet beside the RR's conditions, determinations and
+   validation findings.
+4. `Survsys.UnitTests`: a valid and an invalid document of each version.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 95: Reportability and condition mapping
+
+1. Register.
+2. `Survsys.Data` and `Survsys.Api`: a mapping from RCTC and SNOMED condition
+   codes to the conditions catalogue, with its migration and an import from an
+   RCTC release; each RR condition kept where this jurisdiction is the
+   responsible agency and the determination is reportable.
+3. `Survsys.Web`: the mapping screen, and "may be reportable" and unmapped
+   conditions sent to the eCR queue for review.
+4. `Survsys.IntegrationTests`: each determination code's routing.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 96: Cases from eCR
+
+1. Register.
+2. `Survsys.Api`: a reportable eICR's patient matched by phase 9's matcher,
+   linked to the open case on that person and condition — including one opened
+   from ELR — or opening a new one, by the reviewer where the match is not
+   confident.
+3. `Survsys.Api`: the eICR's demographics, encounter, problems, medications as
+   treatments, pregnancy, travel and occupation written to the case, its labs
+   only for senders set to update lab data, each value recording the eICR id
+   and version it came from; a later version updating what an earlier one
+   wrote and nothing a user has edited.
+4. `Survsys.IntegrationTests`: a new case, a linked case, and a second version.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 97: eCR senders and data quality
+
+1. Register.
+2. `Survsys.Data` and `Survsys.Api`: eCR senders with their onboarding stage —
+   test, validation, production — and their settings, with their migration.
+3. `Survsys.Web`: a senders screen and a data quality screen by sender and
+   condition: volumes, validation findings, receipt latency, and an RR with no
+   eICR or an eICR with no RR.
+4. `Survsys.IntegrationTests`: the quality figures over seeded documents.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 98: Phase 13 walkthroughs
+
+1. Register.
+2. `docs/walkthroughs/`: four documents — review an eICR and its reportability
+   response, map a reportable condition, open a case from an eICR, link an
+   eICR to an existing case.
+3. `Survsys.E2ETests`: the four Playwright tests named after them.
+4. Cross-provider verification.
+5. Full test suite, recorded as the run of record.
+6. Close-out.
+
+### Session 99: Release 0.14.0 (release: 0.14.0)
+
+---
+
+*Phase 14 — parity → release 1.0.0, the first release that claims parity.*
+
+### Session 100: The parity check and the documentation for 1.0.0
+
+1. Register.
+2. `docs/planning/gap-analysis.md`: every gap marked closed with the session
+   that closed it, or left open with the operator's decision; every row of
+   `phase-1.6-feature-matrix.md` given its survsys status.
+3. `Survsys.E2ETests`: the full walkthrough regression, every document read
+   against its own test as session 57 did.
+4. `docs/`: the user and technical guides brought to 1.0.0, with every "built
+   but not wired in" statement gone or still true.
+5. Cross-provider verification.
+6. Full test suite, recorded as the run of record.
+7. Close-out.
+
+### Session 101: Release 1.0.0 (release: 1.0.0)
