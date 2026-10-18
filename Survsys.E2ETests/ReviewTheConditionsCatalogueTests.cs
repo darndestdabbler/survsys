@@ -67,11 +67,12 @@ public class ReviewTheConditionsCatalogueTests(SurvsysHarness harness) : Survsys
             await Expect(Page).ToHaveTitleAsync("Conditions — Survsys");
         });
 
-        // 3. The heading Conditions, once the screen has the catalogue. The
-        //    web-first assertion is the wait the document describes in words:
-        //    it retries while the spinner is still there.
-        await Step(Document, 3, "wait for the heading Conditions", async () =>
-            await Expect(Page.Locator("#conditions-heading")).ToHaveTextAsync("Conditions"));
+        // 3. The heading Conditions, with the New condition button under it.
+        await Step(Document, 3, "read the heading Conditions and the New condition button", async () =>
+        {
+            await Expect(Page.Locator("#conditions-heading")).ToHaveTextAsync("Conditions");
+            await Expect(Page.Locator("#conditions-new")).ToHaveTextAsync("New condition");
+        });
 
         // 4. The count line directly under the heading.
         await Step(Document, 4, "read the count line under the heading", async () =>

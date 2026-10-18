@@ -128,9 +128,10 @@ of every test it runs, and writes the recordings to
 8. Press **Save & Continue**.
 9. The report now exists, and the screen is its own form. In the header bar,
    **Patient name** reads **Okafor, Chidi** and **Disease** reads
-   **Giardiasis**. Under the case status panel, the tab strip shows seven
+   **Giardiasis**. Under the CDC notification panel, the tab strip shows nine
    tabs, left to right: **Demographic**, **Clinical**, **Laboratory**,
-   **Investigation**, **Administrative**, **Contacts** and **Notes**. Note
+   **Investigation**, **Administrative**, **Forms**, **Vaccines**,
+   **Contacts** and **Notes**. Note
    the address in your browser's address bar: it ends in `/event/edit/` and a
    number, and step 14 comes back to it.
 10. Press the **Contacts** tab. The tab opens on two panels. The first,
@@ -172,7 +173,7 @@ An exposure event on Chidi Okafor's case morbidity report, logged and read
 back:
 
 - A report on **Okafor, Chidi** for **Giardiasis**, opened in the two steps,
-  ending on its form with seven tabs, **Contacts** among them.
+  ending on its form with nine tabs, **Contacts** among them.
 - The **Contacts** tab with no exposures yet, and an entry form that takes an
   exposure, a place under it, and contacts and sources under that.
 - After entering **Lakeside Community Pool outing**, running

@@ -577,6 +577,21 @@
       "dateTime": "2026-10-18T05:27:47.537000-04:00",
       "task": "Repair the three Survsys.Api queries SQL Server cannot translate, each of which projects into a positional response record and then orders by a property of that record. In OutbreakQueries.AccessRows (OutbreakEndpoints.cs) order the joined agency rows by agency.Name then agency.Id before projecting into OutbreakAccessResponse; in TreatmentQueries.Detail (TreatmentEndpoints.cs) order the joined conditions by condition.Name then condition.Id before projecting into TreatmentConditionResponse; in FormQueries.Assignments (FormEndpoints.cs) order by assignment.AssignedAt then assignment.Id before projecting into FormAssignmentResponse. A sweep of every OrderBy/ThenBy in Survsys.Api found no other query ordering after a positional-record projection (ReportQueries orders an anonymous type, which translates), so these three are the whole change. The order each endpoint returns is unchanged, and the existing integration suite -- 174 of 174, with the 20 that fail today among them and no test changed -- is the proof.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 57,
+      "dateTime": "2026-10-18T06:12:54.484000-04:00",
+      "task": "Document the Phase 7 workflows sessions 51 to 53 shipped as three walkthroughs under docs/walkthroughs/, each with the one Playwright test named after it, recording video through the harness; run every walkthrough written since session 7 as the full walkthrough regression; and complete the user guide and the technical guide for 1.0.0. First the harness learns to clear what the new walkthroughs create - outbreaks and their access, report sections and updates, supplemental forms with their sections, questions, options, assignments and answers, treatments and their condition lists, and a person's vaccine records - so every run starts from the seed. Then, in turn: open-an-outbreak-and-link-cases (an outbreak is opened on the outbreaks screen, a case morbidity report is created and linked to it from its Administrative tab's outbreak-name picker, and the outbreak's screen lists the linked case); complete-a-supplemental-form (a form for a condition is built and set to auto-assign in the form builder, a case on that condition is opened, and its Forms tab shows the assigned form, which is completed, saved and read back afresh); and record-a-treatment (a treatment is added on the treatments screen, listed for a condition, saved, and read back in the treatments list and its editor). Each document is numbered steps naming controls by the words the screens show, with the Before-you-start and What-you-should-see sections the others carry and its row in the index; each test performs those steps in their written order and asserts by stable identifiers. Then the whole end-to-end suite is run, and every walkthrough document is read against its own test so each still reads exactly as its test performs it, any drift corrected in the document or the test (never by skipping a step). Last, every section of docs/user-guide/README.md and docs/technical/README.md still marked not yet built or not yet written is written for what the application does at 1.0.0, and docs/README.md stops calling them skeletons.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 57,
+      "dateTime": "2026-10-18T06:31:44.674000-04:00",
+      "what": "step 'the-full-walkthrough-regression': its files",
+      "reason": "The read-through found drift: the report form's tabs grew from one, three and seven to nine and its header to eight fields; the conditions screen gained New condition; the app bar says Notifications; sign-in and users exist; the onset filters are boxes, not Any lists; ExportADatasetTests merged steps 14 and 15; and the form walkthrough's Bartonellosis case would enter the export walkthrough's Bartonellosis CSV, so it moved to Lyme disease",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

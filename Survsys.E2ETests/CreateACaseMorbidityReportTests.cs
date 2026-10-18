@@ -101,7 +101,7 @@ public class CreateACaseMorbidityReportTests(SurvsysHarness harness) : SurvsysPa
         await Step(Document, 10, "press Save & Continue", async () =>
             await Page.Locator("#report-save").ClickAsync());
 
-        // 11. The report's own form: heading, tab, and the six header fields.
+        // 11. The report's own form: heading, tab, and the eight header fields.
         await Step(Document, 11, "read the report form's heading, browser tab and header bar", async () =>
         {
             var year = DateTime.Today.Year.ToString("D4", CultureInfo.InvariantCulture);
@@ -116,11 +116,18 @@ public class CreateACaseMorbidityReportTests(SurvsysHarness harness) : SurvsysPa
             await Expect(Page.Locator("#report-header-disease")).ToHaveTextAsync("Malaria");
             await Expect(Page.Locator("#report-header-agency")).ToHaveTextAsync("Salt Lake County");
             await Expect(Page.Locator("#report-header-event-date")).ToHaveTextAsync(today);
+            await Expect(Page.Locator("#report-header-mmwr")).ToHaveTextAsync(new Regex(@"^Week \d{1,2}, \d{4}$"));
+            await Expect(Page.Locator("#report-header-case-status")).ToHaveTextAsync("Unknown");
         });
 
-        // 12. The tab strip shows Demographic.
-        await Step(Document, 12, "read the tab strip", async () =>
-            await Expect(Page.Locator("#report-tab-demographic")).ToHaveTextAsync("Demographic"));
+        // 12. The two panels, then the tab strip's nine tabs.
+        await Step(Document, 12, "read the Case status and CDC notification panels and the tab strip", async () =>
+        {
+            await Expect(Page.Locator("#report-status")).ToContainTextAsync("Case status");
+            await Expect(Page.Locator("#report-notify")).ToContainTextAsync("CDC notification");
+            await Expect(Page.Locator("[id^='report-tab-']")).ToHaveTextAsync(
+                ["Demographic", "Clinical", "Laboratory", "Investigation", "Administrative", "Forms", "Vaccines", "Contacts", "Notes"]);
+        });
     }
 
     /// <summary>

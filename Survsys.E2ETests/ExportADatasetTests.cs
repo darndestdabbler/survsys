@@ -168,16 +168,23 @@ public class ExportADatasetTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(row).ToContainTextAsync(Condition);
         });
 
-        // 14 & 15. Follow the Export CSV link, capturing the download, and read
-        //          the file: its header and the one report's row.
-        await Step(Document, 14, "press Export CSV and read the downloaded file", async () =>
+        // 14. Follow the Export CSV link, capturing the download and its name.
+        IDownload? download = null;
+
+        await Step(Document, 14, "press Export CSV and read the downloaded file's name", async () =>
         {
-            var download = await Page.RunAndWaitForDownloadAsync(async () =>
+            download = await Page.RunAndWaitForDownloadAsync(async () =>
                 await Page.Locator($"#saved-views-table [data-saved-view='{ViewName}']")
                     .GetByRole(AriaRole.Link, new() { Name = "Export CSV", Exact = true })
                     .ClickAsync());
 
-            using var stream = await download.CreateReadStreamAsync();
+            Assert.Matches(@"^saved-view-\d+\.csv$", download.SuggestedFilename);
+        });
+
+        // 15. Open the file: its header and the one report's row.
+        await Step(Document, 15, "open the downloaded file and read its two lines", async () =>
+        {
+            using var stream = await download!.CreateReadStreamAsync();
             using var reader = new StreamReader(stream);
             var csv = await reader.ReadToEndAsync();
 

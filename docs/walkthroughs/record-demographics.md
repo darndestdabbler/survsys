@@ -128,8 +128,11 @@ of every test it runs, and writes the recordings to
 8. Press **Save & Continue**.
 9. The report now exists, and the screen is its own form. In the header bar,
    **Patient name** reads **Rodriguez, Maria** and **Disease** reads
-   **Giardiasis**. Under the header bar, the tab strip shows the one tab,
-   **Demographic**, and the tab is open. Note the address in your browser's
+   **Giardiasis**. Under the CDC notification panel, the tab strip shows nine
+   tabs, left to right: **Demographic**, **Clinical**, **Laboratory**,
+   **Investigation**, **Administrative**, **Forms**, **Vaccines**,
+   **Contacts** and **Notes**, and the **Demographic** tab is open. Note the
+   address in your browser's
    address bar: it ends in `/event/edit/` and a number, and step 19 comes
    back to it.
 10. Read the **Name** section at the top of the tab. **Last name** reads

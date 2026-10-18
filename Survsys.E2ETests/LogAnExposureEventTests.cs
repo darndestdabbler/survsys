@@ -97,20 +97,15 @@ public class LogAnExposureEventTests(SurvsysHarness harness) : SurvsysPageTest
             await Page.Locator("#report-save").ClickAsync());
 
         // 9. The report's form: the header names him and the disease, and the
-        //    seven tabs are there. Its address is kept for step 14.
+        //    nine tabs are there. Its address is kept for step 14.
         var reportAddress = string.Empty;
 
         await Step(Document, 9, "read the report form's header and tab strip, and note its address", async () =>
         {
             await Expect(Page.Locator("#report-header-patient")).ToHaveTextAsync("Okafor, Chidi");
             await Expect(Page.Locator("#report-header-disease")).ToHaveTextAsync("Giardiasis");
-            await Expect(Page.Locator("#report-tab-demographic")).ToHaveTextAsync("Demographic");
-            await Expect(Page.Locator("#report-tab-clinical")).ToHaveTextAsync("Clinical");
-            await Expect(Page.Locator("#report-tab-laboratory")).ToHaveTextAsync("Laboratory");
-            await Expect(Page.Locator("#report-tab-investigation")).ToHaveTextAsync("Investigation");
-            await Expect(Page.Locator("#report-tab-administrative")).ToHaveTextAsync("Administrative");
-            await Expect(Page.Locator("#report-tab-contacts")).ToHaveTextAsync("Contacts");
-            await Expect(Page.Locator("#report-tab-notes")).ToHaveTextAsync("Notes");
+            await Expect(Page.Locator("[id^='report-tab-']")).ToHaveTextAsync(
+                ["Demographic", "Clinical", "Laboratory", "Investigation", "Administrative", "Forms", "Vaccines", "Contacts", "Notes"]);
 
             reportAddress = Page.Url;
             Assert.Contains("/event/edit/", reportAddress);

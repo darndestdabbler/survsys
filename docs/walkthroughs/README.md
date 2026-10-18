@@ -26,6 +26,9 @@ running Survsys. Perform them in any order; each one stands alone.
 | [Queue a case for notification](queue-a-case-for-notification.md) | An investigator opens a case morbidity report, queues it for CDC notification by hand from its CDC notification panel, reads the queued confirmation, and finds the case waiting on the notification queue. | `Survsys.E2ETests/QueueACaseForNotificationTests.cs` |
 | [Review a generated message](review-a-generated-message.md) | A surveillance reviewer opens the CDC export log, opens one export of a case by its record number, and reads its record number, guide, queued and sent times and outcome, then the message that was generated for it, whole. | `Survsys.E2ETests/ReviewAGeneratedMessageTests.cs` |
 | [Inspect the export log](inspect-the-export-log.md) | A surveillance reviewer opens the CDC export log and reads the history of case exports, newest first, each with its record number, queued and sent times and outcome, an export not yet sent reading as a dash. | `Survsys.E2ETests/InspectTheExportLogTests.cs` |
+| [Open an outbreak and link cases](open-an-outbreak-and-link-cases.md) | An investigator opens an outbreak with its number, name, date, disease and owning agency, links a case morbidity report to it from the report's Administrative tab, and reads the case back among the outbreak's linked cases. | `Survsys.E2ETests/OpenAnOutbreakAndLinkCasesTests.cs` |
+| [Complete a supplemental form](complete-a-supplemental-form.md) | An administrator builds a supplemental form for a condition, with a section, a text question and a coded question, set to auto-assign; an investigator opens a case on that condition, finds the form on its Forms tab, answers it, saves, and reads the answers back. | `Survsys.E2ETests/CompleteASupplementalFormTests.cs` |
+| [Record a treatment](record-a-treatment.md) | A surveillance administrator adds a treatment, lists it for the diseases it is given for, saves it, and reads it back in the treatments list and on its own screen. | `Survsys.E2ETests/RecordATreatmentTests.cs` |
 
 ## The contract every entry here is held to
 
@@ -58,6 +61,8 @@ dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj
 ```
 
 That starts both tiers on ports it finds free, seeds the database, performs
-every walkthrough in a browser and records each one. It needs a reachable SQL
+every walkthrough in a browser and records each one. The whole run is the full
+walkthrough regression a release runs: it performs all twenty-four
+walkthroughs above, every one of them, with nothing selected out. It needs a reachable SQL
 Server; each walkthrough's own **Before you start** says what it needs to be
 performed by hand instead.

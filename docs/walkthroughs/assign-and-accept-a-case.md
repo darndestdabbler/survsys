@@ -36,9 +36,9 @@ describes what Survsys shows rather than what EpiTrax showed:
   **Accept Event** button in the report's header bar. The report form
   carries no workflow status and no workflow buttons yet; the queue screens
   are where the workflow is read and moved.
-- **A queue belongs to an agency, not to a person.** Survsys has agencies
-  and no users yet, so nobody signs in: the state user and the department's
-  investigator are the same browser choosing different agencies from a
+- **A queue belongs to an agency, not to a person.** A user is not tied to
+  an agency, so in this walkthrough one signed-in user acts as both the state
+  user and the department's investigator, choosing different agencies from a
   list. The **Work queue** shows the cases an agency investigates, and the
   **Agency board** shows its whole queue, including cases shared read-only
   to it.

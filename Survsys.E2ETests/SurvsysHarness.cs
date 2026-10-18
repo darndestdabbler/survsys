@@ -295,7 +295,8 @@ public sealed class SurvsysHarness : IDisposable
     /// seeds the same seven people and seven conditions rather than fourteen
     /// of each — and no report but the one <c>Fixtures/nmi-log.sql</c> seeds
     /// with its two exports, and no queued notification, specimen, exposure,
-    /// note, task, attachment, facility or saved view at all, since a
+    /// note, task, attachment, facility, saved view, form, vaccine record,
+    /// outbreak or treatment at all, since a
     /// walkthrough that needs one creates it, and one left over from the last
     /// run would be one the document did not describe.
     /// </summary>
@@ -336,6 +337,22 @@ public sealed class SurvsysHarness : IDisposable
     /// creates the administrator and the suite never clears the users.
     /// </para>
     /// <para>
+    /// Phase 7's tables are listed for the reason the laboratory chain is:
+    /// each names something the suite clears by a reference the schema
+    /// refuses to cascade. A form, an outbreak and a treatment's condition
+    /// list each name their condition that way, so one left behind would
+    /// refuse the clearing of the conditions; an answer names its question
+    /// and an assignment its form the same way, so the answers and the
+    /// assignments go before the form tree, and the tree is listed leaf
+    /// first, options, questions and sections before the form. A vaccine
+    /// record and a form assignment hang off their report and go before it.
+    /// The outbreaks go after the reports, because a report names its
+    /// outbreak, with the outbreak's access, report sections and activity
+    /// before it; the treatments go after their condition lists. The vaccines
+    /// catalogue and the report sections are the migration's and are kept,
+    /// as the agencies are.
+    /// </para>
+    /// <para>
     /// The staged messages phase 5 brought are listed last, after the
     /// conditions and the people: <c>system_messages</c> names neither a
     /// person nor a condition the schema enforces and nothing hangs off it, so
@@ -367,7 +384,20 @@ public sealed class SurvsysHarness : IDisposable
         "labs",
         "nmi_log",
         "nmi_export_queue",
+        "form_answers",
+        "form_assignments",
+        "form_question_options",
+        "form_questions",
+        "form_sections",
+        "forms",
+        "person_vaccines",
         "person_conditions",
+        "outbreak_access",
+        "outbreak_report_sections",
+        "outbreak_updates",
+        "outbreaks",
+        "condition_treatments",
+        "treatments",
         "parent_guardians",
         "person_races",
         "person_aliases",

@@ -27,14 +27,16 @@ describes what Survsys shows rather than what EpiTrax showed:
   identifier**, the number the database gave the report, rather than by its
   record number. The record number is in the header, where the legacy form
   shows it too.
-- **The header carries six fields and no actions.** Patient name, Record #,
-  Event type, Disease, Investigating agency and Event date are what the
-  report carries. The legacy header's workflow status, investigator, state
-  and LHD case statuses, brief note, action buttons and menus are not there,
-  because the facts behind them are not on the report yet; they arrive with
-  the sessions that own them.
-- **The tab strip carries the Demographic tab alone.** The other seven
-  legacy tabs are added by the sessions that own them.
+- **The header carries eight fields and no actions.** Patient name, Record
+  #, Event type, Disease, Investigating agency, Event date, MMWR week and Case
+  status are what it shows. The legacy header's workflow status,
+  investigator, brief note, action buttons and menus are not there: the case
+  status is set in a **Case status** panel under the header, and the case is
+  queued for the CDC from a **CDC notification** panel under that.
+- **The tab strip carries nine tabs.** Demographic, Clinical, Laboratory,
+  Investigation, Administrative, Forms, Vaccines, Contacts and Notes. The
+  case's supplemental forms and its vaccine records are each a tab of their
+  own.
 - **The record number is nine digits — the four-digit year, then a sequence
   of five digits counting the year's reports from `00001`** — exactly as the
   legacy system numbers them. Its value depends on how many reports this
@@ -132,7 +134,7 @@ of every test it runs, and writes the recordings to
 11. The report now exists, and the screen is its own form. The heading reads
     **Case morbidity report**, and the browser tab reads **Case morbidity
     report** followed by the record number and **— Survsys**. Read the
-    header bar under the heading, six fields left to right:
+    header bar under the heading, eight fields left to right:
 
     | Field | Reads |
     |---|---|
@@ -142,13 +144,19 @@ of every test it runs, and writes the recordings to
     | Disease | **Malaria** |
     | Investigating agency | **Salt Lake County** |
     | Event date | today's date, written as `yyyy-mm-dd` |
+    | MMWR week | the MMWR week today falls in, written as **Week** then the week and the year — for example **Week 41, 2026** |
+    | Case status | **Unknown** |
 
     The event date is the day the report was opened, which is what the
     legacy system records at this point too; the date you entered in step 7
     is the date first reported to public health, which the header does not
-    show.
-12. Under the header bar is the tab strip, and it shows one tab:
-    **Demographic**.
+    show. The MMWR week is the event date's, and the case status reads
+    **Unknown** because none has been set.
+12. Under the header bar are two panels, headed **Case status** and **CDC
+    notification**, and under them is the tab strip. It shows nine tabs, left
+    to right: **Demographic**, **Clinical**, **Laboratory**,
+    **Investigation**, **Administrative**, **Forms**, **Vaccines**,
+    **Contacts** and **Notes**.
 
 ## What you should see
 
@@ -161,9 +169,9 @@ its own form:
   Continue** opens the report.
 - The report's form, headed **Case morbidity report**, with a header bar
   reading **Zimmerman, Paul**, a nine-digit record number beginning with the
-  current year, **Morbidity**, **Malaria**, **Salt Lake County** and today's
-  date.
-- One tab, **Demographic**.
+  current year, **Morbidity**, **Malaria**, **Salt Lake County**, today's
+  date, today's MMWR week and **Unknown**.
+- Nine tabs, **Demographic** first.
 
 You now have a report with a record number of its own to record the case
 against. If what you saw differs from what is written above, the walkthrough

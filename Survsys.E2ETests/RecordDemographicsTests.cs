@@ -86,14 +86,16 @@ public class RecordDemographicsTests(SurvsysHarness harness) : SurvsysPageTest
             await Page.Locator("#report-save").ClickAsync());
 
         // 9. The report's form: the header names her and the disease, and
-        //    the Demographic tab is there. Its address is kept for step 19.
+        //    the nine tabs are there, Demographic open. Its address is kept
+        //    for step 19.
         string reportAddress = string.Empty;
 
-        await Step(Document, 9, "read the report form's header and tab, and note its address", async () =>
+        await Step(Document, 9, "read the report form's header and tab strip, and note its address", async () =>
         {
             await Expect(Page.Locator("#report-header-patient")).ToHaveTextAsync("Rodriguez, Maria");
             await Expect(Page.Locator("#report-header-disease")).ToHaveTextAsync("Giardiasis");
-            await Expect(Page.Locator("#report-tab-demographic")).ToHaveTextAsync("Demographic");
+            await Expect(Page.Locator("[id^='report-tab-']")).ToHaveTextAsync(
+                ["Demographic", "Clinical", "Laboratory", "Investigation", "Administrative", "Forms", "Vaccines", "Contacts", "Notes"]);
             await Expect(Page.Locator("#demographics-name")).ToBeVisibleAsync();
 
             reportAddress = Page.Url;

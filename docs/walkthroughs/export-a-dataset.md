@@ -111,8 +111,9 @@ video of every test it runs, and writes the recordings to
     - In **Name**, type `Bartonellosis export`.
     - Under **Columns**, tick **last_name**, **first_name** and **condition**,
       and leave the rest clear.
-    - In the list labelled **Condition**, choose **Bartonellosis**, and leave
-      every other filter at **Any**.
+    - In the list labelled **Condition**, choose **Bartonellosis**, leave
+      every other list at **Any**, and leave the **Onset from** and **Onset
+      to** boxes empty.
     - Press **Save view**.
 13. The list of views now has a **Bartonellosis export** row, whose
     **Columns** read **last_name, first_name, condition** and whose

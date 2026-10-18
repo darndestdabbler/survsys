@@ -90,16 +90,15 @@ public class EnterALaboratoryResultTests(SurvsysHarness harness) : SurvsysPageTe
             await Page.Locator("#report-save").ClickAsync());
 
         // 9. The report's form: the header names him and the disease, and
-        //    the three tabs are there. Its address is kept for step 15.
+        //    the nine tabs are there. Its address is kept for step 15.
         string reportAddress = string.Empty;
 
         await Step(Document, 9, "read the report form's header and tab strip, and note its address", async () =>
         {
             await Expect(Page.Locator("#report-header-patient")).ToHaveTextAsync("Nguyen, An");
             await Expect(Page.Locator("#report-header-disease")).ToHaveTextAsync("Hepatitis A");
-            await Expect(Page.Locator("#report-tab-demographic")).ToHaveTextAsync("Demographic");
-            await Expect(Page.Locator("#report-tab-clinical")).ToHaveTextAsync("Clinical");
-            await Expect(Page.Locator("#report-tab-laboratory")).ToHaveTextAsync("Laboratory");
+            await Expect(Page.Locator("[id^='report-tab-']")).ToHaveTextAsync(
+                ["Demographic", "Clinical", "Laboratory", "Investigation", "Administrative", "Forms", "Vaccines", "Contacts", "Notes"]);
 
             reportAddress = Page.Url;
             Assert.Contains("/event/edit/", reportAddress);

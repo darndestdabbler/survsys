@@ -57,8 +57,8 @@ describes what Survsys shows rather than what EpiTrax showed:
 
 The legacy section's task categories, and assigning a task to a named user,
 are not part of this walkthrough: **Assigned to** is a box holding the legacy
-user id, as every coded field in this release is, and there is no user
-resource to choose from yet.
+user id, as every coded field in this release is, rather than a list of the
+users on file.
 
 ## Before you start
 

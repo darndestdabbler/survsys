@@ -131,8 +131,10 @@ of every test it runs, and writes the recordings to
 8. Press **Save & Continue**.
 9. The report now exists, and the screen is its own form. In the header bar,
    **Patient name** reads **Nguyen, An** and **Disease** reads **Hepatitis
-   A**. Under the header bar, the tab strip shows three tabs, left to right:
-   **Demographic**, **Clinical** and **Laboratory**. Note the address in
+   A**. Under the CDC notification panel, the tab strip shows nine tabs, left
+   to right: **Demographic**, **Clinical**, **Laboratory**,
+   **Investigation**, **Administrative**, **Forms**, **Vaccines**,
+   **Contacts** and **Notes**. Note the address in
    your browser's address bar: it ends in `/event/edit/` and a number, and
    step 15 comes back to it.
 10. Press the **Laboratory** tab. The tab opens on two panels. The first,
@@ -177,8 +179,7 @@ A laboratory result on An Nguyen's case morbidity report, entered and read
 back:
 
 - A report on **Nguyen, An** for **Hepatitis A**, opened in the two steps,
-  ending on its form with three tabs, **Demographic**, **Clinical** and
-  **Laboratory**.
+  ending on its form with nine tabs, **Laboratory** among them.
 - The **Laboratory** tab with no specimens yet, and an entry form that takes
   a specimen, a test under it and a result under that.
 - After entering accession number **A2026-0417**, collected **2026-10-03**,

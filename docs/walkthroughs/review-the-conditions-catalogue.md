@@ -32,9 +32,11 @@ describes what Survsys shows rather than what EpiTrax showed:
   a rendering fault.
 
 The legacy screen's name, code and CDC-code filter boxes, its sortable column
-headings, its pager and its **Add Condition** and **Edit** buttons are not part
-of this walkthrough. Survsys does not have them yet; they arrive with the
-phases that need them, and each will bring its own walkthrough.
+headings and its pager are not part of this walkthrough, and Survsys does not
+have them. Its **Add Condition** and **Edit** buttons are there as Survsys's
+**New condition** button and each condition's name, which opens the
+condition to edit; this walkthrough reads the catalogue and changes nothing,
+so it presses neither.
 
 ## Before you start
 
@@ -89,11 +91,11 @@ runs, and writes the recordings to
    `/conditions`, so <http://localhost:5000/conditions> opens the same screen.)
 2. Look at the top of the window. A coloured application bar runs across it,
    reading **Survsys**. The browser tab reads **Conditions — Survsys**.
-3. Look below the application bar for the heading **Conditions**. If a spinning
-   circle is there instead, the screen is still asking the API tier for the
-   catalogue; wait for it to be replaced. The heading is how you know you are
-   on the right screen.
-4. Read the line of small text directly under the heading. It reads
+3. Look below the application bar for the heading **Conditions**, with a
+   **New condition** button under it. The heading is how you know you are on
+   the right screen. If a spinning circle is under the button, the screen is
+   still asking the API tier for the catalogue; wait for it to be replaced.
+4. Read the line of small text under the **New condition** button. It reads
    **7 condition(s), showing 7.** — the first number is how many conditions the
    catalogue holds, the second how many of them this page is showing you.
 5. Read the three column headings of the table below that line, left to right:
@@ -125,8 +127,7 @@ runs, and writes the recordings to
 
 ## What you should see
 
-The conditions catalogue, on one screen, with nothing to configure and nothing
-to click to reach it:
+The conditions catalogue, on one screen, with nothing to click to reach it:
 
 - The heading **Conditions**, under an application bar reading **Survsys**.
 - **7 condition(s), showing 7.**

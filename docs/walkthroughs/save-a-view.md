@@ -96,8 +96,8 @@ recordings to `Survsys.E2ETests/bin/<configuration>/net10.0/videos` as
    **condition** — and leave the rest clear. These are the columns the view
    will export.
 5. In the list labelled **Condition**, choose **Malaria**. Leave every other
-   filter — **Investigating agency**, **Workflow state**, **Case status**,
-   **Onset from** and **Onset to** — at **Any**.
+   list — **Investigating agency**, **Workflow state** and **Case status** —
+   at **Any**, and leave the **Onset from** and **Onset to** boxes empty.
 6. Press **Save view**. The form's heading goes back to **New saved view**
    and its boxes clear, because the view has been saved and the form is ready
    for the next one.

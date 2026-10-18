@@ -107,8 +107,9 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
     /// the people's own details, and the one report nmi-log.sql seeds with
     /// its export history — and nothing a walkthrough fills: no other report,
     /// no share, no specimen, no test, no result, no susceptibility row, no
-    /// exposure with its place, contacts and sources, no note, no task and no
-    /// attachment with its bytes. Run here over whatever the walkthroughs
+    /// exposure with its place, contacts and sources, no note, no task, no
+    /// attachment with its bytes, no form with its assignments and answers,
+    /// no vaccine record, no outbreak and no treatment. Run here over whatever the walkthroughs
     /// before this test left behind — a laboratory walkthrough leaves a
     /// specimen that names its person, and a contacts walkthrough leaves an
     /// exposure contact that names one too — so it proves the deletion order
@@ -120,14 +121,14 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
     {
         harness.Seed();
 
-        // The deletion order runs from the attachment, note, task, exposure
-        // and laboratory chains down to the report and only then to the
-        // people's details and the people, so the tables a walkthrough fills
-        // are the ones up to and including the report's.
-        const string ReportTable = "person_conditions";
+        // The deletion order runs from the attachment, note, task, exposure,
+        // laboratory and form chains down to the report, then the outbreaks
+        // and treatments, and only then to the people's details and the
+        // people, so the tables a walkthrough fills are the ones before the
+        // people's details.
+        const string FirstFixtureTable = "parent_guardians";
         var filledByWalkthroughs = SurvsysHarness.TablesInDeletionOrder
-            .TakeWhile(table => table != ReportTable)
-            .Append(ReportTable);
+            .TakeWhile(table => table != FirstFixtureTable);
         var leftOver = new List<string>();
 
         using var connection = new SqlConnection(harness.ConnectionString);
