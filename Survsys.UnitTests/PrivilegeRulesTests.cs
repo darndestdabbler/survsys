@@ -84,6 +84,19 @@ public class PrivilegeRulesTests
         Assert.Equal(Privileges.RunReports, PrivilegeRules.RequiredFor(method, path));
     }
 
+    /// <summary>
+    /// A workflow move is gated by the endpoint, transition by transition, so
+    /// the rule asks only that the caller may see cases: a state approver need
+    /// not hold edit_cases to approve. The read keeps what every case read has.
+    /// </summary>
+    [Theory]
+    [InlineData("PUT", "/api/person-conditions/7/workflow")]
+    [InlineData("GET", "/api/person-conditions/7/workflow")]
+    public void RequiredForAWorkflowMoveIsViewCasesWhateverTheMethod(string method, string path)
+    {
+        Assert.Equal(Privileges.ViewCases, PrivilegeRules.RequiredFor(method, path));
+    }
+
     [Fact]
     public void RequiredForMatchesWholeSegmentsOnly()
     {

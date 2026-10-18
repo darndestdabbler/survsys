@@ -415,10 +415,23 @@ public class CaseSearchEndpointsTests(SqlServerFixture server) : IAsyncLifetime
         return (await created.Content.ReadFromJsonAsync<PersonConditionResponse>(Json))!;
     }
 
+    /// <summary>
+    /// Moves a report one step forward to a state, by the transition that
+    /// reaches it from the state before it: the search filters by state, and a
+    /// move is asked for by transition.
+    /// </summary>
     private async Task Move(int id, string workflowState)
     {
+        var transition = workflowState switch
+        {
+            WorkflowRules.AcceptedCode => WorkflowRules.AcceptCode,
+            WorkflowRules.UnderInvestigationCode => WorkflowRules.InvestigateCode,
+            WorkflowRules.ClosedCode => WorkflowRules.CloseCode,
+            _ => throw new ArgumentOutOfRangeException(nameof(workflowState), workflowState, "is not a state a forward step reaches."),
+        };
+
         using var moved = await client.PutAsJsonAsync(
-            $"/api/person-conditions/{id}/workflow", new UpdateWorkflowStateRequest(workflowState), Json);
+            $"/api/person-conditions/{id}/workflow", new WorkflowTransitionRequest(transition), Json);
         moved.EnsureSuccessStatusCode();
     }
 

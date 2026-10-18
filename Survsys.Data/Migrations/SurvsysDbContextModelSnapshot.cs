@@ -1965,6 +1965,10 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("investigation_outcome_disposition_id");
 
+                    b.Property<int?>("InvestigatorId")
+                        .HasColumnType("int")
+                        .HasColumnName("investigator_id");
+
                     b.Property<int?>("LhdCaseStatusId")
                         .HasColumnType("int")
                         .HasColumnName("lhd_case_status_id");
@@ -2050,6 +2054,8 @@ namespace Survsys.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ConditionId");
+
+                    b.HasIndex("InvestigatorId");
 
                     b.HasIndex("OutbreakId");
 
@@ -3196,6 +3202,58 @@ namespace Survsys.Data.Migrations
                     b.ToTable("vocab_master_organism", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.WorkflowHistoryEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FromState")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("from_state");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("note");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.Property<string>("ToState")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("to_state");
+
+                    b.Property<string>("Transition")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("transition");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonConditionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("workflow_history", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.ZipCodeAgency", b =>
                 {
                     b.Property<string>("ZipCode")
@@ -3524,6 +3582,11 @@ namespace Survsys.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Survsys.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("InvestigatorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Survsys.Data.Outbreak", null)
                         .WithMany()
                         .HasForeignKey("OutbreakId")
@@ -3632,6 +3695,21 @@ namespace Survsys.Data.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.WorkflowHistoryEntry", b =>
+                {
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

@@ -214,7 +214,7 @@ else if (asked?.Value is { } cases)
 
 @code {
     private static readonly string[] WorkflowCodes =
-        ["assigned_to_lhd", "accepted", "under_investigation", "closed"];
+        ["assigned_to_lhd", "accepted", "under_investigation", "closed", "not_investigated", "approved_by_state", "rejected_by_state"];
 
     private static readonly string[] StatusCodes = ["C", "P", "S", "NC"];
 
@@ -423,6 +423,9 @@ else if (asked?.Value is { } cases)
         "accepted" => "Accepted",
         "under_investigation" => "Under investigation",
         "closed" => "Closed",
+        "not_investigated" => "Not investigated",
+        "approved_by_state" => "Approved by state",
+        "rejected_by_state" => "Rejected by state",
         _ => workflowState,
     };
 

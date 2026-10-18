@@ -22,7 +22,11 @@ namespace Survsys.Api;
 /// (<c>/api/me</c>) needs nothing beyond being signed in; a saved view and its
 /// export need <see cref="Privileges.ViewCases"/> whatever the method, because
 /// a view is the caller's own and changes no case; an ad-hoc report needs
-/// <see cref="Privileges.RunReports"/> whatever the method; and every other API
+/// <see cref="Privileges.RunReports"/> whatever the method; a workflow move
+/// (<c>PUT /api/person-conditions/{id}/workflow</c>) needs only
+/// <see cref="Privileges.ViewCases"/> here, because the endpoint itself asks
+/// the privilege the particular transition needs — a state approver need not
+/// hold <see cref="Privileges.EditCases"/> to approve; and every other API
 /// request is a case record, read with <see cref="Privileges.ViewCases"/> and
 /// written with <see cref="Privileges.EditCases"/>.
 /// </remarks>
@@ -78,8 +82,21 @@ public static class PrivilegeRules
             return Privileges.RunReports;
         }
 
+        if (AWorkflowMove(path))
+        {
+            return Privileges.ViewCases;
+        }
+
         return reads ? Privileges.ViewCases : Privileges.EditCases;
     }
+
+    /// <summary>
+    /// Whether the path is a report's workflow resource, whose write the
+    /// endpoint gates by the transition asked for.
+    /// </summary>
+    private static bool AWorkflowMove(string path) =>
+        Under(path, ["/api/person-conditions"])
+            && path.EndsWith("/workflow", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Whether a caller holding these privileges may make this request.

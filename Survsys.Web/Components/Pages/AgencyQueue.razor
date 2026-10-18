@@ -172,7 +172,9 @@
 
         try
         {
-            var assigned = await Reports.Assign(reportId, new AssignReportRequest(agencyId));
+            // Assigning a report to an agency is the workflow's route move,
+            // which starts it at assigned-to-LHD in that agency's queue.
+            var assigned = await Reports.Transition(reportId, new WorkflowTransitionRequest("route", AgencyId: agencyId));
 
             if (assigned.Value is { } report)
             {

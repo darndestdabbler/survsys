@@ -98,7 +98,7 @@ else
                                     <MudButton id="@($"queue-row-{row.Id}-advance")" Size="Size.Small"
                                                Variant="Variant.Filled" Color="Color.Primary"
                                                Disabled="@acting"
-                                               OnClick="@(() => Advance(row, move.Target))">
+                                               OnClick="@(() => Advance(row, move.Transition))">
                                         @move.Label
                                     </MudButton>
                                 }
@@ -249,7 +249,7 @@ else
         loading = false;
     }
 
-    private async Task Advance(WorkQueueItemResponse row, string target)
+    private async Task Advance(WorkQueueItemResponse row, string transition)
     {
         actionSaved = null;
         actionError = null;
@@ -257,7 +257,7 @@ else
 
         try
         {
-            var moved = await Reports.Transition(row.Id, new UpdateWorkflowStateRequest(target));
+            var moved = await Reports.Transition(row.Id, new WorkflowTransitionRequest(transition));
 
             if (moved.Value is { } report)
             {
@@ -312,19 +312,23 @@ else
         "accepted" => "Accepted",
         "under_investigation" => "Under investigation",
         "closed" => "Closed",
+        "not_investigated" => "Not investigated",
+        "approved_by_state" => "Approved by state",
+        "rejected_by_state" => "Rejected by state",
         _ => workflowState,
     };
 
     /// <summary>
-    /// The one next move a state is likely to take, offered as a button, or
-    /// null at the end of the chain. The API tier decides whether the move is
-    /// allowed; this only offers it.
+    /// The one forward move a state is likely to take, as the transition code
+    /// the API takes and a button label, or null where the queue offers none.
+    /// The API tier decides whether the move is allowed and whether the user
+    /// may make it; this only offers it.
     /// </summary>
-    private static (string Target, string Label)? NextMove(string workflowState) => workflowState switch
+    private static (string Transition, string Label)? NextMove(string workflowState) => workflowState switch
     {
-        "assigned_to_lhd" => ("accepted", "Accept"),
-        "accepted" => ("under_investigation", "Begin investigation"),
-        "under_investigation" => ("closed", "Close"),
+        "assigned_to_lhd" => ("accept", "Accept"),
+        "accepted" => ("investigate", "Begin investigation"),
+        "under_investigation" => ("close", "Close"),
         _ => null,
     };
 }

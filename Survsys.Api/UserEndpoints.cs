@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -7,7 +8,8 @@ namespace Survsys.Api;
 
 /// <summary>
 /// <c>/api/users</c>: the users who may sign in, the roles each holds, and
-/// whether they may sign in at all.
+/// whether they may sign in at all; and <c>/api/investigators</c>, the active
+/// users a workflow assignment may name.
 /// </summary>
 /// <remarks>
 /// A user is deactivated rather than deleted, because the access audit names
@@ -27,6 +29,14 @@ public static class UserEndpoints
 
         return new UserResponse(user.Id, user.UserName, user.DisplayName, user.Active, roleIds.Order().ToList());
     }
+
+    /// <summary>
+    /// The wire shape of a user as an investigator: the identifier and the
+    /// display name, and nothing else of them. A static expression so the query
+    /// translates it, and public because the unit suite compiles and proves it.
+    /// </summary>
+    public static readonly Expression<Func<User, InvestigatorResponse>> ToInvestigator =
+        user => new InvestigatorResponse(user.Id, user.DisplayName);
 
     /// <summary>
     /// Why this is not a user this tier will save, as far as can be said
@@ -93,8 +103,20 @@ public static class UserEndpoints
             .WithName("UpdateUser")
             .WithSummary("Saves a user's names, roles and active flag, and a new password where one is given.");
 
+        // A read under /api, so the privilege rule asks view_cases of it rather
+        // than the manage_users /api/users needs: an investigator picker on a
+        // case is a case reader's, not an administrator's.
+        routes.MapGet("/api/investigators", GetInvestigators)
+            .WithName("GetInvestigators")
+            .WithSummary("Every active user, by display name, as an investigation may be assigned to them.");
+
         return routes;
     }
+
+    private static async Task<Ok<IReadOnlyList<InvestigatorResponse>>> GetInvestigators(
+        UserQueries users,
+        CancellationToken cancellationToken = default) =>
+        TypedResults.Ok(await users.Investigators(cancellationToken));
 
     private static async Task<Ok<PagedResult<UserResponse>>> GetUsers(
         UserQueries users,
@@ -162,6 +184,15 @@ internal sealed class UserQueries(SurvsysDbContext database)
 
         return users.Select(user => UserEndpoints.ToResponse(user, roles[user.Id].Select(r => r.RoleId))).ToList();
     }
+
+    /// <summary>Every active user as an investigator, by display name then id.</summary>
+    public async Task<IReadOnlyList<InvestigatorResponse>> Investigators(CancellationToken cancellationToken) =>
+        await database.Users
+            .Where(user => user.Active)
+            .OrderBy(user => user.DisplayName)
+            .ThenBy(user => user.Id)
+            .Select(UserEndpoints.ToInvestigator)
+            .ToListAsync(cancellationToken);
 
     /// <summary>
     /// Why the user name is taken by another user or a role named is not on

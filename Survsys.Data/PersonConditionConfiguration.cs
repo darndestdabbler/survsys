@@ -83,6 +83,7 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
         builder.Property(report => report.WorkflowState)
             .HasColumnName("workflow_state")
             .HasMaxLength(CodeLength);
+        builder.Property(report => report.InvestigatorId).HasColumnName("investigator_id");
 
         // The Investigation tab's columns, added in session 24: the four
         // Contact Oriented codes, the imported-from key, the transmission-mode
@@ -173,5 +174,13 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
             .WithMany()
             .HasForeignKey(report => report.OutbreakId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // The investigator is optional and does not cascade: users are
+        // deactivated rather than deleted, and a report keeps its investigator
+        // on record whatever becomes of the account.
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(report => report.InvestigatorId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

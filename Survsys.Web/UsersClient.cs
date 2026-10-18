@@ -34,4 +34,17 @@ public sealed class UsersClient(HttpClient http)
         SaveUserRequest request,
         CancellationToken cancellationToken = default) =>
         Saving.Put<SaveUserRequest, UserResponse>(http, $"api/users/{id}", request, cancellationToken);
+
+    /// <summary>How a failure to load the investigators starts.</summary>
+    public const string InvestigatorsFailurePrefix = "The investigators could not be loaded";
+
+    private static readonly ApiAsk LoadingInvestigators = new(InvestigatorsFailurePrefix, "the investigators");
+
+    /// <summary>
+    /// The active users an investigation may be assigned to, from
+    /// <c>/api/investigators</c>, which a case reader may ask where
+    /// <c>/api/users</c> needs user administration — or why they could not be read.
+    /// </summary>
+    public Task<Asked<IReadOnlyList<InvestigatorResponse>>> Investigators(CancellationToken cancellationToken = default) =>
+        LoadingInvestigators.Get<IReadOnlyList<InvestigatorResponse>>(http, "api/investigators", cancellationToken);
 }

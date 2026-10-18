@@ -32,11 +32,11 @@ public sealed class PersonConditionsClient(HttpClient http)
     /// <summary>How a failure to set a report's case status starts.</summary>
     public const string StatusFailurePrefix = "The case morbidity report status could not be saved";
 
-    /// <summary>How a failure to assign a report to an agency starts.</summary>
-    public const string AssignFailurePrefix = "The case morbidity report could not be assigned";
-
-    /// <summary>How a failure to advance a report's workflow starts.</summary>
+    /// <summary>How a failure to make a workflow move on a report starts.</summary>
     public const string WorkflowFailurePrefix = "The case morbidity report workflow could not be advanced";
+
+    /// <summary>How a failure to read a report's workflow starts.</summary>
+    public const string WorkflowLoadFailurePrefix = "The case morbidity report workflow could not be loaded";
 
     private static readonly ApiAsk Opening = new(FailurePrefix, "the report created");
 
@@ -44,9 +44,9 @@ public sealed class PersonConditionsClient(HttpClient http)
 
     private static readonly ApiAsk Setting = new(StatusFailurePrefix, "the report as saved");
 
-    private static readonly ApiAsk Assigning = new(AssignFailurePrefix, "the report as assigned");
-
     private static readonly ApiAsk Advancing = new(WorkflowFailurePrefix, "the report as advanced");
+
+    private static readonly ApiAsk LoadingWorkflow = new(WorkflowLoadFailurePrefix, "the report's workflow");
 
     /// <summary>
     /// Opens a case morbidity report and answers with it — its record number
@@ -92,38 +92,30 @@ public sealed class PersonConditionsClient(HttpClient http)
             http, $"api/person-conditions/{id}/status", status, cancellationToken);
 
     /// <summary>
-    /// Assigns a report to an investigating agency and answers with the report
-    /// as the API tier now holds it, or with why nothing was assigned.
+    /// Makes a workflow move on a report — routing it to an agency among them
+    /// — and answers with the report as the API tier now holds it, or with why
+    /// it was not moved.
     /// </summary>
     /// <remarks>
-    /// A fourth prefix, because a user whose assignment was refused is being
-    /// told a different thing than one whose status or workflow could not be
-    /// saved. Assigning returns the report to the assigned-to-LHD start of the
-    /// workflow, which the answered report carries, so the screen shows the
-    /// state as stored rather than as it was.
-    /// </remarks>
-    public Task<Asked<PersonConditionResponse>> Assign(
-        int id,
-        AssignReportRequest assignment,
-        CancellationToken cancellationToken = default) =>
-        Assigning.Put<AssignReportRequest, PersonConditionResponse>(
-            http, $"api/person-conditions/{id}/assignment", assignment, cancellationToken);
-
-    /// <summary>
-    /// Moves a report to the next workflow state and answers with the report as
-    /// the API tier now holds it, or with why it was not moved.
-    /// </summary>
-    /// <remarks>
-    /// A fifth prefix, as the assignment has a fourth: a move the transition
-    /// table refuses comes back as this failure, since the rule is the API
-    /// tier's — the screen offers only the one move the state allows and reads
-    /// a refusal as a message rather than re-checking it. The answer is the
-    /// whole report, so the screen shows the state as stored.
+    /// A move the transition table or the caller's privileges refuse comes back
+    /// as this failure, since the rule is the API tier's: a screen offers the
+    /// moves the API lists and reads a refusal as a message rather than
+    /// re-checking it. The answer is the whole report, so the screen shows the
+    /// state and the agency as stored.
     /// </remarks>
     public Task<Asked<PersonConditionResponse>> Transition(
         int id,
-        UpdateWorkflowStateRequest workflow,
+        WorkflowTransitionRequest transition,
         CancellationToken cancellationToken = default) =>
-        Advancing.Put<UpdateWorkflowStateRequest, PersonConditionResponse>(
-            http, $"api/person-conditions/{id}/workflow", workflow, cancellationToken);
+        Advancing.Put<WorkflowTransitionRequest, PersonConditionResponse>(
+            http, $"api/person-conditions/{id}/workflow", transition, cancellationToken);
+
+    /// <summary>
+    /// A report's workflow as the signed-in user sees it — its state, the moves
+    /// they may make and its history — or why it could not be read.
+    /// </summary>
+    public Task<Asked<WorkflowResponse>> Workflow(
+        int id,
+        CancellationToken cancellationToken = default) =>
+        LoadingWorkflow.Get<WorkflowResponse>(http, $"api/person-conditions/{id}/workflow", cancellationToken);
 }

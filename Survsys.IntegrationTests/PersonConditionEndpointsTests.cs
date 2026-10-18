@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
+using Survsys.Data;
 using Xunit;
 
 namespace Survsys.IntegrationTests;
@@ -357,6 +358,246 @@ public class PersonConditionEndpointsTests(SqlServerFixture server) : IDisposabl
         }
     }
 
+    /// <summary>
+    /// The legacy workflow walked end to end as the administrator, who holds
+    /// every privilege: eleven moves through every transition but the
+    /// assignment, each answering the state it lands in and leaving exactly one
+    /// history row naming the move, the mover, both states and the note. The
+    /// GET then reads the same history newest first, with the mover's name.
+    /// </summary>
+    [Fact]
+    public async Task EveryTransitionMovesTheReportAndWritesOneHistoryRow()
+    {
+        await Clear();
+
+        try
+        {
+            var client = api.CreateClient();
+            var administrator = await Administrator(client);
+            var report = await Open(new CreatePersonConditionRequest(
+                await PersonId("Rodriguez, Maria"), await ActiveConditionId(), AgencyId: 1));
+
+            (string Transition, string From, string To)[] walk =
+            [
+                (WorkflowRules.AcceptCode, WorkflowRules.AssignedToLhdCode, WorkflowRules.AcceptedCode),
+                (WorkflowRules.InvestigateCode, WorkflowRules.AcceptedCode, WorkflowRules.UnderInvestigationCode),
+                (WorkflowRules.CloseCode, WorkflowRules.UnderInvestigationCode, WorkflowRules.ClosedCode),
+                (WorkflowRules.ApproveCode, WorkflowRules.ClosedCode, WorkflowRules.ApprovedByStateCode),
+                (WorkflowRules.ReopenCode, WorkflowRules.ApprovedByStateCode, WorkflowRules.UnderInvestigationCode),
+                (WorkflowRules.CloseCode, WorkflowRules.UnderInvestigationCode, WorkflowRules.ClosedCode),
+                (WorkflowRules.RejectCode, WorkflowRules.ClosedCode, WorkflowRules.RejectedByStateCode),
+                (WorkflowRules.InvestigateCode, WorkflowRules.RejectedByStateCode, WorkflowRules.UnderInvestigationCode),
+                (WorkflowRules.RouteCode, WorkflowRules.UnderInvestigationCode, WorkflowRules.AssignedToLhdCode),
+                (WorkflowRules.DoNotInvestigateCode, WorkflowRules.AssignedToLhdCode, WorkflowRules.NotInvestigatedCode),
+                (WorkflowRules.ReopenCode, WorkflowRules.NotInvestigatedCode, WorkflowRules.UnderInvestigationCode),
+            ];
+
+            var step = 0;
+
+            foreach (var (transition, from, to) in walk)
+            {
+                step++;
+
+                var moved = await Moved(client, report.Id, new WorkflowTransitionRequest(
+                    transition, $"step {step}", AgencyId: transition == WorkflowRules.RouteCode ? 1 : null));
+
+                Assert.Equal(to, moved.WorkflowState);
+
+                var rows = await History(report.Id);
+                Assert.Equal(step, rows.Count);
+
+                var newest = rows[^1];
+                Assert.Equal(transition, newest.Transition);
+                Assert.Equal(from, newest.FromState);
+                Assert.Equal(to, newest.ToState);
+                Assert.Equal($"step {step}", newest.Note);
+                Assert.Equal(administrator.Id, newest.UserId);
+                Assert.InRange(newest.OccurredAt, DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddMinutes(5));
+            }
+
+            var workflow = await Workflow(client, report.Id);
+
+            Assert.Equal(WorkflowRules.UnderInvestigationCode, workflow.WorkflowState);
+            Assert.Equal(walk.Length, workflow.History.Count);
+            Assert.Equal(WorkflowRules.ReopenCode, workflow.History[0].Transition);
+            Assert.Equal("step 11", workflow.History[0].Note);
+            Assert.Equal(administrator.DisplayName, workflow.History[0].UserDisplayName);
+            Assert.Equal(WorkflowRules.AcceptCode, workflow.History[^1].Transition);
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    /// <summary>
+    /// Assigning an investigator names a user from the investigator list on the
+    /// report and puts it under investigation, with its own history row.
+    /// </summary>
+    [Fact]
+    public async Task AssignInvestigatorNamesAnActiveUserOnTheReport()
+    {
+        await Clear();
+
+        try
+        {
+            var client = api.CreateClient();
+            var report = await Open(new CreatePersonConditionRequest(
+                await PersonId("Rodriguez, Maria"), await ActiveConditionId()));
+            await Moved(client, report.Id, new WorkflowTransitionRequest(WorkflowRules.AcceptCode));
+
+            var investigators = (await client.GetFromJsonAsync<IReadOnlyList<InvestigatorResponse>>("/api/investigators", Json))!;
+            var investigator = investigators[0];
+
+            var assigned = await Moved(client, report.Id,
+                new WorkflowTransitionRequest(WorkflowRules.AssignInvestigatorCode, InvestigatorId: investigator.Id));
+
+            Assert.Equal(investigator.Id, assigned.InvestigatorId);
+            Assert.Equal(WorkflowRules.UnderInvestigationCode, assigned.WorkflowState);
+
+            var workflow = await Workflow(client, report.Id);
+            Assert.Equal(investigator.Id, workflow.InvestigatorId);
+            Assert.Equal(WorkflowRules.AssignInvestigatorCode, workflow.History[0].Transition);
+            Assert.Null(workflow.History[0].Note);
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    /// <summary>
+    /// A move the report's state does not allow is refused with a Problem
+    /// Details that names the state and the moves it does allow, and nothing is
+    /// written: no history row, and the state is where it was.
+    /// </summary>
+    [Fact]
+    public async Task AMoveTheStateDoesNotAllowIsAProblemDetailsAndWritesNoRow()
+    {
+        await Clear();
+
+        try
+        {
+            var client = api.CreateClient();
+            var report = await Open(new CreatePersonConditionRequest(
+                await PersonId("Rodriguez, Maria"), await ActiveConditionId()));
+
+            var detail = await RefusedMove(client, report.Id,
+                new WorkflowTransitionRequest(WorkflowRules.ApproveCode), HttpStatusCode.BadRequest);
+
+            Assert.Contains($"A report at {WorkflowRules.AssignedToLhdCode} may not {WorkflowRules.ApproveCode}",
+                detail, StringComparison.Ordinal);
+            Assert.Contains(WorkflowRules.AcceptCode, detail, StringComparison.Ordinal);
+            Assert.Empty(await History(report.Id));
+            Assert.Equal(WorkflowRules.AssignedToLhdCode, (await Workflow(client, report.Id)).WorkflowState);
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    [Fact]
+    public async Task ARouteToAnAgencyNotOnFileIsAProblemDetails()
+    {
+        await Clear();
+
+        try
+        {
+            var client = api.CreateClient();
+            var report = await Open(new CreatePersonConditionRequest(
+                await PersonId("Rodriguez, Maria"), await ActiveConditionId()));
+
+            var detail = await RefusedMove(client, report.Id,
+                new WorkflowTransitionRequest(WorkflowRules.RouteCode, AgencyId: 99), HttpStatusCode.BadRequest);
+
+            Assert.Contains("agencyId 99 is not an agency", detail, StringComparison.Ordinal);
+            Assert.Empty(await History(report.Id));
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    [Fact]
+    public async Task AnAssignmentToAUserNotOnFileIsAProblemDetails()
+    {
+        await Clear();
+
+        try
+        {
+            var client = api.CreateClient();
+            var report = await Open(new CreatePersonConditionRequest(
+                await PersonId("Rodriguez, Maria"), await ActiveConditionId()));
+            await Moved(client, report.Id, new WorkflowTransitionRequest(WorkflowRules.AcceptCode));
+
+            var detail = await RefusedMove(client, report.Id,
+                new WorkflowTransitionRequest(WorkflowRules.AssignInvestigatorCode, InvestigatorId: 987654),
+                HttpStatusCode.BadRequest);
+
+            Assert.Contains("investigatorId 987654 is not an active user", detail, StringComparison.Ordinal);
+            Assert.Single(await History(report.Id));
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    [Fact]
+    public async Task AMoveOnAReportNobodyHasIsAProblemDetails()
+    {
+        var client = api.CreateClient();
+
+        await RefusedMove(client, 987654, new WorkflowTransitionRequest(WorkflowRules.AcceptCode), HttpStatusCode.NotFound);
+
+        using var read = await client.GetAsync("/api/person-conditions/987654/workflow");
+        Assert.Equal(HttpStatusCode.NotFound, read.StatusCode);
+    }
+
+    /// <summary>
+    /// The options a fresh report offers are the start state's three moves for
+    /// the administrator, and only the department's two for a user whose role
+    /// holds view_cases and edit_cases alone — who is refused a route with a
+    /// 403 and no row written, and may accept.
+    /// </summary>
+    [Fact]
+    public async Task TheOptionsAreTheStatesMovesNarrowedToTheCallersPrivileges()
+    {
+        await Clear();
+
+        try
+        {
+            var admin = api.CreateClient();
+            var report = await Open(new CreatePersonConditionRequest(
+                await PersonId("Rodriguez, Maria"), await ActiveConditionId()));
+
+            var forAdministrator = await Workflow(admin, report.Id);
+            Assert.Equal(
+                new[] { WorkflowRules.AcceptCode, WorkflowRules.RouteCode, WorkflowRules.DoNotInvestigateCode },
+                forAdministrator.Options);
+            Assert.Empty(forAdministrator.History);
+
+            using var editor = await SignedInCaseEditor();
+
+            var forEditor = await Workflow(editor, report.Id);
+            Assert.Equal(new[] { WorkflowRules.AcceptCode, WorkflowRules.DoNotInvestigateCode }, forEditor.Options);
+
+            var refused = await RefusedMove(editor, report.Id,
+                new WorkflowTransitionRequest(WorkflowRules.RouteCode, AgencyId: 1), HttpStatusCode.Forbidden);
+            Assert.Contains(Privileges.RouteCases, refused, StringComparison.Ordinal);
+            Assert.Empty(await History(report.Id));
+
+            var accepted = await Moved(editor, report.Id, new WorkflowTransitionRequest(WorkflowRules.AcceptCode));
+            Assert.Equal(WorkflowRules.AcceptedCode, accepted.WorkflowState);
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
     private async Task<PersonConditionResponse> Open(CreatePersonConditionRequest request)
     {
         using var response = await api.CreateClient()
@@ -365,6 +606,92 @@ public class PersonConditionEndpointsTests(SqlServerFixture server) : IDisposabl
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         return (await response.Content.ReadFromJsonAsync<PersonConditionResponse>(Json))!;
+    }
+
+    /// <summary>Makes a workflow move that is expected to succeed, and answers with the report as moved.</summary>
+    private static async Task<PersonConditionResponse> Moved(HttpClient client, int id, WorkflowTransitionRequest request)
+    {
+        using var response = await client.PutAsJsonAsync($"/api/person-conditions/{id}/workflow", request, Json);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        return (await response.Content.ReadFromJsonAsync<PersonConditionResponse>(Json))!;
+    }
+
+    /// <summary>
+    /// Makes a workflow move that is expected to be refused with that status,
+    /// and answers with the <c>detail</c> of the Problem Details.
+    /// </summary>
+    private static async Task<string> RefusedMove(
+        HttpClient client, int id, WorkflowTransitionRequest request, HttpStatusCode expected)
+    {
+        using var response = await client.PutAsJsonAsync($"/api/person-conditions/{id}/workflow", request, Json);
+
+        Assert.Equal(expected, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        return problem.RootElement.GetProperty("detail").GetString()!;
+    }
+
+    private static async Task<WorkflowResponse> Workflow(HttpClient client, int id) =>
+        (await client.GetFromJsonAsync<WorkflowResponse>($"/api/person-conditions/{id}/workflow", Json))!;
+
+    /// <summary>The report's history rows as stored, oldest first.</summary>
+    private async Task<List<WorkflowHistoryEntry>> History(int id)
+    {
+        await using var context = server.NewContext();
+
+        return await context.WorkflowHistory
+            .Where(entry => entry.PersonConditionId == id)
+            .OrderBy(entry => entry.Id)
+            .ToListAsync();
+    }
+
+    /// <summary>The administrator as a user, for the id and name a history row carries.</summary>
+    private static async Task<UserResponse> Administrator(HttpClient admin)
+    {
+        var users = (await admin.GetFromJsonAsync<PagedResult<UserResponse>>("/api/users", Json))!;
+
+        return users.Items.Single(user => user.UserName == SurvsysApi.AdministratorUserName);
+    }
+
+    /// <summary>
+    /// A client signed in as a user whose one role holds view_cases and
+    /// edit_cases and nothing else, created by the administrator over the wire
+    /// as <see cref="PrivilegeRulesTests"/> creates its reader, and found again
+    /// on a later run rather than created twice.
+    /// </summary>
+    private async Task<HttpClient> SignedInCaseEditor()
+    {
+        const string editorPassword = "case-editor-password";
+        var admin = api.CreateClient();
+
+        var roles = (await admin.GetFromJsonAsync<PagedResult<RoleResponse>>("/api/roles", Json))!;
+        var role = roles.Items.SingleOrDefault(role => role.Name == "Case editor")
+            ?? await Created<RoleResponse>(admin, "/api/roles",
+                new SaveRoleRequest("Case editor", [Privileges.ViewCases, Privileges.EditCases]));
+
+        var users = (await admin.GetFromJsonAsync<PagedResult<UserResponse>>("/api/users", Json))!;
+        if (users.Items.All(user => user.UserName != "case-editor"))
+        {
+            await Created<UserResponse>(admin, "/api/users",
+                new SaveUserRequest("case-editor", "Case Editor", true, [role.Id], editorPassword));
+        }
+
+        var editor = api.CreateAnonymousClient();
+        await api.SignIn(editor, "case-editor", editorPassword);
+
+        return editor;
+    }
+
+    private static async Task<T> Created<T>(HttpClient client, string url, object body)
+    {
+        using var response = await client.PostAsJsonAsync(url, body, Json);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        return (await response.Content.ReadFromJsonAsync<T>(Json))!;
     }
 
     /// <summary>Builds a form for a condition, auto-assign or not, and answers its id.</summary>

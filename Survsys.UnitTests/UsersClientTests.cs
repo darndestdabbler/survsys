@@ -70,6 +70,20 @@ public class UsersClientTests
     }
 
     [Fact]
+    public async Task InvestigatorsAsksForTheActiveUsersAnInvestigationMayBeAssignedTo()
+    {
+        HttpRequestMessage? sent = null;
+        var client = Recording(request => sent = request, HttpStatusCode.OK,
+            """[{ "id": 7, "displayName": "Ada Lovelace" }]""");
+
+        var asked = await client.Investigators();
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal("http://api.example.test/api/investigators", sent?.RequestUri?.ToString());
+        Assert.Equal(new InvestigatorResponse(7, "Ada Lovelace"), Assert.Single(asked.Value!));
+    }
+
+    [Fact]
     public async Task EachFailureCarriesItsOwnPrefix()
     {
         var client = Recording(_ => { }, HttpStatusCode.InternalServerError, "{}");
@@ -77,6 +91,7 @@ public class UsersClientTests
         Assert.StartsWith(UsersClient.LoadFailurePrefix, (await client.All()).Failure);
         Assert.StartsWith(UsersClient.SaveFailurePrefix, (await client.Create(new SaveUserRequest("a", "A"))).Failure);
         Assert.StartsWith(UsersClient.SaveFailurePrefix, (await client.Update(7, new SaveUserRequest("a", "A"))).Failure);
+        Assert.StartsWith(UsersClient.InvestigatorsFailurePrefix, (await client.Investigators()).Failure);
     }
 
     private static UsersClient Recording(

@@ -38,7 +38,22 @@ public static class Privileges
     /// </summary>
     public const string RunReports = "run_reports";
 
+    /// <summary>
+    /// Routing a case morbidity report to another agency, which starts it at
+    /// the assigned-to-LHD state in that agency's queue.
+    /// </summary>
+    public const string RouteCases = "route_cases";
+
+    /// <summary>Naming the investigator on a case morbidity report.</summary>
+    public const string AssignInvestigators = "assign_investigators";
+
+    /// <summary>
+    /// The state's review of a closed investigation: approving it, rejecting
+    /// it back to the department, and reopening a finished or declined case.
+    /// </summary>
+    public const string ApproveCases = "approve_cases";
+
     /// <summary>Every privilege there is, in the order a screen lists them.</summary>
     public static IReadOnlyList<string> All { get; } =
-        [ViewCases, EditCases, ManageReferenceData, ManageUsers, RunReports];
+        [ViewCases, EditCases, ManageReferenceData, ManageUsers, RunReports, RouteCases, AssignInvestigators, ApproveCases];
 }

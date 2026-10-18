@@ -272,6 +272,19 @@ public class PersonCondition
     public string? WorkflowState { get; set; }
 
     /// <summary>
+    /// The user investigating this report, named by the assign-investigator
+    /// transition and shown beside the Workflow Options.
+    /// </summary>
+    /// <remarks>
+    /// A bare nullable identifier with no navigation, exactly as
+    /// <see cref="AgencyId"/> is; the configuration makes it a foreign key to
+    /// the users table that does not cascade, because users are deactivated
+    /// rather than deleted. Nullable because a report has no investigator until
+    /// one is assigned.
+    /// </remarks>
+    public int? InvestigatorId { get; set; }
+
+    /// <summary>
     /// Whether the person handles food, as the legacy <c>food_handler</c>
     /// code — the Investigation tab's first Contact Oriented dropdown, one of
     /// <c>yes</c>, <c>no</c> or <c>unknown</c>, and null until answered.

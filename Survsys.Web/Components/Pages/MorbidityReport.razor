@@ -31,6 +31,7 @@
 @inject AdministrativeClient Administrative
 @inject CoreElementsClient CoreElements
 @inject NotificationQueueClient Notifications
+@inject UsersClient Users
 
 <PageTitle>@Title — Survsys</PageTitle>
 
@@ -127,6 +128,90 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         </MudGrid>
     </MudPaper>
 
+    @* The legacy Workflow Options: the report's state, its investigator, and
+       one button per move the API tier lists for this user on this case. The
+       list is already narrowed by the case's state and the user's privileges,
+       so the panel holds no rule of its own; a move the API still refuses is
+       shown as the client's message. The agency and investigator pickers show
+       only while the move that takes them is offered. *@
+    <MudPaper id="report-workflow" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Workflow Options</MudText>
+
+        @if (workflowSaved is { } movedMessage)
+        {
+            <MudAlert id="report-workflow-saved" Severity="Severity.Success" Variant="Variant.Filled"
+                      Class="mb-4">
+                @movedMessage
+            </MudAlert>
+        }
+
+        @if (workflowError is { } whyNotMoved)
+        {
+            <MudAlert id="report-workflow-error" Severity="Severity.Error" Variant="Variant.Filled"
+                      Class="mb-4">
+                @whyNotMoved
+            </MudAlert>
+        }
+
+        <MudGrid Spacing="2" Class="mb-2">
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.caption">Workflow status</MudText>
+                <MudText id="report-workflow-state" Typo="Typo.body1">@WorkflowLabel(workflow?.WorkflowState)</MudText>
+            </MudItem>
+            @if (InvestigatorName is { } investigatorName)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption">Investigator</MudText>
+                    <MudText id="report-workflow-investigator" Typo="Typo.body1">@investigatorName</MudText>
+                </MudItem>
+            }
+        </MudGrid>
+
+        @if (workflow?.Options.Count > 0)
+        {
+            <MudGrid Spacing="2" Class="align-center">
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="workflowNote" id="report-workflow-note"
+                                  Label="Note" Variant="Variant.Outlined" />
+                </MudItem>
+                @if (Offers("route"))
+                {
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="int?" @bind-Value="routeAgencyId" id="report-workflow-agency"
+                                   Label="Route to agency" Variant="Variant.Outlined" Clearable="true">
+                            @foreach (var agency in agencies)
+                            {
+                                <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                }
+                @if (Offers("assign_investigator"))
+                {
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="int?" @bind-Value="assignInvestigatorId" id="report-workflow-investigator-id"
+                                   Label="Investigator" Variant="Variant.Outlined" Clearable="true">
+                            @foreach (var investigator in investigators)
+                            {
+                                <MudSelectItem T="int?" Value="@investigator.Id">@investigator.DisplayName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+
+        <MudStack Row="true" Spacing="2" Class="mt-2" Wrap="Wrap.Wrap">
+            @foreach (var code in workflow?.Options ?? [])
+            {
+                <MudButton id="@($"report-workflow-{code}")" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@moving" OnClick="@(() => Move(code))">
+                    @MoveLabel(code)
+                </MudButton>
+            }
+        </MudStack>
+    </MudPaper>
+
     @* The manual CDC-notification action: a case change queues the case for
        notification on its own, and this queues it again by hand, for a case
        that must be re-sent. A case-level action, so it sits above the tab strip
@@ -204,7 +289,8 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <span id="report-tab-administrative">Administrative</span>
             </TabContent>
             <ChildContent>
-                <AdministrativeTab Report="@shown" Administrative="@administrativeData" Hidden="@hidden" />
+                <AdministrativeTab Report="@shown" Administrative="@administrativeData" Hidden="@hidden"
+                                   History="@(workflow?.History ?? [])" />
             </ChildContent>
         </MudTabPanel>
         <MudTabPanel Text="Forms">
@@ -285,6 +371,23 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
 
     private string? notifyError;
 
+    /// <summary>The report's workflow as this user sees it: state, the moves they may make, history.</summary>
+    private WorkflowResponse? workflow;
+
+    private IReadOnlyList<InvestigatorResponse> investigators = [];
+
+    private string? workflowNote;
+
+    private int? routeAgencyId;
+
+    private int? assignInvestigatorId;
+
+    private bool moving;
+
+    private string? workflowSaved;
+
+    private string? workflowError;
+
     /// <summary>
     /// How many conditions this screen asks for: the whole catalogue in one
     /// page, for the reason the creation screen gives.
@@ -315,7 +418,11 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         var investigationData = await Investigation.Find(shown.Id);
         var administrativeData = await Administrative.Find(shown.Id);
         var hiddenElements = await CoreElements.HiddenOn(shown.Id);
+        var workflowData = await Reports.Workflow(shown.Id);
+        var investigatorList = await Users.Investigators();
 
+        workflow = workflowData.Value;
+        investigators = investigatorList.Value ?? [];
         person = who.Value;
         diseases = conditions.Value?.Items ?? [];
         agencies = listed.Value?.Items ?? [];
@@ -326,7 +433,8 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
 
         // The first ask that failed is the one worth reporting.
         failure = who.Failure ?? conditions.Failure ?? listed.Failure ?? clinicalData.Failure
-            ?? investigationData.Failure ?? administrativeData.Failure ?? hiddenElements.Failure;
+            ?? investigationData.Failure ?? administrativeData.Failure ?? hiddenElements.Failure
+            ?? workflowData.Failure ?? investigatorList.Failure;
 
         loading = false;
     }
@@ -428,6 +536,110 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     /// <summary>The status box's content, trimmed, or null where it holds nothing.</summary>
     private static string? Blank(string? typed) =>
         string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
+
+    /// <summary>Whether the API tier lists this move for this user on this case.</summary>
+    private bool Offers(string code) => workflow?.Options.Contains(code) == true;
+
+    /// <summary>The investigator's name, or null where none is assigned.</summary>
+    private string? InvestigatorName => workflow?.InvestigatorId is not { } id
+        ? null
+        : investigators.FirstOrDefault(investigator => investigator.Id == id)?.DisplayName ?? $"user {id}";
+
+    /// <summary>
+    /// A workflow code read as its label. The codes are the legacy codes the
+    /// wire carries; the API tier owns them, and this is display only.
+    /// </summary>
+    internal static string WorkflowLabel(string? workflowState) => workflowState switch
+    {
+        "assigned_to_lhd" => "Assigned to LHD",
+        "accepted" => "Accepted",
+        "under_investigation" => "Under investigation",
+        "closed" => "Closed",
+        "not_investigated" => "Not investigated",
+        "approved_by_state" => "Approved by state",
+        "rejected_by_state" => "Rejected by state",
+        null => "",
+        _ => workflowState,
+    };
+
+    /// <summary>A transition code read as the words its button shows.</summary>
+    internal static string MoveLabel(string code) => code switch
+    {
+        "accept" => "Accept",
+        "investigate" => "Investigate",
+        "close" => "Close",
+        "route" => "Route to agency",
+        "assign_investigator" => "Assign investigator",
+        "do_not_investigate" => "Do not investigate",
+        "reopen" => "Reopen",
+        "approve" => "Approve",
+        "reject" => "Reject",
+        _ => code,
+    };
+
+    /// <summary>
+    /// Makes a workflow move through the API tier, then reads the report and
+    /// its workflow back, so the header's agency, the state, the options and
+    /// the history show what was stored. A route or an assignment with nothing
+    /// chosen is refused here, since there is nothing to send; every other
+    /// refusal is the API's and is shown as the client's message.
+    /// </summary>
+    private async Task Move(string code)
+    {
+        if (report is not { } current)
+        {
+            return;
+        }
+
+        workflowSaved = null;
+        workflowError = null;
+
+        if (code == "route" && routeAgencyId is null)
+        {
+            workflowError = "Choose the agency to route the report to.";
+
+            return;
+        }
+
+        if (code == "assign_investigator" && assignInvestigatorId is null)
+        {
+            workflowError = "Choose the investigator to assign.";
+
+            return;
+        }
+
+        moving = true;
+
+        try
+        {
+            var answered = await Reports.Transition(current.Id, new WorkflowTransitionRequest(
+                code,
+                Blank(workflowNote),
+                code == "route" ? routeAgencyId : null,
+                code == "assign_investigator" ? assignInvestigatorId : null));
+
+            if (answered.Value is not { } moved)
+            {
+                workflowError = answered.Failure;
+
+                return;
+            }
+
+            report = moved;
+
+            var reread = await Reports.Workflow(current.Id);
+            workflow = reread.Value ?? workflow;
+            workflowError = reread.Failure;
+            workflowNote = null;
+            routeAgencyId = null;
+            assignInvestigatorId = null;
+            workflowSaved = $"{MoveLabel(code)} was made: the report is now {WorkflowLabel(moved.WorkflowState)}.";
+        }
+        finally
+        {
+            moving = false;
+        }
+    }
 
     /// <summary>
     /// Queues the case for CDC notification by hand, showing when it was queued

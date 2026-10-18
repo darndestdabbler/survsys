@@ -59,6 +59,10 @@ namespace Survsys.Contracts;
 /// vocabulary and the moves between states are the API tier's, which validates
 /// a transition against the workflow rules.
 /// </param>
+/// <param name="InvestigatorId">
+/// The user investigating the report, named by the assign-investigator
+/// transition, or null where none is assigned.
+/// </param>
 public record PersonConditionResponse(
     int Id,
     int PersonId,
@@ -71,4 +75,5 @@ public record PersonConditionResponse(
     string? CaseStatus,
     int? MmwrWeek,
     int? MmwrYear,
-    string? WorkflowState);
+    string? WorkflowState,
+    int? InvestigatorId = null);

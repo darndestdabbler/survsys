@@ -63,7 +63,8 @@ public static class PersonConditionEndpoints
             report.CaseStatus,
             report.MmwrWeek,
             report.MmwrYear,
-            report.WorkflowState);
+            report.WorkflowState,
+            report.InvestigatorId);
 
     /// <summary>
     /// <see cref="ToResponse"/> compiled, for the one caller that has a report
@@ -150,30 +151,102 @@ public static class PersonConditionEndpoints
         return null;
     }
 
+    /// <summary>Room for the note a workflow move carries.</summary>
+    public const int NoteLength = 1000;
+
     /// <summary>
-    /// Why this is not an agency a report may be assigned to, or null when it
-    /// is one.
+    /// Why this is not a workflow move this tier will make, as far as can be
+    /// said without the database, or null when it is one.
     /// </summary>
     /// <remarks>
     /// The shape <see cref="WhyNotAReport"/> and <see cref="WhyNotAStatus"/>
     /// have: a pure function the unit suite proves, with the endpoint turning
-    /// the sentence into a 400. Only an agency identifier nothing can have is
-    /// refused here; whether the agency and the report exist needs a query.
+    /// the sentence into a 400. A transition code the vocabulary does not know,
+    /// a route with no agency or an assignment with no investigator, and a note
+    /// longer than the column are refused here; whether the report's state
+    /// allows the move, whether the caller may make it, and whether the agency
+    /// or the investigator is on file need the caller's claims or a query.
     ///
     /// Public because the unit suite proves it. Nothing outside this file calls
     /// it.
     /// </remarks>
-    public static string? WhyNotAnAssignment(AssignReportRequest request)
+    public static string? WhyNotATransition(WorkflowTransitionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (request.AgencyId <= 0)
+        if (!WorkflowRules.TryParseTransition(request.Transition, out var transition))
         {
-            return AgencyEndpoints.NotAnAgency(request.AgencyId);
+            return $"transition '{request.Transition}' is not a workflow move this tier knows. "
+                + $"A transition is one of {TransitionCodes}.";
+        }
+
+        if (transition == WorkflowTransition.Route && request.AgencyId is not > 0)
+        {
+            return "agencyId is required for a route: the report is routed to an agency, and "
+                + $"{request.AgencyId?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "nothing"} "
+                + "is not an identifier any agency has.";
+        }
+
+        if (transition == WorkflowTransition.AssignInvestigator && request.InvestigatorId is not > 0)
+        {
+            return "investigatorId is required to assign an investigator, and "
+                + $"{request.InvestigatorId?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "nothing"} "
+                + "is not an identifier any user has.";
+        }
+
+        if (request.Note is { Length: > NoteLength })
+        {
+            return $"note is longer than {NoteLength} characters.";
         }
 
         return null;
     }
+
+    /// <summary>
+    /// The privilege a transition needs: the investigating department's own
+    /// moves are a case edit; routing, assigning an investigator and the state's
+    /// review each have a privilege of their own.
+    /// </summary>
+    /// <remarks>
+    /// Here and not in <see cref="WorkflowRules"/> because the privilege names
+    /// are <c>Survsys.Contracts</c>', which <c>Survsys.Data</c> may not
+    /// reference. Public because the unit suite proves it.
+    /// </remarks>
+    public static string PrivilegeFor(WorkflowTransition transition) => transition switch
+    {
+        WorkflowTransition.Accept => Privileges.EditCases,
+        WorkflowTransition.Investigate => Privileges.EditCases,
+        WorkflowTransition.Close => Privileges.EditCases,
+        WorkflowTransition.DoNotInvestigate => Privileges.EditCases,
+        WorkflowTransition.Route => Privileges.RouteCases,
+        WorkflowTransition.AssignInvestigator => Privileges.AssignInvestigators,
+        WorkflowTransition.Reopen => Privileges.ApproveCases,
+        WorkflowTransition.Approve => Privileges.ApproveCases,
+        WorkflowTransition.Reject => Privileges.ApproveCases,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(transition), transition, "is not a workflow transition this rule knows."),
+    };
+
+    /// <summary>
+    /// The transitions a caller holding these privileges may make from a state,
+    /// as their codes and in the workflow's order: what a Workflow Options menu
+    /// offers, already narrowed to the person looking at it.
+    /// </summary>
+    /// <remarks>Public because the unit suite proves it.</remarks>
+    public static IReadOnlyList<string> OptionsFor(WorkflowState state, IEnumerable<string> heldPrivileges)
+    {
+        ArgumentNullException.ThrowIfNull(heldPrivileges);
+
+        var held = heldPrivileges.ToHashSet(StringComparer.Ordinal);
+
+        return WorkflowRules.AllowedFrom(state)
+            .Where(transition => held.Contains(PrivilegeFor(transition)))
+            .Select(WorkflowRules.CodeOf)
+            .ToList();
+    }
+
+    private static string TransitionCodes => string.Join(", ",
+        Enum.GetValues<WorkflowTransition>().Select(WorkflowRules.CodeOf));
 
     /// <summary>
     /// Registers what the person-conditions endpoints need of the container.
@@ -200,15 +273,15 @@ public static class PersonConditionEndpoints
             .WithName("SetPersonConditionStatus")
             .WithSummary("Sets a case morbidity report's case status.");
 
-        routes.MapPut("/api/person-conditions/{id:int}/assignment", Assign)
-            .WithName("AssignPersonCondition")
-            .WithSummary("Assigns a case morbidity report to an investigating agency and "
-                + "returns it to the assigned-to-LHD start of the workflow.");
+        routes.MapGet("/api/person-conditions/{id:int}/workflow", GetWorkflow)
+            .WithName("GetPersonConditionWorkflow")
+            .WithSummary("A case morbidity report's workflow state, the moves the caller may "
+                + "make from it, and its history.");
 
-        routes.MapPut("/api/person-conditions/{id:int}/workflow", AdvanceWorkflow)
+        routes.MapPut("/api/person-conditions/{id:int}/workflow", MakeTransition)
             .WithName("SetPersonConditionWorkflow")
-            .WithSummary("Moves a case morbidity report to the next workflow state the "
-                + "transition table allows.");
+            .WithSummary("Makes a workflow move on a case morbidity report, where its state "
+                + "allows the move and the caller holds the privilege it needs.");
 
         return routes;
     }
@@ -313,108 +386,135 @@ public static class PersonConditionEndpoints
     }
 
     /// <remarks>
-    /// Assigning a report names its investigating agency and returns it to the
-    /// assigned-to-LHD start of the workflow, as the legacy enters a case into
-    /// the Local Health Department's queue. An agency no agency on file has is
-    /// a 400, as it is on creation; a report id that names no report is a 404,
-    /// the resource addressed being the report itself.
+    /// The report's state, the moves this caller may make from it and its
+    /// history, in one answer: a screen offers exactly the options listed and
+    /// repeats no rule of its own. The options are the transition table's moves
+    /// from the state, narrowed by the privileges the caller's claims carry. A
+    /// report id that names no report is a 404.
     /// </remarks>
-    private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> Assign(
+    private static async Task<Results<Ok<WorkflowResponse>, ProblemHttpResult>> GetWorkflow(
         PersonConditionQueries reports,
-        AgencyQueries agencies,
+        ClaimsPrincipal user,
         int id,
-        AssignReportRequest request,
         CancellationToken cancellationToken = default)
     {
-        var why = WhyNotAnAssignment(request)
-            ?? (await agencies.Find(request.AgencyId, cancellationToken) is null
-                ? AgencyEndpoints.NotAnAgency(request.AgencyId)
-                : null);
+        var held = user.FindAll(PrivilegeRules.PrivilegeClaim).Select(claim => claim.Value).ToList();
 
-        if (why is not null)
+        if (await reports.Workflow(id, held, cancellationToken) is not { } workflow)
         {
-            return TypedResults.Problem(
-                detail: why,
-                statusCode: StatusCodes.Status400BadRequest,
-                title: "The agency the report is to be assigned to is not one this endpoint knows.");
+            return NoSuchReport(id);
         }
 
-        if (await reports.Assign(id, request.AgencyId, cancellationToken) is not { } report)
-        {
-            return TypedResults.Problem(
-                detail: $"No case morbidity report has id {id}.",
-                statusCode: StatusCodes.Status404NotFound,
-                title: "There is no such case morbidity report.");
-        }
-
-        return TypedResults.Ok(report);
+        return TypedResults.Ok(workflow);
     }
 
     /// <remarks>
-    /// The move is gated by the pure transition table and nothing else: a
-    /// target code the vocabulary does not know is a 400 before the database is
-    /// asked, a report id that names no report is a 404, and a move
-    /// <see cref="WorkflowRules.IsAllowed"/> rejects — a skip, a backward move,
-    /// or a reopening — is a 400 whose message names where the report is and
-    /// where it was asked to go. The current state is read from the report and
-    /// the target written back; no labs or classification move it, because the
-    /// classification-gated transitions are the deferred, Utah-specific work.
+    /// A move is refused in the order the questions can be answered: what is
+    /// wrong with the request itself is a 400 before anything is read; a caller
+    /// whose claims lack the transition's privilege is a 403, so a department
+    /// user cannot route or approve whatever state the report is in; a report
+    /// id that names no report is a 404; a move the report's state does not
+    /// allow is a 400 that names the state and the moves it does allow; and a
+    /// route to an agency not on file or an assignment to a user not on file or
+    /// not active is a 400. Only then is the move made, which writes the state,
+    /// the agency or investigator, the history row and the notification queue
+    /// entry in one save.
     ///
-    /// The <see cref="WorkflowState"/> enum stays out of this signature and in
-    /// the body, as the architecture test requires of an endpoint; the query
-    /// holds the <c>DbContext</c>.
+    /// The clock is read here, once, for the history row, as the creation reads
+    /// it once for the record number. The <see cref="WorkflowTransition"/> enum
+    /// stays out of this signature and in the body, as the architecture test
+    /// requires of an endpoint; the query holds the <c>DbContext</c>.
     /// </remarks>
-    private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> AdvanceWorkflow(
+    private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> MakeTransition(
         PersonConditionQueries reports,
+        AgencyQueries agencies,
+        ClaimsPrincipal user,
         int id,
-        UpdateWorkflowStateRequest request,
+        WorkflowTransitionRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!WorkflowRules.TryParse(request.WorkflowState, out var target))
+        if (WhyNotATransition(request) is { } why)
         {
             return TypedResults.Problem(
-                detail: $"workflowState '{request.WorkflowState}' is not a workflow state a "
-                    + $"report may be moved to. A workflow state is one of "
-                    + $"{WorkflowRules.AssignedToLhdCode}, {WorkflowRules.AcceptedCode}, "
-                    + $"{WorkflowRules.UnderInvestigationCode} or {WorkflowRules.ClosedCode}.",
+                detail: why,
                 statusCode: StatusCodes.Status400BadRequest,
-                title: "The workflow state asked for is not one this endpoint can set.");
+                title: "The workflow move asked for is not one this endpoint can make.");
+        }
+
+        WorkflowRules.TryParseTransition(request.Transition, out var transition);
+        var required = PrivilegeFor(transition);
+
+        if (!user.HasClaim(PrivilegeRules.PrivilegeClaim, required))
+        {
+            return TypedResults.Problem(
+                detail: $"{required} is required to {WorkflowRules.CodeOf(transition)} a case morbidity report.",
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "The caller does not hold the privilege this workflow move needs.");
+        }
+
+        if (AccountEndpoints.UserIdOf(user) is not { } userId)
+        {
+            return TypedResults.Problem(
+                detail: "The caller's token names no user this tier knows, and a workflow move is recorded against the user who made it.",
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "The caller is not a signed-in user.");
         }
 
         if (await reports.WorkflowCodeOf(id, cancellationToken) is not { } currentCode)
         {
-            return TypedResults.Problem(
-                detail: $"No case morbidity report has id {id}.",
-                statusCode: StatusCodes.Status404NotFound,
-                title: "There is no such case morbidity report.");
+            return NoSuchReport(id);
         }
 
         var current = WorkflowRules.Read(currentCode);
 
-        if (!WorkflowRules.IsAllowed(current, target))
+        if (!WorkflowRules.IsAllowed(current, transition))
         {
+            var allowed = WorkflowRules.AllowedFrom(current).Select(WorkflowRules.CodeOf).ToList();
+
             return TypedResults.Problem(
-                detail: $"A report at {WorkflowRules.CodeOf(current)} may not be moved to "
-                    + $"{WorkflowRules.CodeOf(target)}. The workflow runs "
-                    + $"{WorkflowRules.AssignedToLhdCode} to {WorkflowRules.AcceptedCode} to "
-                    + $"{WorkflowRules.UnderInvestigationCode} to {WorkflowRules.ClosedCode}, "
-                    + "one step at a time and forward only.",
+                detail: $"A report at {WorkflowRules.CodeOf(current)} may not {WorkflowRules.CodeOf(transition)}. "
+                    + (allowed.Count == 0
+                        ? "No move is allowed from there."
+                        : $"From there it may {string.Join(", ", allowed)}."),
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "The workflow move asked for is not one the transition table allows.");
         }
 
-        if (await reports.SetWorkflow(id, WorkflowRules.CodeOf(target), cancellationToken) is not { } report)
+        if (transition == WorkflowTransition.Route
+            && await agencies.Find(request.AgencyId!.Value, cancellationToken) is null)
         {
             return TypedResults.Problem(
-                detail: $"No case morbidity report has id {id}.",
-                statusCode: StatusCodes.Status404NotFound,
-                title: "There is no such case morbidity report.");
+                detail: AgencyEndpoints.NotAnAgency(request.AgencyId.Value),
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The agency the report is to be routed to is not one this endpoint knows.");
+        }
+
+        if (transition == WorkflowTransition.AssignInvestigator
+            && !await reports.IsAnInvestigator(request.InvestigatorId!.Value, cancellationToken))
+        {
+            return TypedResults.Problem(
+                detail: $"investigatorId {request.InvestigatorId.Value} is not an active user. The "
+                    + "investigators are the ones GET /api/investigators lists.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The investigator named is not one this endpoint knows.");
+        }
+
+        if (await reports.Transition(id, userId, transition, request, DateTimeOffset.UtcNow, cancellationToken)
+            is not { } report)
+        {
+            return NoSuchReport(id);
         }
 
         return TypedResults.Ok(report);
     }
+
+    private static ProblemHttpResult NoSuchReport(int id) =>
+        TypedResults.Problem(
+            detail: $"No case morbidity report has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such case morbidity report.");
 
     private static ProblemHttpResult Refused(string why) =>
         TypedResults.Problem(
@@ -654,36 +754,53 @@ internal sealed class PersonConditionQueries(
         return PersonConditionEndpoints.Respond(report);
     }
 
+    /// <summary>Whether a user with that id is on file and active, and so may be assigned a case.</summary>
+    public Task<bool> IsAnInvestigator(int userId, CancellationToken cancellationToken) =>
+        database.Users.AnyAsync(user => user.Id == userId && user.Active, cancellationToken);
+
     /// <summary>
-    /// Assigns a report to an agency and returns its workflow to the
-    /// assigned-to-LHD start, answering the report as stored, or null where no
-    /// report has that id — the answer the endpoint turns into a 404.
+    /// The report's workflow as the caller sees it: its state, the moves a
+    /// caller holding these privileges may make from it, and every move it has
+    /// made, newest first — or null where no report has that id.
     /// </summary>
-    /// <remarks>
-    /// The agency is validated before this is called; here is only the write.
-    /// Both columns move together: assigning a report is entering it into an
-    /// agency's queue, which is the start of the workflow, so the state returns
-    /// to <see cref="WorkflowRules.InitialCode"/> whatever it was.
-    /// </remarks>
-    public async Task<PersonConditionResponse?> Assign(
+    public async Task<WorkflowResponse?> Workflow(
         int id,
-        int agencyId,
+        IReadOnlyList<string> heldPrivileges,
         CancellationToken cancellationToken)
     {
-        var report = await database.PersonConditions
-            .SingleOrDefaultAsync(report => report.Id == id, cancellationToken);
+        var found = await database.PersonConditions
+            .Where(report => report.Id == id)
+            .Select(report => new { report.WorkflowState, report.InvestigatorId })
+            .SingleOrDefaultAsync(cancellationToken);
 
-        if (report is null)
+        if (found is null)
         {
             return null;
         }
 
-        report.AgencyId = agencyId;
-        report.WorkflowState = WorkflowRules.InitialCode;
-        await QueueForNotification(report.Id, cancellationToken);
-        await database.SaveChangesAsync(cancellationToken);
+        var history = await database.WorkflowHistory
+            .Where(entry => entry.PersonConditionId == id)
+            .Join(database.Users, entry => entry.UserId, user => user.Id, (entry, user) => new { entry, user })
+            .OrderByDescending(row => row.entry.OccurredAt)
+            .ThenByDescending(row => row.entry.Id)
+            .Select(row => new WorkflowHistoryEntryResponse(
+                row.entry.OccurredAt,
+                row.entry.UserId,
+                row.user.DisplayName,
+                row.entry.Transition,
+                row.entry.FromState,
+                row.entry.ToState,
+                row.entry.Note))
+            .ToListAsync(cancellationToken);
 
-        return PersonConditionEndpoints.Respond(report);
+        var state = WorkflowRules.Read(found.WorkflowState);
+
+        return new WorkflowResponse(
+            id,
+            WorkflowRules.CodeOf(state),
+            found.InvestigatorId,
+            PersonConditionEndpoints.OptionsFor(state, heldPrivileges),
+            history);
     }
 
     /// <summary>
@@ -714,17 +831,24 @@ internal sealed class PersonConditionQueries(
     }
 
     /// <summary>
-    /// Writes a report's workflow code and answers with the report as stored,
+    /// Makes a workflow move on a report and answers with the report as stored,
     /// or null where no report has that id.
     /// </summary>
     /// <remarks>
-    /// The move is validated before this is called — the code is one the
-    /// vocabulary knows and the transition one the table allows — so here is
-    /// only the write. Nothing else on the report moves with it.
+    /// The move is validated before this is called — the transition is one the
+    /// table allows from the report's state, the caller may make it, and the
+    /// agency or investigator it names is on file — so here is only the write,
+    /// and it is one save: the state moves to the transition's target, a route
+    /// sets the agency and an assignment the investigator, the history row
+    /// records who, when, which move, from where to where and the note, and the
+    /// case is queued for notification as every change to it is.
     /// </remarks>
-    public async Task<PersonConditionResponse?> SetWorkflow(
+    public async Task<PersonConditionResponse?> Transition(
         int id,
-        string workflowCode,
+        int userId,
+        WorkflowTransition transition,
+        WorkflowTransitionRequest request,
+        DateTimeOffset occurredAt,
         CancellationToken cancellationToken)
     {
         var report = await database.PersonConditions
@@ -735,7 +859,32 @@ internal sealed class PersonConditionQueries(
             return null;
         }
 
-        report.WorkflowState = workflowCode;
+        var from = WorkflowRules.Read(report.WorkflowState);
+        var to = WorkflowRules.TargetOf(transition);
+
+        report.WorkflowState = WorkflowRules.CodeOf(to);
+
+        if (transition == WorkflowTransition.Route)
+        {
+            report.AgencyId = request.AgencyId;
+        }
+
+        if (transition == WorkflowTransition.AssignInvestigator)
+        {
+            report.InvestigatorId = request.InvestigatorId;
+        }
+
+        database.WorkflowHistory.Add(new WorkflowHistoryEntry
+        {
+            PersonConditionId = report.Id,
+            UserId = userId,
+            OccurredAt = occurredAt,
+            Transition = WorkflowRules.CodeOf(transition),
+            FromState = WorkflowRules.CodeOf(from),
+            ToState = WorkflowRules.CodeOf(to),
+            Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
+        });
+
         await QueueForNotification(report.Id, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 

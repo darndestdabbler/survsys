@@ -1238,23 +1238,36 @@
         "identityProvenance": "direct"
       },
       "verificationVerdict": "VERIFIED",
-      "startCommit": "7ecdc38903666877edc3092bc5bdcac9927a4984",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
       "frameworkVersion": "3.21.0",
+      "startCommit": "7ecdc38903666877edc3092bc5bdcac9927a4984"
+    },
+    {
+      "number": 61,
+      "title": "The full investigation workflow",
+      "status": "in-progress",
+      "startedAt": "2026-10-18T11:26:42.532000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "dd3784f045feb8a45ef21ca6d3d31c025ea82a00",
+      "completedAt": null,
+      "verificationVerdict": "VERIFIED",
       "verification": {
         "rounds": 2,
         "verifierModel": "gpt-5.6-terra",
         "verifierProvider": "openai",
         "transport": "api"
       }
-    },
-    {
-      "number": 61,
-      "title": "The full investigation workflow",
-      "status": "not-started",
-      "startedAt": null,
-      "completedAt": null,
-      "orchestrator": null,
-      "verificationVerdict": null
     },
     {
       "number": 62,

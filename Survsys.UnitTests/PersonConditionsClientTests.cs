@@ -262,12 +262,13 @@ public class PersonConditionsClientTests
         """;
 
     /// <summary>
-    /// Assigning: the agency the screen chose is the body sent to the report's
-    /// own assignment URL, and the report that comes back carries the agency
-    /// and the assigned-to-LHD start the API returned it to.
+    /// Routing — what the Agency board's Assign a report panel sends: the route
+    /// transition and the agency chosen go to the report's own workflow URL,
+    /// and the report that comes back carries the agency and the
+    /// assigned-to-LHD start the API returned it to.
     /// </summary>
     [Fact]
-    public async Task TheAgencyAssignedIsSentAndTheAssignedReportComesBack()
+    public async Task ARouteIsSentAsATransitionAndTheRoutedReportComesBack()
     {
         HttpRequestMessage? sent = null;
         string? body = null;
@@ -280,12 +281,13 @@ public class PersonConditionsClientTests
             return Answer(HttpStatusCode.OK, Assigned);
         }));
 
-        var saved = await client.Assign(11, new AssignReportRequest(3));
+        var saved = await client.Transition(11, new WorkflowTransitionRequest("route", AgencyId: 3));
 
         Assert.Equal(HttpMethod.Put, sent?.Method);
         Assert.Equal(
-            "http://api.example.test/api/person-conditions/11/assignment",
+            "http://api.example.test/api/person-conditions/11/workflow",
             sent?.RequestUri?.ToString());
+        Assert.Contains("\"transition\":\"route\"", body, StringComparison.Ordinal);
         Assert.Contains("\"agencyId\":3", body, StringComparison.Ordinal);
 
         Assert.True(saved.Succeeded);
@@ -294,36 +296,12 @@ public class PersonConditionsClientTests
     }
 
     /// <summary>
-    /// An assignment the API tier refused: the message starts with this
-    /// client's assignment prefix — not the create, load, status or workflow
-    /// one — and names the status the API gave rather than the agency it
-    /// refused.
+    /// A move: the transition, the note and the investigator the screen chose
+    /// are the body sent, and the report that comes back carries the state the
+    /// API moved it to.
     /// </summary>
     [Fact]
-    public async Task AnAssignmentThatCouldNotBeSavedCarriesTheAssignPrefix()
-    {
-        var client = new PersonConditionsClient(Transport(_ => Answer(
-            HttpStatusCode.BadRequest,
-            """{ "status": 400, "detail": "agencyId 99 is not an agency this tier knows." }""")));
-
-        var saved = await client.Assign(11, new AssignReportRequest(99));
-
-        Assert.False(saved.Succeeded);
-        Assert.Null(saved.Value);
-        Assert.StartsWith(PersonConditionsClient.AssignFailurePrefix, saved.Failure);
-        Assert.Contains("400", saved.Failure);
-        Assert.DoesNotContain("99", saved.Failure, StringComparison.Ordinal);
-        Assert.NotEqual(
-            PersonConditionsClient.StatusFailurePrefix, PersonConditionsClient.AssignFailurePrefix);
-    }
-
-    /// <summary>
-    /// Advancing the workflow: the target state the screen asked for is the
-    /// body sent to the report's own workflow URL, and the report that comes
-    /// back carries the state the API moved it to.
-    /// </summary>
-    [Fact]
-    public async Task TheWorkflowMoveIsSentAndTheAdvancedReportComesBack()
+    public async Task TheTransitionIsSentAndTheMovedReportComesBack()
     {
         HttpRequestMessage? sent = null;
         string? body = null;
@@ -336,13 +314,16 @@ public class PersonConditionsClientTests
             return Answer(HttpStatusCode.OK, Accepted);
         }));
 
-        var saved = await client.Transition(11, new UpdateWorkflowStateRequest("accepted"));
+        var saved = await client.Transition(
+            11, new WorkflowTransitionRequest("assign_investigator", "over to Ada", InvestigatorId: 7));
 
         Assert.Equal(HttpMethod.Put, sent?.Method);
         Assert.Equal(
             "http://api.example.test/api/person-conditions/11/workflow",
             sent?.RequestUri?.ToString());
-        Assert.Contains("\"workflowState\":\"accepted\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"transition\":\"assign_investigator\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"note\":\"over to Ada\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"investigatorId\":7", body, StringComparison.Ordinal);
 
         Assert.True(saved.Succeeded);
         Assert.Equal("accepted", saved.Value?.WorkflowState);
@@ -358,9 +339,9 @@ public class PersonConditionsClientTests
     {
         var client = new PersonConditionsClient(Transport(_ => Answer(
             HttpStatusCode.BadRequest,
-            """{ "status": 400, "detail": "A report at accepted may not be moved to closed." }""")));
+            """{ "status": 400, "detail": "A report at accepted may not close." }""")));
 
-        var saved = await client.Transition(11, new UpdateWorkflowStateRequest("closed"));
+        var saved = await client.Transition(11, new WorkflowTransitionRequest("close"));
 
         Assert.False(saved.Succeeded);
         Assert.Null(saved.Value);
@@ -368,7 +349,68 @@ public class PersonConditionsClientTests
         Assert.Contains("400", saved.Failure);
         Assert.DoesNotContain("accepted", saved.Failure, StringComparison.Ordinal);
         Assert.NotEqual(
-            PersonConditionsClient.AssignFailurePrefix, PersonConditionsClient.WorkflowFailurePrefix);
+            PersonConditionsClient.StatusFailurePrefix, PersonConditionsClient.WorkflowFailurePrefix);
+    }
+
+    /// <summary>
+    /// The workflow read: a GET of the report's workflow URL, and the state,
+    /// the options and the history the API answered are what the screen gets.
+    /// </summary>
+    [Fact]
+    public async Task TheWorkflowIsReadWithItsOptionsAndHistory()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new PersonConditionsClient(Transport(request =>
+        {
+            sent = request;
+
+            return Answer(HttpStatusCode.OK,
+                """
+                {
+                  "reportId": 11,
+                  "workflowState": "accepted",
+                  "investigatorId": null,
+                  "options": ["investigate", "do_not_investigate"],
+                  "history": [{
+                    "occurredAt": "2026-03-13T09:00:00+00:00",
+                    "userId": 1,
+                    "userDisplayName": "Ada Lovelace",
+                    "transition": "accept",
+                    "fromState": "assigned_to_lhd",
+                    "toState": "accepted",
+                    "note": "ours"
+                  }]
+                }
+                """);
+        }));
+
+        var read = await client.Workflow(11);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal(
+            "http://api.example.test/api/person-conditions/11/workflow",
+            sent?.RequestUri?.ToString());
+        Assert.Equal("accepted", read.Value?.WorkflowState);
+        Assert.Equal(new[] { "investigate", "do_not_investigate" }, read.Value?.Options);
+        var entry = Assert.Single(read.Value!.History);
+        Assert.Equal("Ada Lovelace", entry.UserDisplayName);
+        Assert.Equal("ours", entry.Note);
+    }
+
+    /// <summary>A workflow that could not be read carries a prefix of its own, not the move's.</summary>
+    [Fact]
+    public async Task AWorkflowThatCouldNotBeReadCarriesTheWorkflowLoadPrefix()
+    {
+        var client = new PersonConditionsClient(Transport(_ => Answer(
+            HttpStatusCode.NotFound, """{ "status": 404, "detail": "No case morbidity report has id 11." }""")));
+
+        var read = await client.Workflow(11);
+
+        Assert.False(read.Succeeded);
+        Assert.StartsWith(PersonConditionsClient.WorkflowLoadFailurePrefix, read.Failure);
+        Assert.NotEqual(
+            PersonConditionsClient.WorkflowFailurePrefix, PersonConditionsClient.WorkflowLoadFailurePrefix);
     }
 
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>

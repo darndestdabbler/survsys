@@ -184,6 +184,46 @@
     </MudButton>
 </div>
 
+@* The report's workflow history, newest first, as the API tier answers it:
+   read-only, since a move is recorded when it is made and never edited. The
+   codes are shown by the labels the Workflow Options panel uses. *@
+<MudPaper id="administrative-history" Elevation="1" Class="pa-4 mt-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Workflow history</MudText>
+    @if (History.Count == 0)
+    {
+        <MudText id="administrative-history-none" Typo="Typo.body2">No workflow moves yet</MudText>
+    }
+    else
+    {
+        <MudSimpleTable Dense="true">
+            <thead>
+                <tr>
+                    <th>When</th>
+                    <th>Who</th>
+                    <th>Move</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var index = 0; index < History.Count; index++)
+                {
+                    var entry = History[index];
+                    <tr id="@($"administrative-history-{index}")">
+                        <td>@entry.OccurredAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
+                        <td>@entry.UserDisplayName</td>
+                        <td>@Pages.MorbidityReport.MoveLabel(entry.Transition)</td>
+                        <td>@Pages.MorbidityReport.WorkflowLabel(entry.FromState)</td>
+                        <td>@Pages.MorbidityReport.WorkflowLabel(entry.ToState)</td>
+                        <td>@entry.Note</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudPaper>
+
 @code {
     /// <summary>
     /// The report itself, as the shell read it: the Event Information section
@@ -204,6 +244,10 @@
     /// </summary>
     [Parameter]
     public IReadOnlySet<string> Hidden { get; set; } = new HashSet<string>();
+
+    /// <summary>The report's workflow moves, newest first, as the shell read them.</summary>
+    [Parameter]
+    public IReadOnlyList<WorkflowHistoryEntryResponse> History { get; set; } = [];
 
     private bool Shows(string uid) => !Hidden.Contains(uid);
 

@@ -65,7 +65,7 @@ public static class WorkQueueEndpoints
     /// is one.
     /// </summary>
     /// <remarks>
-    /// The shape <see cref="PersonConditionEndpoints.WhyNotAnAssignment"/> has:
+    /// The shape <see cref="PersonConditionEndpoints.WhyNotAStatus"/> has:
     /// a pure function the unit suite proves, with the endpoint turning the
     /// sentence into a 400. Only an agency identifier nothing can have is
     /// refused here; whether the agency and the report exist, whether the report

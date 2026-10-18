@@ -26,6 +26,23 @@ public class UserEndpointsTests
         Assert.DoesNotContain("secret", response.ToString(), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The investigator shape carries the identifier and the display name and
+    /// nothing else of the user: not the user name, not the flag, and never the
+    /// password hash. Compiled and invoked here, as the query translates it.
+    /// </summary>
+    [Fact]
+    public void ToInvestigatorCarriesTheIdAndDisplayNameAndNothingElse()
+    {
+        var user = new User { Id = 4, UserName = "ada", DisplayName = "Ada Lovelace", PasswordHash = "secret", Active = true };
+
+        var investigator = UserEndpoints.ToInvestigator.Compile()(user);
+
+        Assert.Equal(new InvestigatorResponse(4, "Ada Lovelace"), investigator);
+        Assert.DoesNotContain("UserName", investigator.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("secret", investigator.ToString(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void WhyNotAUserAcceptsANewUserWithAPasswordAndRoles()
     {

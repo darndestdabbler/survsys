@@ -200,29 +200,151 @@ public class PersonConditionEndpointsTests
     }
 
     /// <summary>
-    /// Any identifier an agency could have passes: whether one does is the
-    /// agencies table's to answer, not this function's.
+    /// The investigator rides on the report's own response, so a screen that
+    /// has the report has its investigator without a second ask.
     /// </summary>
-    [Theory]
-    [InlineData(1)]
-    [InlineData(16)]
-    [InlineData(99)]
-    public void WhyNotAnAssignmentAcceptsAnyIdentifierAnAgencyCouldHave(int agencyId)
+    [Fact]
+    public void ToResponseCarriesTheInvestigator()
     {
-        Assert.Null(PersonConditionEndpoints.WhyNotAnAssignment(new AssignReportRequest(agencyId)));
+        var report = Created();
+        report.InvestigatorId = 7;
+
+        Assert.Equal(7, PersonConditionEndpoints.ToResponse.Compile().Invoke(report).InvestigatorId);
     }
 
     /// <summary>
-    /// An identifier no agency can have is refused before the database is
-    /// asked, as it is on creation. The message names the value.
+    /// Every transition passes with what it needs: a bare code for most, an
+    /// agency for a route, an investigator for an assignment, and a note that
+    /// fits the column on any of them.
     /// </summary>
     [Theory]
+    [InlineData(WorkflowRules.AcceptCode, null, null)]
+    [InlineData(WorkflowRules.InvestigateCode, null, null)]
+    [InlineData(WorkflowRules.CloseCode, null, null)]
+    [InlineData(WorkflowRules.RouteCode, 3, null)]
+    [InlineData(WorkflowRules.AssignInvestigatorCode, null, 9)]
+    [InlineData(WorkflowRules.DoNotInvestigateCode, null, null)]
+    [InlineData(WorkflowRules.ReopenCode, null, null)]
+    [InlineData(WorkflowRules.ApproveCode, null, null)]
+    [InlineData(WorkflowRules.RejectCode, null, null)]
+    [InlineData(" close ", null, null)]
+    public void WhyNotATransitionAcceptsEachMoveWithWhatItNeeds(string transition, int? agencyId, int? investigatorId)
+    {
+        Assert.Null(PersonConditionEndpoints.WhyNotATransition(
+            new WorkflowTransitionRequest(transition, new string('n', PersonConditionEndpoints.NoteLength), agencyId, investigatorId)));
+    }
+
+    /// <summary>
+    /// A code that is not a transition: empty, a state code offered where a
+    /// move was asked for, the wrong case, and a legacy move this graph does
+    /// not have. The message names the value and lists the moves there are.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(WorkflowRules.AcceptedCode)]
+    [InlineData("Accept")]
+    [InlineData("approve_by_lhd")]
+    public void WhyNotATransitionRefusesACodeThatIsNotAMove(string? transition)
+    {
+        var why = PersonConditionEndpoints.WhyNotATransition(new WorkflowTransitionRequest(transition));
+
+        Assert.Contains($"transition '{transition}'", why, StringComparison.Ordinal);
+        Assert.Contains(WorkflowRules.AssignInvestigatorCode, why, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null)]
     [InlineData(0)]
     [InlineData(-1)]
-    public void WhyNotAnAssignmentRefusesAnIdentifierNoAgencyCanHave(int agencyId)
+    public void WhyNotATransitionRefusesARouteWithNoAgency(int? agencyId)
     {
-        Assert.Contains($"agencyId {agencyId} is not an agency",
-            PersonConditionEndpoints.WhyNotAnAssignment(new AssignReportRequest(agencyId)),
+        Assert.Contains("agencyId is required for a route",
+            PersonConditionEndpoints.WhyNotATransition(new WorkflowTransitionRequest(WorkflowRules.RouteCode, AgencyId: agencyId)),
             StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void WhyNotATransitionRefusesAnAssignmentWithNoInvestigator(int? investigatorId)
+    {
+        Assert.Contains("investigatorId is required",
+            PersonConditionEndpoints.WhyNotATransition(
+                new WorkflowTransitionRequest(WorkflowRules.AssignInvestigatorCode, InvestigatorId: investigatorId)),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>An agency or an investigator on a move that takes neither is ignored, not refused.</summary>
+    [Fact]
+    public void WhyNotATransitionIgnoresAnAgencyAndAnInvestigatorOnAMoveThatTakesNeither()
+    {
+        Assert.Null(PersonConditionEndpoints.WhyNotATransition(
+            new WorkflowTransitionRequest(WorkflowRules.AcceptCode, AgencyId: 0, InvestigatorId: -1)));
+    }
+
+    [Fact]
+    public void WhyNotATransitionRefusesANoteLongerThanTheColumn()
+    {
+        Assert.Contains($"note is longer than {PersonConditionEndpoints.NoteLength}",
+            PersonConditionEndpoints.WhyNotATransition(
+                new WorkflowTransitionRequest(WorkflowRules.AcceptCode, new string('n', PersonConditionEndpoints.NoteLength + 1))),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The privilege each transition needs: the department's own moves are a
+    /// case edit; routing, assigning and the state's review have their own.
+    /// </summary>
+    [Theory]
+    [InlineData(WorkflowTransition.Accept, Privileges.EditCases)]
+    [InlineData(WorkflowTransition.Investigate, Privileges.EditCases)]
+    [InlineData(WorkflowTransition.Close, Privileges.EditCases)]
+    [InlineData(WorkflowTransition.DoNotInvestigate, Privileges.EditCases)]
+    [InlineData(WorkflowTransition.Route, Privileges.RouteCases)]
+    [InlineData(WorkflowTransition.AssignInvestigator, Privileges.AssignInvestigators)]
+    [InlineData(WorkflowTransition.Reopen, Privileges.ApproveCases)]
+    [InlineData(WorkflowTransition.Approve, Privileges.ApproveCases)]
+    [InlineData(WorkflowTransition.Reject, Privileges.ApproveCases)]
+    public void PrivilegeForNamesTheGateOfEachTransition(WorkflowTransition transition, string expected)
+    {
+        Assert.Equal(expected, PersonConditionEndpoints.PrivilegeFor(transition));
+    }
+
+    /// <summary>
+    /// With every privilege, the options are the whole of what the state
+    /// allows, as codes and in the workflow's order.
+    /// </summary>
+    [Fact]
+    public void OptionsForWithEveryPrivilegeIsEverythingTheStateAllows()
+    {
+        Assert.Equal(
+            new[] { WorkflowRules.InvestigateCode, WorkflowRules.RouteCode, WorkflowRules.AssignInvestigatorCode, WorkflowRules.DoNotInvestigateCode },
+            PersonConditionEndpoints.OptionsFor(WorkflowState.Accepted, Privileges.All));
+        Assert.Equal(
+            new[] { WorkflowRules.ReopenCode, WorkflowRules.ApproveCode, WorkflowRules.RejectCode },
+            PersonConditionEndpoints.OptionsFor(WorkflowState.Closed, Privileges.All));
+    }
+
+    /// <summary>
+    /// With edit_cases alone, a department user sees the department's moves
+    /// and none of the routing, assigning or state review; a closed case
+    /// offers them nothing.
+    /// </summary>
+    [Fact]
+    public void OptionsForWithEditCasesAloneIsTheDepartmentsMoves()
+    {
+        Assert.Equal(
+            new[] { WorkflowRules.InvestigateCode, WorkflowRules.DoNotInvestigateCode },
+            PersonConditionEndpoints.OptionsFor(WorkflowState.Accepted, [Privileges.EditCases]));
+        Assert.Empty(PersonConditionEndpoints.OptionsFor(WorkflowState.Closed, [Privileges.EditCases]));
+    }
+
+    [Fact]
+    public void OptionsForWithNoPrivilegeIsNothing()
+    {
+        Assert.Empty(PersonConditionEndpoints.OptionsFor(WorkflowState.Accepted, []));
+        Assert.Empty(PersonConditionEndpoints.OptionsFor(WorkflowState.AssignedToLhd, [Privileges.ViewCases]));
     }
 }
