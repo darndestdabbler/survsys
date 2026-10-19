@@ -1272,9 +1272,9 @@
     {
       "number": 62,
       "title": "Event types, contact cases and the contact import",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-18T19:48:52.768000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-18T20:12:21.252000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
