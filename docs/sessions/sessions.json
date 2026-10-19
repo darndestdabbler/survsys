@@ -1440,9 +1440,9 @@
     {
       "number": 70,
       "title": "Person matching in the running application",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-19T11:39:45.530000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-19T11:55:09.218000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
