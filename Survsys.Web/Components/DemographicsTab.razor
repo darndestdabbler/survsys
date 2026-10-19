@@ -1,0 +1,776 @@
+@* The Demographic tab of a case morbidity report: the person's record,
+   editable, and saved whole.
+
+   ../nedss/docs/functional/epitrax-cmr-workflow.md records the legacy tab's
+   six sections -- Name, Age, Addresses, Telephones, Email Addresses and
+   Demographics -- and this is those six, in that order, with the person's
+   former names under Name and their identifiers after it. Every coded field
+   (gender, language, ethnicity, race, state, county, residence type,
+   telephone type, country) is a text box holding the legacy code, because
+   the reference tables behind the legacy dropdowns do not exist yet and a
+   dropdown over a guess at them would be a dropdown to unpick later.
+
+   The person arrives as a parameter and is copied into fields on
+   initialisation, so that typing changes the fields and never the record
+   the shell holds. Save & Continue builds the whole record from the fields
+   and sends it as one PUT; what comes back replaces the fields, so the
+   screen shows what was stored -- the identifiers the save assigned to the
+   rows included -- and not what it sent.
+
+   The ages are computed and never stored: current age from today, age at
+   onset from the report's event onset date, both through Age.InYears over
+   whatever the date of birth box holds at the moment.
+
+   Every element a walkthrough names carries an identifier; a row in a list
+   carries its position, demographics-address-0-street and so on. *@
+@using System.Globalization
+@inject PersonsClient Persons
+
+@if (saved is { } stored)
+{
+    <MudAlert id="demographics-saved" Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+        @stored
+    </MudAlert>
+}
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="demographics-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (complaint is { } whyNotYet)
+{
+    <MudAlert id="demographics-complaint" Severity="Severity.Warning" Class="mb-4">
+        @whyNotYet
+    </MudAlert>
+}
+
+<MudPaper id="demographics-name" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Name</MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="lastName" id="demographics-last-name"
+                          Label="Last name" Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="firstName" id="demographics-first-name"
+                          Label="First name" Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="middleName" id="demographics-middle-name"
+                          Label="Middle name" Variant="Variant.Outlined" />
+        </MudItem>
+    </MudGrid>
+
+    <div id="demographics-guardians" class="mt-2">
+        <MudText Typo="Typo.subtitle2">Parent/Guardian</MudText>
+        @for (var n = 0; n < guardians.Count; n++)
+        {
+            var at = n;
+            <div class="d-flex gap-2 align-center mt-1" @key="guardians[at]">
+                <MudTextField @bind-Value="guardians[at].Value" id="@($"demographics-guardian-{at}")"
+                              Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudButton id="@($"demographics-guardian-remove-{at}")" Variant="Variant.Text"
+                           Color="Color.Error" OnClick="@(() => guardians.RemoveAt(at))">
+                    Remove
+                </MudButton>
+            </div>
+        }
+        <MudButton id="demographics-guardian-add" Variant="Variant.Outlined" Class="mt-2"
+                   OnClick="@(() => guardians.Add(new Text()))">
+            Add parent/guardian
+        </MudButton>
+    </div>
+
+    @* The other names the person is known by. The legacy tab has no box
+       for them, but the record carries them and a save sends the whole
+       record, so a save that could not edit them would be resubmitting
+       whatever was loaded. *@
+    <div id="demographics-aliases" class="mt-2">
+        <MudText Typo="Typo.subtitle2">Aliases</MudText>
+        @for (var n = 0; n < aliases.Count; n++)
+        {
+            var at = n;
+            <div class="d-flex gap-2 align-center mt-1" @key="aliases[at]">
+                <MudTextField @bind-Value="aliases[at].Value" id="@($"demographics-alias-{at}")"
+                              Label="Alias" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudButton id="@($"demographics-alias-remove-{at}")" Variant="Variant.Text"
+                           Color="Color.Error" OnClick="@(() => aliases.RemoveAt(at))">
+                    Remove
+                </MudButton>
+            </div>
+        }
+        <MudButton id="demographics-alias-add" Variant="Variant.Outlined" Class="mt-2"
+                   OnClick="@(() => aliases.Add(new Text()))">
+            Add alias
+        </MudButton>
+    </div>
+
+    @* The names the person was on file under before, which a save that
+       changes the name records. Shown and never edited: it is a record of
+       what the name was. *@
+    @if (formerNames.Count > 0)
+    {
+        <div id="demographics-former-names" class="mt-2">
+            <MudText Typo="Typo.subtitle2">Former names</MudText>
+            @for (var n = 0; n < formerNames.Count; n++)
+            {
+                var former = formerNames[n];
+                <MudText id="@($"demographics-former-name-{n}")" Typo="Typo.body2">
+                    @FormerName(former) — changed @Written(former.ChangedOn)
+                </MudText>
+            }
+        </div>
+    }
+</MudPaper>
+
+<MudPaper id="demographics-identifiers" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Identifiers</MudText>
+    @for (var n = 0; n < identifiers.Count; n++)
+    {
+        var at = n;
+        var identifier = identifiers[at];
+        <MudGrid Spacing="2" Class="mb-2" @key="identifier">
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="identifier.IdentifierType" id="@($"demographics-identifier-{at}-type")"
+                              Label="Type" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="identifier.Value" id="@($"demographics-identifier-{at}-value")"
+                              Label="Identifier" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="identifier.AssigningAuthority" id="@($"demographics-identifier-{at}-authority")"
+                              Label="Assigning authority" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                @* What the authority is named by: a laboratory by its CLIA
+                   number, anything else by its OID. *@
+                <MudSelect @bind-Value="identifier.AssigningAuthorityType"
+                           id="@($"demographics-identifier-{at}-authority-type")"
+                           Label="Authority by" Variant="Variant.Outlined" Margin="Margin.Dense"
+                           Clearable="true">
+                    <MudSelectItem Value="@("CLIA")">CLIA</MudSelectItem>
+                    <MudSelectItem Value="@("OID")">OID</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-center">
+                <MudButton id="@($"demographics-identifier-remove-{at}")" Variant="Variant.Text"
+                           Color="Color.Error" OnClick="@(() => identifiers.RemoveAt(at))">
+                    Remove
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    }
+    <MudButton id="demographics-identifier-add" Variant="Variant.Outlined"
+               OnClick="@(() => identifiers.Add(new IdentifierFields()))">
+        Add identifier
+    </MudButton>
+</MudPaper>
+
+<MudPaper id="demographics-age" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Age</MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="3">
+            @* A native date input, for the reason the search form's is one:
+               what it yields is what the other tier parses. *@
+            <MudTextField @bind-Value="birthDate" id="demographics-birth-date"
+                          Label="Date of birth" Variant="Variant.Outlined"
+                          InputType="InputType.Date" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudTextField @bind-Value="daysOld" id="demographics-days-old"
+                          Label="Days old (no birthday)" Variant="Variant.Outlined"
+                          InputType="InputType.Number" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudText Typo="Typo.caption">Current age</MudText>
+            <MudText id="demographics-current-age" Typo="Typo.body1">@CurrentAge</MudText>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudText Typo="Typo.caption">Age at onset</MudText>
+            <MudText id="demographics-age-at-onset" Typo="Typo.body1">@AgeAtOnset</MudText>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper id="demographics-addresses" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Addresses</MudText>
+    @for (var n = 0; n < addresses.Count; n++)
+    {
+        var at = n;
+        var address = addresses[at];
+        <MudGrid Spacing="2" Class="mb-2" @key="address">
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="address.Street" id="@($"demographics-address-{at}-street")"
+                              Label="Street" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="address.UnitNumber" id="@($"demographics-address-{at}-unit-number")"
+                              Label="Unit number" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="address.City" id="@($"demographics-address-{at}-city")"
+                              Label="City" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <CodeSelect List="@CodeLists.State" @bind-Value="address.State" id="@($"demographics-address-{at}-state")"
+                            Label="State" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="address.PostalCode" id="@($"demographics-address-{at}-postal-code")"
+                              Label="Zip code" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <CodeSelect List="@CodeLists.County" @bind-Value="address.County" id="@($"demographics-address-{at}-county")"
+                            Label="County" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <CodeSelect List="@CodeLists.ResidenceType" @bind-CodeId="address.ResidenceType"
+                            id="@($"demographics-address-{at}-residence-type")"
+                            Label="Residence type" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="address.Beginning" id="@($"demographics-address-{at}-beginning")"
+                              Label="Earliest known" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="address.Ending" id="@($"demographics-address-{at}-ending")"
+                              Label="Moved" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="10">
+                <MudTextField @bind-Value="address.Note" id="@($"demographics-address-{at}-note")"
+                              Label="Note" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-center">
+                <MudButton id="@($"demographics-address-remove-{at}")" Variant="Variant.Text"
+                           Color="Color.Error" OnClick="@(() => addresses.RemoveAt(at))">
+                    Remove
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    }
+    <MudButton id="demographics-address-add" Variant="Variant.Outlined"
+               OnClick="@(() => addresses.Add(new AddressFields()))">
+        Add address
+    </MudButton>
+</MudPaper>
+
+<MudPaper id="demographics-telephones" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Telephones</MudText>
+    @for (var n = 0; n < telephones.Count; n++)
+    {
+        var at = n;
+        var telephone = telephones[at];
+        <MudGrid Spacing="2" Class="mb-2" @key="telephone">
+            <MudItem xs="12" sm="2">
+                <CodeSelect List="@CodeLists.TelephoneType" @bind-Value="telephone.TelephoneType"
+                            id="@($"demographics-telephone-{at}-type")"
+                            Label="Telephone type" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="1">
+                <MudTextField @bind-Value="telephone.CountryCode" id="@($"demographics-telephone-{at}-country-code")"
+                              Label="Country" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="telephone.AreaCode" id="@($"demographics-telephone-{at}-area-code")"
+                              Label="Area" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="telephone.PhoneNumber" id="@($"demographics-telephone-{at}-phone-number")"
+                              Label="Phone" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="telephone.Extension" id="@($"demographics-telephone-{at}-extension")"
+                              Label="Ext" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="telephone.Beginning" id="@($"demographics-telephone-{at}-beginning")"
+                              Label="Earliest known" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="10">
+                <MudTextField @bind-Value="telephone.Note" id="@($"demographics-telephone-{at}-note")"
+                              Label="Note" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-center">
+                <MudButton id="@($"demographics-telephone-remove-{at}")" Variant="Variant.Text"
+                           Color="Color.Error" OnClick="@(() => telephones.RemoveAt(at))">
+                    Remove
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    }
+    <MudButton id="demographics-telephone-add" Variant="Variant.Outlined"
+               OnClick="@(() => telephones.Add(new TelephoneFields()))">
+        Add telephone
+    </MudButton>
+</MudPaper>
+
+<MudPaper id="demographics-emails" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Email Addresses</MudText>
+    @for (var n = 0; n < emails.Count; n++)
+    {
+        var at = n;
+        var email = emails[at];
+        <MudGrid Spacing="2" Class="mb-2" @key="email">
+            <MudItem xs="12" sm="7">
+                <MudTextField @bind-Value="email.EmailAddress" id="@($"demographics-email-{at}-address")"
+                              Label="Email address" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3" Class="d-flex align-center">
+                @* Three states, as the stored column has: current, no longer
+                   used, and nobody has said. *@
+                <MudCheckBox @bind-Value="email.Current" id="@($"demographics-email-{at}-current")"
+                             TriState="true" Label="Current" />
+            </MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-center">
+                <MudButton id="@($"demographics-email-remove-{at}")" Variant="Variant.Text"
+                           Color="Color.Error" OnClick="@(() => emails.RemoveAt(at))">
+                    Remove
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    }
+    <MudButton id="demographics-email-add" Variant="Variant.Outlined"
+               OnClick="@(() => emails.Add(new EmailFields()))">
+        Add email address
+    </MudButton>
+</MudPaper>
+
+<MudPaper id="demographics-demographics" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Demographics</MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="3">
+            <CodeSelect List="@CodeLists.Gender" @bind-Value="birthGender" id="demographics-birth-gender"
+                        Label="Birth sex" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <CodeSelect List="@CodeLists.Gender" @bind-Value="currentGender" id="demographics-current-gender"
+                        Label="Current gender" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <CodeSelect List="@CodeLists.Language" @bind-Value="language" id="demographics-language"
+                        Label="Primary language" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <CodeSelect List="@CodeLists.Ethnicity" @bind-Value="ethnicity" id="demographics-ethnicity"
+                        Label="Ethnicity" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <CodeSelect List="@CodeLists.Country" @bind-Value="countryOfBirth" id="demographics-country-of-birth"
+                        Label="Country of birth" />
+        </MudItem>
+    </MudGrid>
+
+    <div id="demographics-races" class="mt-2">
+        <MudText Typo="Typo.subtitle2">Race</MudText>
+        @for (var n = 0; n < races.Count; n++)
+        {
+            var at = n;
+            <div class="d-flex gap-2 align-center mt-1" @key="races[at]">
+                <CodeSelect List="@CodeLists.Race" @bind-Value="races[at].Value" id="@($"demographics-race-{at}")"
+                            Label="Race" Margin="Margin.Dense" />
+                <MudButton id="@($"demographics-race-remove-{at}")" Variant="Variant.Text"
+                           Color="Color.Error" OnClick="@(() => races.RemoveAt(at))">
+                    Remove
+                </MudButton>
+            </div>
+        }
+        <MudButton id="demographics-race-add" Variant="Variant.Outlined" Class="mt-2"
+                   OnClick="@(() => races.Add(new Text()))">
+            Add race
+        </MudButton>
+    </div>
+</MudPaper>
+
+<div class="d-flex gap-2">
+    <MudButton id="demographics-save" Variant="Variant.Filled" Color="Color.Primary"
+               Disabled="@saving" OnClick="@Save">
+        Save &amp; Continue
+    </MudButton>
+</div>
+
+@code {
+    /// <summary>The person this tab edits, as the shell read them.</summary>
+    [Parameter, EditorRequired]
+    public PersonDetailResponse Person { get; set; } = default!;
+
+    /// <summary>The report's event onset date, for the age at onset.</summary>
+    [Parameter]
+    public DateOnly? EventOnsetDate { get; set; }
+
+    /// <summary>
+    /// How this tier writes a date into a date box and reads one out: the
+    /// form a native date input yields, under the culture the other tier
+    /// parses it with.
+    /// </summary>
+    private const string DateForm = "yyyy-MM-dd";
+
+    private string? lastName;
+
+    private string? firstName;
+
+    private string? middleName;
+
+    private List<Text> guardians = [];
+
+    private List<Text> aliases = [];
+
+    private string? birthDate;
+
+    private int? daysOld;
+
+    private List<AddressFields> addresses = [];
+
+    private List<TelephoneFields> telephones = [];
+
+    private List<EmailFields> emails = [];
+
+    private List<IdentifierFields> identifiers = [];
+
+    private IReadOnlyList<PersonFormerNameResponse> formerNames = [];
+
+    private string? birthGender;
+
+    private string? currentGender;
+
+    private string? language;
+
+    private string? ethnicity;
+
+    private List<Text> races = [];
+
+    private string? countryOfBirth;
+
+    private bool saving;
+
+    private string? saved;
+
+    private string? failure;
+
+    private string? complaint;
+
+    protected override void OnInitialized() => Load(Person);
+
+    /// <summary>
+    /// Copies a person into the fields: on arrival, and again with what a
+    /// save answered.
+    /// </summary>
+    private void Load(PersonDetailResponse person)
+    {
+        lastName = person.LastName;
+        firstName = person.FirstName;
+        middleName = person.MiddleName;
+        guardians = person.ParentGuardians.Select(name => new Text { Value = name }).ToList();
+        aliases = person.Aliases.Select(name => new Text { Value = name }).ToList();
+        birthDate = Written(person.BirthDate);
+        daysOld = person.DaysOldNoBirthday;
+        addresses = person.Addresses.Select(address => new AddressFields
+        {
+            Street = address.Street,
+            UnitNumber = address.UnitNumber,
+            City = address.City,
+            State = address.State,
+            PostalCode = address.PostalCode,
+            County = address.County,
+            ResidenceType = address.ResidenceTypeId,
+            Beginning = Written(address.Beginning),
+            Ending = Written(address.Ending),
+            Note = address.Note,
+        }).ToList();
+        telephones = person.Telephones.Select(telephone => new TelephoneFields
+        {
+            TelephoneType = telephone.TelephoneType,
+            CountryCode = telephone.CountryCode,
+            AreaCode = telephone.AreaCode,
+            PhoneNumber = telephone.PhoneNumber,
+            Extension = telephone.Extension,
+            Beginning = Written(telephone.Beginning),
+            Note = telephone.Note,
+        }).ToList();
+        emails = person.Emails.Select(email => new EmailFields
+        {
+            EmailAddress = email.EmailAddress,
+            Current = email.CurrentEmail,
+        }).ToList();
+        formerNames = person.FormerNames;
+        identifiers = person.Identifiers.Select(identifier => new IdentifierFields
+        {
+            IdentifierType = identifier.IdentifierType,
+            Value = identifier.Value,
+            AssigningAuthority = identifier.AssigningAuthority,
+            AssigningAuthorityType = identifier.AssigningAuthorityType,
+        }).ToList();
+        birthGender = person.BirthGender;
+        currentGender = person.CurrentGender;
+        language = person.Language;
+        ethnicity = person.Ethnicity;
+        races = person.Races.Select(code => new Text { Value = code }).ToList();
+        countryOfBirth = person.CountryOfBirth;
+    }
+
+    /// <summary>The current age, from whatever the date of birth box holds today.</summary>
+    private string CurrentAge => Years(DateOnly.FromDateTime(DateTime.Today));
+
+    /// <summary>The age at the report's event onset, or nothing where the report has no date.</summary>
+    private string AgeAtOnset => EventOnsetDate is { } onset ? Years(onset) : "—";
+
+    private string Years(DateOnly on) =>
+        Age.InYears(Parsed(birthDate), daysOld, on) is { } years ? years.ToString() : "—";
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(lastName))
+        {
+            complaint = "Give the person's last name: it is the one name part this record requires.";
+
+            return;
+        }
+
+        if (!TryDate(birthDate, "the date of birth", out var born, out var why)
+            || !Rows(out var sentAddresses, out var sentTelephones, out why)
+            || !Identifiers(out var sentIdentifiers, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        complaint = null;
+        failure = null;
+        saved = null;
+        saving = true;
+
+        try
+        {
+            var answered = await Persons.Update(Person.Id, new UpdatePersonRequest(
+                LastName: lastName,
+                FirstName: firstName,
+                MiddleName: middleName,
+                BirthDate: born,
+                DaysOldNoBirthday: daysOld,
+                BirthGender: birthGender,
+                CurrentGender: currentGender,
+                Ethnicity: ethnicity,
+                Language: language,
+                CountryOfBirth: countryOfBirth)
+            {
+                Races = races.Select(race => race.Value ?? string.Empty).ToList(),
+                Aliases = aliases.Select(alias => alias.Value ?? string.Empty).ToList(),
+                ParentGuardians = guardians.Select(guardian => guardian.Value ?? string.Empty).ToList(),
+                Addresses = sentAddresses,
+                Telephones = sentTelephones,
+                Emails = emails.Select(email => new PersonEmailRequest(email.EmailAddress, email.Current)).ToList(),
+                Identifiers = sentIdentifiers,
+            });
+
+            if (answered.Value is { } stored)
+            {
+                Load(stored);
+                saved = "The demographics have been saved.";
+            }
+            else
+            {
+                failure = answered.Failure;
+            }
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    /// <summary>
+    /// The address and telephone rows as the request takes them, with each
+    /// date box read — or why one of them could not be.
+    /// </summary>
+    private bool Rows(
+        out List<PersonAddressRequest> sentAddresses,
+        out List<PersonTelephoneRequest> sentTelephones,
+        out string? why)
+    {
+        sentAddresses = [];
+        sentTelephones = [];
+
+        for (var n = 0; n < addresses.Count; n++)
+        {
+            var address = addresses[n];
+
+            if (!TryDate(address.Beginning, $"address {n + 1}'s earliest known date", out var beginning, out why)
+                || !TryDate(address.Ending, $"address {n + 1}'s moved date", out var ending, out why))
+            {
+                return false;
+            }
+
+            sentAddresses.Add(new PersonAddressRequest(
+                Street: address.Street,
+                UnitNumber: address.UnitNumber,
+                City: address.City,
+                State: address.State,
+                PostalCode: address.PostalCode,
+                County: address.County,
+                Beginning: beginning,
+                Ending: ending,
+                Note: address.Note,
+                ResidenceTypeId: address.ResidenceType));
+        }
+
+        for (var n = 0; n < telephones.Count; n++)
+        {
+            var telephone = telephones[n];
+
+            if (!TryDate(telephone.Beginning, $"telephone {n + 1}'s earliest known date", out var beginning, out why))
+            {
+                return false;
+            }
+
+            sentTelephones.Add(new PersonTelephoneRequest(
+                TelephoneType: telephone.TelephoneType,
+                CountryCode: telephone.CountryCode,
+                AreaCode: telephone.AreaCode,
+                PhoneNumber: telephone.PhoneNumber,
+                Extension: telephone.Extension,
+                Beginning: beginning,
+                Note: telephone.Note));
+        }
+
+        why = null;
+
+        return true;
+    }
+
+    /// <summary>
+    /// The identifier rows as the request takes them — a row left wholly
+    /// blank is dropped, and one with something in it but no identifier is a
+    /// complaint naming it, because the record refuses an identifier that is
+    /// nothing.
+    /// </summary>
+    private bool Identifiers(out List<PersonIdentifierRequest> sent, out string? why)
+    {
+        sent = [];
+        why = null;
+
+        for (var n = 0; n < identifiers.Count; n++)
+        {
+            var identifier = identifiers[n];
+
+            if (!string.IsNullOrWhiteSpace(identifier.Value))
+            {
+                sent.Add(new PersonIdentifierRequest(
+                    identifier.IdentifierType,
+                    identifier.Value,
+                    identifier.AssigningAuthority,
+                    identifier.AssigningAuthorityType));
+            }
+            else if (!string.IsNullOrWhiteSpace(identifier.IdentifierType)
+                || !string.IsNullOrWhiteSpace(identifier.AssigningAuthority)
+                || identifier.AssigningAuthorityType is not null)
+            {
+                why = $"Give identifier {n + 1}'s identifier, or remove it.";
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>A former name as a list shows it: last, first middle.</summary>
+    private static string FormerName(PersonFormerNameResponse former) =>
+        string.Join(" ", new[] { $"{former.LastName},", former.FirstName, former.MiddleName }
+            .Where(part => !string.IsNullOrWhiteSpace(part)))
+            .TrimEnd(',');
+
+    /// <summary>
+    /// A date box read: empty is no date, a date is the date, and anything
+    /// else is a complaint naming the box.
+    /// </summary>
+    private static bool TryDate(string? typed, string named, out DateOnly? date, out string? why)
+    {
+        date = null;
+        why = null;
+
+        if (string.IsNullOrWhiteSpace(typed))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParseExact(typed.Trim(), DateForm, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var parsed))
+        {
+            date = parsed;
+
+            return true;
+        }
+
+        why = $"Give {named} as yyyy-mm-dd, or leave it empty.";
+
+        return false;
+    }
+
+    /// <summary>A date box's content as a date, or null while it holds none.</summary>
+    private static DateOnly? Parsed(string? typed) =>
+        TryDate(typed, string.Empty, out var date, out _) ? date : null;
+
+    /// <summary>A date as a date box holds it.</summary>
+    private static string? Written(DateOnly? date) =>
+        date?.ToString(DateForm, CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// One text value in a list — a guardian's name, a race code — as an
+    /// object rather than a string, so that a box can bind to it and a row
+    /// keeps its identity when another is removed.
+    /// </summary>
+    private sealed class Text
+    {
+        public string? Value { get; set; }
+    }
+
+    /// <summary>One address as its boxes hold it: the dates as text, until they are read.</summary>
+    private sealed class AddressFields
+    {
+        public string? Street { get; set; }
+        public string? UnitNumber { get; set; }
+        public string? City { get; set; }
+        public string? State { get; set; }
+        public string? PostalCode { get; set; }
+        public string? County { get; set; }
+        public int? ResidenceType { get; set; }
+        public string? Beginning { get; set; }
+        public string? Ending { get; set; }
+        public string? Note { get; set; }
+    }
+
+    /// <summary>One telephone as its boxes hold it.</summary>
+    private sealed class TelephoneFields
+    {
+        public string? TelephoneType { get; set; }
+        public string? CountryCode { get; set; }
+        public string? AreaCode { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? Extension { get; set; }
+        public string? Beginning { get; set; }
+        public string? Note { get; set; }
+    }
+
+    /// <summary>One identifier as its boxes hold it.</summary>
+    private sealed class IdentifierFields
+    {
+        public string? IdentifierType { get; set; }
+        public string? Value { get; set; }
+        public string? AssigningAuthority { get; set; }
+        public string? AssigningAuthorityType { get; set; }
+    }
+
+    /// <summary>One email address as its boxes hold it.</summary>
+    private sealed class EmailFields
+    {
+        public string? EmailAddress { get; set; }
+        public bool? Current { get; set; }
+    }
+}
