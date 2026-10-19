@@ -9,12 +9,12 @@ namespace Survsys.Contracts;
 /// identifier, which is in the address of the request, and the identifiers of
 /// the child rows, which are the API tier's to assign. The request is the
 /// whole record and not a change to one: the person's own columns become what
-/// it says, and the stored addresses, telephones, emails, races, aliases and
-/// named guardians are replaced by the ones it carries. A row a user took off
+/// it says, and the stored addresses, telephones, emails, races, aliases,
+/// identifiers and named guardians are replaced by the ones it carries. A row a user took off
 /// the screen is simply not in the next request, which is the whole of how a
 /// row is removed.
 ///
-/// The six collections are init-only properties with empty defaults rather
+/// The seven collections are init-only properties with empty defaults rather
 /// than constructor parameters, so that a request which says nothing about,
 /// say, aliases is a request with no aliases — on the wire and in a test
 /// alike — and a screen never sends null for a list it has nothing in. The
@@ -70,4 +70,7 @@ public record UpdatePersonRequest(
 
     /// <summary>Every email address recorded for the person.</summary>
     public IReadOnlyList<PersonEmailRequest> Emails { get; init; } = [];
+
+    /// <summary>Every identifier other systems know the person by.</summary>
+    public IReadOnlyList<PersonIdentifierRequest> Identifiers { get; init; } = [];
 }

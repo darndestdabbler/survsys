@@ -43,13 +43,15 @@ public class PersonsClientTests
                 MiddleName: "Elena",
                 BirthDate: new DateOnly(1985, 6, 15),
                 Phone: "8015551234",
-                BirthGender: "F"),
+                BirthGender: "F",
+                Identifier: "A&100"),
             2,
             25);
 
         Assert.Equal(
             "api/persons?page=2&pageSize=25&lastName=Rodriguez&firstName=Maria"
-            + "&middleName=Elena&phone=8015551234&birthGender=F&birthDate=1985-06-15",
+            + "&middleName=Elena&phone=8015551234&birthGender=F&identifier=A%26100"
+            + "&birthDate=1985-06-15",
             url);
     }
 
@@ -72,7 +74,8 @@ public class PersonsClientTests
                 MiddleName: blank,
                 BirthDate: null,
                 Phone: blank,
-                BirthGender: blank),
+                BirthGender: blank,
+                Identifier: blank),
             1,
             50);
 

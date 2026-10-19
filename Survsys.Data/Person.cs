@@ -129,7 +129,9 @@ public class Person
 
     /// <summary>
     /// Every address this person has had, the current one included: the one
-    /// with no <see cref="PersonAddress.Ending"/> is where they live now.
+    /// with no <see cref="PersonAddress.Ending"/> is where they live now, and
+    /// there is at most one such, which <see cref="AddressRules.CloseHistoric"/>
+    /// keeps and a filtered unique index enforces.
     /// </summary>
     public ICollection<PersonAddress> Addresses { get; } = [];
 
@@ -147,6 +149,12 @@ public class Person
 
     /// <summary>Every other name this person is known by.</summary>
     public ICollection<PersonAlias> Aliases { get; } = [];
+
+    /// <summary>Every identifier other systems know this person by.</summary>
+    public ICollection<PersonIdentifier> Identifiers { get; } = [];
+
+    /// <summary>Every name this person was on file under before the current one.</summary>
+    public ICollection<PersonNameHistory> NameHistory { get; } = [];
 
     /// <summary>
     /// This person's parents or guardians. The navigation is over

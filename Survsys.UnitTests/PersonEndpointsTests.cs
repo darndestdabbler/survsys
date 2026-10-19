@@ -21,6 +21,9 @@ namespace Survsys.UnitTests;
 /// </remarks>
 public class PersonEndpointsTests
 {
+    /// <summary>The day every save in this file is made on.</summary>
+    private static readonly DateOnly Today = new(2026, 10, 19);
+
     /// <summary>
     /// Maria Elena Rodriguez, as
     /// <c>../nedss/docs/db-snapshots/session-010/03-after-demographics-save.txt</c>
@@ -399,7 +402,7 @@ public class PersonEndpointsTests
     {
         var person = Seeded();
 
-        PersonEndpoints.Apply(person, Rewritten());
+        PersonEndpoints.Apply(person, Rewritten(), Today);
 
         Assert.Equal(11, person.Id);
         Assert.Equal("Garcia", person.LastName);
@@ -424,7 +427,7 @@ public class PersonEndpointsTests
     {
         var person = Seeded();
 
-        PersonEndpoints.Apply(person, Rewritten());
+        PersonEndpoints.Apply(person, Rewritten(), Today);
 
         var address = Assert.Single(person.Addresses);
         Assert.Equal(0, address.Id);
@@ -470,7 +473,7 @@ public class PersonEndpointsTests
     {
         var person = Seeded();
 
-        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez"));
+        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez"), Today);
 
         Assert.Empty(person.Addresses);
         Assert.Empty(person.Telephones);
@@ -497,7 +500,7 @@ public class PersonEndpointsTests
         {
             Races = ["AA", "W"],
             Aliases = ["Maria Elena Garcia", "M. E. Rodriguez"],
-        });
+        }, Today);
 
         Assert.Contains(race, person.Races);
         Assert.Contains(alias, person.Aliases);
@@ -522,7 +525,7 @@ public class PersonEndpointsTests
         PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez")
         {
             ParentGuardians = ["Ana Garcia"],
-        });
+        }, Today);
 
         Assert.Equal(2, person.Guardians.Count);
         Assert.Contains(linked, person.Guardians);
@@ -554,7 +557,7 @@ public class PersonEndpointsTests
             Addresses = [new PersonAddressRequest(Street: " 9 Elm Court ", City: "")],
             Telephones = [new PersonTelephoneRequest(AreaCode: " 385 ", PhoneNumber: " ")],
             Emails = [new PersonEmailRequest(EmailAddress: "  ")],
-        });
+        }, Today);
 
         Assert.Equal("Garcia", person.LastName);
         Assert.Equal("Mariela", person.FirstName);
@@ -575,5 +578,161 @@ public class PersonEndpointsTests
         Assert.Null(telephone.PhoneNumber);
 
         Assert.Null(Assert.Single(person.Emails).EmailAddress);
+    }
+
+    [Fact]
+    public void ToDetailCarriesTheIdentifiersAndTheFormerNamesLatestFirst()
+    {
+        var person = Seeded();
+        person.Identifiers.Add(new PersonIdentifier
+        {
+            Id = 3,
+            IdentifierType = "MR",
+            Value = "A-100",
+            AssigningAuthority = "46D0523979",
+            AssigningAuthorityType = PersonIdentifier.Clia,
+        });
+        person.NameHistory.Add(new PersonNameHistory
+        {
+            Id = 1, LastName = "Lopez", FirstName = "Maria", ChangedOn = new DateOnly(2010, 1, 1),
+        });
+        person.NameHistory.Add(new PersonNameHistory
+        {
+            Id = 2, LastName = "Garcia", FirstName = "Maria", ChangedOn = new DateOnly(2015, 5, 5),
+        });
+
+        var detail = PersonEndpoints.ToDetail.Compile().Invoke(person);
+
+        Assert.Equal(
+            new PersonIdentifierResponse(3, "MR", "A-100", "46D0523979", "CLIA"),
+            Assert.Single(detail.Identifiers));
+        Assert.Equal(
+            [
+                new PersonFormerNameResponse("Garcia", "Maria", null, new DateOnly(2015, 5, 5)),
+                new PersonFormerNameResponse("Lopez", "Maria", null, new DateOnly(2010, 1, 1)),
+            ],
+            detail.FormerNames);
+    }
+
+    [Fact]
+    public void ApplyRecordsTheNameItReplaces()
+    {
+        var person = Seeded();
+
+        PersonEndpoints.Apply(person, Rewritten(), Today);
+
+        var former = Assert.Single(person.NameHistory);
+        Assert.Equal("Rodriguez", former.LastName);
+        Assert.Equal("Maria", former.FirstName);
+        Assert.Equal("Elena", former.MiddleName);
+        Assert.Equal(Today, former.ChangedOn);
+    }
+
+    [Fact]
+    public void ApplyRecordsNoNameWhereTheNameIsUnchanged()
+    {
+        var person = Seeded();
+
+        PersonEndpoints.Apply(
+            person, new UpdatePersonRequest(" Rodriguez ", "Maria", "Elena"), Today);
+
+        Assert.Empty(person.NameHistory);
+    }
+
+    [Fact]
+    public void ApplyNormalizesAnAddressAndTakesABlankCountyFromItsZip()
+    {
+        var person = Seeded();
+
+        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez")
+        {
+            Addresses =
+            [
+                new PersonAddressRequest(
+                    Street: "9  ELM court", City: "ogden", State: "utah", PostalCode: "844011234"),
+                new PersonAddressRequest(PostalCode: "84101", County: "UT", Ending: Today),
+            ],
+        }, Today, new Dictionary<string, string> { ["84401"] = "WB", ["84101"] = "SL" });
+
+        var first = person.Addresses.First();
+        Assert.Equal("9 Elm Court", first.Street);
+        Assert.Equal("Ogden", first.City);
+        Assert.Equal("UT", first.State);
+        Assert.Equal("84401-1234", first.PostalCode);
+        Assert.Equal("WB", first.County);
+        Assert.Equal("UT", person.Addresses.Last().County);
+    }
+
+    [Fact]
+    public void ApplyLeavesOneAddressCurrent()
+    {
+        var person = Seeded();
+
+        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez")
+        {
+            Addresses =
+            [
+                new PersonAddressRequest(Street: "1 Old Road", Beginning: new DateOnly(2010, 1, 1)),
+                new PersonAddressRequest(Street: "2 New Road", Beginning: new DateOnly(2024, 3, 1)),
+            ],
+        }, Today);
+
+        Assert.Equal(new DateOnly(2024, 3, 1), person.Addresses.First().Ending);
+        Assert.Null(person.Addresses.Last().Ending);
+    }
+
+    [Fact]
+    public void ApplyReplacesTheIdentifiers()
+    {
+        var person = Seeded();
+        person.Identifiers.Add(new PersonIdentifier { Id = 3, Value = "OLD" });
+
+        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez")
+        {
+            Identifiers = [new PersonIdentifierRequest(" MR ", " A-100 ", "2.16.840.1", "oid")],
+        }, Today);
+
+        var identifier = Assert.Single(person.Identifiers);
+        Assert.Equal(0, identifier.Id);
+        Assert.Equal("MR", identifier.IdentifierType);
+        Assert.Equal("A-100", identifier.Value);
+        Assert.Equal("2.16.840.1", identifier.AssigningAuthority);
+        Assert.Equal("OID", identifier.AssigningAuthorityType);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("CLIA", "46D0523979")]
+    [InlineData("oid", "2.16.840.1")]
+    public void WhyNotAPersonAcceptsAnIdentifierWithAValue(string? type, string? authority)
+    {
+        Assert.Null(PersonEndpoints.WhyNotAPerson(new UpdatePersonRequest("Rodriguez")
+        {
+            Identifiers = [new PersonIdentifierRequest("MR", "A-100", authority, type)],
+        }));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(" ")]
+    public void WhyNotAPersonRefusesAnIdentifierWithNoValue(string? value)
+    {
+        Assert.Contains("identifiers[].value is required",
+            PersonEndpoints.WhyNotAPerson(new UpdatePersonRequest("Rodriguez")
+            {
+                Identifiers = [new PersonIdentifierRequest("MR", value)],
+            }),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotAPersonRefusesAnAuthorityNamedByNeitherCliaNorOid()
+    {
+        Assert.Contains("must be CLIA or OID",
+            PersonEndpoints.WhyNotAPerson(new UpdatePersonRequest("Rodriguez")
+            {
+                Identifiers = [new PersonIdentifierRequest("MR", "A-100", "Lab", "NPI")],
+            }),
+            StringComparison.Ordinal);
     }
 }

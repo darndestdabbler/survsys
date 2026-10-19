@@ -102,6 +102,20 @@ else if (person is { } shown)
                 <MudText Typo="Typo.caption">Parents or guardians</MudText>
                 <MudText id="person-guardians" Typo="Typo.body1">@Listed(shown.ParentGuardians)</MudText>
             </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Former names</MudText>
+                <MudText id="person-former-names" Typo="Typo.body1">
+                    @Listed(shown.FormerNames
+                        .Select(former => $"{Named(former.LastName, former.FirstName)} (until {Shown(former.ChangedOn)})")
+                        .ToList())
+                </MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Identifiers</MudText>
+                <MudText id="person-identifiers" Typo="Typo.body1">
+                    @Listed(shown.Identifiers.Select(Identified).ToList())
+                </MudText>
+            </MudItem>
         </MudGrid>
     </MudPaper>
 
@@ -320,10 +334,30 @@ else if (person is { } shown)
     /// The person's name as the People results write it: last name first,
     /// and the last name alone where there is no first name.
     /// </summary>
-    private static string Named(PersonDetailResponse who) =>
-        string.IsNullOrWhiteSpace(who.FirstName)
-            ? who.LastName
-            : $"{who.LastName}, {who.FirstName}";
+    private static string Named(PersonDetailResponse who) => Named(who.LastName, who.FirstName);
+
+    private static string Named(string lastName, string? firstName) =>
+        string.IsNullOrWhiteSpace(firstName) ? lastName : $"{lastName}, {firstName}";
+
+    /// <summary>
+    /// An identifier as one string: its type, its value, and the authority
+    /// that assigned it with what that authority is named by.
+    /// </summary>
+    private static string Identified(PersonIdentifierResponse identifier)
+    {
+        var typed = string.IsNullOrWhiteSpace(identifier.IdentifierType)
+            ? identifier.Value
+            : $"{identifier.IdentifierType} {identifier.Value}";
+
+        if (string.IsNullOrWhiteSpace(identifier.AssigningAuthority))
+        {
+            return typed;
+        }
+
+        return string.IsNullOrWhiteSpace(identifier.AssigningAuthorityType)
+            ? $"{typed} ({identifier.AssigningAuthority})"
+            : $"{typed} ({identifier.AssigningAuthorityType} {identifier.AssigningAuthority})";
+    }
 
     private static string Shown(string? value) =>
         string.IsNullOrWhiteSpace(value) ? "—" : value;

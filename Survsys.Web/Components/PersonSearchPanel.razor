@@ -14,7 +14,7 @@
    and CMR" button creates the person from.
 
    Every element a walkthrough will name carries an identifier of its own —
-   the five criteria, the two buttons, the busy indicator, the failure
+   the seven criteria, the two buttons, the busy indicator, the failure
    message, the empty-state message, the count, the table, and one row per
    person keyed by their identifier with each cell named by what it holds. A
    test selects by those and not by a MudBlazor class or a cell's position, as
@@ -66,6 +66,15 @@
                 <MudSelectItem Value="@("M")">Male</MudSelectItem>
                 <MudSelectItem Value="@("UNK")">Unknown</MudSelectItem>
             </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            @* An identifier another system knows the person by — a medical
+               record number, a laboratory's patient id — matched exactly. A
+               former name or an alias needs no box of its own: the name boxes
+               find those too. *@
+            <MudTextField @bind-Value="identifier" id="person-search-identifier"
+                          Label="Identifier" Variant="Variant.Outlined"
+                          OnKeyUp="@OnKey" />
         </MudItem>
     </MudGrid>
 
@@ -194,6 +203,7 @@ else if (asked?.Value is { } people)
     private string? birthDate;
     private string? phone;
     private string? birthGender;
+    private string? identifier;
 
     private Asked<PagedResult<PersonResponse>>? asked;
 
@@ -255,6 +265,7 @@ else if (asked?.Value is { } people)
         birthDate = null;
         phone = null;
         birthGender = null;
+        identifier = null;
 
         asked = null;
         searched = new();
@@ -291,7 +302,8 @@ else if (asked?.Value is { } people)
             middleName,
             born,
             phone,
-            birthGender);
+            birthGender,
+            identifier);
 
         return true;
     }

@@ -25,8 +25,11 @@ namespace Survsys.Api;
 /// nothing, so no criteria at all is the unfiltered page this endpoint
 /// returned before search existed. The three name parts match by prefix —
 /// typing <c>Rod</c> finds Rodriguez — because that is what a surname box is
-/// for, and because the index on <c>persons(last_name, first_name)</c> can be
-/// sought into for a prefix and not for a substring. The date of birth and the
+/// for. They match the current name, a former name the person was on file
+/// under, or an alias, where each part is found anywhere in it, so a person
+/// whose name was changed or who is known by another is still found by it.
+/// The identifier matches the value of one of the person's identifiers
+/// exactly, under whichever authority assigned it. The date of birth and the
 /// birth gender match exactly. The telephone matches on digits alone, so that
 /// a number typed <c>(801) 555-1234</c> finds one stored as area code
 /// <c>801</c> and number <c>5551234</c>. It matches against the digits of all
@@ -42,7 +45,7 @@ namespace Survsys.Api;
 /// that is not a date and is answered with a 400, where <c>?lastName=</c> is a
 /// surname nobody typed. A caller leaves a criterion it has nothing for out of
 /// the query string, which is what <c>Survsys.Web</c>'s client does with all
-/// six.
+/// seven.
 ///
 /// There is no scoring and no fuzzy matching: the legacy
 /// <c>person_score()</c> function, the <c>person_search</c> view and the
@@ -59,13 +62,15 @@ namespace Survsys.Api;
 /// it was typed with.
 /// </param>
 /// <param name="BirthGender">The legacy code for the sex recorded at birth.</param>
+/// <param name="Identifier">The value of one of the person's identifiers, exactly.</param>
 public sealed record PersonSearch(
     string? LastName = null,
     string? FirstName = null,
     string? MiddleName = null,
     DateOnly? BirthDate = null,
     string? Phone = null,
-    string? BirthGender = null)
+    string? BirthGender = null,
+    string? Identifier = null)
 {
     /// <summary>
     /// Whether no criterion was given at all, in which case the page is
@@ -81,7 +86,7 @@ public sealed record PersonSearch(
     /// </remarks>
     public bool IsEmpty =>
         Trimmed() is { LastName: null, FirstName: null, MiddleName: null, BirthDate: null,
-            Phone: null, BirthGender: null };
+            Phone: null, BirthGender: null, Identifier: null };
 
     /// <summary>
     /// These criteria with every blank one turned into an absent one and the
@@ -101,7 +106,8 @@ public sealed record PersonSearch(
         Said(MiddleName),
         BirthDate,
         Said(Phone),
-        Said(BirthGender));
+        Said(BirthGender),
+        Said(Identifier));
 
     /// <summary>
     /// The digits of the telephone criterion, or null where it holds none.

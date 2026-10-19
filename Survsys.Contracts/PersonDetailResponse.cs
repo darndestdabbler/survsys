@@ -64,4 +64,16 @@ public record PersonDetailResponse(
     IReadOnlyList<string> ParentGuardians,
     IReadOnlyList<PersonAddressResponse> Addresses,
     IReadOnlyList<PersonTelephoneResponse> Telephones,
-    IReadOnlyList<PersonEmailResponse> Emails);
+    IReadOnlyList<PersonEmailResponse> Emails)
+{
+    /// <summary>Every identifier other systems know the person by.</summary>
+    /// <remarks>
+    /// This and <see cref="FormerNames"/> are init-only with empty defaults
+    /// rather than positional, so a response built without them is a person
+    /// with none.
+    /// </remarks>
+    public IReadOnlyList<PersonIdentifierResponse> Identifiers { get; init; } = [];
+
+    /// <summary>Every name the person was on file under before, the latest change first.</summary>
+    public IReadOnlyList<PersonFormerNameResponse> FormerNames { get; init; } = [];
+}

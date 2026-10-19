@@ -80,7 +80,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 66 | Reload the report when the address names another case | no | 2026-10-19 |
 | 67 | Phase 8 walkthroughs | no | 2026-10-19 |
 | 68 | Release 0.9.0 (release: 0.9.0) | yes | 2026-10-19 |
-| 69 | Person identifiers, name history and address history | — | not declared |
+| 69 | Person identifiers, name history and address history | no | 2026-10-19 |
 | 70 | Person matching in the running application | — | not declared |
 | 71 | Duplicate persons and merging them | — | not declared |
 | 72 | Phase 9 walkthroughs | — | not declared |
@@ -626,3 +626,13 @@ Write the five Phase 8 walkthroughs and the Playwright test named after each. do
 **Releasable: yes.**
 
 Release 0.9.0: the framework packs and publishes what is on the trunk.
+
+### Session 69 — Person identifiers, name history and address history
+
+**Releasable: no.**
+
+Give a person identifiers, a name history and a disciplined address history, and let person search find them by those routes. Survsys.Data gains PersonIdentifier (identifier type, value, and the assigning authority with whether it is named by a CLIA number or an OID), PersonNameHistory (a former last, first and middle name with the date it stopped being the name), and ZipCode (the legacy zip_code table: a five-digit zip and its county code), with a filtered unique index allowing one current address (no ending date) per person, and one migration that creates them and first closes any surplus open addresses so the index can be built. A pure AddressRules class normalises an address on save (whitespace trimmed and collapsed, street, unit and city in title case, a state name or lower-case code made the two-letter state code, a nine-digit zip written ZIP+4 as 12345-6789) and, where several addresses are open, keeps the latest-beginning one current and closes the rest. Survsys.Api's UpdatePerson replaces the identifiers, appends the old name to the history when the name changes, normalises the addresses, fills a blank county from the zip_codes table, and the detail response carries identifiers and former names; person search matches the name criteria against the current name, a former name or an alias, and gains an identifier criterion matching an identifier's value. Survsys.Web shows and edits identifiers and shows the name history on the Demographics tab, shows both on the person screen, and adds an identifier box to the person search panel. Unit tests cover the normalisation and closing rules, the mapping and the search criterion; integration tests cover saving (normalised address, county from zip, one current address, name history) and search by alias, former name and identifier.
+
+**Amended after acceptance:**
+
+- 2026-10-19 — step 'integration-tests': its files: The new integration test found that PersonQueries.Update reads counties by the zip as typed, so a nine-digit zip with no hyphen is never looked up; the one-line fix normalises the zip with AddressRules.PostalCode first, in PersonEndpoints.cs (claude-code (anthropic, claude-opus-5-5))

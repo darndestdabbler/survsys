@@ -24,6 +24,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<ZipCodeAgency> ZipCodeAgencies => Set<ZipCodeAgency>();
 
+    public DbSet<ZipCode> ZipCodes => Set<ZipCode>();
+
     public DbSet<Facility> Facilities => Set<Facility>();
 
     public DbSet<CoreElement> CoreElements => Set<CoreElement>();
@@ -41,6 +43,10 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
     public DbSet<PersonRace> PersonRaces => Set<PersonRace>();
 
     public DbSet<PersonAlias> PersonAliases => Set<PersonAlias>();
+
+    public DbSet<PersonIdentifier> PersonIdentifiers => Set<PersonIdentifier>();
+
+    public DbSet<PersonNameHistory> PersonNameHistory => Set<PersonNameHistory>();
 
     public DbSet<ParentGuardian> ParentGuardians => Set<ParentGuardian>();
 

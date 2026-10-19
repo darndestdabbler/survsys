@@ -3,7 +3,8 @@
 
    ../nedss/docs/functional/epitrax-cmr-workflow.md records the legacy tab's
    six sections -- Name, Age, Addresses, Telephones, Email Addresses and
-   Demographics -- and this is those six, in that order. Every coded field
+   Demographics -- and this is those six, in that order, with the person's
+   former names under Name and their identifiers after it. Every coded field
    (gender, language, ethnicity, race, state, county, residence type,
    telephone type, country) is a text box holding the legacy code, because
    the reference tables behind the legacy dropdowns do not exist yet and a
@@ -106,6 +107,67 @@
             Add alias
         </MudButton>
     </div>
+
+    @* The names the person was on file under before, which a save that
+       changes the name records. Shown and never edited: it is a record of
+       what the name was. *@
+    @if (formerNames.Count > 0)
+    {
+        <div id="demographics-former-names" class="mt-2">
+            <MudText Typo="Typo.subtitle2">Former names</MudText>
+            @for (var n = 0; n < formerNames.Count; n++)
+            {
+                var former = formerNames[n];
+                <MudText id="@($"demographics-former-name-{n}")" Typo="Typo.body2">
+                    @FormerName(former) — changed @Written(former.ChangedOn)
+                </MudText>
+            }
+        </div>
+    }
+</MudPaper>
+
+<MudPaper id="demographics-identifiers" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Identifiers</MudText>
+    @for (var n = 0; n < identifiers.Count; n++)
+    {
+        var at = n;
+        var identifier = identifiers[at];
+        <MudGrid Spacing="2" Class="mb-2" @key="identifier">
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="identifier.IdentifierType" id="@($"demographics-identifier-{at}-type")"
+                              Label="Type" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="identifier.Value" id="@($"demographics-identifier-{at}-value")"
+                              Label="Identifier" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="identifier.AssigningAuthority" id="@($"demographics-identifier-{at}-authority")"
+                              Label="Assigning authority" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                @* What the authority is named by: a laboratory by its CLIA
+                   number, anything else by its OID. *@
+                <MudSelect @bind-Value="identifier.AssigningAuthorityType"
+                           id="@($"demographics-identifier-{at}-authority-type")"
+                           Label="Authority by" Variant="Variant.Outlined" Margin="Margin.Dense"
+                           Clearable="true">
+                    <MudSelectItem Value="@("CLIA")">CLIA</MudSelectItem>
+                    <MudSelectItem Value="@("OID")">OID</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-center">
+                <MudButton id="@($"demographics-identifier-remove-{at}")" Variant="Variant.Text"
+                           Color="Color.Error" OnClick="@(() => identifiers.RemoveAt(at))">
+                    Remove
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    }
+    <MudButton id="demographics-identifier-add" Variant="Variant.Outlined"
+               OnClick="@(() => identifiers.Add(new IdentifierFields()))">
+        Add identifier
+    </MudButton>
 </MudPaper>
 
 <MudPaper id="demographics-age" Elevation="1" Class="pa-4 mb-4">
@@ -369,6 +431,10 @@
 
     private List<EmailFields> emails = [];
 
+    private List<IdentifierFields> identifiers = [];
+
+    private IReadOnlyList<PersonFormerNameResponse> formerNames = [];
+
     private string? birthGender;
 
     private string? currentGender;
@@ -432,6 +498,14 @@
             EmailAddress = email.EmailAddress,
             Current = email.CurrentEmail,
         }).ToList();
+        formerNames = person.FormerNames;
+        identifiers = person.Identifiers.Select(identifier => new IdentifierFields
+        {
+            IdentifierType = identifier.IdentifierType,
+            Value = identifier.Value,
+            AssigningAuthority = identifier.AssigningAuthority,
+            AssigningAuthorityType = identifier.AssigningAuthorityType,
+        }).ToList();
         birthGender = person.BirthGender;
         currentGender = person.CurrentGender;
         language = person.Language;
@@ -459,7 +533,8 @@
         }
 
         if (!TryDate(birthDate, "the date of birth", out var born, out var why)
-            || !Rows(out var sentAddresses, out var sentTelephones, out why))
+            || !Rows(out var sentAddresses, out var sentTelephones, out why)
+            || !Identifiers(out var sentIdentifiers, out why))
         {
             complaint = why;
 
@@ -491,6 +566,7 @@
                 Addresses = sentAddresses,
                 Telephones = sentTelephones,
                 Emails = emails.Select(email => new PersonEmailRequest(email.EmailAddress, email.Current)).ToList(),
+                Identifiers = sentIdentifiers,
             });
 
             if (answered.Value is { } stored)
@@ -569,6 +645,48 @@
     }
 
     /// <summary>
+    /// The identifier rows as the request takes them — a row left wholly
+    /// blank is dropped, and one with something in it but no identifier is a
+    /// complaint naming it, because the record refuses an identifier that is
+    /// nothing.
+    /// </summary>
+    private bool Identifiers(out List<PersonIdentifierRequest> sent, out string? why)
+    {
+        sent = [];
+        why = null;
+
+        for (var n = 0; n < identifiers.Count; n++)
+        {
+            var identifier = identifiers[n];
+
+            if (!string.IsNullOrWhiteSpace(identifier.Value))
+            {
+                sent.Add(new PersonIdentifierRequest(
+                    identifier.IdentifierType,
+                    identifier.Value,
+                    identifier.AssigningAuthority,
+                    identifier.AssigningAuthorityType));
+            }
+            else if (!string.IsNullOrWhiteSpace(identifier.IdentifierType)
+                || !string.IsNullOrWhiteSpace(identifier.AssigningAuthority)
+                || identifier.AssigningAuthorityType is not null)
+            {
+                why = $"Give identifier {n + 1}'s identifier, or remove it.";
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>A former name as a list shows it: last, first middle.</summary>
+    private static string FormerName(PersonFormerNameResponse former) =>
+        string.Join(" ", new[] { $"{former.LastName},", former.FirstName, former.MiddleName }
+            .Where(part => !string.IsNullOrWhiteSpace(part)))
+            .TrimEnd(',');
+
+    /// <summary>
     /// A date box read: empty is no date, a date is the date, and anything
     /// else is a complaint naming the box.
     /// </summary>
@@ -638,6 +756,15 @@
         public string? Extension { get; set; }
         public string? Beginning { get; set; }
         public string? Note { get; set; }
+    }
+
+    /// <summary>One identifier as its boxes hold it.</summary>
+    private sealed class IdentifierFields
+    {
+        public string? IdentifierType { get; set; }
+        public string? Value { get; set; }
+        public string? AssigningAuthority { get; set; }
+        public string? AssigningAuthorityType { get; set; }
     }
 
     /// <summary>One email address as its boxes hold it.</summary>

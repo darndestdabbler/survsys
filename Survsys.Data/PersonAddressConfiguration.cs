@@ -48,6 +48,14 @@ internal sealed class PersonAddressConfiguration : IEntityTypeConfiguration<Pers
         builder.Property(address => address.Note).HasColumnName("note");
         builder.Property(address => address.ResidenceTypeId).HasColumnName("residence_type_id");
 
+        // One current address a person: the one with no ending. Both indexes
+        // are named, so the unique filtered one does not stand in for the
+        // foreign key's own, which reads the historic rows too.
+        builder.HasIndex(address => address.PersonId, "IX_person_addresses_person_id");
+        builder.HasIndex(address => address.PersonId, "IX_person_addresses_person_id_current")
+            .IsUnique()
+            .HasFilter("[ending] IS NULL");
+
         builder.HasOne<Person>()
             .WithMany(person => person.Addresses)
             .HasForeignKey(address => address.PersonId)

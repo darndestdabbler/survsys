@@ -7,7 +7,7 @@ namespace Survsys.Web;
 /// What a user typed into a person search form.
 /// </summary>
 /// <remarks>
-/// The same six criteria the API tier takes, declared here because this tier
+/// The same seven criteria the API tier takes, declared here because this tier
 /// references <c>Survsys.Contracts</c> alone: the API tier's own criteria type
 /// is bound from a query string and belongs to that tier, and a screen may not
 /// reach past the wire shapes for anything. This is what a screen binds its
@@ -24,13 +24,15 @@ namespace Survsys.Web;
 /// <param name="BirthDate">The person's date of birth, exactly.</param>
 /// <param name="Phone">Any part of one of the person's telephone numbers.</param>
 /// <param name="BirthGender">The legacy code for the sex recorded at birth.</param>
+/// <param name="Identifier">The value of one of the person's identifiers, exactly.</param>
 public sealed record PersonSearchCriteria(
     string? LastName = null,
     string? FirstName = null,
     string? MiddleName = null,
     DateOnly? BirthDate = null,
     string? Phone = null,
-    string? BirthGender = null)
+    string? BirthGender = null,
+    string? Identifier = null)
 {
     /// <summary>Whether nothing has been typed into the form at all.</summary>
     /// <remarks>
@@ -43,7 +45,8 @@ public sealed record PersonSearchCriteria(
         && string.IsNullOrWhiteSpace(MiddleName)
         && BirthDate is null
         && string.IsNullOrWhiteSpace(Phone)
-        && string.IsNullOrWhiteSpace(BirthGender);
+        && string.IsNullOrWhiteSpace(BirthGender)
+        && string.IsNullOrWhiteSpace(Identifier);
 }
 
 /// <summary>
@@ -172,6 +175,7 @@ public sealed class PersonsClient(HttpClient http)
         Typed("middleName", criteria.MiddleName);
         Typed("phone", criteria.Phone);
         Typed("birthGender", criteria.BirthGender);
+        Typed("identifier", criteria.Identifier);
 
         if (criteria.BirthDate is { } birthDate)
         {

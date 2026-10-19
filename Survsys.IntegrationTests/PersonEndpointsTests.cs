@@ -1149,6 +1149,208 @@ public class PersonEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     /// <summary>
+    /// An address saved as typed comes back regular, and one saved with no
+    /// county takes the county of its zip from <c>zip_codes</c>.
+    /// </summary>
+    [Fact]
+    public async Task APutNormalisesAnAddressAndTakesABlankCountyFromItsZip()
+    {
+        var client = api.CreateClient();
+        var id = await Created("Normal");
+
+        await using (var context = server.NewContext())
+        {
+            context.ZipCodes.Add(new ZipCode { Code = "00069", County = "WB" });
+            await context.SaveChangesAsync();
+        }
+
+        try
+        {
+            var saved = await Put(client, id, new UpdatePersonRequest("Normal")
+            {
+                Addresses =
+                [
+                    new PersonAddressRequest(
+                        Street: " 9  ELM court ",
+                        City: "ogden",
+                        State: "utah",
+                        PostalCode: "000691234"),
+                ],
+            });
+
+            var address = Assert.Single(saved.Addresses);
+            Assert.Equal("9 Elm Court", address.Street);
+            Assert.Equal("Ogden", address.City);
+            Assert.Equal("UT", address.State);
+            Assert.Equal("00069-1234", address.PostalCode);
+            Assert.Equal("WB", address.County);
+        }
+        finally
+        {
+            await Forget(id);
+
+            await using var context = server.NewContext();
+            await context.ZipCodes.Where(zip => zip.Code == "00069").ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>
+    /// Two addresses saved open come back one current and one historic — the
+    /// one that began later current, the other ending the day it began — and
+    /// the database's one-current-address index accepts the save.
+    /// </summary>
+    [Fact]
+    public async Task APutWithTwoOpenAddressesLeavesOneCurrent()
+    {
+        var client = api.CreateClient();
+        var id = await Created("Mover");
+
+        try
+        {
+            var saved = await Put(client, id, new UpdatePersonRequest("Mover")
+            {
+                Addresses =
+                [
+                    new PersonAddressRequest(Street: "1 Old Road", Beginning: new DateOnly(2010, 1, 1)),
+                    new PersonAddressRequest(Street: "2 New Road", Beginning: new DateOnly(2024, 3, 1)),
+                ],
+            });
+
+            Assert.Equal(
+                new DateOnly(2024, 3, 1),
+                saved.Addresses.Single(address => address.Street == "1 Old Road").Ending);
+            Assert.Null(saved.Addresses.Single(address => address.Street == "2 New Road").Ending);
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    /// <summary>
+    /// A save that changes the name records the one it replaced, and the
+    /// person is then found by the former name as well as by the new one.
+    /// </summary>
+    [Fact]
+    public async Task APutThatChangesTheNameRecordsTheFormerNameAndSearchFindsIt()
+    {
+        var client = api.CreateClient();
+        var id = await Created("Formerlyname");
+
+        try
+        {
+            await Put(client, id, new UpdatePersonRequest("Formerlyname", "Ada"));
+            var saved = await Put(client, id, new UpdatePersonRequest("Nowname", "Ada"));
+
+            Assert.Equal(
+                ["Formerlyname"],
+                saved.FormerNames.Take(1).Select(former => former.LastName));
+            Assert.Equal("Ada", saved.FormerNames[0].FirstName);
+
+            var byFormer = await Persons("/api/persons?lastName=Formerly&firstName=Ad");
+            var byCurrent = await Persons("/api/persons?lastName=Nowname");
+
+            Assert.Equal([id], byFormer.Items.Select(person => person.Id));
+            Assert.Equal("Nowname", Assert.Single(byFormer.Items).LastName);
+            Assert.Equal([id], byCurrent.Items.Select(person => person.Id));
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    /// <summary>
+    /// An alias is a whole name as one string, so a person is found by any
+    /// part of it typed into a name box.
+    /// </summary>
+    [Fact]
+    public async Task ASearchFindsAPersonByAnAlias()
+    {
+        var client = api.CreateClient();
+        var id = await Created("Aliased");
+
+        try
+        {
+            await Put(client, id, new UpdatePersonRequest("Aliased")
+            {
+                Aliases = ["Zelda Quixotic"],
+            });
+
+            var found = await Persons("/api/persons?lastName=Quixotic&firstName=Zel");
+
+            Assert.Equal([id], found.Items.Select(person => person.Id));
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    /// <summary>
+    /// An identifier is matched exactly: the whole value finds the person, and
+    /// a part of it finds nobody.
+    /// </summary>
+    [Fact]
+    public async Task ASearchFindsAPersonByAnIdentifier()
+    {
+        var client = api.CreateClient();
+        var id = await Created("Identified");
+
+        try
+        {
+            var saved = await Put(client, id, new UpdatePersonRequest("Identified")
+            {
+                Identifiers = [new PersonIdentifierRequest("MR", "MRN-690001", "46D0523979", "clia")],
+            });
+
+            var held = Assert.Single(saved.Identifiers);
+            Assert.Equal("MR", held.IdentifierType);
+            Assert.Equal("MRN-690001", held.Value);
+            Assert.Equal("46D0523979", held.AssigningAuthority);
+            Assert.Equal("CLIA", held.AssigningAuthorityType);
+
+            var found = await Persons("/api/persons?identifier=MRN-690001");
+            var partial = await Persons("/api/persons?identifier=MRN-69");
+
+            Assert.Equal([id], found.Items.Select(person => person.Id));
+            Assert.Empty(partial.Items);
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    [Fact]
+    public async Task APutWithAnIdentifierThatHasNoValueIsAProblemDetails()
+    {
+        var client = api.CreateClient();
+        var id = await Created("Valueless");
+
+        try
+        {
+            using var response = await client.PutAsJsonAsync(
+                $"/api/persons/{id}",
+                new UpdatePersonRequest("Valueless")
+                {
+                    Identifiers = [new PersonIdentifierRequest("MR", " ")],
+                },
+                Json);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Contains(
+                "identifiers[].value is required",
+                await response.Content.ReadAsStringAsync(),
+                StringComparison.Ordinal);
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    /// <summary>
     /// A person this suite puts on file to save over, by the endpoint that
     /// creates one; the caller forgets them.
     /// </summary>

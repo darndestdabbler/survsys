@@ -41,7 +41,8 @@ public class PersonSearchTests
             MiddleName: blank,
             BirthDate: null,
             Phone: blank,
-            BirthGender: blank);
+            BirthGender: blank,
+            Identifier: blank);
 
         Assert.True(search.IsEmpty);
     }
@@ -55,6 +56,7 @@ public class PersonSearchTests
         Assert.False(new PersonSearch(BirthDate: new DateOnly(1985, 6, 15)).IsEmpty);
         Assert.False(new PersonSearch(Phone: "8015551234").IsEmpty);
         Assert.False(new PersonSearch(BirthGender: "F").IsEmpty);
+        Assert.False(new PersonSearch(Identifier: "A-100").IsEmpty);
     }
 
     /// <summary>
@@ -83,13 +85,15 @@ public class PersonSearchTests
             MiddleName: "\t",
             BirthDate: null,
             Phone: " ",
-            BirthGender: "").Trimmed();
+            BirthGender: "",
+            Identifier: " ").Trimmed();
 
         Assert.Null(trimmed.LastName);
         Assert.Null(trimmed.FirstName);
         Assert.Null(trimmed.MiddleName);
         Assert.Null(trimmed.Phone);
         Assert.Null(trimmed.BirthGender);
+        Assert.Null(trimmed.Identifier);
     }
 
     [Fact]
@@ -101,7 +105,8 @@ public class PersonSearchTests
             MiddleName: " Elena",
             BirthDate: new DateOnly(1985, 6, 15),
             Phone: " (801) 555-1234 ",
-            BirthGender: " F ").Trimmed();
+            BirthGender: " F ",
+            Identifier: " A-100 ").Trimmed();
 
         Assert.Equal("Rodriguez", trimmed.LastName);
         Assert.Equal("Maria", trimmed.FirstName);
@@ -109,6 +114,7 @@ public class PersonSearchTests
         Assert.Equal(new DateOnly(1985, 6, 15), trimmed.BirthDate);
         Assert.Equal("(801) 555-1234", trimmed.Phone);
         Assert.Equal("F", trimmed.BirthGender);
+        Assert.Equal("A-100", trimmed.Identifier);
     }
 
     /// <summary>

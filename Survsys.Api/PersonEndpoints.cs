@@ -138,7 +138,27 @@ public static class PersonEndpoints
                     email.Id,
                     email.EmailAddress,
                     email.CurrentEmail))
-                .ToList());
+                .ToList())
+        {
+            Identifiers = person.Identifiers
+                .OrderBy(identifier => identifier.Id)
+                .Select(identifier => new PersonIdentifierResponse(
+                    identifier.Id,
+                    identifier.IdentifierType,
+                    identifier.Value,
+                    identifier.AssigningAuthority,
+                    identifier.AssigningAuthorityType))
+                .ToList(),
+            FormerNames = person.NameHistory
+                .OrderByDescending(former => former.ChangedOn)
+                .ThenByDescending(former => former.Id)
+                .Select(former => new PersonFormerNameResponse(
+                    former.LastName,
+                    former.FirstName,
+                    former.MiddleName,
+                    former.ChangedOn))
+                .ToList(),
+        };
 
     /// <summary>
     /// <see cref="ToResponse"/> compiled, for the one caller that has a person
@@ -193,6 +213,10 @@ public static class PersonEndpoints
     /// Nothing the Demographic tab adds — a date, a code, an email — is
     /// checked here, for the reason the creation checks none of it.
     ///
+    /// An identifier is the one child row with a rule of its own: it has a
+    /// value, because an identifier that is nothing identifies nobody, and an
+    /// authority named by anything is named by a CLIA number or an OID.
+    ///
     /// Public because the unit suite proves it. Nothing outside this file
     /// calls it.
     /// </remarks>
@@ -200,7 +224,26 @@ public static class PersonEndpoints
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return WhyNotALastName(request.LastName);
+        if (WhyNotALastName(request.LastName) is { } why)
+        {
+            return why;
+        }
+
+        if (request.Identifiers.Any(identifier => Said(identifier.Value) is null))
+        {
+            return "identifiers[].value is required: an identifier with no value identifies "
+                + "nobody.";
+        }
+
+        if (request.Identifiers.Any(identifier => Said(identifier.AssigningAuthorityType) is { } type
+            && !type.Equals(PersonIdentifier.Clia, StringComparison.OrdinalIgnoreCase)
+            && !type.Equals(PersonIdentifier.Oid, StringComparison.OrdinalIgnoreCase)))
+        {
+            return "identifiers[].assigningAuthorityType must be CLIA or OID: an assigning "
+                + "authority is named by its CLIA number or by its OID.";
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -275,6 +318,18 @@ public static class PersonEndpoints
     /// no screen edits; a save that deleted it would be losing something the
     /// user never saw.
     ///
+    /// The identifiers are cleared and rebuilt as the addresses are, with the
+    /// authority type in upper case. A save that changes the last, first or
+    /// middle name records the name it replaces in the person's name history,
+    /// dated <paramref name="today"/>, so a search by the old name still finds
+    /// them.
+    ///
+    /// The addresses are made regular by <see cref="AddressRules.Normalize"/>;
+    /// one saved with no county takes the county of its zip from
+    /// <paramref name="countiesByZip"/> — five-digit zips to county codes, the
+    /// rows of <c>zip_codes</c> the caller read — and of the addresses with
+    /// no ending, <see cref="AddressRules.CloseHistoric"/> leaves one current.
+    ///
     /// <see cref="UpdatePersonRequest.LastName"/> is read with a
     /// null-forgiving <c>!</c> because <see cref="WhyNotAPerson(UpdatePersonRequest)"/>
     /// has already refused a request without one; this is called after it and
@@ -283,14 +338,34 @@ public static class PersonEndpoints
     /// Public because the unit suite proves it. Nothing outside this file
     /// calls it.
     /// </remarks>
-    public static void Apply(Person person, UpdatePersonRequest request)
+    public static void Apply(
+        Person person,
+        UpdatePersonRequest request,
+        DateOnly today,
+        IReadOnlyDictionary<string, string>? countiesByZip = null)
     {
         ArgumentNullException.ThrowIfNull(person);
         ArgumentNullException.ThrowIfNull(request);
 
-        person.LastName = Said(request.LastName)!;
-        person.FirstName = Said(request.FirstName);
-        person.MiddleName = Said(request.MiddleName);
+        var lastName = Said(request.LastName)!;
+        var firstName = Said(request.FirstName);
+        var middleName = Said(request.MiddleName);
+
+        if (person.LastName != lastName || person.FirstName != firstName
+            || person.MiddleName != middleName)
+        {
+            person.NameHistory.Add(new PersonNameHistory
+            {
+                LastName = person.LastName,
+                FirstName = person.FirstName,
+                MiddleName = person.MiddleName,
+                ChangedOn = today,
+            });
+        }
+
+        person.LastName = lastName;
+        person.FirstName = firstName;
+        person.MiddleName = middleName;
         person.BirthDate = request.BirthDate;
         person.DaysOldNoBirthday = request.DaysOldNoBirthday;
         person.BirthGender = Said(request.BirthGender);
@@ -300,20 +375,44 @@ public static class PersonEndpoints
         person.CountryOfBirth = Said(request.CountryOfBirth);
 
         person.Addresses.Clear();
-        foreach (var address in request.Addresses)
+        foreach (var requested in request.Addresses)
         {
-            person.Addresses.Add(new PersonAddress
+            var address = new PersonAddress
             {
-                Street = Said(address.Street),
-                UnitNumber = Said(address.UnitNumber),
-                City = Said(address.City),
-                State = Said(address.State),
-                PostalCode = Said(address.PostalCode),
-                County = Said(address.County),
-                Beginning = address.Beginning,
-                Ending = address.Ending,
-                Note = Said(address.Note),
-                ResidenceTypeId = address.ResidenceTypeId,
+                Street = requested.Street,
+                UnitNumber = requested.UnitNumber,
+                City = requested.City,
+                State = requested.State,
+                PostalCode = requested.PostalCode,
+                County = requested.County,
+                Beginning = requested.Beginning,
+                Ending = requested.Ending,
+                Note = requested.Note,
+                ResidenceTypeId = requested.ResidenceTypeId,
+            };
+
+            AddressRules.Normalize(address);
+            if (address.County is null
+                && ZipAgencyRules.Normalize(address.PostalCode) is { } zip
+                && countiesByZip?.GetValueOrDefault(zip) is { } county)
+            {
+                address.County = county;
+            }
+
+            person.Addresses.Add(address);
+        }
+
+        AddressRules.CloseHistoric(person.Addresses, today);
+
+        person.Identifiers.Clear();
+        foreach (var identifier in request.Identifiers)
+        {
+            person.Identifiers.Add(new PersonIdentifier
+            {
+                IdentifierType = Said(identifier.IdentifierType),
+                Value = Said(identifier.Value)!,
+                AssigningAuthority = Said(identifier.AssigningAuthority),
+                AssigningAuthorityType = Said(identifier.AssigningAuthorityType)?.ToUpperInvariant(),
             });
         }
 
@@ -419,15 +518,15 @@ public static class PersonEndpoints
         routes.MapPut("/api/persons/{id:int}", UpdatePerson)
             .WithName("UpdatePerson")
             .WithSummary("Saves a person's whole demographic record, replacing the stored "
-                + "addresses, telephones, emails, races, aliases and named guardians "
-                + "with the ones sent.");
+                + "addresses, telephones, emails, races, aliases, identifiers and named "
+                + "guardians with the ones sent, and recording a changed name.");
 
         return routes;
     }
 
     /// <remarks>
-    /// The six search criteria arrive as one <see cref="PersonSearch"/> rather
-    /// than as six more parameters here, which is what <c>[AsParameters]</c>
+    /// The seven search criteria arrive as one <see cref="PersonSearch"/> rather
+    /// than as seven more parameters here, which is what <c>[AsParameters]</c>
     /// is for: they are one thing a caller is asking by, and the rule for what
     /// each of them means belongs with them and not in a route registration.
     /// </remarks>
@@ -625,11 +724,14 @@ internal sealed class PersonQueries(SurvsysDbContext database)
     /// <see cref="Find"/>, and for the same reason.
     /// </summary>
     /// <remarks>
-    /// The person is loaded with every child collection, because
-    /// <see cref="PersonEndpoints.Apply"/> replaces them and a collection EF
-    /// Core has not loaded is one it cannot tell has lost rows. Split queries,
-    /// so that six collections arrive as seven short reads rather than one
-    /// join whose row count is their product.
+    /// The person is loaded with every child collection the save replaces,
+    /// because a collection EF Core has not loaded is one it cannot tell has
+    /// lost rows. Split queries, so that seven collections arrive as eight
+    /// short reads rather than one join whose row count is their product. The
+    /// name history is not loaded: a save only adds to it.
+    ///
+    /// The counties are read for the zips of the addresses sent with none,
+    /// and only those, so a save whose addresses all have one reads no zip.
     ///
     /// The answer is read back through <see cref="Find"/> rather than mapped
     /// from the tracked entity, so what the save returns is what the next
@@ -650,6 +752,7 @@ internal sealed class PersonQueries(SurvsysDbContext database)
             .Include(person => person.Emails)
             .Include(person => person.Races)
             .Include(person => person.Aliases)
+            .Include(person => person.Identifiers)
             .Include(person => person.Guardians)
             .AsSplitQuery()
             .SingleOrDefaultAsync(person => person.Id == id, cancellationToken);
@@ -659,7 +762,20 @@ internal sealed class PersonQueries(SurvsysDbContext database)
             return null;
         }
 
-        PersonEndpoints.Apply(stored, request);
+        var zips = request.Addresses
+            .Where(address => string.IsNullOrWhiteSpace(address.County))
+            .Select(address => ZipAgencyRules.Normalize(AddressRules.PostalCode(address.PostalCode)))
+            .OfType<string>()
+            .Distinct()
+            .ToList();
+        var countiesByZip = zips.Count == 0
+            ? new Dictionary<string, string>()
+            : await database.ZipCodes
+                .Where(zip => zips.Contains(zip.Code) && zip.County != null)
+                .ToDictionaryAsync(zip => zip.Code, zip => zip.County!, cancellationToken);
+
+        PersonEndpoints.Apply(
+            stored, request, DateOnly.FromDateTime(DateTimeOffset.Now.Date), countiesByZip);
         await database.SaveChangesAsync(cancellationToken);
 
         return await Find(id, cancellationToken);
@@ -674,6 +790,13 @@ internal sealed class PersonQueries(SurvsysDbContext database)
     /// because this is what EF Core translates into a <c>WHERE</c> and what a
     /// reader can check against <see cref="PersonSearch"/>'s own account of
     /// what each criterion means.
+    ///
+    /// The three name parts are one clause, because they describe one name:
+    /// they match together against the current name, or together against one
+    /// former name, or each as a substring of one alias — an alias is a whole
+    /// name written as one string, so a part of it is found anywhere in it.
+    /// The identifier matches an identifier's value exactly, under any
+    /// authority.
     ///
     /// The prefix and substring matches are case- and accent-insensitive here,
     /// and that is SQL Server's doing rather than this code's: the comparison
@@ -707,21 +830,34 @@ internal sealed class PersonQueries(SurvsysDbContext database)
     {
         var search = criteria.Trimmed();
 
-        if (search.LastName is { Length: > 0 } lastName)
+        if (search is not { LastName: null, FirstName: null, MiddleName: null })
         {
-            persons = persons.Where(person => person.LastName.StartsWith(lastName));
+            var lastName = search.LastName;
+            var firstName = search.FirstName;
+            var middleName = search.MiddleName;
+
+            persons = persons.Where(person =>
+                ((lastName == null || person.LastName.StartsWith(lastName))
+                    && (firstName == null
+                        || (person.FirstName != null && person.FirstName.StartsWith(firstName)))
+                    && (middleName == null
+                        || (person.MiddleName != null && person.MiddleName.StartsWith(middleName))))
+                || person.NameHistory.Any(former =>
+                    (lastName == null || former.LastName.StartsWith(lastName))
+                    && (firstName == null
+                        || (former.FirstName != null && former.FirstName.StartsWith(firstName)))
+                    && (middleName == null
+                        || (former.MiddleName != null && former.MiddleName.StartsWith(middleName))))
+                || person.Aliases.Any(alias =>
+                    (lastName == null || alias.Alias.Contains(lastName))
+                    && (firstName == null || alias.Alias.Contains(firstName))
+                    && (middleName == null || alias.Alias.Contains(middleName))));
         }
 
-        if (search.FirstName is { Length: > 0 } firstName)
+        if (search.Identifier is { Length: > 0 } identifier)
         {
             persons = persons.Where(person =>
-                person.FirstName != null && person.FirstName.StartsWith(firstName));
-        }
-
-        if (search.MiddleName is { Length: > 0 } middleName)
-        {
-            persons = persons.Where(person =>
-                person.MiddleName != null && person.MiddleName.StartsWith(middleName));
+                person.Identifiers.Any(held => held.Value == identifier));
         }
 
         if (search.BirthDate is { } birthDate)
