@@ -1360,9 +1360,9 @@
     {
       "number": 66,
       "title": "Reload the report when the address names another case",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-19T06:28:14.174000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-19T06:30:42.302000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
