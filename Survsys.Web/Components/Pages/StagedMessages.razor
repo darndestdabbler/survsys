@@ -1,12 +1,18 @@
 @* The inbound ELR intake queue: the staged messages waiting for a reviewer,
    as the staged-message endpoint returns them. One page of rows, oldest first,
    with a review-state filter above them, and each row a way into the message
-   on its own.
+   on its own. A row's checkbox selects it, and the action bar above the table
+   moves, deletes or retries every message selected.
 
    Every element a later walkthrough will name carries an identifier of its
    own — `staged-messages-heading`, `staged-messages-filter`,
    `staged-messages-total`, `staged-messages-loading`, `staged-messages-error`,
-   `staged-messages-none`, the table, and one row per message keyed by its id.
+   `staged-messages-none`, the table, one row per message keyed by its id and
+   its `staged-message-select-{id}` checkbox, and the action bar's
+   `staged-messages-selected`, `staged-messages-select-page`,
+   `staged-messages-move-to`, `staged-messages-move`, `staged-messages-delete`,
+   `staged-messages-retry`, `staged-messages-acted` and
+   `staged-messages-action-error`.
    A test selects by those and not by a MudBlazor class or a cell's position.
 
    The review state is the stored code the wire carries; this tier reads
@@ -46,6 +52,46 @@ else if (asked.Value is { } result)
         @result.TotalCount message(s), showing @result.Items.Count.
     </MudText>
 
+    @if (acted is not null)
+    {
+        <MudAlert id="staged-messages-acted" Severity="Severity.Success" Class="mb-4">@acted</MudAlert>
+    }
+
+    @if (actionFailure is not null)
+    {
+        <MudAlert id="staged-messages-action-error" Severity="Severity.Error" Class="mb-4">@actionFailure</MudAlert>
+    }
+
+    @if (result.Items.Count > 0)
+    {
+        <div class="d-flex flex-wrap align-center gap-4 mb-4">
+            <MudButton id="staged-messages-select-page" Variant="Variant.Outlined" Size="Size.Small"
+                       OnClick="@(() => SelectPage(result.Items))">
+                Select page
+            </MudButton>
+            <MudText id="staged-messages-selected" Typo="Typo.body2">@selected.Count selected</MudText>
+            <MudSelect id="staged-messages-move-to" T="string" Label="Move to" @bind-Value="moveTo"
+                       Dense="true" Style="max-width: 16rem;">
+                @foreach (var state in States.Where(state => state.Code != AssignedCode))
+                {
+                    <MudSelectItem T="string" Value="@state.Code">@state.Label</MudSelectItem>
+                }
+            </MudSelect>
+            <MudButton id="staged-messages-move" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                       Disabled="@(acting || !CanMove)" OnClick="Move">
+                Move
+            </MudButton>
+            <MudButton id="staged-messages-retry" Variant="Variant.Outlined" Size="Size.Small"
+                       Disabled="@(acting || !CanRetry)" OnClick="Retry">
+                Retry
+            </MudButton>
+            <MudButton id="staged-messages-delete" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                       Disabled="@(acting || !CanDelete)" OnClick="Delete">
+                Delete
+            </MudButton>
+        </div>
+    }
+
     @if (result.Items.Count == 0)
     {
         <MudText id="staged-messages-none" Typo="Typo.body2">
@@ -70,6 +116,10 @@ else if (asked.Value is { } result)
                     {
                         <tr id="@($"staged-message-row-{message.Id}")" data-staged-message="@message.Id">
                             <td data-staged-message-source>
+                                <input type="checkbox" id="@($"staged-message-select-{message.Id}")"
+                                       aria-label="@($"Select message {message.Id}")"
+                                       checked="@selected.ContainsKey(message.Id)"
+                                       @onchange="@(changed => Toggle(message, changed.Value is true))" />
                                 <MudLink Href="@($"/staged-messages/{message.Id}")">
                                     @(string.IsNullOrWhiteSpace(message.Source) ? "—" : message.Source)
                                 </MudLink>
@@ -125,15 +175,55 @@ else
     /// The review states a message can be filtered to, their stored codes and
     /// the labels shown for them. The codes are the wire's; the API tier owns
     /// the vocabulary, and this list is display only, as the work-queue
-    /// screen's workflow mapping is. Entry, Pending and Exception are the
-    /// states the intake queue holds.
+    /// screen's workflow mapping is. Every state a message can be in, each
+    /// with a label of its own. Assigned reads as its code, as it did before
+    /// it was listed, because the walkthroughs read it so.
     /// </summary>
     private static readonly IReadOnlyList<(string Code, string Label)> States =
     [
         ("entry", "Queued for review"),
         ("pending", "Held for review"),
         ("exception", "Exception"),
+        (AssignedCode, "assigned"),
+        ("filtered", "Filtered out"),
+        ("locked", "Locked"),
+        ("qa", "Quality assurance"),
+        ("out-of-state", "Out of state"),
+        ("semi-auto", "Semi-automatic"),
+        ("unprocessed", "Unprocessed"),
+        ("gray", "Graylisted"),
+        ("gray-pending", "Graylist pending"),
+        ("gray-processed", "Graylist processed"),
+        ("gray-unprocessable", "Graylist unprocessable"),
+        ("gray-exception", "Graylist exception"),
     ];
+
+    private const string AssignedCode = "assigned";
+
+    /// <summary>
+    /// The states a retry takes a message out of: the held ones, which wait on
+    /// the vocabulary and rules. The API tier refuses anything else, and the
+    /// screen leaves Retry off rather than send what it would refuse.
+    /// </summary>
+    private static readonly IReadOnlySet<string> Retryable =
+        new HashSet<string> { "exception", "unprocessed", "locked", "gray-exception" };
+
+    /// <summary>The messages selected, each to its review state, across pages and filters.</summary>
+    private readonly Dictionary<int, string> selected = [];
+
+    private string? moveTo;
+
+    private bool acting;
+
+    private string? acted;
+
+    private string? actionFailure;
+
+    private bool CanMove => selected.Count > 0 && moveTo is not null && !selected.ContainsValue(AssignedCode);
+
+    private bool CanDelete => selected.Count > 0 && !selected.ContainsValue(AssignedCode);
+
+    private bool CanRetry => selected.Count > 0 && selected.Values.All(Retryable.Contains);
 
     private string status = AllStates;
 
@@ -149,6 +239,59 @@ else
     {
         asked = null;
         asked = await Client.Page(string.IsNullOrEmpty(status) ? null : status, page, PageSize);
+    }
+
+    private void Toggle(StagedMessageResponse message, bool on)
+    {
+        if (on)
+        {
+            selected[message.Id] = message.ReviewStatus;
+        }
+        else
+        {
+            selected.Remove(message.Id);
+        }
+    }
+
+    private void SelectPage(IReadOnlyList<StagedMessageResponse> messages)
+    {
+        foreach (var message in messages)
+        {
+            selected[message.Id] = message.ReviewStatus;
+        }
+    }
+
+    private Task Move() =>
+        Act(ids => Client.Move(ids, moveTo!), $"moved to {Label(moveTo!)}");
+
+    private Task Delete() => Act(ids => Client.Delete(ids), "deleted");
+
+    private Task Retry() => Act(ids => Client.Retry(ids), "retried");
+
+    /// <summary>
+    /// Takes an action on every message selected, then says what it did or
+    /// why it could not, clears the selection when it did, and reloads the page.
+    /// </summary>
+    private async Task Act(
+        Func<IReadOnlyList<int>, Task<Asked<StagedMessageActionResponse>>> action, string done)
+    {
+        acting = true;
+        acted = null;
+        actionFailure = null;
+
+        var answer = await action(selected.Keys.ToList());
+        if (answer.Value is { } response)
+        {
+            acted = $"{response.Count} message(s) {done}.";
+            selected.Clear();
+        }
+        else
+        {
+            actionFailure = answer.Failure;
+        }
+
+        acting = false;
+        await Load();
     }
 
     private async Task OnFilterChanged(string chosen)

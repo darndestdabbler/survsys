@@ -102,6 +102,17 @@ public class MessageQueuePromotionTests(SqlServerFixture server) : IDisposable
             // terminal state the vocabulary now knows.
             Assert.Equal(MessageReviewStatus.Assigned, await ReviewStatusOf(staged));
 
+            // And it records the case it became.
+            await using (var context = server.NewContext())
+            {
+                Assert.Equal(
+                    outcome.Report.Id,
+                    await context.StagedMessages
+                        .Where(message => message.Id == staged)
+                        .Select(message => message.PersonConditionId)
+                        .SingleAsync());
+            }
+
             // A second promotion of the same message is refused, and no second
             // report is opened for it.
             using var again = await client.PostAsJsonAsync(

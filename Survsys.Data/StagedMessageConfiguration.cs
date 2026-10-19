@@ -106,6 +106,7 @@ internal sealed class StagedMessageConfiguration : IEntityTypeConfiguration<Stag
         builder.Property(message => message.AllowNewCase).HasColumnName("allow_new_cmr");
         builder.Property(message => message.AllowUpdateCase).HasColumnName("allow_update_cmr");
         builder.Property(message => message.IsSurveillance).HasColumnName("is_surveillance");
+        builder.Property(message => message.PersonConditionId).HasColumnName("person_condition_id");
 
         builder.HasMany(message => message.Results)
             .WithOne()

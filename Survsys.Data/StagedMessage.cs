@@ -159,6 +159,14 @@ public class StagedMessage
     /// </summary>
     public bool? IsSurveillance { get; set; }
 
+    /// <summary>
+    /// The case this message was assigned to, or the case a graylist release
+    /// found for it, as a bare id into <c>person_conditions</c> with no
+    /// navigation, as <see cref="GraylistSpoolEntry.PersonConditionId"/> is;
+    /// null where it has none.
+    /// </summary>
+    public int? PersonConditionId { get; set; }
+
     /// <summary>The order's results (its OBX segments), in message order.</summary>
     public List<StagedMessageResult> Results { get; set; } = [];
 }

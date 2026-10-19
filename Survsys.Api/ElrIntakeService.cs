@@ -128,7 +128,7 @@ public sealed class ElrIntakeService(
 
         string? unknownSender = parsed.SendingFacility is { } sender && knownSendingFacilities.Contains(sender)
             ? null
-            : $"The sending facility '{parsed.SendingFacility}' (MSH-4.1) is not on file.";
+            : UnknownSender(parsed.SendingFacility);
 
         // A message that reports no patient at all is still staged, once, so it
         // is not lost.
@@ -201,8 +201,7 @@ public sealed class ElrIntakeService(
     /// Receives one raw message from any transport — the file drop or MLLP:
     /// stages it against the sending facilities on file, a facility being on
     /// file when its short name is the message's MSH-4.1, translates each
-    /// message it queued through <see cref="IntakeTranslator"/> against that
-    /// facility's vocabulary and its condition's rules, and saves what it
+    /// message it queued through <see cref="Translate"/>, and saves what it
     /// staged.
     /// </summary>
     public static async Task<IReadOnlyList<StagedMessage>> Receive(
@@ -212,42 +211,87 @@ public sealed class ElrIntakeService(
         string? source,
         CancellationToken cancellationToken)
     {
-        // Two facilities sharing a short name are one sender to a message, so
-        // the first on file is the one its vocabulary is read for.
-        var facilities = (await database.Facilities
-                .Where(facility => facility.ShortName != null)
-                .OrderBy(facility => facility.Id)
-                .Select(facility => new { facility.Id, ShortName = facility.ShortName! })
-                .ToListAsync(cancellationToken))
-            .DistinctBy(facility => facility.ShortName, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(facility => facility.ShortName, facility => facility.Id, StringComparer.OrdinalIgnoreCase);
-
+        var facilities = await LoadFacilities(database, cancellationToken);
         var staged = Stage(parser, raw, source, facilities.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase));
 
-        if (staged.Any(message => message.ReviewStatus == MessageReviewStatusRules.EntryCode))
-        {
-            var zips = staged
-                .Select(message => ZipAgencyRules.Normalize(message.PatientZip))
-                .OfType<string>()
-                .Distinct()
-                .ToList();
-            var reference = await LoadReference(database, zips, cancellationToken);
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-
-            foreach (var message in staged)
-            {
-                if (message.SendingFacility is { } sender && facilities.TryGetValue(sender, out var labId))
-                {
-                    IntakeTranslator.Translate(message, labId, reference, today);
-                }
-            }
-        }
+        await Translate(database, facilities, staged, cancellationToken);
 
         database.StagedMessages.AddRange(staged);
         await database.SaveChangesAsync(cancellationToken);
 
         return staged;
     }
+
+    /// <summary>
+    /// Translates each of <paramref name="messages"/> that is queued for review
+    /// through <see cref="IntakeTranslator"/> against its sending facility's
+    /// vocabulary and its condition's rules, holding as an exception one whose
+    /// sending facility is not on file. Saves nothing: the caller does.
+    /// </summary>
+    /// <remarks>
+    /// What intake does to a message it has just staged, and what a retry does
+    /// again to one already in the queue, against the vocabulary and rules on
+    /// file now.
+    /// </remarks>
+    public static async Task Translate(
+        SurvsysDbContext database, IReadOnlyList<StagedMessage> messages, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        ArgumentNullException.ThrowIfNull(messages);
+
+        await Translate(database, await LoadFacilities(database, cancellationToken), messages, cancellationToken);
+    }
+
+    private static async Task Translate(
+        SurvsysDbContext database,
+        IReadOnlyDictionary<string, int> facilities,
+        IReadOnlyList<StagedMessage> messages,
+        CancellationToken cancellationToken)
+    {
+        if (!messages.Any(message => message.ReviewStatus == MessageReviewStatusRules.EntryCode))
+        {
+            return;
+        }
+
+        var zips = messages
+            .Select(message => ZipAgencyRules.Normalize(message.PatientZip))
+            .OfType<string>()
+            .Distinct()
+            .ToList();
+        var reference = await LoadReference(database, zips, cancellationToken);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        foreach (var message in messages.Where(message => message.ReviewStatus == MessageReviewStatusRules.EntryCode))
+        {
+            if (message.SendingFacility is { } sender && facilities.TryGetValue(sender, out var labId))
+            {
+                IntakeTranslator.Translate(message, labId, reference, today);
+            }
+            else
+            {
+                message.ReviewStatus = MessageReviewStatusRules.ExceptionCode;
+                message.ExceptionDetail = UnknownSender(message.SendingFacility);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The sending facilities on file, by short name, each to its id. Two
+    /// facilities sharing a short name are one sender to a message, so the
+    /// first on file is the one its vocabulary is read for.
+    /// </summary>
+    private static async Task<IReadOnlyDictionary<string, int>> LoadFacilities(
+        SurvsysDbContext database, CancellationToken cancellationToken) =>
+        (await database.Facilities
+            .Where(facility => facility.ShortName != null)
+            .OrderBy(facility => facility.Id)
+            .Select(facility => new { facility.Id, ShortName = facility.ShortName! })
+            .ToListAsync(cancellationToken))
+        .DistinctBy(facility => facility.ShortName, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(facility => facility.ShortName, facility => facility.Id, StringComparer.OrdinalIgnoreCase);
+
+    private static string UnknownSender(string? sendingFacility) =>
+        $"The sending facility '{sendingFacility}' (MSH-4.1) is not on file.";
 
     /// <summary>
     /// Reads what <see cref="IntakeTranslator"/> translates against: the

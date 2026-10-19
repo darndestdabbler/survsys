@@ -805,6 +805,21 @@
       "what": "step 'intake-translation': its files",
       "reason": "ElrIntakeTests, MllpListenerTests and later VocabularyIntakeTests seed the same accepting vocabulary and rules; one shared seeding helper instead of three copies",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 77,
+      "dateTime": "2026-10-19T19:31:11.029000-04:00",
+      "task": "Finish the legacy EMSA queue and put automatic assignment and the graylist behind intake. Survsys.Data's MessageReviewStatus and MessageReviewStatusRules gain the remaining legacy queue states as stored codes -- locked, qa, out-of-state, semi-auto, unprocessed, and the gray cluster gray, gray-pending, gray-processed, gray-unprocessable and gray-exception -- beside entry, pending, exception, assigned and filtered; a staged message gains the case it was assigned or released to (a nullable person_condition_id), with the FullQueue migration. Survsys.Api gains MessageProcessingService, a BackgroundService off unless MessageProcessing:PollIntervalSeconds is configured, whose each pass is three public static steps over the database: Assign takes every Entry message through a pure Decide -- no condition or case-management decision, or no investigating agency, goes to pending; a patient whose state is not the configured MessageProcessing:HomeState goes to out-of-state; a case-management rule that allows no new case sends it to gray; otherwise the patient is scored with the existing PersonMatchRules, and exactly one exact match with no open case on the condition, or no exact or probable match at all (a new person from the message's demographics), is confident, so a case is opened with PersonConditionQueries.Add and the message marked assigned with that case, while anything else (several or only probable matches, or an open case already on the condition) goes to pending with why; Release moves a gray message to pending, recording the case, when a case on its condition for a person who scores exact against its patient has an event date within GraylistRules' window of its collection date; Prune moves a gray message received longer ago than MessageProcessing:GraylistRetentionDays (default 548, the legacy 18 months) to gray-unprocessable. ElrIntakeService's translation loop is lifted into a public static Translate so a retry reuses it. The queue API gains move, delete and retry over a list of message ids, each refusing what its pure WhyNot function refuses (nothing moves into or out of assigned, an assigned message is not deleted, only an exception or unprocessed, locked or gray-exception message is retried, and a retry re-translates it against the current vocabulary and rules), and promotion also accepts semi-auto and qa. Survsys.Web's Staged messages screen filters by every state and selects rows (the checkbox inside the existing id cell, so the table's headings do not change) for move, delete and retry on one or many. Integration tests cover an automatic assignment, a graylisted message released and one pruned.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 77,
+      "dateTime": "2026-10-19T19:37:35.020000-04:00",
+      "what": "step 'queue-actions': its files",
+      "reason": "Promotion from qa, as the plan declares, needs the QA state's summary to say a message held for QA is not yet assigned rather than assigned",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

@@ -9,11 +9,12 @@ namespace Survsys.Api;
 /// <summary>
 /// <c>GET /api/staged-messages</c>: the inbound ELR intake queue, paged and
 /// filterable by review state. <c>GET /api/staged-messages/{id}</c>: one staged
-/// message whole, with the raw HL7 it arrived as.
+/// message whole, with the raw HL7 it arrived as. Promotion of one message to
+/// a case, and the move, delete and retry a reviewer takes on one or many.
 /// </summary>
 /// <remarks>
-/// Read-only: the intake service fills this queue and a later session's review
-/// screen works it, so this slice only reads. The entity-to-wire mapping lives
+/// The intake service fills this queue and message processing works what it
+/// can; what is here is the reviewer's half. The entity-to-wire mapping lives
 /// here, as the other slices' does and for the same reason — <c>Survsys.Data</c>
 /// may not reference <c>Survsys.Contracts</c> — and the handlers are handed
 /// <see cref="MessageQueueQueries"/> and not the <c>DbContext</c>, because the
@@ -65,7 +66,114 @@ public static class MessageQueueEndpoints
             .WithSummary("Promotes a reviewed staged message to a case morbidity report and "
                 + "raises the batch notification the promotion owes.");
 
+        routes.MapPost("/api/staged-messages/move", MoveStagedMessages)
+            .WithName("MoveStagedMessages")
+            .WithSummary("Moves staged messages to another review state.");
+
+        routes.MapPost("/api/staged-messages/delete", DeleteStagedMessages)
+            .WithName("DeleteStagedMessages")
+            .WithSummary("Deletes staged messages that have not become a case.");
+
+        routes.MapPost("/api/staged-messages/retry", RetryStagedMessages)
+            .WithName("RetryStagedMessages")
+            .WithSummary("Translates held staged messages again against the vocabulary and rules on file.");
+
         return routes;
+    }
+
+    /// <summary>The most messages one action takes.</summary>
+    public const int MaxActionIds = 500;
+
+    /// <summary>
+    /// Why an action request names no messages it can act on, or null when it
+    /// names between one and <see cref="MaxActionIds"/>.
+    /// </summary>
+    /// <remarks>Public because the unit suite proves it.</remarks>
+    public static string? WhyNotAnAction(StagedMessageActionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return request.Ids switch
+        {
+            null or { Count: 0 } => "Choose at least one message to act on.",
+            { Count: > MaxActionIds } => $"No more than {MaxActionIds} messages can be acted on at once.",
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Why a message in one review state may not be moved to another by hand,
+    /// or null when it may.
+    /// </summary>
+    /// <remarks>
+    /// Any state a message is in may be left for any other the vocabulary
+    /// knows, except that <see cref="MessageReviewStatus.Assigned"/> is neither
+    /// left nor entered by hand: a message is assigned by becoming a case, and
+    /// an assigned one already is one. Public because the unit suite proves it.
+    /// </remarks>
+    public static string? WhyNotMovable(string from, string? to)
+    {
+        ArgumentNullException.ThrowIfNull(from);
+
+        var target = to?.Trim();
+        if (string.IsNullOrEmpty(target) || !MessageReviewStatusRules.Codes.Contains(target))
+        {
+            return $"'{to}' is not a review state a message can be moved to.";
+        }
+
+        if (target == MessageReviewStatusRules.AssignedCode)
+        {
+            return "A message is assigned by becoming a case, so it cannot be moved to assigned. "
+                + "Promote it to a case instead.";
+        }
+
+        return from.Trim() == MessageReviewStatusRules.AssignedCode
+            ? "This message has already become a case, so it stays assigned."
+            : null;
+    }
+
+    /// <summary>
+    /// Why a message in this review state may not be deleted, or null when it
+    /// may: any message that has not become a case. Public because the unit
+    /// suite proves it.
+    /// </summary>
+    public static string? WhyNotDeletable(string reviewStatus)
+    {
+        ArgumentNullException.ThrowIfNull(reviewStatus);
+
+        return reviewStatus.Trim() == MessageReviewStatusRules.AssignedCode
+            ? "This message has become a case, so it is kept as the record of what the case came from."
+            : null;
+    }
+
+    /// <summary>
+    /// Why a message may not be retried, or null when it may: one held as an
+    /// exception, unprocessed, locked or as a graylist exception, which parsed
+    /// when it was received.
+    /// </summary>
+    /// <remarks>
+    /// A retry translates the message again against the vocabulary and rules
+    /// on file now, which is what such a message waits on; it does not parse
+    /// the raw text again, so one that never parsed has nothing to translate.
+    /// Public because the unit suite proves it.
+    /// </remarks>
+    public static string? WhyNotRetryable(string reviewStatus, bool parsed)
+    {
+        ArgumentNullException.ThrowIfNull(reviewStatus);
+
+        var retryable = reviewStatus.Trim() is MessageReviewStatusRules.ExceptionCode
+            or MessageReviewStatusRules.UnprocessedCode
+            or MessageReviewStatusRules.LockedCode
+            or MessageReviewStatusRules.GrayExceptionCode;
+
+        if (!retryable)
+        {
+            return $"A message in '{reviewStatus}' is not held, so there is nothing to retry.";
+        }
+
+        return parsed
+            ? null
+            : "This message never parsed, so there is nothing to translate again.";
     }
 
     /// <summary>
@@ -76,9 +184,11 @@ public static class MessageQueueEndpoints
     /// The shape <see cref="PersonConditionEndpoints.WhyNotAReport"/> has: a
     /// pure function the unit suite proves over each state, with the endpoint
     /// turning the sentence into a 409 — a conflict with the message's state,
-    /// not a bad request. A message in <see cref="MessageReviewStatus.Entry"/>
-    /// or <see cref="MessageReviewStatus.Pending"/> is waiting for exactly this
-    /// and passes; one in <see cref="MessageReviewStatus.Exception"/> never
+    /// not a bad request. A message in <see cref="MessageReviewStatus.Entry"/>,
+    /// <see cref="MessageReviewStatus.Pending"/>,
+    /// <see cref="MessageReviewStatus.SemiAuto"/> or
+    /// <see cref="MessageReviewStatus.Qa"/> is waiting for exactly this and
+    /// passes; one in <see cref="MessageReviewStatus.Exception"/> never
     /// parsed, so there is nothing to promote; and one already in
     /// <see cref="MessageReviewStatus.Assigned"/> is already a case, so
     /// promoting it again would open a second report for the same message.
@@ -97,7 +207,10 @@ public static class MessageQueueEndpoints
 
         return reviewStatus.Trim() switch
         {
-            MessageReviewStatusRules.EntryCode or MessageReviewStatusRules.PendingCode => null,
+            MessageReviewStatusRules.EntryCode
+                or MessageReviewStatusRules.PendingCode
+                or MessageReviewStatusRules.SemiAutoCode
+                or MessageReviewStatusRules.QaCode => null,
             MessageReviewStatusRules.ExceptionCode =>
                 "This message is held as an exception: it never parsed, so there is nothing "
                 + "to promote. Resolve the exception before a case can be opened from it.",
@@ -217,11 +330,94 @@ public static class MessageQueueEndpoints
 
         var created = await reports.Add(creation, DateTimeOffset.Now, cancellationToken);
         var notification = await messages.MarkPromoted(
-            id, created.RecordNumber, created.ConditionId, cancellationToken);
+            id, created.Id, created.RecordNumber, created.ConditionId, cancellationToken);
 
         return TypedResults.Created(
             $"/api/person-conditions/{created.Id}",
             new PromoteMessageResponse(created, notification));
+    }
+
+    private static Task<Results<Ok<StagedMessageActionResponse>, ProblemHttpResult>> MoveStagedMessages(
+        MessageQueueQueries messages,
+        StagedMessageActionRequest request,
+        CancellationToken cancellationToken = default) =>
+        Act(
+            messages,
+            request,
+            state => WhyNotMovable(state.Status, request.Status),
+            ids => messages.Move(ids, request.Status!.Trim(), cancellationToken),
+            cancellationToken);
+
+    private static Task<Results<Ok<StagedMessageActionResponse>, ProblemHttpResult>> DeleteStagedMessages(
+        MessageQueueQueries messages,
+        StagedMessageActionRequest request,
+        CancellationToken cancellationToken = default) =>
+        Act(
+            messages,
+            request,
+            state => WhyNotDeletable(state.Status),
+            ids => messages.Delete(ids, cancellationToken),
+            cancellationToken);
+
+    private static Task<Results<Ok<StagedMessageActionResponse>, ProblemHttpResult>> RetryStagedMessages(
+        MessageQueueQueries messages,
+        StagedMessageActionRequest request,
+        CancellationToken cancellationToken = default) =>
+        Act(
+            messages,
+            request,
+            state => WhyNotRetryable(state.Status, state.Parsed),
+            ids => messages.Retry(ids, cancellationToken),
+            cancellationToken);
+
+    /// <summary>
+    /// Takes an action on every message a request names, or on none: a request
+    /// naming no message or too many is a 400, one naming a message that is not
+    /// there a 404, and one naming a message the action refuses a 409 that says
+    /// why for each, before anything is changed.
+    /// </summary>
+    private static async Task<Results<Ok<StagedMessageActionResponse>, ProblemHttpResult>> Act(
+        MessageQueueQueries messages,
+        StagedMessageActionRequest request,
+        Func<MessageState, string?> whyNot,
+        Func<IReadOnlyList<int>, Task<int>> act,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (WhyNotAnAction(request) is { } why)
+        {
+            return TypedResults.Problem(
+                detail: why,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The action asked for is not one this endpoint can take.");
+        }
+
+        var ids = request.Ids.Distinct().ToList();
+        var states = await messages.States(ids, cancellationToken);
+
+        if (ids.Where(id => !states.ContainsKey(id)).ToList() is { Count: > 0 } missing)
+        {
+            return TypedResults.Problem(
+                detail: $"No staged message has id {string.Join(", ", missing)}.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "There is no such staged message.");
+        }
+
+        var refusals = ids
+            .Select(id => whyNot(states[id]) is { } reason ? $"Message {id}: {reason}" : null)
+            .OfType<string>()
+            .ToList();
+
+        if (refusals.Count > 0)
+        {
+            return TypedResults.Problem(
+                detail: string.Join(" ", refusals),
+                statusCode: StatusCodes.Status409Conflict,
+                title: "The action cannot be taken on every message chosen, so it was taken on none.");
+        }
+
+        return TypedResults.Ok(new StagedMessageActionResponse(await act(ids)));
     }
 
     /// <summary>
@@ -334,7 +530,8 @@ internal sealed class MessageQueueQueries(SurvsysDbContext database)
             .SingleOrDefaultAsync(cancellationToken);
 
     /// <summary>
-    /// Marks a promoted message as assigned to the case it became, and answers
+    /// Marks a promoted message as assigned to the case it became, recording
+    /// that case on it, and answers
     /// with the batch notification the promotion raises.
     /// </summary>
     /// <remarks>
@@ -349,6 +546,7 @@ internal sealed class MessageQueueQueries(SurvsysDbContext database)
     /// </remarks>
     public async Task<string> MarkPromoted(
         int id,
+        int personConditionId,
         string recordNumber,
         int conditionId,
         CancellationToken cancellationToken)
@@ -357,6 +555,7 @@ internal sealed class MessageQueueQueries(SurvsysDbContext database)
             staged => staged.Id == id, cancellationToken);
 
         message.ReviewStatus = MessageReviewStatusRules.AssignedCode;
+        message.PersonConditionId = personConditionId;
         await database.SaveChangesAsync(cancellationToken);
 
         var conditionName = await database.Conditions
@@ -367,4 +566,103 @@ internal sealed class MessageQueueQueries(SurvsysDbContext database)
         return $"Case {recordNumber} was created for {conditionName}; a notification has "
             + "been raised to public health.";
     }
+
+    /// <summary>
+    /// The review state of each of the messages with these ids that exists,
+    /// and whether it parsed — a parsed message has a message type, one that
+    /// never parsed has none. An id no message has is absent from the answer.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<int, MessageState>> States(
+        IReadOnlyList<int> ids, CancellationToken cancellationToken) =>
+        await database.StagedMessages
+            .Where(message => ids.Contains(message.Id))
+            .ToDictionaryAsync(
+                message => message.Id,
+                message => new MessageState(message.ReviewStatus, message.MessageType != null),
+                cancellationToken);
+
+    /// <summary>
+    /// Moves the messages to a review state, and answers how many it moved.
+    /// </summary>
+    /// <remarks>
+    /// The endpoint judged each message's state before this, and message
+    /// processing may assign one in between; so the update itself leaves an
+    /// assigned message where it is, in the one statement that moves the rest,
+    /// and the count says how many moved.
+    /// </remarks>
+    public Task<int> Move(IReadOnlyList<int> ids, string status, CancellationToken cancellationToken) =>
+        database.StagedMessages
+            .Where(message => ids.Contains(message.Id)
+                && message.ReviewStatus != MessageReviewStatusRules.AssignedCode)
+            .ExecuteUpdateAsync(set => set.SetProperty(message => message.ReviewStatus, status), cancellationToken);
+
+    /// <summary>
+    /// Deletes the messages, their results with them by the cascade, and
+    /// answers how many it deleted.
+    /// </summary>
+    /// <remarks>
+    /// One statement that leaves an assigned message alone, for the reason
+    /// <see cref="Move"/> does: one assigned since the endpoint judged it is
+    /// kept as the record of the case it became.
+    /// </remarks>
+    public Task<int> Delete(IReadOnlyList<int> ids, CancellationToken cancellationToken) =>
+        database.StagedMessages
+            .Where(message => ids.Contains(message.Id)
+                && message.ReviewStatus != MessageReviewStatusRules.AssignedCode)
+            .ExecuteDeleteAsync(cancellationToken);
+
+    /// <summary>
+    /// Translates the messages again, as intake did when they arrived:
+    /// clears what the last translation wrote, queues each for review and
+    /// hands them to <see cref="ElrIntakeService.Translate"/>, which leaves
+    /// each queued or holds it again with why. Answers how many it retried.
+    /// </summary>
+    /// <remarks>
+    /// Only a message still held and parsed is read, so one that left its held
+    /// state since the endpoint judged it is left as it is. A held message is
+    /// not one promotion or message processing assigns, so none read here
+    /// becomes assigned before it is saved.
+    /// </remarks>
+    public async Task<int> Retry(IReadOnlyList<int> ids, CancellationToken cancellationToken)
+    {
+        var messages = await database.StagedMessages
+            .Where(message => ids.Contains(message.Id)
+                && message.MessageType != null
+                && (message.ReviewStatus == MessageReviewStatusRules.ExceptionCode
+                    || message.ReviewStatus == MessageReviewStatusRules.UnprocessedCode
+                    || message.ReviewStatus == MessageReviewStatusRules.LockedCode
+                    || message.ReviewStatus == MessageReviewStatusRules.GrayExceptionCode))
+            .Include(message => message.Results)
+            .ToListAsync(cancellationToken);
+
+        foreach (var message in messages)
+        {
+            message.ReviewStatus = MessageReviewStatusRules.EntryCode;
+            message.ExceptionDetail = null;
+            message.ConditionId = null;
+            message.AgencyId = null;
+            message.AllowNewCase = null;
+            message.AllowUpdateCase = null;
+            message.IsSurveillance = null;
+
+            foreach (var result in message.Results)
+            {
+                result.MasterLoinc = null;
+                result.ConditionId = null;
+                result.OrganismId = null;
+                result.Interpretation = null;
+            }
+        }
+
+        await ElrIntakeService.Translate(database, messages, cancellationToken);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return messages.Count;
+    }
 }
+
+/// <summary>
+/// A staged message's review-state code, and whether it parsed: what an action
+/// on the queue judges a message by.
+/// </summary>
+internal sealed record MessageState(string Status, bool Parsed);

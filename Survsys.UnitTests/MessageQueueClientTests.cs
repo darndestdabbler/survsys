@@ -321,6 +321,94 @@ public class MessageQueueClientTests
         Assert.Contains("404", matches.Failure);
     }
 
+    /// <summary>
+    /// Moving messages: the ids and the target state are posted to the move
+    /// URL, and how many moved comes back.
+    /// </summary>
+    [Fact]
+    public async Task MovePostsTheIdsAndTheStateAndTheCountComesBack()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new MessageQueueClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+
+            return Answer(HttpStatusCode.OK, """{ "count": 2 }""");
+        }));
+
+        var moved = await client.Move([11, 12], "pending");
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/staged-messages/move", sent?.RequestUri?.ToString());
+        Assert.Contains("\"ids\":[11,12]", body, StringComparison.Ordinal);
+        Assert.Contains("\"status\":\"pending\"", body, StringComparison.Ordinal);
+        Assert.Equal(2, moved.Value?.Count);
+    }
+
+    [Fact]
+    public async Task DeletePostsTheIdsToTheDeleteUrl()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new MessageQueueClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+
+            return Answer(HttpStatusCode.OK, """{ "count": 1 }""");
+        }));
+
+        var deleted = await client.Delete([11]);
+
+        Assert.Equal("http://api.example.test/api/staged-messages/delete", sent?.RequestUri?.ToString());
+        Assert.Contains("\"ids\":[11]", body, StringComparison.Ordinal);
+        Assert.Equal(1, deleted.Value?.Count);
+    }
+
+    [Fact]
+    public async Task RetryPostsTheIdsToTheRetryUrl()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new MessageQueueClient(Transport(request =>
+        {
+            sent = request;
+
+            return Answer(HttpStatusCode.OK, """{ "count": 3 }""");
+        }));
+
+        var retried = await client.Retry([11, 12, 13]);
+
+        Assert.Equal("http://api.example.test/api/staged-messages/retry", sent?.RequestUri?.ToString());
+        Assert.Equal(3, retried.Value?.Count);
+    }
+
+    /// <summary>
+    /// An action the API tier refused: each starts with its own prefix and
+    /// names the status, never the body.
+    /// </summary>
+    [Fact]
+    public async Task ARefusedActionCarriesItsOwnPrefix()
+    {
+        var client = new MessageQueueClient(Transport(_ => Answer(
+            HttpStatusCode.Conflict,
+            """{ "status": 409, "detail": "Message 11: This message has become a case." }""")));
+
+        var moved = await client.Move([11], "pending");
+        var deleted = await client.Delete([11]);
+        var retried = await client.Retry([11]);
+
+        Assert.StartsWith(MessageQueueClient.MoveFailurePrefix, moved.Failure);
+        Assert.StartsWith(MessageQueueClient.DeleteFailurePrefix, deleted.Failure);
+        Assert.StartsWith(MessageQueueClient.RetryFailurePrefix, retried.Failure);
+        Assert.Contains("409", deleted.Failure);
+        Assert.DoesNotContain("become a case", deleted.Failure, StringComparison.Ordinal);
+    }
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 

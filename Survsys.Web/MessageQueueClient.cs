@@ -22,9 +22,8 @@ namespace Survsys.Web;
 /// come back in <see cref="PagedResult{T}"/>, the one collection shape this
 /// solution puts on the wire.
 ///
-/// Read-only: this slice shows the queue and a message on its own. The promote
-/// action a reviewer takes from the review screen is a later step's, and it is
-/// added to this client there rather than reaching for a second one.
+/// Beside the reads, the actions a reviewer takes: promoting one message from
+/// the review screen, and moving, deleting or retrying many from the queue.
 /// </remarks>
 public sealed class MessageQueueClient(HttpClient http)
 {
@@ -51,6 +50,21 @@ public sealed class MessageQueueClient(HttpClient http)
     public const string MatchFailurePrefix = "The message's person matches could not be loaded";
 
     private static readonly ApiAsk Matching = new(MatchFailurePrefix, "the message's person matches");
+
+    /// <summary>How a failure to move messages starts.</summary>
+    public const string MoveFailurePrefix = "The messages could not be moved";
+
+    /// <summary>How a failure to delete messages starts.</summary>
+    public const string DeleteFailurePrefix = "The messages could not be deleted";
+
+    /// <summary>How a failure to retry messages starts.</summary>
+    public const string RetryFailurePrefix = "The messages could not be retried";
+
+    private static readonly ApiAsk Moving = new(MoveFailurePrefix, "how many messages were moved");
+
+    private static readonly ApiAsk Deleting = new(DeleteFailurePrefix, "how many messages were deleted");
+
+    private static readonly ApiAsk Retrying = new(RetryFailurePrefix, "how many messages were retried");
 
     /// <summary>
     /// One page of the intake queue, oldest first, narrowed to one review state
@@ -113,4 +127,32 @@ public sealed class MessageQueueClient(HttpClient http)
         CancellationToken cancellationToken = default) =>
         Matching.Get<StagedMessagePersonMatchResponse>(
             http, $"api/staged-messages/{id}/person-matches", cancellationToken);
+
+    /// <summary>
+    /// Moves the messages to a review state, answering with how many moved, or
+    /// with why none did — the API tier moves all of them or none.
+    /// </summary>
+    public Task<Asked<StagedMessageActionResponse>> Move(
+        IReadOnlyList<int> ids,
+        string status,
+        CancellationToken cancellationToken = default) =>
+        Moving.Post<StagedMessageActionRequest, StagedMessageActionResponse>(
+            http, "api/staged-messages/move", new StagedMessageActionRequest(ids, status), cancellationToken);
+
+    /// <summary>Deletes the messages, answering with how many were deleted, or with why none were.</summary>
+    public Task<Asked<StagedMessageActionResponse>> Delete(
+        IReadOnlyList<int> ids,
+        CancellationToken cancellationToken = default) =>
+        Deleting.Post<StagedMessageActionRequest, StagedMessageActionResponse>(
+            http, "api/staged-messages/delete", new StagedMessageActionRequest(ids), cancellationToken);
+
+    /// <summary>
+    /// Translates the held messages again, answering with how many were
+    /// retried, or with why none were.
+    /// </summary>
+    public Task<Asked<StagedMessageActionResponse>> Retry(
+        IReadOnlyList<int> ids,
+        CancellationToken cancellationToken = default) =>
+        Retrying.Post<StagedMessageActionRequest, StagedMessageActionResponse>(
+            http, "api/staged-messages/retry", new StagedMessageActionRequest(ids), cancellationToken);
 }

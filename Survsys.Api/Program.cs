@@ -111,6 +111,13 @@ builder.Services.AddSingleton<IMessageParser, OruR01Parser>();
 builder.Services.AddHostedService<ElrIntakeService>();
 builder.Services.AddHostedService<MllpListener>();
 
+// Automatic assignment and the graylist: a background worker that assigns the
+// queued messages it can assign with confidence, and releases and prunes
+// graylisted ones. Off unless a poll interval is configured.
+builder.Services.Configure<MessageProcessingOptions>(
+    builder.Configuration.GetSection(MessageProcessingOptions.SectionName));
+builder.Services.AddHostedService<MessageProcessingService>();
+
 // Direct transmission of a generated notification to CDC, in place of the
 // legacy Mirth export queue. A typed HttpClient so the transport is injected
 // and testable; off unless an endpoint is configured, so it is inert for a

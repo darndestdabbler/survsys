@@ -109,6 +109,8 @@ public class MessageQueueEndpointsTests
     [Theory]
     [InlineData(MessageReviewStatusRules.EntryCode)]
     [InlineData(MessageReviewStatusRules.PendingCode)]
+    [InlineData(MessageReviewStatusRules.SemiAutoCode)]
+    [InlineData(MessageReviewStatusRules.QaCode)]
     [InlineData(" entry ")]
     public void WhyNotPromotablePassesAMessageWaitingForReview(string reviewStatus)
     {
@@ -143,16 +145,106 @@ public class MessageQueueEndpointsTests
     }
 
     /// <summary>
-    /// A code the review vocabulary does not know is refused rather than
-    /// treated as promotable, and the message names the value so the row
-    /// holding it can be found.
+    /// A state that is not waiting for promotion, and a code the review
+    /// vocabulary does not know, are refused rather than treated as
+    /// promotable, and the message names the value so the row holding it can
+    /// be found.
     /// </summary>
-    [Fact]
-    public void WhyNotPromotableRefusesAnUnknownCode()
+    [Theory]
+    [InlineData(MessageReviewStatusRules.LockedCode)]
+    [InlineData(MessageReviewStatusRules.GrayCode)]
+    [InlineData("parked")]
+    public void WhyNotPromotableRefusesAStateNotWaitingForPromotion(string reviewStatus)
     {
-        var why = MessageQueueEndpoints.WhyNotPromotable("locked");
+        var why = MessageQueueEndpoints.WhyNotPromotable(reviewStatus);
 
         Assert.NotNull(why);
-        Assert.Contains("locked", why, StringComparison.Ordinal);
+        Assert.Contains(reviewStatus, why, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotAnActionPassesBetweenOneAndTheMostIds()
+    {
+        Assert.Null(MessageQueueEndpoints.WhyNotAnAction(new StagedMessageActionRequest([1])));
+        Assert.Null(MessageQueueEndpoints.WhyNotAnAction(
+            new StagedMessageActionRequest(Enumerable.Range(1, MessageQueueEndpoints.MaxActionIds).ToList())));
+    }
+
+    [Fact]
+    public void WhyNotAnActionRefusesNoIdsAndTooMany()
+    {
+        Assert.NotNull(MessageQueueEndpoints.WhyNotAnAction(new StagedMessageActionRequest([])));
+        Assert.NotNull(MessageQueueEndpoints.WhyNotAnAction(new StagedMessageActionRequest(null!)));
+        Assert.NotNull(MessageQueueEndpoints.WhyNotAnAction(
+            new StagedMessageActionRequest(Enumerable.Range(1, MessageQueueEndpoints.MaxActionIds + 1).ToList())));
+    }
+
+    [Theory]
+    [InlineData(MessageReviewStatusRules.EntryCode, MessageReviewStatusRules.PendingCode)]
+    [InlineData(MessageReviewStatusRules.ExceptionCode, MessageReviewStatusRules.SemiAutoCode)]
+    [InlineData(MessageReviewStatusRules.GrayCode, " gray-processed ")]
+    [InlineData(MessageReviewStatusRules.FilteredCode, MessageReviewStatusRules.EntryCode)]
+    public void WhyNotMovablePassesAMoveBetweenKnownStates(string from, string to)
+    {
+        Assert.Null(MessageQueueEndpoints.WhyNotMovable(from, to));
+    }
+
+    /// <summary>
+    /// Nothing moves into or out of assigned by hand, and a target that is not
+    /// a state is refused naming it.
+    /// </summary>
+    [Theory]
+    [InlineData(MessageReviewStatusRules.EntryCode, MessageReviewStatusRules.AssignedCode)]
+    [InlineData(MessageReviewStatusRules.AssignedCode, MessageReviewStatusRules.PendingCode)]
+    [InlineData(MessageReviewStatusRules.EntryCode, "parked")]
+    [InlineData(MessageReviewStatusRules.EntryCode, "")]
+    [InlineData(MessageReviewStatusRules.EntryCode, null)]
+    public void WhyNotMovableRefusesAssignedAndUnknownStates(string from, string? to)
+    {
+        Assert.NotNull(MessageQueueEndpoints.WhyNotMovable(from, to));
+    }
+
+    [Theory]
+    [InlineData(MessageReviewStatusRules.EntryCode)]
+    [InlineData(MessageReviewStatusRules.ExceptionCode)]
+    [InlineData(MessageReviewStatusRules.GrayUnprocessableCode)]
+    public void WhyNotDeletablePassesAMessageThatIsNotACase(string reviewStatus)
+    {
+        Assert.Null(MessageQueueEndpoints.WhyNotDeletable(reviewStatus));
+    }
+
+    [Fact]
+    public void WhyNotDeletableRefusesAnAssignedMessage()
+    {
+        Assert.NotNull(MessageQueueEndpoints.WhyNotDeletable(MessageReviewStatusRules.AssignedCode));
+    }
+
+    [Theory]
+    [InlineData(MessageReviewStatusRules.ExceptionCode)]
+    [InlineData(MessageReviewStatusRules.UnprocessedCode)]
+    [InlineData(MessageReviewStatusRules.LockedCode)]
+    [InlineData(MessageReviewStatusRules.GrayExceptionCode)]
+    public void WhyNotRetryablePassesAHeldParsedMessage(string reviewStatus)
+    {
+        Assert.Null(MessageQueueEndpoints.WhyNotRetryable(reviewStatus, parsed: true));
+    }
+
+    [Theory]
+    [InlineData(MessageReviewStatusRules.EntryCode)]
+    [InlineData(MessageReviewStatusRules.PendingCode)]
+    [InlineData(MessageReviewStatusRules.AssignedCode)]
+    [InlineData(MessageReviewStatusRules.GrayCode)]
+    public void WhyNotRetryableRefusesAMessageThatIsNotHeld(string reviewStatus)
+    {
+        Assert.NotNull(MessageQueueEndpoints.WhyNotRetryable(reviewStatus, parsed: true));
+    }
+
+    [Fact]
+    public void WhyNotRetryableRefusesAMessageThatNeverParsed()
+    {
+        var why = MessageQueueEndpoints.WhyNotRetryable(MessageReviewStatusRules.ExceptionCode, parsed: false);
+
+        Assert.NotNull(why);
+        Assert.Contains("never parsed", why, StringComparison.Ordinal);
     }
 }

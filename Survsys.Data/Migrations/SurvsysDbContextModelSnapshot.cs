@@ -13136,6 +13136,10 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("patient_zip");
 
+                    b.Property<int?>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
                     b.Property<bool>("QaFlagged")
                         .HasColumnType("bit")
                         .HasColumnName("qa_flag");
