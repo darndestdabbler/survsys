@@ -17,6 +17,8 @@ namespace Survsys.Contracts;
 /// <param name="LotNumber">The vaccine's lot number, or null where unrecorded.</param>
 /// <param name="ExpirationDate">The day the lot expires, or null where unrecorded.</param>
 /// <param name="Comment">A note on the record, or null where none was written.</param>
+/// <param name="Manufacturer">The vaccine's manufacturer, as its code, or null.</param>
+/// <param name="InformationSource">Where the record's information came from, as its code, or null.</param>
 public record VaccineRecordResponse(
     int Id,
     int VaccineId,
@@ -25,4 +27,6 @@ public record VaccineRecordResponse(
     int? DoseNumber,
     string? LotNumber,
     DateOnly? ExpirationDate,
-    string? Comment);
+    string? Comment,
+    string? Manufacturer = null,
+    string? InformationSource = null);

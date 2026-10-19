@@ -37,6 +37,8 @@ public class VaccineEndpointsTests
             LotNumber = "ABC123",
             ExpirationDate = new DateOnly(2027, 3, 1),
             Comment = "No reaction",
+            Manufacturer = "MSD",
+            InformationSource = "PHC1435",
             CreatedAt = new DateTimeOffset(2026, 3, 2, 9, 0, 0, TimeSpan.Zero),
         };
 
@@ -49,7 +51,9 @@ public class VaccineEndpointsTests
                 2,
                 "ABC123",
                 new DateOnly(2027, 3, 1),
-                "No reaction"),
+                "No reaction",
+                "MSD",
+                "PHC1435"),
             VaccineEndpoints.RecordToResponse.Compile().Invoke(record, "MMR"));
     }
 
@@ -99,6 +103,24 @@ public class VaccineEndpointsTests
                 15,
                 new DateOnly(2026, 3, 1),
                 ExpirationDate: new DateOnly(2026, 2, 1))),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotAVaccineRecordRefusesAManufacturerLongerThanTheColumn()
+    {
+        Assert.Contains("manufacturer is longer than 50",
+            VaccineEndpoints.WhyNotAVaccineRecord(
+                new SaveVaccineRecordRequest(15, Manufacturer: new string('a', 51))),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotAVaccineRecordRefusesAnInformationSourceLongerThanTheColumn()
+    {
+        Assert.Contains("informationSource is longer than 50",
+            VaccineEndpoints.WhyNotAVaccineRecord(
+                new SaveVaccineRecordRequest(15, InformationSource: new string('a', 51))),
             StringComparison.Ordinal);
     }
 

@@ -451,6 +451,41 @@ public class PersonConditionsClientTests
         Assert.Contains("400", promoted.Failure);
     }
 
+    [Fact]
+    public async Task SaveBriefNotePutsTheNoteAndTheReportComesBack()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new PersonConditionsClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Answer(HttpStatusCode.OK,
+                """{ "id": 11, "personId": 13, "conditionId": 74, "recordNumber": "202600001", "createdAt": "2026-03-12T22:07:16-06:00", "briefNote": "Call back Monday" }""");
+        }));
+
+        var saved = await client.SaveBriefNote(11, "Call back Monday");
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/person-conditions/11/brief-note", sent?.RequestUri?.ToString());
+        Assert.Contains("\"briefNote\":\"Call back Monday\"", body, StringComparison.Ordinal);
+        Assert.Equal("Call back Monday", saved.Value?.BriefNote);
+    }
+
+    [Fact]
+    public async Task SaveBriefNoteThatWasRefusedCarriesTheBriefNotePrefix()
+    {
+        var client = new PersonConditionsClient(Transport(_ => Answer(
+            HttpStatusCode.BadRequest,
+            """{ "status": 400, "detail": "briefNote is longer than 500 characters." }""")));
+
+        var saved = await client.SaveBriefNote(11, new string('n', 501));
+
+        Assert.False(saved.Succeeded);
+        Assert.StartsWith(PersonConditionsClient.BriefNoteFailurePrefix, saved.Failure);
+    }
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 

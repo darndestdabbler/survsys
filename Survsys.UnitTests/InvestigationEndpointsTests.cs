@@ -40,6 +40,7 @@ public class InvestigationEndpointsTests
         RiskFactorsNotes = "Returned 2026-03-01",
         OtherData1 = "one",
         OtherData2 = "two",
+        Occupation = "Line cook",
     };
 
     private static UpdateInvestigationRequest AllNull() =>
@@ -62,7 +63,8 @@ public class InvestigationEndpointsTests
                 RiskFactors: "Travel to an endemic area",
                 RiskFactorsNotes: "Returned 2026-03-01",
                 OtherData1: "one",
-                OtherData2: "two"),
+                OtherData2: "two",
+                Occupation: "Line cook"),
             response);
     }
 
@@ -84,6 +86,7 @@ public class InvestigationEndpointsTests
         report.RiskFactorsNotes = null;
         report.OtherData1 = null;
         report.OtherData2 = null;
+        report.Occupation = null;
 
         var response = InvestigationEndpoints.ToResponse.Compile().Invoke(report);
 
@@ -224,6 +227,22 @@ public class InvestigationEndpointsTests
         Assert.Contains($"dayCareAssociation '{code}' is not an answer",
             InvestigationEndpoints.WhyNotInvestigation(
                 AllNull() with { DayCareAssociation = code }),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotInvestigationAcceptsAnOccupation()
+    {
+        Assert.Null(InvestigationEndpoints.WhyNotInvestigation(
+            AllNull() with { Occupation = "Line cook" }));
+    }
+
+    [Fact]
+    public void WhyNotInvestigationRefusesAnOccupationLongerThanTheColumn()
+    {
+        Assert.Contains("occupation is longer than 255",
+            InvestigationEndpoints.WhyNotInvestigation(
+                AllNull() with { Occupation = new string('a', 256) }),
             StringComparison.Ordinal);
     }
 

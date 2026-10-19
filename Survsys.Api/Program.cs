@@ -91,6 +91,7 @@ builder.Services.AddOutbreaks();
 builder.Services.AddForms();
 builder.Services.AddTreatments();
 builder.Services.AddVaccines();
+builder.Services.AddEncounters();
 builder.Services.AddIbis();
 builder.Services.AddReports();
 
@@ -192,6 +193,7 @@ app.MapOutbreaks();
 app.MapForms();
 app.MapTreatments();
 app.MapVaccines();
+app.MapEncounters();
 app.MapIbis();
 app.MapReports();
 

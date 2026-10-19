@@ -319,6 +319,77 @@ public class PersonConditionEndpointsTests(SqlServerFixture server) : IDisposabl
     }
 
     /// <summary>
+    /// The header's brief note is saved and read back on the report, a blank
+    /// one clears it, an over-long one is refused, and a report nobody has is
+    /// a 404; the LHD and state case status the Administrative tab saves are
+    /// read back on the report too.
+    /// </summary>
+    [Fact]
+    public async Task TheBriefNoteAndTheCaseStatusesReadBackOnTheReport()
+    {
+        await Clear();
+
+        var person = await PersonId("Doe, ");
+        var condition = await ActiveConditionId();
+        var client = api.CreateClient();
+
+        try
+        {
+            var report = await Open(new CreatePersonConditionRequest(person, condition));
+
+            using (var saved = await client.PutAsJsonAsync(
+                $"/api/person-conditions/{report.Id}/brief-note",
+                new UpdateBriefNoteRequest("  Call back Monday  "),
+                Json))
+            {
+                Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+                var answered = (await saved.Content.ReadFromJsonAsync<PersonConditionResponse>(Json))!;
+                Assert.Equal("Call back Monday", answered.BriefNote);
+            }
+
+            var read = (await client.GetFromJsonAsync<PersonConditionResponse>(
+                $"/api/person-conditions/{report.Id}", Json))!;
+            Assert.Equal("Call back Monday", read.BriefNote);
+
+            using (var tooLong = await client.PutAsJsonAsync(
+                $"/api/person-conditions/{report.Id}/brief-note",
+                new UpdateBriefNoteRequest(new string('n', 501)),
+                Json))
+            {
+                Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+            }
+
+            using (var cleared = await client.PutAsJsonAsync(
+                $"/api/person-conditions/{report.Id}/brief-note", new UpdateBriefNoteRequest("  "), Json))
+            {
+                Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+                Assert.Null((await cleared.Content.ReadFromJsonAsync<PersonConditionResponse>(Json))!.BriefNote);
+            }
+
+            using (var admin = await client.PutAsJsonAsync(
+                $"/api/person-conditions/{report.Id}/administrative",
+                new UpdateAdministrativeRequest(11, 12, null, null, null, null, null, null, null),
+                Json))
+            {
+                Assert.Equal(HttpStatusCode.OK, admin.StatusCode);
+            }
+
+            var withStatuses = (await client.GetFromJsonAsync<PersonConditionResponse>(
+                $"/api/person-conditions/{report.Id}", Json))!;
+            Assert.Equal(11, withStatuses.LhdCaseStatusId);
+            Assert.Equal(12, withStatuses.StateCaseStatusId);
+        }
+        finally
+        {
+            await Clear();
+        }
+
+        using var missing = await client.PutAsJsonAsync(
+            "/api/person-conditions/987654/brief-note", new UpdateBriefNoteRequest("note"), Json);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+    }
+
+    /// <summary>
     /// A body that is not a report at all: the framework refuses to bind it
     /// and <c>UseStatusCodePages</c> turns that into the one error shape this
     /// tier returns.

@@ -4,7 +4,8 @@ namespace Survsys.Web;
 
 /// <summary>
 /// The application tier's reader and writer of <c>/api/treatments</c>: the
-/// treatment catalogue and the conditions each treatment is listed for.
+/// treatment catalogue and the conditions each treatment is listed for — and,
+/// under <c>/api/cases</c>, the treatments recorded against a case.
 /// </summary>
 /// <remarks>
 /// It is the only thing in this tier that speaks HTTP about treatments, and the
@@ -31,6 +32,12 @@ public sealed class TreatmentsClient(HttpClient http)
     /// <summary>How a failure to load the conditions starts.</summary>
     public const string ConditionsFailurePrefix = "The conditions could not be loaded";
 
+    /// <summary>How a failure to load a case's treatment records starts.</summary>
+    public const string RecordsFailurePrefix = "The case's treatments could not be loaded";
+
+    /// <summary>How a failure to add, save or remove a case's treatment record starts.</summary>
+    public const string RecordSaveFailurePrefix = "The treatment record could not be saved";
+
     /// <summary>The largest page the lists ask for, wide enough to be the only one.</summary>
     private const int PageSize = 200;
 
@@ -41,6 +48,10 @@ public sealed class TreatmentsClient(HttpClient http)
     private static readonly ApiAsk Saving = new(SaveFailurePrefix, "the treatment as saved");
 
     private static readonly ApiAsk AskingConditions = new(ConditionsFailurePrefix, "a list of conditions");
+
+    private static readonly ApiAsk AskingRecords = new(RecordsFailurePrefix, "the case's treatment records");
+
+    private static readonly ApiAsk SavingRecord = new(RecordSaveFailurePrefix, "the record as saved");
 
     /// <summary>Every treatment, ordered by name, or why there is no list.</summary>
     public Task<Asked<PagedResult<TreatmentResponse>>> All(
@@ -84,4 +95,48 @@ public sealed class TreatmentsClient(HttpClient http)
             http,
             $"api/conditions?pageSize={PageSize}",
             cancellationToken);
+
+    /// <summary>The treatments a condition is listed for, ordered by name, or why there is no list.</summary>
+    public Task<Asked<PagedResult<TreatmentResponse>>> ForCondition(
+        int conditionId,
+        CancellationToken cancellationToken = default) =>
+        Ask.Get<PagedResult<TreatmentResponse>>(
+            http,
+            $"api/conditions/{conditionId}/treatments?pageSize={PageSize}",
+            cancellationToken);
+
+    /// <summary>A case's treatment records, newest started first, or why there is none.</summary>
+    public Task<Asked<List<TreatmentRecordResponse>>> Records(
+        int personConditionId,
+        CancellationToken cancellationToken = default) =>
+        AskingRecords.Get<List<TreatmentRecordResponse>>(
+            http,
+            $"api/cases/{personConditionId}/treatments",
+            cancellationToken);
+
+    /// <summary>Records a treatment against the case, answering with it or why it was not.</summary>
+    public Task<Asked<TreatmentRecordResponse>> Add(
+        int personConditionId,
+        SaveTreatmentRecordRequest request,
+        CancellationToken cancellationToken = default) =>
+        SavingRecord.Post<SaveTreatmentRecordRequest, TreatmentRecordResponse>(
+            http,
+            $"api/cases/{personConditionId}/treatments",
+            request,
+            cancellationToken);
+
+    /// <summary>Saves over a case's treatment record, answering with it or why it was not.</summary>
+    public Task<Asked<TreatmentRecordResponse>> Update(
+        int id,
+        SaveTreatmentRecordRequest request,
+        CancellationToken cancellationToken = default) =>
+        SavingRecord.Put<SaveTreatmentRecordRequest, TreatmentRecordResponse>(
+            http,
+            $"api/cases/treatments/{id}",
+            request,
+            cancellationToken);
+
+    /// <summary>Removes a case's treatment record, answering with null on success or why it was not.</summary>
+    public Task<string?> Delete(int id, CancellationToken cancellationToken = default) =>
+        SavingRecord.Delete(http, $"api/cases/treatments/{id}", cancellationToken);
 }

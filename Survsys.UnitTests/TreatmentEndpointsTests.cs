@@ -76,6 +76,62 @@ public class TreatmentEndpointsTests
     }
 
     [Fact]
+    public void WhyNotATreatmentRecordAcceptsATreatmentAlone()
+    {
+        Assert.Null(TreatmentEndpoints.WhyNotATreatmentRecord(new SaveTreatmentRecordRequest(7)));
+    }
+
+    [Fact]
+    public void WhyNotATreatmentRecordAcceptsEveryFieldSet()
+    {
+        Assert.Null(TreatmentEndpoints.WhyNotATreatmentRecord(new SaveTreatmentRecordRequest(
+            7,
+            new DateOnly(2026, 3, 1),
+            new DateOnly(2026, 3, 14),
+            "100 mg twice daily",
+            "Tolerated well")));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void WhyNotATreatmentRecordRefusesNoTreatmentChosen(int treatmentId)
+    {
+        Assert.Contains("treatmentId is required",
+            TreatmentEndpoints.WhyNotATreatmentRecord(new SaveTreatmentRecordRequest(treatmentId)),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotATreatmentRecordRefusesAStopBeforeTheStart()
+    {
+        Assert.Contains("before treatmentDate",
+            TreatmentEndpoints.WhyNotATreatmentRecord(new SaveTreatmentRecordRequest(
+                7,
+                new DateOnly(2026, 3, 14),
+                new DateOnly(2026, 3, 1))),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotATreatmentRecordRefusesADoseLongerThanTheColumn()
+    {
+        Assert.Contains("dose is longer than 100",
+            TreatmentEndpoints.WhyNotATreatmentRecord(
+                new SaveTreatmentRecordRequest(7, Dose: new string('a', 101))),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotATreatmentRecordRefusesACommentLongerThanTheColumn()
+    {
+        Assert.Contains("comment is longer than 1000",
+            TreatmentEndpoints.WhyNotATreatmentRecord(
+                new SaveTreatmentRecordRequest(7, Comment: new string('a', 1_001))),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NotAConditionNamesTheCondition()
     {
         Assert.Contains("conditionId 42", TreatmentEndpoints.NotACondition(42), StringComparison.Ordinal);

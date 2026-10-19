@@ -157,6 +157,10 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<PersonVaccine> PersonVaccines => Set<PersonVaccine>();
 
+    public DbSet<PersonTreatment> PersonTreatments => Set<PersonTreatment>();
+
+    public DbSet<Encounter> Encounters => Set<Encounter>();
+
     public DbSet<WorkflowHistoryEntry> WorkflowHistory => Set<WorkflowHistoryEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>

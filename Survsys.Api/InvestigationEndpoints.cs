@@ -39,11 +39,14 @@ public static class InvestigationEndpoints
     /// </summary>
     private static readonly string[] Answers = ["Yes", "No", "Unknown"];
 
+    /// <summary>The longest occupation the column holds.</summary>
+    private const int OccupationLength = 255;
+
     /// <summary>
     /// The projection from a report to the investigation wire shape.
     /// </summary>
     /// <remarks>
-    /// One parameter, because all ten fields are the report's own: EF Core
+    /// One parameter, because all eleven fields are the report's own: EF Core
     /// translates it as the <c>SELECT</c> of the read. A unit test compiles and
     /// invokes the same expression to prove what it carries. Public because
     /// the unit suite proves it; nothing else names it.
@@ -60,7 +63,8 @@ public static class InvestigationEndpoints
             report.RiskFactors,
             report.RiskFactorsNotes,
             report.OtherData1,
-            report.OtherData2);
+            report.OtherData2,
+            report.Occupation);
 
     /// <summary>
     /// <see cref="ToResponse"/> compiled, for the save, which has the report in
@@ -92,7 +96,10 @@ public static class InvestigationEndpoints
         return WhyNotAnAnswer("foodHandler", request.FoodHandler)
             ?? WhyNotAnAnswer("healthcareWorker", request.HealthcareWorker)
             ?? WhyNotAnAnswer("groupLiving", request.GroupLiving)
-            ?? WhyNotAnAnswer("dayCareAssociation", request.DayCareAssociation);
+            ?? WhyNotAnAnswer("dayCareAssociation", request.DayCareAssociation)
+            ?? (request.Occupation?.Trim().Length > OccupationLength
+                ? $"occupation is longer than {OccupationLength} characters."
+                : null);
     }
 
     /// <summary>
@@ -230,6 +237,9 @@ internal sealed class InvestigationQueries(SurvsysDbContext database)
         report.RiskFactorsNotes = request.RiskFactorsNotes;
         report.OtherData1 = request.OtherData1;
         report.OtherData2 = request.OtherData2;
+        report.Occupation = string.IsNullOrWhiteSpace(request.Occupation)
+            ? null
+            : request.Occupation.Trim();
 
         await database.SaveChangesAsync(cancellationToken);
 

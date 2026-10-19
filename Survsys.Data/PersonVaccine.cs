@@ -9,8 +9,10 @@ namespace Survsys.Data;
 /// <c>legacy/nedss-jpa/src/main/resources/db/migration/V0169__create_vaccine_tables.sql</c>
 /// under <c>../nedss</c>, kept to the lean set a case's record needs: the
 /// vaccine, its dose number, the administered and expiration dates, a lot
-/// number and a comment. The legacy manufacturer and information-source foreign
-/// keys and the export and external-identity columns
+/// number and a comment. Session 63 adds the manufacturer and the information
+/// source, held as the legacy codes rather than as keys into the legacy
+/// <c>vaccine_manufacturer</c> and <c>vaccine_information_source</c> tables,
+/// which do not exist here. The export and external-identity columns
 /// (<c>national_drug_code</c>, <c>vaccination_record_identifier</c>,
 /// <c>data_source</c>) are left out.
 ///
@@ -66,6 +68,20 @@ public class PersonVaccine
     /// unbounded as other free-text columns are.
     /// </summary>
     public string? Comment { get; set; }
+
+    /// <summary>
+    /// The vaccine's manufacturer, as the legacy manufacturer's code; null
+    /// where unrecorded.
+    /// </summary>
+    public string? Manufacturer { get; set; }
+
+    /// <summary>
+    /// Where the record's information came from, as the legacy
+    /// <c>vaccine_information_source</c> code (<c>06</c> for a birth
+    /// certificate, <c>PHC1435</c> for the patient's recall and so on); null
+    /// where unrecorded.
+    /// </summary>
+    public string? InformationSource { get; set; }
 
     /// <summary>
     /// When the record was entered. A <see cref="DateTimeOffset"/> as

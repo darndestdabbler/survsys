@@ -88,7 +88,44 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <MudText Typo="Typo.caption">Case status</MudText>
                 <MudText id="report-header-case-status" Typo="Typo.body1">@Status</MudText>
             </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Investigator</MudText>
+                <MudText id="report-header-investigator" Typo="Typo.body1">@(InvestigatorName ?? "Not assigned")</MudText>
+            </MudItem>
+            @* The two per-jurisdiction statuses are shown as the identifiers the
+               Administrative tab stores until their code list exists. *@
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">State case status</MudText>
+                <MudText id="report-header-state-case-status" Typo="Typo.body1">@shown.StateCaseStatusId</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">LHD case status</MudText>
+                <MudText id="report-header-lhd-case-status" Typo="Typo.body1">@shown.LhdCaseStatusId</MudText>
+            </MudItem>
         </MudGrid>
+
+        @* The brief note: a line kept at the top of the case, saved on its
+           own, as the legacy header's text box and Save button are. *@
+        <MudGrid Spacing="2" Class="align-center mt-2">
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="briefNote" id="report-header-brief-note" Label="Brief note"
+                              Variant="Variant.Outlined" MaxLength="500" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudButton id="report-header-brief-note-save" Variant="Variant.Outlined" Color="Color.Primary"
+                           Disabled="@savingBriefNote" OnClick="@SaveBriefNote">
+                    Save note
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        @if (briefNoteError is { } whyNotNoted)
+        {
+            <MudAlert id="report-header-brief-note-error" Severity="Severity.Error" Variant="Variant.Filled"
+                      Class="mt-2">
+                @whyNotNoted
+            </MudAlert>
+        }
 
         @* A contact event is promoted to a morbidity report when the contact
            turns out to have the condition; the API tier refuses it on any
@@ -336,6 +373,22 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <VaccinesTab ReportId="@shown.Id" />
             </ChildContent>
         </MudTabPanel>
+        <MudTabPanel Text="Treatments">
+            <TabContent>
+                <span id="report-tab-treatments">Treatments</span>
+            </TabContent>
+            <ChildContent>
+                <TreatmentsTab ReportId="@shown.Id" ConditionId="@shown.ConditionId" />
+            </ChildContent>
+        </MudTabPanel>
+        <MudTabPanel Text="Encounters">
+            <TabContent>
+                <span id="report-tab-encounters">Encounters</span>
+            </TabContent>
+            <ChildContent>
+                <EncountersTab ReportId="@shown.Id" />
+            </ChildContent>
+        </MudTabPanel>
         <MudTabPanel Text="Contacts">
             <TabContent>
                 <span id="report-tab-contacts">Contacts</span>
@@ -385,6 +438,12 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     private string? failure;
 
     private string? statusCode;
+
+    private string? briefNote;
+
+    private bool savingBriefNote;
+
+    private string? briefNoteError;
 
     private bool savingStatus;
 
@@ -443,6 +502,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
 
         report = shown;
         statusCode = shown.CaseStatus;
+        briefNote = shown.BriefNote;
 
         var who = await Persons.Find(shown.PersonId);
         var conditions = await Conditions.Page(1, Catalogue);
@@ -609,6 +669,40 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         finally
         {
             promoting = false;
+        }
+    }
+
+    /// <summary>
+    /// Saves the brief note through the API tier and replaces the shown report
+    /// with the answer, so the box holds the note as stored.
+    /// </summary>
+    private async Task SaveBriefNote()
+    {
+        if (report is not { } current)
+        {
+            return;
+        }
+
+        briefNoteError = null;
+        savingBriefNote = true;
+
+        try
+        {
+            var answered = await Reports.SaveBriefNote(current.Id, Blank(briefNote));
+
+            if (answered.Value is { } updated)
+            {
+                report = updated;
+                briefNote = updated.BriefNote;
+            }
+            else
+            {
+                briefNoteError = answered.Failure;
+            }
+        }
+        finally
+        {
+            savingBriefNote = false;
         }
     }
 

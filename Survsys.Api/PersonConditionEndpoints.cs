@@ -65,7 +65,10 @@ public static class PersonConditionEndpoints
             report.MmwrYear,
             report.WorkflowState,
             report.InvestigatorId,
-            report.EventType);
+            report.EventType,
+            report.BriefNote,
+            report.LhdCaseStatusId,
+            report.StateCaseStatusId);
 
     /// <summary>
     /// <see cref="ToResponse"/> compiled, for the one caller that has a report
@@ -161,6 +164,26 @@ public static class PersonConditionEndpoints
         }
 
         return null;
+    }
+
+    /// <summary>Room for the report header's brief note.</summary>
+    public const int BriefNoteLength = 500;
+
+    /// <summary>
+    /// Why this is not a brief note this tier will save, or null when it is
+    /// one: a note longer than the column is refused, and a blank one clears it.
+    /// </summary>
+    /// <remarks>
+    /// Public because the unit suite proves it. Nothing outside this file calls
+    /// it.
+    /// </remarks>
+    public static string? WhyNotABriefNote(UpdateBriefNoteRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return request.BriefNote?.Trim().Length > BriefNoteLength
+            ? $"briefNote is longer than {BriefNoteLength} characters."
+            : null;
     }
 
     /// <summary>Room for the note a workflow move carries.</summary>
@@ -300,6 +323,10 @@ public static class PersonConditionEndpoints
             .WithName("SetPersonConditionStatus")
             .WithSummary("Sets a case morbidity report's case status.");
 
+        routes.MapPut("/api/person-conditions/{id:int}/brief-note", SetBriefNote)
+            .WithName("SetPersonConditionBriefNote")
+            .WithSummary("Saves a case morbidity report's brief note.");
+
         routes.MapGet("/api/person-conditions/{id:int}/workflow", GetWorkflow)
             .WithName("GetPersonConditionWorkflow")
             .WithSummary("A case morbidity report's workflow state, the moves the caller may "
@@ -406,6 +433,31 @@ public static class PersonConditionEndpoints
         }
 
         if (await reports.SetStatus(id, request, cancellationToken) is not { } report)
+        {
+            return TypedResults.Problem(
+                detail: $"No case morbidity report has id {id}.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "There is no such case morbidity report.");
+        }
+
+        return TypedResults.Ok(report);
+    }
+
+    private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> SetBriefNote(
+        PersonConditionQueries reports,
+        int id,
+        UpdateBriefNoteRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotABriefNote(request) is { } why)
+        {
+            return TypedResults.Problem(
+                detail: why,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The brief note asked for is not one this endpoint can save.");
+        }
+
+        if (await reports.SetBriefNote(id, request, cancellationToken) is not { } report)
         {
             return TypedResults.Problem(
                 detail: $"No case morbidity report has id {id}.",
@@ -830,6 +882,31 @@ internal sealed class PersonConditionQueries(
 
         report.CaseStatus = request.CaseStatus;
         await QueueForNotification(report.Id, cancellationToken);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return PersonConditionEndpoints.Respond(report);
+    }
+
+    /// <summary>
+    /// Saves the report's brief note, trimmed and with a blank one stored as
+    /// null, and answers the report; null where no report has that id.
+    /// </summary>
+    public async Task<PersonConditionResponse?> SetBriefNote(
+        int id,
+        UpdateBriefNoteRequest request,
+        CancellationToken cancellationToken)
+    {
+        var report = await database.PersonConditions
+            .SingleOrDefaultAsync(report => report.Id == id, cancellationToken);
+
+        if (report is null)
+        {
+            return null;
+        }
+
+        report.BriefNote = string.IsNullOrWhiteSpace(request.BriefNote)
+            ? null
+            : request.BriefNote.Trim();
         await database.SaveChangesAsync(cancellationToken);
 
         return PersonConditionEndpoints.Respond(report);

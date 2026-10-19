@@ -59,6 +59,7 @@ namespace Survsys.Contracts;
 /// <param name="OtherData2">
 /// The second catch-all field, as free text, or null where it is empty.
 /// </param>
+/// <param name="Occupation">The person's occupation, or null.</param>
 public record InvestigationResponse(
     int ReportId,
     string? FoodHandler,
@@ -70,4 +71,5 @@ public record InvestigationResponse(
     string? RiskFactors,
     string? RiskFactorsNotes,
     string? OtherData1,
-    string? OtherData2);
+    string? OtherData2,
+    string? Occupation = null);

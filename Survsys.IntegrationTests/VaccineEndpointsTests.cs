@@ -57,7 +57,9 @@ public class VaccineEndpointsTests(SqlServerFixture server) : IDisposable
                 DoseNumber: 2,
                 LotNumber: "ABC123",
                 ExpirationDate: new DateOnly(2027, 3, 1),
-                Comment: "No reaction"));
+                Comment: "No reaction",
+                Manufacturer: "MSD",
+                InformationSource: "PHC1435"));
 
             Assert.Equal(vaccine, created.VaccineId);
             Assert.Equal("MMR", created.VaccineDescription);
@@ -72,6 +74,8 @@ public class VaccineEndpointsTests(SqlServerFixture server) : IDisposable
             Assert.Equal("MMR", read.VaccineDescription);
             Assert.Equal("ABC123", read.LotNumber);
             Assert.Equal("No reaction", read.Comment);
+            Assert.Equal("MSD", read.Manufacturer);
+            Assert.Equal("PHC1435", read.InformationSource);
         }
         finally
         {

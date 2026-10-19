@@ -7,8 +7,9 @@
 
    Every element carries a stable identifier: the edit and remove buttons for a
    record are vaccines-tab-edit-{id} and vaccines-tab-remove-{id}, and the form
-   fields are vaccines-tab-vaccine, -dose, -administered, -expiration, -lot and
-   -comment. *@
+   fields are vaccines-tab-vaccine, -dose, -administered, -expiration, -lot,
+   -manufacturer, -information-source and -comment. The manufacturer and the
+   information source are typed as their legacy codes until their lists exist. *@
 @using System.Globalization
 @inject VaccinesClient Api
 
@@ -36,6 +37,8 @@ else
                     <th>Dose</th>
                     <th>Lot</th>
                     <th>Expires</th>
+                    <th>Manufacturer</th>
+                    <th>Source</th>
                     <th>Comment</th>
                     <th></th>
                 </tr>
@@ -44,7 +47,7 @@ else
                 @if (records.Count == 0)
                 {
                     <tr id="vaccines-tab-empty">
-                        <td colspan="7">No vaccines are recorded for this case.</td>
+                        <td colspan="9">No vaccines are recorded for this case.</td>
                     </tr>
                 }
                 @foreach (var record in records)
@@ -55,6 +58,8 @@ else
                         <td data-vaccine-dose>@record.DoseNumber</td>
                         <td data-vaccine-lot>@record.LotNumber</td>
                         <td data-vaccine-expiration>@Day(record.ExpirationDate)</td>
+                        <td data-vaccine-manufacturer>@record.Manufacturer</td>
+                        <td data-vaccine-information-source>@record.InformationSource</td>
                         <td data-vaccine-comment>@record.Comment</td>
                         <td>
                             <MudButton id="@($"vaccines-tab-edit-{record.Id}")" Variant="Variant.Text"
@@ -114,6 +119,14 @@ else
                               Label="Expiration date" Variant="Variant.Outlined"
                               InputType="InputType.Date" />
             </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="manufacturer" id="vaccines-tab-manufacturer"
+                              Label="Manufacturer (code)" Variant="Variant.Outlined" MaxLength="50" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="informationSource" id="vaccines-tab-information-source"
+                              Label="Information source (code)" Variant="Variant.Outlined" MaxLength="50" />
+            </MudItem>
             <MudItem xs="12">
                 <MudTextField @bind-Value="comment" id="vaccines-tab-comment" Label="Comment"
                               Variant="Variant.Outlined" Lines="2" />
@@ -163,6 +176,10 @@ else
 
     private string? comment;
 
+    private string? manufacturer;
+
+    private string? informationSource;
+
     private bool saving;
 
     private string? saved;
@@ -195,6 +212,8 @@ else
         expirationDate = record.ExpirationDate?.ToString(DateForm, CultureInfo.InvariantCulture);
         lotNumber = record.LotNumber;
         comment = record.Comment;
+        manufacturer = record.Manufacturer;
+        informationSource = record.InformationSource;
         saved = null;
         saveFailure = null;
     }
@@ -208,6 +227,8 @@ else
         expirationDate = null;
         lotNumber = null;
         comment = null;
+        manufacturer = null;
+        informationSource = null;
     }
 
     private async Task Save()
@@ -246,7 +267,9 @@ else
             doseNumber,
             Blank(lotNumber),
             expiration,
-            Blank(comment));
+            Blank(comment),
+            Blank(manufacturer),
+            Blank(informationSource));
 
         var answered = editingId is { } id
             ? await Api.Update(id, request)

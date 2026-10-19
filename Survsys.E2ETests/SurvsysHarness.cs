@@ -391,6 +391,8 @@ public sealed class SurvsysHarness : IDisposable
         "form_sections",
         "forms",
         "person_vaccines",
+        "person_treatments",
+        "encounters",
         "person_conditions",
         "outbreak_access",
         "outbreak_report_sections",

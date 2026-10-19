@@ -738,6 +738,50 @@ namespace Survsys.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Survsys.Data.Encounter", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateOnly>("EncounterDate")
+                        .HasColumnType("date")
+                        .HasColumnName("encounter_date");
+
+                    b.Property<string>("EncounterType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("encounter_type");
+
+                    b.Property<int?>("FacilityId")
+                        .HasColumnType("int")
+                        .HasColumnName("facility_id");
+
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FacilityId");
+
+                    b.HasIndex("PersonConditionId");
+
+                    b.ToTable("encounters", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.Exposure", b =>
                 {
                     b.Property<int>("Id")
@@ -1902,6 +1946,11 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("agency_id");
 
+                    b.Property<string>("BriefNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("brief_note");
+
                     b.Property<string>("CaseStatus")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
@@ -1947,6 +1996,10 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("morbidity")
                         .HasColumnName("event_type");
+
+                    b.Property<int?>("ExpectedDeliveryFacilityId")
+                        .HasColumnType("int")
+                        .HasColumnName("expected_delivery_facility_id");
 
                     b.Property<DateOnly?>("FirstReportedPhDate")
                         .HasColumnType("date")
@@ -2003,6 +2056,11 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("mmwr_year");
 
+                    b.Property<string>("Occupation")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("occupation");
+
                     b.Property<string>("OtherData1")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("other_data_1");
@@ -2023,6 +2081,15 @@ namespace Survsys.Data.Migrations
                     b.Property<int>("PersonId")
                         .HasColumnType("int")
                         .HasColumnName("person_id");
+
+                    b.Property<DateOnly?>("PregnancyDueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("pregnancy_due_date");
+
+                    b.Property<string>("Pregnant")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("pregnant");
 
                     b.Property<string>("RecordNumber")
                         .IsRequired()
@@ -2068,6 +2135,8 @@ namespace Survsys.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ConditionId");
+
+                    b.HasIndex("ExpectedDeliveryFacilityId");
 
                     b.HasIndex("InvestigatorId");
 
@@ -2221,6 +2290,54 @@ namespace Survsys.Data.Migrations
                     b.ToTable("person_telephones", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.PersonTreatment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("treatment_comment");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Dose")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("dose");
+
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.Property<DateOnly?>("StopTreatmentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("stop_treatment_date");
+
+                    b.Property<DateOnly?>("TreatmentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("treatment_date");
+
+                    b.Property<int>("TreatmentId")
+                        .HasColumnType("int")
+                        .HasColumnName("treatment_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonConditionId");
+
+                    b.HasIndex("TreatmentId");
+
+                    b.ToTable("person_treatments", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.PersonVaccine", b =>
                 {
                     b.Property<int>("Id")
@@ -2250,10 +2367,20 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("date")
                         .HasColumnName("expiration_date");
 
+                    b.Property<string>("InformationSource")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("information_source");
+
                     b.Property<string>("LotNumber")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("lot_number");
+
+                    b.Property<string>("Manufacturer")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("manufacturer");
 
                     b.Property<int>("PersonConditionId")
                         .HasColumnType("int")
@@ -3353,6 +3480,20 @@ namespace Survsys.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Survsys.Data.Encounter", b =>
+                {
+                    b.HasOne("Survsys.Data.Facility", null)
+                        .WithMany()
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Survsys.Data.ExposureContact", b =>
                 {
                     b.HasOne("Survsys.Data.Exposure", null)
@@ -3601,6 +3742,11 @@ namespace Survsys.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Survsys.Data.Facility", null)
+                        .WithMany()
+                        .HasForeignKey("ExpectedDeliveryFacilityId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Survsys.Data.User", null)
                         .WithMany()
                         .HasForeignKey("InvestigatorId")
@@ -3666,6 +3812,21 @@ namespace Survsys.Data.Migrations
                         .WithMany("Telephones")
                         .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.PersonTreatment", b =>
+                {
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.Treatment", null)
+                        .WithMany()
+                        .HasForeignKey("TreatmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

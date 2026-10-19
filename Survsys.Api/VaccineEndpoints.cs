@@ -34,6 +34,8 @@ public static class VaccineEndpoints
     /// </summary>
     public const int CommentLength = 1_000;
 
+    private const int CodeLength = 50;
+
     /// <summary>
     /// The projection from a stored vaccine to the catalogue row a picker reads.
     /// Public because the unit suite proves it; nothing else calls it.
@@ -62,7 +64,9 @@ public static class VaccineEndpoints
             record.DoseNumber,
             record.LotNumber,
             record.ExpirationDate,
-            record.Comment);
+            record.Comment,
+            record.Manufacturer,
+            record.InformationSource);
 
     /// <summary>
     /// <see cref="RecordToResponse"/> compiled, for a query that has
@@ -115,6 +119,16 @@ public static class VaccineEndpoints
         if (request.Comment?.Length > CommentLength)
         {
             return $"comment is longer than {CommentLength} characters.";
+        }
+
+        if (request.Manufacturer?.Trim().Length > CodeLength)
+        {
+            return $"manufacturer is longer than {CodeLength} characters.";
+        }
+
+        if (request.InformationSource?.Trim().Length > CodeLength)
+        {
+            return $"informationSource is longer than {CodeLength} characters.";
         }
 
         return null;
@@ -316,6 +330,8 @@ internal sealed class VaccineQueries(SurvsysDbContext database)
             LotNumber = Text(request.LotNumber),
             ExpirationDate = request.ExpirationDate,
             Comment = Text(request.Comment),
+            Manufacturer = Text(request.Manufacturer),
+            InformationSource = Text(request.InformationSource),
             CreatedAt = DateTimeOffset.UtcNow,
         };
         database.PersonVaccines.Add(record);
@@ -347,6 +363,8 @@ internal sealed class VaccineQueries(SurvsysDbContext database)
         record.LotNumber = Text(request.LotNumber);
         record.ExpirationDate = request.ExpirationDate;
         record.Comment = Text(request.Comment);
+        record.Manufacturer = Text(request.Manufacturer);
+        record.InformationSource = Text(request.InformationSource);
         await database.SaveChangesAsync(cancellationToken);
 
         return await Respond(record, cancellationToken);

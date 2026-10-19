@@ -64,7 +64,8 @@ public class InvestigationAdministrativeEndpointsTests(SqlServerFixture server) 
                 RiskFactors: "Travel to an endemic area",
                 RiskFactorsNotes: null,
                 OtherData1: null,
-                OtherData2: null);
+                OtherData2: null,
+                Occupation: "Line cook");
 
             using var saved = await client.PutAsJsonAsync(
                 $"/api/person-conditions/{reportId}/investigation", request, Json);
@@ -94,6 +95,7 @@ public class InvestigationAdministrativeEndpointsTests(SqlServerFixture server) 
             Assert.Null(round.RiskFactorsNotes);
             Assert.Null(round.OtherData1);
             Assert.Null(round.OtherData2);
+            Assert.Equal("Line cook", round.Occupation);
         }
         finally
         {
@@ -305,7 +307,7 @@ public class InvestigationAdministrativeEndpointsTests(SqlServerFixture server) 
     }
 
     /// <summary>
-    /// Clears the ten investigation columns this test set, and no other, so
+    /// Clears the eleven investigation columns this test set, and no other, so
     /// the shared report reads to the rest of the collection as it did
     /// before. A report test may have deleted it meanwhile, which is nothing
     /// to clear.
@@ -326,12 +328,13 @@ public class InvestigationAdministrativeEndpointsTests(SqlServerFixture server) 
                 .SetProperty(column => column.RiskFactors, (string?)null)
                 .SetProperty(column => column.RiskFactorsNotes, (string?)null)
                 .SetProperty(column => column.OtherData1, (string?)null)
-                .SetProperty(column => column.OtherData2, (string?)null));
+                .SetProperty(column => column.OtherData2, (string?)null)
+                .SetProperty(column => column.Occupation, (string?)null));
     }
 
     /// <summary>
     /// Clears the ten administrative columns this test set, and no other,
-    /// for the reason <see cref="ClearInvestigationOf"/> clears its ten.
+    /// for the reason <see cref="ClearInvestigationOf"/> clears its eleven.
     /// </summary>
     private async Task ClearAdministrativeOf(int reportId)
     {

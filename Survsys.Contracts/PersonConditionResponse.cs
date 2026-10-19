@@ -67,6 +67,9 @@ namespace Survsys.Contracts;
 /// What kind of event this is — <c>morbidity</c>, <c>contact</c> or
 /// <c>assessment</c>.
 /// </param>
+/// <param name="BriefNote">The header's brief note, or null where none is written.</param>
+/// <param name="LhdCaseStatusId">The local health department's case status, as stored, or null.</param>
+/// <param name="StateCaseStatusId">The state's case status, as stored, or null.</param>
 public record PersonConditionResponse(
     int Id,
     int PersonId,
@@ -81,4 +84,7 @@ public record PersonConditionResponse(
     int? MmwrYear,
     string? WorkflowState,
     int? InvestigatorId = null,
-    string EventType = "morbidity");
+    string EventType = "morbidity",
+    string? BriefNote = null,
+    int? LhdCaseStatusId = null,
+    int? StateCaseStatusId = null);

@@ -661,4 +661,47 @@ public class PersonCondition
     /// <see cref="DateOnly"/> because the legacy column is a <c>DATE</c>.
     /// </summary>
     public DateOnly? IbisUpdatedAt { get; set; }
+
+    /// <summary>
+    /// The person's occupation, as the legacy <c>occupation</c> free text —
+    /// the Investigation tab's "Occupation"; null until entered.
+    /// </summary>
+    /// <remarks>
+    /// Added in session 63. Held on the case as the legacy holds it, because an
+    /// occupation is recorded for the exposure the case is about.
+    /// </remarks>
+    public string? Occupation { get; set; }
+
+    /// <summary>
+    /// Whether the person is pregnant, as the legacy <c>pregnant</c> code — one
+    /// of <c>Yes</c>, <c>No</c> or <c>Unknown</c>, and null until answered.
+    /// </summary>
+    /// <remarks>
+    /// Added in session 63 to the Clinical tab. A plain string holding the code
+    /// as <see cref="TreatmentGiven"/> does. The pregnancy itself is kept on the
+    /// case — <see cref="PregnancyDueDate"/> and
+    /// <see cref="ExpectedDeliveryFacilityId"/> — rather than in the legacy
+    /// person-level <c>person_pregnant</c> table, whose outcome, delivery and
+    /// insurance columns nothing here records.
+    /// </remarks>
+    public string? Pregnant { get; set; }
+
+    /// <summary>
+    /// The pregnancy's due date, as the legacy <c>pregnancy_due_date</c>; null
+    /// unless <see cref="Pregnant"/> is Yes and a date is known.
+    /// </summary>
+    public DateOnly? PregnancyDueDate { get; set; }
+
+    /// <summary>
+    /// The facility the delivery is expected at, as the legacy
+    /// <c>expected_delivery_facility_id</c> — a foreign key into
+    /// <see cref="Facility"/> that does not cascade; null where none is named.
+    /// </summary>
+    public int? ExpectedDeliveryFacilityId { get; set; }
+
+    /// <summary>
+    /// The report header's brief note, as the legacy <c>brief_note</c> — a
+    /// line an investigator keeps at the top of the case; null until written.
+    /// </summary>
+    public string? BriefNote { get; set; }
 }

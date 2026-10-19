@@ -9,7 +9,8 @@ namespace Survsys.Api;
 /// <summary>
 /// <c>/api/treatments</c>: the treatment catalogue and the condition-specific
 /// lists — which treatments a condition offers — that drive what an
-/// investigator is shown for a case's disease.
+/// investigator is shown for a case's disease — and, under
+/// <c>/api/cases</c>, the treatments recorded against a case.
 /// </summary>
 /// <remarks>
 /// The treatments are the <c>treatments</c> table and their condition lists the
@@ -27,6 +28,10 @@ namespace Survsys.Api;
 public static class TreatmentEndpoints
 {
     private const int NameLength = 200;
+
+    private const int DoseLength = 100;
+
+    private const int CommentLength = 1_000;
 
     /// <summary>
     /// The projection from a stored treatment and the count of conditions it is
@@ -91,6 +96,45 @@ public static class TreatmentEndpoints
     }
 
     /// <summary>
+    /// Why this is not a case treatment record this tier will save, or null
+    /// when it is one.
+    /// </summary>
+    /// <remarks>
+    /// Pure, as <see cref="VaccineEndpoints.WhyNotAVaccineRecord"/> is: whether
+    /// the treatment is in the catalogue is the database's to answer.
+    /// </remarks>
+    public static string? WhyNotATreatmentRecord(SaveTreatmentRecordRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request.TreatmentId < 1)
+        {
+            return "treatmentId is required: a record names the treatment given, chosen from "
+                + "the ones GET /api/treatments lists.";
+        }
+
+        if (request.TreatmentDate is { } started
+            && request.StopTreatmentDate is { } stopped
+            && stopped < started)
+        {
+            return "stopTreatmentDate is before treatmentDate: a treatment does not stop before "
+                + "it starts.";
+        }
+
+        if (request.Dose?.Trim().Length > DoseLength)
+        {
+            return $"dose is longer than {DoseLength} characters.";
+        }
+
+        if (request.Comment?.Trim().Length > CommentLength)
+        {
+            return $"comment is longer than {CommentLength} characters.";
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// The sentence a condition no treatment can be listed for is refused with,
     /// the same one <see cref="OutbreakEndpoints.NotACondition"/> uses.
     /// </summary>
@@ -124,8 +168,100 @@ public static class TreatmentEndpoints
             .WithName("GetConditionTreatments")
             .WithSummary("The treatments a condition is listed for, paged and ordered by name.");
 
+        routes.MapGet("/api/cases/{personConditionId:int}/treatments", GetCaseTreatments)
+            .WithName("GetCaseTreatments")
+            .WithSummary("A case's treatment records, newest started first.");
+
+        routes.MapPost("/api/cases/{personConditionId:int}/treatments", AddCaseTreatment)
+            .WithName("AddCaseTreatment")
+            .WithSummary("Records a treatment given to a case.");
+
+        routes.MapPut("/api/cases/treatments/{id:int}", UpdateCaseTreatment)
+            .WithName("UpdateCaseTreatment")
+            .WithSummary("Saves over a case's treatment record.");
+
+        routes.MapDelete("/api/cases/treatments/{id:int}", DeleteCaseTreatment)
+            .WithName("DeleteCaseTreatment")
+            .WithSummary("Removes a case's treatment record.");
+
         return routes;
     }
+
+    private static async Task<Results<Ok<IReadOnlyList<TreatmentRecordResponse>>, ProblemHttpResult>>
+        GetCaseTreatments(
+            TreatmentQueries treatments,
+            int personConditionId,
+            CancellationToken cancellationToken = default)
+    {
+        if (await treatments.Records(personConditionId, cancellationToken) is not { } records)
+        {
+            return NoSuchCase(personConditionId);
+        }
+
+        return TypedResults.Ok(records);
+    }
+
+    private static async Task<Results<Created<TreatmentRecordResponse>, ProblemHttpResult>> AddCaseTreatment(
+        TreatmentQueries treatments,
+        int personConditionId,
+        SaveTreatmentRecordRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotATreatmentRecord(request) is { } why)
+        {
+            return RefusedRecord(why);
+        }
+
+        if (!await treatments.CaseExists(personConditionId, cancellationToken))
+        {
+            return NoSuchCase(personConditionId);
+        }
+
+        if (!await treatments.TreatmentExists(request.TreatmentId, cancellationToken))
+        {
+            return RefusedRecord(NotATreatment(request.TreatmentId));
+        }
+
+        var created = await treatments.AddRecord(personConditionId, request, cancellationToken);
+
+        return TypedResults.Created($"/api/cases/treatments/{created.Id}", created);
+    }
+
+    private static async Task<Results<Ok<TreatmentRecordResponse>, ProblemHttpResult>> UpdateCaseTreatment(
+        TreatmentQueries treatments,
+        int id,
+        SaveTreatmentRecordRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotATreatmentRecord(request) is { } why)
+        {
+            return RefusedRecord(why);
+        }
+
+        if (!await treatments.TreatmentExists(request.TreatmentId, cancellationToken))
+        {
+            return RefusedRecord(NotATreatment(request.TreatmentId));
+        }
+
+        if (await treatments.UpdateRecord(id, request, cancellationToken) is not { } record)
+        {
+            return NoSuchRecord(id);
+        }
+
+        return TypedResults.Ok(record);
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteCaseTreatment(
+        TreatmentQueries treatments,
+        int id,
+        CancellationToken cancellationToken = default) =>
+        await treatments.DeleteRecord(id, cancellationToken)
+            ? TypedResults.NoContent()
+            : NoSuchRecord(id);
+
+    private static string NotATreatment(int treatmentId) =>
+        $"treatmentId {treatmentId} is not a treatment the catalogue holds. The treatments are "
+            + "the ones GET /api/treatments lists.";
 
     private static async Task<Results<Ok<PagedResult<TreatmentResponse>>, ProblemHttpResult>> GetTreatments(
         TreatmentQueries treatments,
@@ -264,6 +400,24 @@ public static class TreatmentEndpoints
             detail: why,
             statusCode: StatusCodes.Status400BadRequest,
             title: "The treatment asked for is not one this endpoint can save.");
+
+    private static ProblemHttpResult NoSuchCase(int personConditionId) =>
+        TypedResults.Problem(
+            detail: $"No case has id {personConditionId}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such case.");
+
+    private static ProblemHttpResult NoSuchRecord(int id) =>
+        TypedResults.Problem(
+            detail: $"No treatment record has id {id}.",
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such treatment record.");
+
+    private static ProblemHttpResult RefusedRecord(string why) =>
+        TypedResults.Problem(
+            detail: why,
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "The treatment record asked for is not one this endpoint can save.");
 }
 
 /// <summary>
@@ -439,6 +593,124 @@ internal sealed class TreatmentQueries(SurvsysDbContext database)
     /// <summary>Whether a condition this tier knows has that id.</summary>
     public Task<bool> ConditionExists(int id, CancellationToken cancellationToken) =>
         database.Conditions.AnyAsync(condition => condition.Id == id, cancellationToken);
+
+    /// <summary>
+    /// A case's treatment records, newest started first and then by id; null
+    /// where no case has the id.
+    /// </summary>
+    public async Task<IReadOnlyList<TreatmentRecordResponse>?> Records(
+        int personConditionId,
+        CancellationToken cancellationToken)
+    {
+        if (!await CaseExists(personConditionId, cancellationToken))
+        {
+            return null;
+        }
+
+        return await (
+            from record in database.PersonTreatments.Where(record =>
+                record.PersonConditionId == personConditionId)
+            join treatment in database.Treatments on record.TreatmentId equals treatment.Id
+            orderby record.TreatmentDate descending, record.Id descending
+            select new TreatmentRecordResponse(
+                record.Id,
+                record.TreatmentId,
+                treatment.Name,
+                record.TreatmentDate,
+                record.StopTreatmentDate,
+                record.Dose,
+                record.Comment))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Records a treatment against the case, stamping the moment, and answers
+    /// it. The caller has proven the case and the treatment exist.
+    /// </summary>
+    public async Task<TreatmentRecordResponse> AddRecord(
+        int personConditionId,
+        SaveTreatmentRecordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var record = new PersonTreatment
+        {
+            PersonConditionId = personConditionId,
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+        Fill(record, request);
+        database.PersonTreatments.Add(record);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return await RespondRecord(record, cancellationToken);
+    }
+
+    /// <summary>
+    /// Saves over the record, or answers null where no record has that id. The
+    /// caller has proven the treatment exists.
+    /// </summary>
+    public async Task<TreatmentRecordResponse?> UpdateRecord(
+        int id,
+        SaveTreatmentRecordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var record = await database.PersonTreatments
+            .SingleOrDefaultAsync(record => record.Id == id, cancellationToken);
+
+        if (record is null)
+        {
+            return null;
+        }
+
+        Fill(record, request);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return await RespondRecord(record, cancellationToken);
+    }
+
+    /// <summary>Deletes the record and answers whether one was there to delete.</summary>
+    public async Task<bool> DeleteRecord(int id, CancellationToken cancellationToken) =>
+        await database.PersonTreatments
+            .Where(record => record.Id == id)
+            .ExecuteDeleteAsync(cancellationToken) > 0;
+
+    /// <summary>Whether a case this tier knows has that id.</summary>
+    public Task<bool> CaseExists(int id, CancellationToken cancellationToken) =>
+        database.PersonConditions.AnyAsync(report => report.Id == id, cancellationToken);
+
+    /// <summary>Whether a treatment the catalogue holds has that id.</summary>
+    public Task<bool> TreatmentExists(int id, CancellationToken cancellationToken) =>
+        database.Treatments.AnyAsync(treatment => treatment.Id == id, cancellationToken);
+
+    private static void Fill(PersonTreatment record, SaveTreatmentRecordRequest request)
+    {
+        record.TreatmentId = request.TreatmentId;
+        record.TreatmentDate = request.TreatmentDate;
+        record.StopTreatmentDate = request.StopTreatmentDate;
+        record.Dose = Text(request.Dose);
+        record.Comment = Text(request.Comment);
+    }
+
+    private async Task<TreatmentRecordResponse> RespondRecord(
+        PersonTreatment record,
+        CancellationToken cancellationToken)
+    {
+        var name = await database.Treatments
+            .Where(treatment => treatment.Id == record.TreatmentId)
+            .Select(treatment => treatment.Name)
+            .SingleAsync(cancellationToken);
+
+        return new TreatmentRecordResponse(
+            record.Id,
+            record.TreatmentId,
+            name,
+            record.TreatmentDate,
+            record.StopTreatmentDate,
+            record.Dose,
+            record.Comment);
+    }
+
+    private static string? Text(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private Task<List<TreatmentConditionResponse>> ConditionRows(
         int treatmentId,

@@ -346,6 +346,24 @@ public class PersonConditionEndpointsTests
             new WorkflowTransitionRequest(WorkflowRules.AcceptCode, AgencyId: 0, InvestigatorId: -1)));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Call back Monday")]
+    public void WhyNotABriefNoteAcceptsANoteOrNone(string? note)
+    {
+        Assert.Null(PersonConditionEndpoints.WhyNotABriefNote(new UpdateBriefNoteRequest(note)));
+    }
+
+    [Fact]
+    public void WhyNotABriefNoteRefusesANoteLongerThanTheColumn()
+    {
+        Assert.Contains($"briefNote is longer than {PersonConditionEndpoints.BriefNoteLength}",
+            PersonConditionEndpoints.WhyNotABriefNote(
+                new UpdateBriefNoteRequest(new string('n', PersonConditionEndpoints.BriefNoteLength + 1))),
+            StringComparison.Ordinal);
+    }
+
     [Fact]
     public void WhyNotATransitionRefusesANoteLongerThanTheColumn()
     {

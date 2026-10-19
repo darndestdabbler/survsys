@@ -182,6 +182,125 @@ public class TreatmentsClientTests
         Assert.Equal([4, 7], conditions.Value!.Items.Select(condition => condition.Id));
     }
 
+    private const string OneRecord =
+        """
+        { "id": 3, "treatmentId": 1, "treatmentName": "Amoxicillin", "treatmentDate": "2026-03-01",
+          "stopTreatmentDate": null, "dose": "500 mg", "comment": null }
+        """;
+
+    [Fact]
+    public async Task ForConditionAsksForTheConditionsTreatmentsInOneWidePage()
+    {
+        Uri? asked = null;
+        var client = new TreatmentsClient(Transport(request =>
+        {
+            asked = request.RequestUri;
+            return Answer(HttpStatusCode.OK, TwoTreatments);
+        }));
+
+        var listed = await client.ForCondition(4);
+
+        Assert.Equal("http://api.example.test/api/conditions/4/treatments?pageSize=200", asked?.ToString());
+        Assert.Equal([1, 2], listed.Value!.Items.Select(treatment => treatment.Id));
+    }
+
+    [Fact]
+    public async Task ForConditionFailureCarriesThePrefix()
+    {
+        var client = new TreatmentsClient(Transport(_ => Answer(HttpStatusCode.NotFound, "{}")));
+
+        var listed = await client.ForCondition(4);
+
+        Assert.StartsWith(TreatmentsClient.FailurePrefix, listed.Failure);
+    }
+
+    [Fact]
+    public async Task RecordsAsksForTheCasesTreatments()
+    {
+        Uri? asked = null;
+        var client = new TreatmentsClient(Transport(request =>
+        {
+            asked = request.RequestUri;
+            return Answer(HttpStatusCode.OK, $"[{OneRecord}]");
+        }));
+
+        var records = await client.Records(7);
+
+        Assert.Equal("http://api.example.test/api/cases/7/treatments", asked?.ToString());
+        Assert.Equal("Amoxicillin", Assert.Single(records.Value!).TreatmentName);
+    }
+
+    [Fact]
+    public async Task RecordsFailureCarriesItsPrefix()
+    {
+        var client = new TreatmentsClient(Transport(_ => Answer(HttpStatusCode.NotFound, "{}")));
+
+        var records = await client.Records(7);
+
+        Assert.StartsWith(TreatmentsClient.RecordsFailurePrefix, records.Failure);
+    }
+
+    [Fact]
+    public async Task AddPostsTheRecordToTheCase()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new TreatmentsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.Created, OneRecord);
+        }));
+
+        var added = await client.Add(7, new SaveTreatmentRecordRequest(1, Dose: "500 mg"));
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/cases/7/treatments", sent?.RequestUri?.ToString());
+        Assert.Equal(3, added.Value!.Id);
+    }
+
+    [Fact]
+    public async Task UpdatePutsToTheRecord()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new TreatmentsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, OneRecord);
+        }));
+
+        var saved = await client.Update(3, new SaveTreatmentRecordRequest(1));
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/cases/treatments/3", sent?.RequestUri?.ToString());
+        Assert.True(saved.Succeeded);
+    }
+
+    [Fact]
+    public async Task DeleteDeletesTheRecord()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new TreatmentsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.NoContent, "");
+        }));
+
+        var why = await client.Delete(3);
+
+        Assert.Equal(HttpMethod.Delete, sent?.Method);
+        Assert.Equal("http://api.example.test/api/cases/treatments/3", sent?.RequestUri?.ToString());
+        Assert.Null(why);
+    }
+
+    [Fact]
+    public async Task ARecordSaveThatFailedCarriesTheRecordSavePrefix()
+    {
+        var client = new TreatmentsClient(Transport(_ => Answer(HttpStatusCode.BadRequest, "{}")));
+
+        var added = await client.Add(7, new SaveTreatmentRecordRequest(0));
+
+        Assert.StartsWith(TreatmentsClient.RecordSaveFailurePrefix, added.Failure);
+    }
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 

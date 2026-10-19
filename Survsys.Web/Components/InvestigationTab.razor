@@ -121,6 +121,10 @@
                               Label="Other data 2" Variant="Variant.Outlined" />
             </MudItem>
         }
+        <MudItem xs="12" sm="6">
+            <MudTextField @bind-Value="occupation" id="investigation-occupation"
+                          Label="Occupation" Variant="Variant.Outlined" MaxLength="255" />
+        </MudItem>
     </MudGrid>
 </MudPaper>
 
@@ -170,6 +174,8 @@
 
     private string? otherData2;
 
+    private string? occupation;
+
     private bool saving;
 
     private string? saved;
@@ -194,6 +200,7 @@
         riskFactorsNotes = investigation.RiskFactorsNotes;
         otherData1 = investigation.OtherData1;
         otherData2 = investigation.OtherData2;
+        occupation = investigation.Occupation;
     }
 
     private async Task Save()
@@ -214,7 +221,8 @@
                 RiskFactors: Blank(riskFactors),
                 RiskFactorsNotes: Blank(riskFactorsNotes),
                 OtherData1: Blank(otherData1),
-                OtherData2: Blank(otherData2)));
+                OtherData2: Blank(otherData2),
+                Occupation: Blank(occupation)));
 
             if (answered.Value is { } stored)
             {

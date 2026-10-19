@@ -651,6 +651,13 @@
       "what": "step 'contact-events-endpoint': its files",
       "reason": "ExposureEndpoints.ContactToResponse now carries PersonConditionId, so its unit test in ExposureEndpointsTests.cs is updated to prove it",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 63,
+      "dateTime": "2026-10-18T20:19:09.400000-04:00",
+      "task": "Give a case its treatments, its healthcare encounters, its occupation and pregnancy, the vaccine manufacturer and information source, and the report header's investigator, brief note and separate state and local case status. Survsys.Data gains PersonTreatment (person_treatments: a treatment from the catalogue given on a case, with its start and stop dates, dose and comment, cascading with the case) and Encounter (encounters: a dated healthcare encounter on a case, with its type code, facility and description, cascading with the case), and new columns -- occupation, pregnant, pregnancy_due_date, expected_delivery_facility_id and brief_note on person_conditions, manufacturer and information_source on person_vaccines -- all in one migration. Survsys.Api gains the case treatment routes beside the treatment catalogue (list, add, save, remove under /api/cases), the encounter routes likewise, the pregnancy fields on the clinical read and save, occupation on the investigation read and save, manufacturer and information source on the vaccine record, and on the report itself its brief note, LHD case status and state case status, the brief note saved through PUT /api/person-conditions/{id}/brief-note. Survsys.Web gains the client calls, a Treatments tab choosing from the condition's treatment list or, at a switch, the whole catalogue, an Encounters tab, the new fields on the Clinical, Investigation and Vaccines tabs, and the header's investigator, state and LHD case status and brief note with its Save. Survsys.UnitTests proves the pure rules and the clients; Survsys.IntegrationTests proves each new route against SQL Server.",
+      "releasable": false
     }
   ]
 }

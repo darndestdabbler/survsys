@@ -74,7 +74,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 60 | Correcting and removing a case's child records | no | 2026-10-18 |
 | 61 | The full investigation workflow | no | 2026-10-18 |
 | 62 | Event types, contact cases and the contact import | no | 2026-10-18 |
-| 63 | Treatments, encounters, occupation and pregnancy on a case | — | not declared |
+| 63 | Treatments, encounters, occupation and pregnancy on a case | no | 2026-10-18 |
 | 64 | The reference code lists behind every coded field | — | not declared |
 | 65 | Delete, print and lock a case, and private notes | — | not declared |
 | 66 | Phase 8 walkthroughs | — | not declared |
@@ -575,3 +575,9 @@ Give every case an event type and make contacts cases of their own. Survsys.Data
 **Amended after acceptance:**
 
 - 2026-10-18 — step 'contact-events-endpoint': its files: ExposureEndpoints.ContactToResponse now carries PersonConditionId, so its unit test in ExposureEndpointsTests.cs is updated to prove it (claude-code (anthropic, claude-opus-5-5))
+
+### Session 63 — Treatments, encounters, occupation and pregnancy on a case
+
+**Releasable: no.**
+
+Give a case its treatments, its healthcare encounters, its occupation and pregnancy, the vaccine manufacturer and information source, and the report header's investigator, brief note and separate state and local case status. Survsys.Data gains PersonTreatment (person_treatments: a treatment from the catalogue given on a case, with its start and stop dates, dose and comment, cascading with the case) and Encounter (encounters: a dated healthcare encounter on a case, with its type code, facility and description, cascading with the case), and new columns -- occupation, pregnant, pregnancy_due_date, expected_delivery_facility_id and brief_note on person_conditions, manufacturer and information_source on person_vaccines -- all in one migration. Survsys.Api gains the case treatment routes beside the treatment catalogue (list, add, save, remove under /api/cases), the encounter routes likewise, the pregnancy fields on the clinical read and save, occupation on the investigation read and save, manufacturer and information source on the vaccine record, and on the report itself its brief note, LHD case status and state case status, the brief note saved through PUT /api/person-conditions/{id}/brief-note. Survsys.Web gains the client calls, a Treatments tab choosing from the condition's treatment list or, at a switch, the whole catalogue, an Encounters tab, the new fields on the Clinical, Investigation and Vaccines tabs, and the header's investigator, state and LHD case status and brief note with its Save. Survsys.UnitTests proves the pure rules and the clients; Survsys.IntegrationTests proves each new route against SQL Server.

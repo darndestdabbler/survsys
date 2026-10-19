@@ -31,6 +31,9 @@ public class ClinicalEndpointsTests
         DiseaseOnsetDate = new DateOnly(2026, 3, 1),
         DateDiagnosed = new DateOnly(2026, 3, 5),
         TreatmentGiven = "Yes",
+        Pregnant = "Yes",
+        PregnancyDueDate = new DateOnly(2026, 9, 1),
+        ExpectedDeliveryFacilityId = 21,
     };
 
     private static Person Person() => new()
@@ -54,7 +57,10 @@ public class ClinicalEndpointsTests
                 DateDiagnosed: new DateOnly(2026, 3, 5),
                 TreatmentGiven: "Yes",
                 DeathStatus: "No",
-                DateOfDeath: null),
+                DateOfDeath: null,
+                Pregnant: "Yes",
+                PregnancyDueDate: new DateOnly(2026, 9, 1),
+                ExpectedDeliveryFacilityId: 21),
             response);
     }
 
@@ -170,6 +176,45 @@ public class ClinicalEndpointsTests
         Assert.Contains("dateOfDeath is set on a report whose died? answer is not Yes",
             ClinicalEndpoints.WhyNotClinical(new UpdateClinicalRequest(
                 null, null, null, death, new DateOnly(2026, 3, 20))),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotClinicalAcceptsAPregnancyWithItsDueDateAndFacility()
+    {
+        Assert.Null(ClinicalEndpoints.WhyNotClinical(new UpdateClinicalRequest(
+            null, null, null, null, null, "Yes", new DateOnly(2026, 9, 1), 21)));
+    }
+
+    [Theory]
+    [InlineData("yes")]
+    [InlineData("Y")]
+    public void WhyNotClinicalRefusesAPregnantThatIsNotAnAnswer(string pregnant)
+    {
+        Assert.Contains($"pregnant '{pregnant}' is not an answer",
+            ClinicalEndpoints.WhyNotClinical(new UpdateClinicalRequest(
+                null, null, null, null, null, pregnant)),
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("No")]
+    [InlineData("Unknown")]
+    [InlineData(null)]
+    public void WhyNotClinicalRefusesADueDateWithoutPregnant(string? pregnant)
+    {
+        Assert.Contains("pregnant answer is not Yes",
+            ClinicalEndpoints.WhyNotClinical(new UpdateClinicalRequest(
+                null, null, null, null, null, pregnant, new DateOnly(2026, 9, 1))),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotClinicalRefusesADeliveryFacilityWithoutPregnant()
+    {
+        Assert.Contains("pregnant answer is not Yes",
+            ClinicalEndpoints.WhyNotClinical(new UpdateClinicalRequest(
+                null, null, null, null, null, "No", ExpectedDeliveryFacilityId: 21)),
             StringComparison.Ordinal);
     }
 

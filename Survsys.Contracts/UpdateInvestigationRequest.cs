@@ -45,6 +45,7 @@ namespace Survsys.Contracts;
 /// <param name="RiskFactorsNotes">Notes on the risk factors, as free text.</param>
 /// <param name="OtherData1">The first catch-all field, as free text.</param>
 /// <param name="OtherData2">The second catch-all field, as free text.</param>
+/// <param name="Occupation">The person's occupation, or null.</param>
 public record UpdateInvestigationRequest(
     string? FoodHandler,
     string? HealthcareWorker,
@@ -55,4 +56,5 @@ public record UpdateInvestigationRequest(
     string? RiskFactors,
     string? RiskFactorsNotes,
     string? OtherData1,
-    string? OtherData2);
+    string? OtherData2,
+    string? Occupation = null);

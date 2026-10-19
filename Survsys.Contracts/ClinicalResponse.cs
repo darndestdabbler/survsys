@@ -33,10 +33,16 @@ namespace Survsys.Contracts;
 /// The date the report's person died, or null where they have not or it is not
 /// known. Read from the person.
 /// </param>
+/// <param name="Pregnant">Whether the person is pregnant: Yes, No or Unknown, or null where unanswered.</param>
+/// <param name="PregnancyDueDate">The pregnancy's due date, or null.</param>
+/// <param name="ExpectedDeliveryFacilityId">The facility the delivery is expected at, or null.</param>
 public record ClinicalResponse(
     int ReportId,
     DateOnly? DiseaseOnsetDate,
     DateOnly? DateDiagnosed,
     string? TreatmentGiven,
     string? DeathStatus,
-    DateOnly? DateOfDeath);
+    DateOnly? DateOfDeath,
+    string? Pregnant = null,
+    DateOnly? PregnancyDueDate = null,
+    int? ExpectedDeliveryFacilityId = null);

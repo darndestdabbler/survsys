@@ -22,6 +22,9 @@ internal sealed class PersonVaccineConfiguration : IEntityTypeConfiguration<Pers
 {
     private const int LotNumberLength = 100;
 
+    /// <summary>Room for the manufacturer and information-source codes.</summary>
+    private const int CodeLength = 50;
+
     public void Configure(EntityTypeBuilder<PersonVaccine> builder)
     {
         builder.ToTable("person_vaccines");
@@ -37,6 +40,12 @@ internal sealed class PersonVaccineConfiguration : IEntityTypeConfiguration<Pers
             .HasMaxLength(LotNumberLength);
         builder.Property(record => record.ExpirationDate).HasColumnName("expiration_date");
         builder.Property(record => record.Comment).HasColumnName("comment");
+        builder.Property(record => record.Manufacturer)
+            .HasColumnName("manufacturer")
+            .HasMaxLength(CodeLength);
+        builder.Property(record => record.InformationSource)
+            .HasColumnName("information_source")
+            .HasMaxLength(CodeLength);
         builder.Property(record => record.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

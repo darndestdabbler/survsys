@@ -117,6 +117,82 @@ public class ClinicalEndpointsTests(SqlServerFixture server) : IDisposable
         Assert.Equal(MmwrWeek.Of(new DateOnly(2026, 7, 4)).Week, after.Week);
     }
 
+    [Fact]
+    public async Task APregnancySavedWithItsFacilityReadsBack()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+        var facilityId = await CreateFacility("Delivery Test Hospital");
+
+        try
+        {
+            using var put = await client.PutAsJsonAsync($"/api/person-conditions/{reportId}/clinical",
+                new UpdateClinicalRequest(
+                    DiseaseOnsetDate: null,
+                    DateDiagnosed: null,
+                    TreatmentGiven: null,
+                    DeathStatus: null,
+                    DateOfDeath: null,
+                    Pregnant: "Yes",
+                    PregnancyDueDate: new DateOnly(2026, 9, 1),
+                    ExpectedDeliveryFacilityId: facilityId),
+                Json);
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+            using var read = await client.GetAsync($"/api/person-conditions/{reportId}/clinical");
+            read.EnsureSuccessStatusCode();
+            var round = (await read.Content.ReadFromJsonAsync<ClinicalResponse>(Json))!;
+            Assert.Equal("Yes", round.Pregnant);
+            Assert.Equal(new DateOnly(2026, 9, 1), round.PregnancyDueDate);
+            Assert.Equal(facilityId, round.ExpectedDeliveryFacilityId);
+        }
+        finally
+        {
+            await ClearPregnancyOf(reportId);
+            await DeleteFacility(facilityId);
+        }
+    }
+
+    [Fact]
+    public async Task APregnancyAtAFacilityNotOnFileIsRefused()
+    {
+        var reportId = await EnsureSeededReport();
+
+        using var put = await api.CreateClient().PutAsJsonAsync(
+            $"/api/person-conditions/{reportId}/clinical",
+            new UpdateClinicalRequest(
+                null, null, null, null, null, "Yes", ExpectedDeliveryFacilityId: 987654321),
+            Json);
+        Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+    }
+
+    private async Task<int> CreateFacility(string name)
+    {
+        await using var context = server.NewContext();
+        var facility = new Facility { Name = name, AgencyId = 1 };
+        context.Facilities.Add(facility);
+        await context.SaveChangesAsync();
+
+        return facility.Id;
+    }
+
+    private async Task DeleteFacility(int facilityId)
+    {
+        await using var context = server.NewContext();
+        await context.Facilities.Where(facility => facility.Id == facilityId).ExecuteDeleteAsync();
+    }
+
+    private async Task ClearPregnancyOf(int reportId)
+    {
+        await using var context = server.NewContext();
+        await context.PersonConditions
+            .Where(report => report.Id == reportId)
+            .ExecuteUpdateAsync(report => report
+                .SetProperty(column => column.Pregnant, (string?)null)
+                .SetProperty(column => column.PregnancyDueDate, (DateOnly?)null)
+                .SetProperty(column => column.ExpectedDeliveryFacilityId, (int?)null));
+    }
+
     /// <summary>The MMWR week and year stored on a report, read through a fresh context.</summary>
     private async Task<(int? Week, int? Year)> StoredMmwr(int reportId)
     {

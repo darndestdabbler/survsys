@@ -12,7 +12,10 @@ namespace Survsys.IntegrationTests;
 /// created and read back with the conditions it is listed for, that a save
 /// replaces that set, that the list comes back ordered by name, that an unknown
 /// id and a condition that does not exist are refused, and that a condition's
-/// treatment list reads back the treatments listed for it.
+/// treatment list reads back the treatments listed for it; and that a case's
+/// treatment record is added, listed, saved and removed, a treatment not in the
+/// catalogue or a stop before the start is refused, and an unknown case or
+/// record is not found.
 /// </summary>
 /// <remarks>
 /// Driven through the endpoints. The treatments table is cleared before and
@@ -180,6 +183,143 @@ public class TreatmentEndpointsTests(SqlServerFixture server) : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task ACaseTreatmentIsAddedListedSavedAndRemoved()
+    {
+        await Clear();
+        int caseId = 0;
+
+        try
+        {
+            caseId = await CreateCase("Rodriguez, Maria", "Malaria");
+            var doxycycline = await Add(new SaveTreatmentRequest("Doxycycline"));
+            var chloroquine = await Add(new SaveTreatmentRequest("Chloroquine"));
+
+            var created = await AddRecord(caseId, new SaveTreatmentRecordRequest(
+                doxycycline.Id,
+                new DateOnly(2026, 3, 1),
+                new DateOnly(2026, 3, 14),
+                "100 mg twice daily",
+                "Tolerated well"));
+            Assert.Equal("Doxycycline", created.TreatmentName);
+
+            using var list = await api.CreateClient().GetAsync($"/api/cases/{caseId}/treatments");
+            list.EnsureSuccessStatusCode();
+            var read = Assert.Single((await list.Content
+                .ReadFromJsonAsync<IReadOnlyList<TreatmentRecordResponse>>(Json))!);
+            Assert.Equal("Doxycycline", read.TreatmentName);
+            Assert.Equal(new DateOnly(2026, 3, 1), read.TreatmentDate);
+            Assert.Equal(new DateOnly(2026, 3, 14), read.StopTreatmentDate);
+            Assert.Equal("100 mg twice daily", read.Dose);
+            Assert.Equal("Tolerated well", read.Comment);
+
+            using var edit = await api.CreateClient().PutAsJsonAsync(
+                $"/api/cases/treatments/{created.Id}",
+                new SaveTreatmentRecordRequest(chloroquine.Id, Dose: "500 mg"),
+                Json);
+            Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+            var saved = (await edit.Content.ReadFromJsonAsync<TreatmentRecordResponse>(Json))!;
+            Assert.Equal("Chloroquine", saved.TreatmentName);
+            Assert.Equal("500 mg", saved.Dose);
+            Assert.Null(saved.Comment);
+
+            using var removed = await api.CreateClient()
+                .DeleteAsync($"/api/cases/treatments/{created.Id}");
+            Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
+
+            using var after = await api.CreateClient().GetAsync($"/api/cases/{caseId}/treatments");
+            after.EnsureSuccessStatusCode();
+            Assert.Empty((await after.Content
+                .ReadFromJsonAsync<IReadOnlyList<TreatmentRecordResponse>>(Json))!);
+        }
+        finally
+        {
+            await DeleteCase(caseId);
+            await Clear();
+        }
+    }
+
+    [Fact]
+    public async Task ACaseTreatmentNotInTheCatalogueIsRefused()
+    {
+        int caseId = 0;
+
+        try
+        {
+            caseId = await CreateCase("Rodriguez, Maria", "Malaria");
+
+            using var response = await api.CreateClient().PostAsJsonAsync(
+                $"/api/cases/{caseId}/treatments",
+                new SaveTreatmentRecordRequest(987654321),
+                Json);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+        finally
+        {
+            await DeleteCase(caseId);
+        }
+    }
+
+    [Fact]
+    public async Task ACaseTreatmentStoppedBeforeItStartedIsRefused()
+    {
+        await Clear();
+        int caseId = 0;
+
+        try
+        {
+            caseId = await CreateCase("Rodriguez, Maria", "Malaria");
+            var doxycycline = await Add(new SaveTreatmentRequest("Doxycycline"));
+
+            using var response = await api.CreateClient().PostAsJsonAsync(
+                $"/api/cases/{caseId}/treatments",
+                new SaveTreatmentRecordRequest(
+                    doxycycline.Id,
+                    new DateOnly(2026, 3, 14),
+                    new DateOnly(2026, 3, 1)),
+                Json);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+        finally
+        {
+            await DeleteCase(caseId);
+            await Clear();
+        }
+    }
+
+    [Fact]
+    public async Task AnUnknownCasesTreatmentsAreNotFound()
+    {
+        using var list = await api.CreateClient().GetAsync("/api/cases/987654321/treatments");
+        Assert.Equal(HttpStatusCode.NotFound, list.StatusCode);
+
+        await Clear();
+
+        try
+        {
+            var doxycycline = await Add(new SaveTreatmentRequest("Doxycycline"));
+
+            using var add = await api.CreateClient().PostAsJsonAsync(
+                "/api/cases/987654321/treatments",
+                new SaveTreatmentRecordRequest(doxycycline.Id),
+                Json);
+            Assert.Equal(HttpStatusCode.NotFound, add.StatusCode);
+
+            using var edit = await api.CreateClient().PutAsJsonAsync(
+                "/api/cases/treatments/987654321",
+                new SaveTreatmentRecordRequest(doxycycline.Id),
+                Json);
+            Assert.Equal(HttpStatusCode.NotFound, edit.StatusCode);
+        }
+        finally
+        {
+            await Clear();
+        }
+
+        using var removed = await api.CreateClient().DeleteAsync("/api/cases/treatments/987654321");
+        Assert.Equal(HttpStatusCode.NotFound, removed.StatusCode);
+    }
+
     private async Task<TreatmentDetailResponse> Add(SaveTreatmentRequest request)
     {
         using var response = await api.CreateClient().PostAsJsonAsync("/api/treatments", request, Json);
@@ -192,7 +332,59 @@ public class TreatmentEndpointsTests(SqlServerFixture server) : IDisposable
     {
         await using var context = server.NewContext();
 
+        await context.PersonTreatments.ExecuteDeleteAsync();
         await context.Treatments.ExecuteDeleteAsync();
+    }
+
+    private async Task<TreatmentRecordResponse> AddRecord(
+        int personConditionId,
+        SaveTreatmentRecordRequest request)
+    {
+        using var response = await api.CreateClient()
+            .PostAsJsonAsync($"/api/cases/{personConditionId}/treatments", request, Json);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        return (await response.Content.ReadFromJsonAsync<TreatmentRecordResponse>(Json))!;
+    }
+
+    private async Task<int> CreateCase(string personNamed, string conditionNamed)
+    {
+        var person = await PersonId(personNamed);
+        var condition = await ConditionId(conditionNamed);
+
+        using var response = await api.CreateClient().PostAsJsonAsync(
+            "/api/person-conditions",
+            new CreatePersonConditionRequest(person, condition),
+            Json);
+        response.EnsureSuccessStatusCode();
+
+        return (await response.Content.ReadFromJsonAsync<PersonConditionResponse>(Json))!.Id;
+    }
+
+    private async Task DeleteCase(int personConditionId)
+    {
+        if (personConditionId == 0)
+        {
+            return;
+        }
+
+        await using var context = server.NewContext();
+        await context.PersonConditions
+            .Where(report => report.Id == personConditionId)
+            .ExecuteDeleteAsync();
+    }
+
+    private async Task<int> PersonId(string named)
+    {
+        using var response = await api.CreateClient().GetAsync("/api/persons?pageSize=200");
+        response.EnsureSuccessStatusCode();
+
+        var page = (await response.Content
+            .ReadFromJsonAsync<PagedResult<PersonResponse>>(Json))!;
+
+        return page.Items
+            .Single(person => $"{person.LastName}, {person.FirstName}" == named)
+            .Id;
     }
 
     private async Task<int> ConditionId(string named)

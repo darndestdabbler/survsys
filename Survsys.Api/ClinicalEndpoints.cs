@@ -38,6 +38,9 @@ public static class ClinicalEndpoints
     /// <summary>The one answer a date of death goes with.</summary>
     private const string Died = "Yes";
 
+    /// <summary>The one answer a due date and a delivery facility go with.</summary>
+    private const string IsPregnant = "Yes";
+
     /// <summary>
     /// The projection from a report and its person to the clinical wire shape.
     /// </summary>
@@ -55,7 +58,10 @@ public static class ClinicalEndpoints
             report.DateDiagnosed,
             report.TreatmentGiven,
             person.DeathStatus,
-            person.DateOfDeath);
+            person.DateOfDeath,
+            report.Pregnant,
+            report.PregnancyDueDate,
+            report.ExpectedDeliveryFacilityId);
 
     /// <summary>
     /// <see cref="ToResponse"/> compiled, for the save, which has the report
@@ -101,6 +107,21 @@ public static class ClinicalEndpoints
             return "dateOfDeath is set on a report whose died? answer is not Yes. A date of "
                 + "death belongs to a person who died: set deathStatus to Yes, or leave "
                 + "dateOfDeath out.";
+        }
+
+        if (request.Pregnant is { } pregnant && !Answers.Contains(pregnant, StringComparer.Ordinal))
+        {
+            return $"pregnant '{pregnant}' is not an answer this endpoint takes. Whether the "
+                + "person is pregnant is one of Yes, No or Unknown, or left out where it has not "
+                + "been answered.";
+        }
+
+        if ((request.PregnancyDueDate is not null || request.ExpectedDeliveryFacilityId is not null)
+            && request.Pregnant != IsPregnant)
+        {
+            return "pregnancyDueDate or expectedDeliveryFacilityId is set on a report whose "
+                + "pregnant answer is not Yes. A due date and a delivery facility belong to a "
+                + "pregnancy: set pregnant to Yes, or leave them out.";
         }
 
         return null;
@@ -166,6 +187,16 @@ public static class ClinicalEndpoints
         {
             return TypedResults.Problem(
                 detail: why,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The clinical data asked to be saved is not data this endpoint can save.");
+        }
+
+        if (request.ExpectedDeliveryFacilityId is { } facilityId
+            && !await clinical.FacilityExists(facilityId, cancellationToken))
+        {
+            return TypedResults.Problem(
+                detail: $"expectedDeliveryFacilityId {facilityId} is not a facility on file. The "
+                    + "facilities are the ones GET /api/facilities lists.",
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "The clinical data asked to be saved is not data this endpoint can save.");
         }
@@ -256,6 +287,9 @@ internal sealed class ClinicalQueries(SurvsysDbContext database)
         report.TreatmentGiven = request.TreatmentGiven;
         person.DeathStatus = request.DeathStatus;
         person.DateOfDeath = request.DateOfDeath;
+        report.Pregnant = request.Pregnant;
+        report.PregnancyDueDate = request.PregnancyDueDate;
+        report.ExpectedDeliveryFacilityId = request.ExpectedDeliveryFacilityId;
 
         // The MMWR week and year are read off the dates just written, so a
         // correction to the onset or the diagnosis date moves the report to
@@ -271,4 +305,8 @@ internal sealed class ClinicalQueries(SurvsysDbContext database)
 
         return ClinicalEndpoints.Respond(report, person);
     }
+
+    /// <summary>Whether a facility on file has that id.</summary>
+    public Task<bool> FacilityExists(int id, CancellationToken cancellationToken) =>
+        database.Facilities.AnyAsync(facility => facility.Id == id, cancellationToken);
 }

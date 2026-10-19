@@ -23,9 +23,15 @@
    shown only where the died? answer is Yes, which is the one answer it goes
    with.
 
+   The Pregnancy section holds the pregnant answer, a Yes/No/Unknown text box
+   as the other coded fields are, and — shown only where it is Yes, the one
+   answer they go with — the due date and the expected delivery facility,
+   chosen from the facilities on file.
+
    Every element a walkthrough names carries a stable identifier. *@
 @using System.Globalization
 @inject ClinicalClient Api
+@inject FacilitiesClient Facilities
 
 @if (saved is { } stored)
 {
@@ -100,6 +106,34 @@
     </MudGrid>
 </MudPaper>
 
+<MudPaper id="clinical-pregnancy" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Pregnancy</MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="pregnant" id="clinical-pregnant"
+                          Label="Pregnant? (Yes/No/Unknown)" Variant="Variant.Outlined" />
+        </MudItem>
+        @if (Pregnant)
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="pregnancyDueDate" id="clinical-pregnancy-due-date"
+                              Label="Due date" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="int?" @bind-Value="expectedDeliveryFacilityId"
+                           id="clinical-expected-delivery-facility" Label="Expected delivery facility"
+                           Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var facility in facilities)
+                    {
+                        <MudSelectItem T="int?" Value="@facility.Id">@facility.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        }
+    </MudGrid>
+</MudPaper>
+
 <div class="d-flex gap-2">
     <MudButton id="clinical-save" Variant="Variant.Filled" Color="Color.Primary"
                Disabled="@saving" OnClick="@Save">
@@ -136,6 +170,12 @@
     /// <summary>The one died? answer a date of death goes with, as the API tier reads it.</summary>
     private const string Deceased = "Yes";
 
+    /// <summary>The one pregnant answer a due date and a delivery facility go with.</summary>
+    private const string IsPregnant = "Yes";
+
+    /// <summary>The widest page of facilities the API tier serves, for the delivery facility select.</summary>
+    private const int FacilityPageSize = 200;
+
     private string? diseaseOnsetDate;
 
     private string? dateDiagnosed;
@@ -146,6 +186,14 @@
 
     private string? dateOfDeath;
 
+    private string? pregnant;
+
+    private string? pregnancyDueDate;
+
+    private int? expectedDeliveryFacilityId;
+
+    private IReadOnlyList<FacilityResponse> facilities = [];
+
     private bool saving;
 
     private string? saved;
@@ -154,7 +202,18 @@
 
     private string? complaint;
 
-    protected override void OnInitialized() => Load(Clinical);
+    protected override async Task OnInitializedAsync()
+    {
+        Load(Clinical);
+
+        if ((await Facilities.Page(1, FacilityPageSize)).Value is { } page)
+        {
+            facilities = page.Items;
+        }
+    }
+
+    /// <summary>Whether the pregnant answer is the one the due date and delivery facility go with.</summary>
+    private bool Pregnant => string.Equals(pregnant?.Trim(), IsPregnant, StringComparison.Ordinal);
 
     /// <summary>Whether the died? answer is the one the date of death goes with.</summary>
     private bool Died => string.Equals(deathStatus?.Trim(), Deceased, StringComparison.Ordinal);
@@ -170,6 +229,9 @@
         treatmentGiven = clinical.TreatmentGiven;
         deathStatus = clinical.DeathStatus;
         dateOfDeath = Written(clinical.DateOfDeath);
+        pregnant = clinical.Pregnant;
+        pregnancyDueDate = Written(clinical.PregnancyDueDate);
+        expectedDeliveryFacilityId = clinical.ExpectedDeliveryFacilityId;
     }
 
     private async Task Save()
@@ -195,6 +257,17 @@
             return;
         }
 
+        // The due date, like the date of death, is read only where the answer
+        // it goes with is given.
+        DateOnly? due = null;
+
+        if (Pregnant && !TryDate(pregnancyDueDate, "the due date", out due, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
         complaint = null;
         failure = null;
         saved = null;
@@ -207,7 +280,10 @@
                 DateDiagnosed: diagnosed,
                 TreatmentGiven: Blank(treatmentGiven),
                 DeathStatus: Blank(deathStatus),
-                DateOfDeath: Died ? died : null));
+                DateOfDeath: Died ? died : null,
+                Pregnant: Blank(pregnant),
+                PregnancyDueDate: Pregnant ? due : null,
+                ExpectedDeliveryFacilityId: Pregnant ? expectedDeliveryFacilityId : null));
 
             if (answered.Value is { } stored)
             {

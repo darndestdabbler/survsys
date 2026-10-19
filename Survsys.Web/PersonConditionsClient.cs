@@ -41,6 +41,9 @@ public sealed class PersonConditionsClient(HttpClient http)
     /// <summary>How a failure to promote a contact event starts.</summary>
     public const string PromoteFailurePrefix = "The contact event could not be promoted";
 
+    /// <summary>How a failure to save the header's brief note starts.</summary>
+    public const string BriefNoteFailurePrefix = "The brief note could not be saved";
+
     private static readonly ApiAsk Opening = new(FailurePrefix, "the report created");
 
     private static readonly ApiAsk Finding = new(FindFailurePrefix, "the report");
@@ -52,6 +55,8 @@ public sealed class PersonConditionsClient(HttpClient http)
     private static readonly ApiAsk LoadingWorkflow = new(WorkflowLoadFailurePrefix, "the report's workflow");
 
     private static readonly ApiAsk Promoting = new(PromoteFailurePrefix, "the report as promoted");
+
+    private static readonly ApiAsk SavingBriefNote = new(BriefNoteFailurePrefix, "the report as saved");
 
     /// <summary>
     /// Opens a case morbidity report and answers with it — its record number
@@ -123,6 +128,18 @@ public sealed class PersonConditionsClient(HttpClient http)
         int id,
         CancellationToken cancellationToken = default) =>
         LoadingWorkflow.Get<WorkflowResponse>(http, $"api/person-conditions/{id}/workflow", cancellationToken);
+
+    /// <summary>
+    /// Saves the report header's brief note — a blank one clears it — and
+    /// answers with the report as the API tier now holds it, or with why it was
+    /// not saved.
+    /// </summary>
+    public Task<Asked<PersonConditionResponse>> SaveBriefNote(
+        int id,
+        string? note,
+        CancellationToken cancellationToken = default) =>
+        SavingBriefNote.Put<UpdateBriefNoteRequest, PersonConditionResponse>(
+            http, $"api/person-conditions/{id}/brief-note", new UpdateBriefNoteRequest(note), cancellationToken);
 
     /// <summary>
     /// Promotes a contact event to a morbidity report and answers with the

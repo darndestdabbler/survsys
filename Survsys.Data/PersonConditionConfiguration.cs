@@ -50,6 +50,12 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
     /// </summary>
     private const int CodeLength = 20;
 
+    /// <summary>Room for an occupation, a job title rather than prose.</summary>
+    private const int OccupationLength = 255;
+
+    /// <summary>Room for the header's brief note, a line rather than a note.</summary>
+    private const int BriefNoteLength = 500;
+
     public void Configure(EntityTypeBuilder<PersonCondition> builder)
     {
         builder.ToTable("person_conditions");
@@ -147,6 +153,23 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
         builder.Property(report => report.SentToIbis).HasColumnName("sent_to_ibis");
         builder.Property(report => report.IbisUpdatedAt).HasColumnName("ibis_updated_at");
 
+        // The case's occupation and pregnancy and the header's brief note,
+        // added in session 63. The pregnant answer is a Yes/No/Unknown code
+        // bounded like every code above; the occupation and the note are short
+        // text bounded at what their boxes take.
+        builder.Property(report => report.Occupation)
+            .HasColumnName("occupation")
+            .HasMaxLength(OccupationLength);
+        builder.Property(report => report.Pregnant)
+            .HasColumnName("pregnant")
+            .HasMaxLength(CodeLength);
+        builder.Property(report => report.PregnancyDueDate).HasColumnName("pregnancy_due_date");
+        builder.Property(report => report.ExpectedDeliveryFacilityId)
+            .HasColumnName("expected_delivery_facility_id");
+        builder.Property(report => report.BriefNote)
+            .HasColumnName("brief_note")
+            .HasMaxLength(BriefNoteLength);
+
         // What makes a record number a way of referring to a report. The rule
         // that issues one reads the highest already issued for the year and
         // adds to it, which two creations in the same instant can both do: the
@@ -191,6 +214,13 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
         builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(report => report.InvestigatorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The expected delivery facility is optional and does not cascade: a
+        // facility with cases naming it cannot be deleted out from under them.
+        builder.HasOne<Facility>()
+            .WithMany()
+            .HasForeignKey(report => report.ExpectedDeliveryFacilityId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
