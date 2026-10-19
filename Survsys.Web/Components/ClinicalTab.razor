@@ -1,0 +1,339 @@
+@* The Clinical tab of a case morbidity report: the report's clinical data,
+   editable, and saved whole.
+
+   ../nedss/docs/functional/epitrax-cmr-deep-editing.md section 3 records the
+   legacy tab's clinical fields, and this is those: the disease onset date and
+   the date diagnosed, which are the report's own; whether treatment was
+   given; and the died? answer with the date of death, which are the report's
+   person's and are read and written through the one clinical resource the API
+   tier gathers them into.
+
+   The clinical data arrives as a parameter and is copied into fields on
+   initialisation, so that typing changes the fields and never the record the
+   shell holds. Save & Continue builds an UpdateClinicalRequest from the
+   fields and sends it as one PUT; what comes back replaces the fields, so the
+   screen shows what was stored and not what it sent.
+
+   Every coded field (treatment given, the died? answer) is a text box holding
+   the legacy Yes/No/Unknown code, as the Demographic tab holds its coded
+   fields: the reference tables behind the legacy dropdowns do not exist yet.
+   The coded-value rules and the rule that a date of death goes only with a
+   died? answer of Yes stay the API tier's; an answer it refuses is shown as
+   the client's message rather than re-checked here. The date of death box is
+   shown only where the died? answer is Yes, which is the one answer it goes
+   with.
+
+   The Pregnancy section holds the pregnant answer, a Yes/No/Unknown text box
+   as the other coded fields are, and — shown only where it is Yes, the one
+   answer they go with — the due date and the expected delivery facility,
+   chosen from the facilities on file.
+
+   Every element a walkthrough names carries a stable identifier. *@
+@using System.Globalization
+@inject ClinicalClient Api
+@inject FacilitiesClient Facilities
+
+@if (saved is { } stored)
+{
+    <MudAlert id="clinical-saved" Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+        @stored
+    </MudAlert>
+}
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="clinical-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (complaint is { } whyNotYet)
+{
+    <MudAlert id="clinical-complaint" Severity="Severity.Warning" Class="mb-4">
+        @whyNotYet
+    </MudAlert>
+}
+
+<MudPaper id="clinical-dates" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Clinical</MudText>
+    <MudGrid Spacing="2">
+        @if (Shows("disease_onset_date"))
+        {
+            <MudItem xs="12" sm="4">
+                @* Native date inputs, for the reason the Demographic tab's are:
+                   what one yields is what the other tier parses. *@
+                <MudTextField @bind-Value="diseaseOnsetDate" id="clinical-disease-onset-date"
+                              Label="Disease onset date" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+        @if (Shows("date_diagnosed"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="dateDiagnosed" id="clinical-date-diagnosed"
+                              Label="Date diagnosed" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+        @if (Shows("treatment_given"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="treatmentGiven" id="clinical-treatment-given"
+                              Label="Treatment given (Yes/No/Unknown)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+    </MudGrid>
+</MudPaper>
+
+<MudPaper id="clinical-death" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Death</MudText>
+    <MudGrid Spacing="2">
+        @if (Shows("person_died"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="deathStatus" id="clinical-death-status"
+                              Label="Died? (Yes/No/Unknown)" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Died && Shows("person_date_of_death"))
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="dateOfDeath" id="clinical-date-of-death"
+                              Label="Date of death" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+        }
+    </MudGrid>
+</MudPaper>
+
+<MudPaper id="clinical-pregnancy" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Pregnancy</MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="pregnant" id="clinical-pregnant"
+                          Label="Pregnant? (Yes/No/Unknown)" Variant="Variant.Outlined" />
+        </MudItem>
+        @if (Pregnant)
+        {
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="pregnancyDueDate" id="clinical-pregnancy-due-date"
+                              Label="Due date" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="int?" @bind-Value="expectedDeliveryFacilityId"
+                           id="clinical-expected-delivery-facility" Label="Expected delivery facility"
+                           Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var facility in facilities)
+                    {
+                        <MudSelectItem T="int?" Value="@facility.Id">@facility.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        }
+    </MudGrid>
+</MudPaper>
+
+<div class="d-flex gap-2">
+    <MudButton id="clinical-save" Variant="Variant.Filled" Color="Color.Primary"
+               Disabled="@saving" OnClick="@Save">
+        Save &amp; Continue
+    </MudButton>
+</div>
+
+@code {
+    /// <summary>The report this tab's clinical data is for, from the shell.</summary>
+    [Parameter, EditorRequired]
+    public int ReportId { get; set; }
+
+    /// <summary>The report's clinical data, as the shell read it.</summary>
+    [Parameter, EditorRequired]
+    public ClinicalResponse Clinical { get; set; } = default!;
+
+    /// <summary>
+    /// The uids of the fields core element configuration hides on this
+    /// report. A hidden field is left off the tab, and its value still goes
+    /// back as it was read, because the tab saves the whole record.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<string> Hidden { get; set; } = new HashSet<string>();
+
+    private bool Shows(string uid) => !Hidden.Contains(uid);
+
+    /// <summary>
+    /// How this tier writes a date into a date box and reads one out: the form
+    /// a native date input yields, under the culture the other tier parses it
+    /// with — the same form the Demographic tab uses.
+    /// </summary>
+    private const string DateForm = "yyyy-MM-dd";
+
+    /// <summary>The one died? answer a date of death goes with, as the API tier reads it.</summary>
+    private const string Deceased = "Yes";
+
+    /// <summary>The one pregnant answer a due date and a delivery facility go with.</summary>
+    private const string IsPregnant = "Yes";
+
+    /// <summary>The widest page of facilities the API tier serves, for the delivery facility select.</summary>
+    private const int FacilityPageSize = 200;
+
+    private string? diseaseOnsetDate;
+
+    private string? dateDiagnosed;
+
+    private string? treatmentGiven;
+
+    private string? deathStatus;
+
+    private string? dateOfDeath;
+
+    private string? pregnant;
+
+    private string? pregnancyDueDate;
+
+    private int? expectedDeliveryFacilityId;
+
+    private IReadOnlyList<FacilityResponse> facilities = [];
+
+    private bool saving;
+
+    private string? saved;
+
+    private string? failure;
+
+    private string? complaint;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Load(Clinical);
+
+        if ((await Facilities.Page(1, FacilityPageSize)).Value is { } page)
+        {
+            facilities = page.Items;
+        }
+    }
+
+    /// <summary>Whether the pregnant answer is the one the due date and delivery facility go with.</summary>
+    private bool Pregnant => string.Equals(pregnant?.Trim(), IsPregnant, StringComparison.Ordinal);
+
+    /// <summary>Whether the died? answer is the one the date of death goes with.</summary>
+    private bool Died => string.Equals(deathStatus?.Trim(), Deceased, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Copies the clinical data into the fields: on arrival, and again with
+    /// what a save answered.
+    /// </summary>
+    private void Load(ClinicalResponse clinical)
+    {
+        diseaseOnsetDate = Written(clinical.DiseaseOnsetDate);
+        dateDiagnosed = Written(clinical.DateDiagnosed);
+        treatmentGiven = clinical.TreatmentGiven;
+        deathStatus = clinical.DeathStatus;
+        dateOfDeath = Written(clinical.DateOfDeath);
+        pregnant = clinical.Pregnant;
+        pregnancyDueDate = Written(clinical.PregnancyDueDate);
+        expectedDeliveryFacilityId = clinical.ExpectedDeliveryFacilityId;
+    }
+
+    private async Task Save()
+    {
+        if (!TryDate(diseaseOnsetDate, "the disease onset date", out var onset, out var why)
+            || !TryDate(dateDiagnosed, "the date diagnosed", out var diagnosed, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        // The date of death is read only where the died? answer is Yes, which
+        // is the one answer it goes with; otherwise it is left out, so a date
+        // left behind in a hidden box is not sent. A date the API would refuse
+        // for any other reason is its to refuse.
+        DateOnly? died = null;
+
+        if (Died && !TryDate(dateOfDeath, "the date of death", out died, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        // The due date, like the date of death, is read only where the answer
+        // it goes with is given.
+        DateOnly? due = null;
+
+        if (Pregnant && !TryDate(pregnancyDueDate, "the due date", out due, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        complaint = null;
+        failure = null;
+        saved = null;
+        saving = true;
+
+        try
+        {
+            var answered = await Api.Save(ReportId, new UpdateClinicalRequest(
+                DiseaseOnsetDate: onset,
+                DateDiagnosed: diagnosed,
+                TreatmentGiven: Blank(treatmentGiven),
+                DeathStatus: Blank(deathStatus),
+                DateOfDeath: Died ? died : null,
+                Pregnant: Blank(pregnant),
+                PregnancyDueDate: Pregnant ? due : null,
+                ExpectedDeliveryFacilityId: Pregnant ? expectedDeliveryFacilityId : null));
+
+            if (answered.Value is { } stored)
+            {
+                Load(stored);
+                saved = "The clinical data has been saved.";
+            }
+            else
+            {
+                failure = answered.Failure;
+            }
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    /// <summary>A coded box's content, trimmed, or null where it holds nothing.</summary>
+    private static string? Blank(string? typed) =>
+        string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
+
+    /// <summary>
+    /// A date box read: empty is no date, a date is the date, and anything
+    /// else is a complaint naming the box — the same rule the Demographic tab
+    /// reads its date boxes by.
+    /// </summary>
+    private static bool TryDate(string? typed, string named, out DateOnly? date, out string? why)
+    {
+        date = null;
+        why = null;
+
+        if (string.IsNullOrWhiteSpace(typed))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParseExact(typed.Trim(), DateForm, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var parsed))
+        {
+            date = parsed;
+
+            return true;
+        }
+
+        why = $"Give {named} as yyyy-mm-dd, or leave it empty.";
+
+        return false;
+    }
+
+    /// <summary>A date as a date box holds it.</summary>
+    private static string? Written(DateOnly? date) =>
+        date?.ToString(DateForm, CultureInfo.InvariantCulture);
+}
