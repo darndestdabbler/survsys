@@ -1,0 +1,28 @@
+@* The task list screen: every report's tasks, by due date, with the status
+   filter and the one action a task takes.
+
+   ../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md
+   records the legacy Tasks section on a report's Notes tab, with a "Show all
+   tasks" filter beside it: the filter is there because a worker's tasks are
+   not read a report at a time. This screen is that reading — the same panel
+   the Notes tab shows, asked for every report rather than for one.
+
+   Adding a task is not here. A task is recorded against a report, and this
+   screen has none in hand: it is opened from the app bar rather than from a
+   case. The panel offers the "+ Add Task" form on the Notes tab, where the
+   report is known. *@
+@page "/tasks"
+
+<PageTitle>Tasks — Survsys</PageTitle>
+
+<MudText id="tasks-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Tasks
+</MudText>
+
+<MudText id="tasks-lead-in" Typo="Typo.body2" Class="mb-4">
+    The tasks raised against every case, soonest due first. Show the ones still
+    to do, the ones done, or all of them, and complete a task once it is done.
+    A task is added from the Notes tab of the case it is about.
+</MudText>
+
+<TasksPanel />
