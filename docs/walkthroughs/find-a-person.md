@@ -32,9 +32,9 @@ describes what Survsys shows rather than what EpiTrax showed:
   demographic record, and editing it — is a later session's, and until it
   exists a row offers nothing rather than a link to nowhere.
 
-The legacy form's free-text *Person name* box, its *Score* column, its
-*Phone*, *Morbidity* and *Contact* columns and its *Create Person and CMR*
-button are not part of this walkthrough. The last of those belongs to the
+The legacy form's free-text *Person name* box, its *Phone*, *Morbidity* and
+*Contact* columns and its *Create Person and CMR* button are not part of this
+walkthrough. The last of those belongs to the
 walkthrough that creates a report; the rest Survsys does not have yet.
 
 A person's **ID** is the number the database assigned when the person was
@@ -108,18 +108,21 @@ of every test it runs, and writes the recordings to
 5. Read the line of small text that appears above the table. It reads
    **2 person(s) found, showing 2.** — the first number is how many people
    matched, the second how many of them this page is showing you.
-6. Read the four column headings of the table, left to right: **ID**,
-   **Last, First**, **Birth date** and **Birth sex**. Then read down the
-   **Last, First** column. There are two rows, in alphabetical order by last
-   name and then first name:
+6. Read the six column headings of the table, left to right: **ID**,
+   **Last, First**, **Birth date**, **Birth sex**, **Score** and **Why**.
+   Then read down the **Last, First** column. There are two rows, in
+   alphabetical order by last name and then first name:
 
-   | Last, First | Birth date | Birth sex |
-   |---|---|---|
-   | Rodriguez, Carlos | 1960-01-20 | M |
-   | Rodriguez, Maria | 1985-06-15 | F |
+   | Last, First | Birth date | Birth sex | Score | Why |
+   |---|---|---|---|---|
+   | Rodriguez, Carlos | 1960-01-20 | M | 30 (None) | Last name matches |
+   | Rodriguez, Maria | 1985-06-15 | F | 30 (None) | Last name matches |
 
-   Each row's **ID** is the number this installation gave the person; it is
-   there, and it is not something this document can tell you.
+   A search with criteria scores each row against them: a last name alone
+   agrees on one field, which is worth 30 of 100 and too little to call the
+   row the same person. Each row's **ID** is the number this installation
+   gave the person; it is there, and it is not something this document can
+   tell you.
 7. Press **Clear**. The **Last name** box is empty again, and the count line
    and the table are gone.
 8. With every box empty, press **Search**. The count line reads
@@ -154,7 +157,8 @@ The people on file, found by searching for them, on one screen:
   the search form under it.
 - Searching for the last name **Rodriguez** finds **2 person(s) found,
   showing 2.**: **Rodriguez, Carlos** and **Rodriguez, Maria**, in that
-  order, with their dates of birth and birth sexes as printed above.
+  order, with their dates of birth and birth sexes as printed above, each
+  scored **30 (None)** because **Last name matches**.
 - **Clear** empties the form and takes the results away.
 - Searching with every box empty finds **7 person(s) found, showing 7.**, in
   alphabetical order by last name and then first name, with an em dash for

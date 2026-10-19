@@ -84,37 +84,38 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 70 | Person matching in the running application | no | 2026-10-19 |
 | 71 | Duplicate persons and merging them | no | 2026-10-19 |
 | 72 | Phase 9 walkthroughs | no | 2026-10-19 |
-| 73 | Release 0.10.0 (release: 0.10.0) | — | not declared |
-| 74 | Parsed messages, the parser seam and MLLP | — | not declared |
-| 75 | Vocabulary and rules at intake | — | not declared |
-| 76 | The graylist, automatic assignment and the full queue | — | not declared |
-| 77 | Labs from messages, and updating an existing case | — | not declared |
-| 78 | Exceptions, reprocessing, notifications and statistics | — | not declared |
-| 79 | Connecticut ELR conformance | — | not declared |
-| 80 | Connecticut planning regions as county equivalents | — | not declared |
-| 81 | Phase 10 walkthroughs | — | not declared |
-| 82 | Release 0.11.0 (release: 0.11.0) | — | not declared |
-| 83 | The notification queue worker and the export log | — | not declared |
-| 84 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
-| 85 | Guide, rule set and value set administration | — | not declared |
-| 86 | Transport to CDC | — | not declared |
-| 87 | Phase 11 walkthroughs | — | not declared |
-| 88 | Release 0.12.0 (release: 0.12.0) | — | not declared |
-| 89 | Audit with its user and values, and its screens | — | not declared |
-| 90 | Jurisdiction-scoped access and sign-in protection | — | not declared |
-| 91 | Classification rules on save | — | not declared |
-| 92 | IBIS, ad-hoc reporting and system configuration | — | not declared |
-| 93 | Phase 12 walkthroughs | — | not declared |
-| 94 | Release 0.13.0 (release: 0.13.0) | — | not declared |
-| 95 | eICR and RR parsing and document intake | — | not declared |
-| 96 | eCR validation and the eICR viewer | — | not declared |
-| 97 | Reportability and condition mapping | — | not declared |
-| 98 | Cases from eCR | — | not declared |
-| 99 | eCR senders and data quality | — | not declared |
-| 100 | Phase 13 walkthroughs | — | not declared |
-| 101 | Release 0.14.0 (release: 0.14.0) | — | not declared |
-| 102 | The parity check and the documentation for 1.0.0 | — | not declared |
-| 103 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 73 | Repair the three walkthroughs Phase 9 broke | no | 2026-10-19 |
+| 74 | Release 0.10.0 (release: 0.10.0) | — | not declared |
+| 75 | Parsed messages, the parser seam and MLLP | — | not declared |
+| 76 | Vocabulary and rules at intake | — | not declared |
+| 77 | The graylist, automatic assignment and the full queue | — | not declared |
+| 78 | Labs from messages, and updating an existing case | — | not declared |
+| 79 | Exceptions, reprocessing, notifications and statistics | — | not declared |
+| 80 | Connecticut ELR conformance | — | not declared |
+| 81 | Connecticut planning regions as county equivalents | — | not declared |
+| 82 | Phase 10 walkthroughs | — | not declared |
+| 83 | Release 0.11.0 (release: 0.11.0) | — | not declared |
+| 84 | The notification queue worker and the export log | — | not declared |
+| 85 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
+| 86 | Guide, rule set and value set administration | — | not declared |
+| 87 | Transport to CDC | — | not declared |
+| 88 | Phase 11 walkthroughs | — | not declared |
+| 89 | Release 0.12.0 (release: 0.12.0) | — | not declared |
+| 90 | Audit with its user and values, and its screens | — | not declared |
+| 91 | Jurisdiction-scoped access and sign-in protection | — | not declared |
+| 92 | Classification rules on save | — | not declared |
+| 93 | IBIS, ad-hoc reporting and system configuration | — | not declared |
+| 94 | Phase 12 walkthroughs | — | not declared |
+| 95 | Release 0.13.0 (release: 0.13.0) | — | not declared |
+| 96 | eICR and RR parsing and document intake | — | not declared |
+| 97 | eCR validation and the eICR viewer | — | not declared |
+| 98 | Reportability and condition mapping | — | not declared |
+| 99 | Cases from eCR | — | not declared |
+| 100 | eCR senders and data quality | — | not declared |
+| 101 | Phase 13 walkthroughs | — | not declared |
+| 102 | Release 0.14.0 (release: 0.14.0) | — | not declared |
+| 103 | The parity check and the documentation for 1.0.0 | — | not declared |
+| 104 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -655,3 +656,9 @@ Find duplicate persons with the session-70 matcher and merge them. Survsys.Data'
 **Releasable: no.**
 
 Write the three Phase 9 walkthroughs and the Playwright test named after each. docs/walkthroughs gains find-a-person-by-a-former-name.md (an investigator changes a person's name on the Demographics tab, the old name is kept as a former name, and person search finds the person by that former name and shows them on the person screen with the former name listed), record-a-persons-address-history.md (an investigator records a person's current address and an earlier one with their beginning and ending dates on the Demographics tab, saves, and reads both back on the person screen's Addresses, normalised as stored) and merge-duplicate-persons.md (a user with the merge-persons privilege opens the duplicates screen, finds a candidate pair with its score, opens the side-by-side merge screen, chooses the person to keep, merges, and finds the merged-away person's case under the kept person). Each is written in the form of the existing walkthroughs (user story inferred from the legacy documentation under ../nedss/, Before you start, numbered steps, What you should see), and Survsys.E2ETests gains FindAPersonByAFormerNameTests.cs, RecordAPersonsAddressHistoryTests.cs and MergeDuplicatePersonsTests.cs, each performing its document's steps in their written order through the existing SurvsysHarness and asserting what the document promises. docs/walkthroughs/README.md indexes each one, and its count of walkthroughs becomes thirty-two.
+
+### Session 73 — Repair the three walkthroughs Phase 9 broke
+
+**Releasable: no.**
+
+Repair the three end-to-end walkthroughs Phase 9 broke, before the 0.10.0 release. The find-a-person walkthrough and its test are brought up to the Score and Why columns session 70 added to every person search made with criteria: step 6 of docs/walkthroughs/find-a-person.md names the six column headings and says what Score and Why read on the two Rodriguez rows (30 (None) and Last name matches, since a last name alone scores only its own weight), and FindAPersonTests asserts those headings and values. The application bar in Survsys.Web's MainLayout.razor is made to wrap its buttons onto further lines instead of running past the right-hand edge of the window, so Treatments and every other button a user holds the privilege for is visible and pressable at the suite's window size, which repairs record-a-treatment and record-a-case-treatment without changing either.

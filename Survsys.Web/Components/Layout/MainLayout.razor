@@ -25,7 +25,12 @@
 
    Each link carries an identifier of its own, as every element a walkthrough
    names does. The bar still reads Survsys, which the conditions walkthrough
-   says it does. *@
+   says it does.
+
+   Since session 73 the bar wraps its buttons onto further lines and sits in
+   the page's flow rather than fixed over it, because there are now more of
+   them than one line of a window holds, and a button run off the edge cannot
+   be pressed. *@
 @inherits LayoutComponentBase
 
 <MudThemeProvider />
@@ -34,7 +39,10 @@
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="1">
+    @* MudBlazor fixes the toolbar's height to the app bar height from 600px
+       up, so the height is let grow with the lines here; and the content
+       below no longer needs room left for a bar fixed over it. *@
+    <MudAppBar Elevation="1" Fixed="false" WrapContent="true" Style="--mud-appbar-height: auto">
         <MudText Typo="Typo.h6" Class="mr-8">Survsys</MudText>
         @if (user?.Identity?.IsAuthenticated == true)
         {
@@ -137,7 +145,7 @@
             </form>
         }
     </MudAppBar>
-    <MudMainContent>
+    <MudMainContent Style="padding-top: 0">
         <MudContainer MaxWidth="MaxWidth.Large" Class="my-6">
             @Body
         </MudContainer>

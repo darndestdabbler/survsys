@@ -97,12 +97,17 @@ public class FindAPersonTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator("#person-search-total"))
                 .ToHaveTextAsync("2 person(s) found, showing 2."));
 
-        // 6. The four column headings, and the two rows in order.
+        // 6. The six column headings, the two rows in order, and what each
+        //    scores against the last name searched for and why.
         await Step(Document, 6, "read the column headings and the two Rodriguez rows", async () =>
         {
             await Expect(Page.Locator("#person-search-results thead th"))
-                .ToHaveTextAsync(["ID", "Last, First", "Birth date", "Birth sex"]);
+                .ToHaveTextAsync(["ID", "Last, First", "Birth date", "Birth sex", "Score", "Why"]);
             await ExpectRows(Rodriguezes);
+            await Expect(Page.Locator("#person-search-results [data-person-score]"))
+                .ToHaveTextAsync(["30 (None)", "30 (None)"]);
+            await Expect(Page.Locator("#person-search-results [data-person-why]"))
+                .ToHaveTextAsync(["Last name matches", "Last name matches"]);
         });
 
         // 7. Clear empties the box and takes the count line and the table away.

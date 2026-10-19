@@ -769,6 +769,13 @@
       "dateTime": "2026-10-19T13:49:28.438000-04:00",
       "task": "Write the three Phase 9 walkthroughs and the Playwright test named after each. docs/walkthroughs gains find-a-person-by-a-former-name.md (an investigator changes a person's name on the Demographics tab, the old name is kept as a former name, and person search finds the person by that former name and shows them on the person screen with the former name listed), record-a-persons-address-history.md (an investigator records a person's current address and an earlier one with their beginning and ending dates on the Demographics tab, saves, and reads both back on the person screen's Addresses, normalised as stored) and merge-duplicate-persons.md (a user with the merge-persons privilege opens the duplicates screen, finds a candidate pair with its score, opens the side-by-side merge screen, chooses the person to keep, merges, and finds the merged-away person's case under the kept person). Each is written in the form of the existing walkthroughs (user story inferred from the legacy documentation under ../nedss/, Before you start, numbered steps, What you should see), and Survsys.E2ETests gains FindAPersonByAFormerNameTests.cs, RecordAPersonsAddressHistoryTests.cs and MergeDuplicatePersonsTests.cs, each performing its document's steps in their written order through the existing SurvsysHarness and asserting what the document promises. docs/walkthroughs/README.md indexes each one, and its count of walkthroughs becomes thirty-two.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 73,
+      "dateTime": "2026-10-19T14:20:04.543000-04:00",
+      "task": "Repair the three end-to-end walkthroughs Phase 9 broke, before the 0.10.0 release. The find-a-person walkthrough and its test are brought up to the Score and Why columns session 70 added to every person search made with criteria: step 6 of docs/walkthroughs/find-a-person.md names the six column headings and says what Score and Why read on the two Rodriguez rows (30 (None) and Last name matches, since a last name alone scores only its own weight), and FindAPersonTests asserts those headings and values. The application bar in Survsys.Web's MainLayout.razor is made to wrap its buttons onto further lines instead of running past the right-hand edge of the window, so Treatments and every other button a user holds the privilege for is visible and pressable at the suite's window size, which repairs record-a-treatment and record-a-case-treatment without changing either.",
+      "releasable": false
     }
   ]
 }
