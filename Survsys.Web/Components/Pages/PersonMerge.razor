@@ -1,0 +1,148 @@
+@* Two people side by side, to decide whether they are one and which record to
+   keep. Merging moves everything the other person has — their cases, labs,
+   contacts, identifiers, names and addresses — onto the person kept, and
+   leaves the other on file as a tombstone; the kept person's own demographics
+   stay as they are. A success goes to the kept person's record, and a failure
+   is a message here. Reached only by holders of merge_persons, which the API
+   tier enforces whatever this screen shows.
+
+   Every element a later walkthrough will name carries an identifier of its
+   own — `merge-heading`, `merge-loading`, `merge-error`, `merge-forbidden`,
+   one column per person keyed by their id with its `merge-keep-{id}` button,
+   `merge-submit` and `merge-failure`. *@
+@page "/persons/merge/{FirstId:int}/{SecondId:int}"
+@inject PersonsClient Client
+@inject NavigationManager Navigation
+
+<PageTitle>Merge persons — Survsys</PageTitle>
+
+<MudText id="merge-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Merge persons
+</MudText>
+
+@if (!mayMerge)
+{
+    <MudAlert id="merge-forbidden" Severity="Severity.Warning">
+        Merging persons needs the merge_persons privilege.
+    </MudAlert>
+}
+else if (first is null || second is null)
+{
+    <MudProgressCircular id="merge-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (first.Value is null || second.Value is null)
+{
+    <MudAlert id="merge-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @(first.Failure ?? second.Failure)
+    </MudAlert>
+}
+else
+{
+    <MudText Typo="Typo.body2" Class="mb-4">
+        Choose the record to keep. Everything on the other record moves to it,
+        and the other record is kept only as a pointer to this one.
+    </MudText>
+
+    <MudGrid>
+        @foreach (var person in new[] { first.Value, second.Value })
+        {
+            <MudItem xs="12" md="6">
+                <MudPaper id="@($"merge-person-{person.Id}")" Elevation="1" Class="pa-4">
+                    <MudText Typo="Typo.h6">@person.LastName, @person.FirstName @person.MiddleName</MudText>
+                    <MudSimpleTable Dense="true" Class="my-2">
+                        <tbody>
+                            <tr><th>Id</th><td>@person.Id</td></tr>
+                            <tr><th>Born</th><td>@person.BirthDate?.ToString("yyyy-MM-dd")</td></tr>
+                            <tr><th>Sex at birth</th><td>@person.BirthGender</td></tr>
+                            <tr><th>Current gender</th><td>@person.CurrentGender</td></tr>
+                            <tr><th>Ethnicity</th><td>@person.Ethnicity</td></tr>
+                            <tr><th>Language</th><td>@person.Language</td></tr>
+                            <tr><th>Races</th><td>@string.Join(", ", person.Races)</td></tr>
+                            <tr><th>Aliases</th><td>@string.Join(", ", person.Aliases)</td></tr>
+                            <tr><th>Former names</th><td>@string.Join("; ", person.FormerNames.Select(name => $"{name.LastName}, {name.FirstName}"))</td></tr>
+                            <tr><th>Identifiers</th><td>@string.Join(", ", person.Identifiers.Select(identifier => identifier.Value))</td></tr>
+                            <tr><th>Addresses</th><td>@string.Join("; ", person.Addresses.Select(address => $"{address.Street} {address.City} {address.PostalCode}{(address.Ending is null ? " (current)" : "")}"))</td></tr>
+                            <tr><th>Telephones</th><td>@person.Telephones.Count</td></tr>
+                            <tr><th>Emails</th><td>@person.Emails.Count</td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                    <MudButton id="@($"merge-keep-{person.Id}")" Size="Size.Small" Color="Color.Primary"
+                               Variant="@(keepId == person.Id ? Variant.Filled : Variant.Outlined)"
+                               OnClick="() => keepId = person.Id">
+                        @(keepId == person.Id ? "Keeping this record" : "Keep this record")
+                    </MudButton>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudButton id="merge-submit" Class="mt-4" Variant="Variant.Filled" Color="Color.Error"
+               Disabled="@(keepId is null || merging)" OnClick="Merge">
+        Merge
+    </MudButton>
+
+    @if (failure is not null)
+    {
+        <MudAlert id="merge-failure" Severity="Severity.Error" Variant="Variant.Filled" Class="mt-4">
+            @failure
+        </MudAlert>
+    }
+}
+
+@code {
+    [Parameter]
+    public int FirstId { get; set; }
+
+    [Parameter]
+    public int SecondId { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private bool mayMerge;
+
+    private Asked<PersonDetailResponse>? first;
+
+    private Asked<PersonDetailResponse>? second;
+
+    private int? keepId;
+
+    private bool merging;
+
+    private string? failure;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var user = AuthenticationState is { } state ? (await state).User : null;
+        mayMerge = user?.HasClaim(AccountClient.PrivilegeClaim, Privileges.MergePersons) == true;
+
+        if (mayMerge)
+        {
+            first = await Client.Find(FirstId);
+            second = await Client.Find(SecondId);
+        }
+    }
+
+    private async Task Merge()
+    {
+        if (keepId is not { } kept)
+        {
+            return;
+        }
+
+        merging = true;
+        failure = null;
+
+        var merged = await Client.Merge(new PersonMergeRequest(kept, kept == FirstId ? SecondId : FirstId));
+
+        merging = false;
+        if (merged.Value is { } person)
+        {
+            Navigation.NavigateTo($"/people/{person.Id}");
+        }
+        else
+        {
+            failure = merged.Failure;
+        }
+    }
+}
