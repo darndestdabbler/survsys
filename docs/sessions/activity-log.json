@@ -719,6 +719,13 @@
       "dateTime": "2026-10-19T06:28:55.518000-04:00",
       "task": "Make the case morbidity report screen follow a link from one report to another. MorbidityReport.razor reads its report only in OnInitializedAsync, and Blazor reuses the page component when only ReportId changes, so /event/edit/{id} to another id keeps showing the first case. The load moves to OnParametersSetAsync, guarded by the report id last loaded, so it runs on first render and whenever ReportId changes and on no other parameter set. Before loading another case it releases the edit lock this page holds on the case it leaves (as DisposeAsync does today), and it resets the edit mode, the lock holder and every saved/error message of the case it leaves. Showing the busy indicator while loading takes the tabs out of the tree, so the tab strip returns to its first tab and each tab component is created afresh for the new report.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 67,
+      "dateTime": "2026-10-19T07:13:31.042000-04:00",
+      "task": "Write the five Phase 8 walkthroughs and the Playwright test named after each. docs/walkthroughs gains find-a-case.md (an investigator finds a case on the Events screen by its search filters and opens it from its row), correct-a-laboratory-result.md (an investigator edits a saved result on a report's Laboratory tab and reads the corrected value back), route-a-case-to-another-agency.md (a state user routes a case to another health department from the report's Workflow Options and reads the transition in the Administrative tab's history), promote-a-contact-to-a-case.md (an investigator adds a contact to a case as a contact event, follows its (contact event) link to the contact's own report and promotes it to a morbidity report) and record-a-case-treatment.md (an investigator records a treatment given on a case, chosen from the condition's treatment list, with its dates and dose, on the report's Treatments tab, and reads it back). Each is written in the form of the existing walkthroughs (user story inferred from the legacy documentation under ../nedss/, Before you start, numbered steps, What you should see), and Survsys.E2ETests gains FindACaseTests.cs, CorrectALaboratoryResultTests.cs, RouteACaseToAnotherAgencyTests.cs, PromoteAContactToACaseTests.cs and RecordACaseTreatmentTests.cs, each performing its document's steps in their written order through the existing SurvsysHarness and asserting what the document promises. docs/walkthroughs/README.md indexes each one, and its count of walkthroughs becomes twenty-nine.",
+      "releasable": false
     }
   ]
 }

@@ -29,6 +29,11 @@ running Survsys. Perform them in any order; each one stands alone.
 | [Open an outbreak and link cases](open-an-outbreak-and-link-cases.md) | An investigator opens an outbreak with its number, name, date, disease and owning agency, links a case morbidity report to it from the report's Administrative tab, and reads the case back among the outbreak's linked cases. | `Survsys.E2ETests/OpenAnOutbreakAndLinkCasesTests.cs` |
 | [Complete a supplemental form](complete-a-supplemental-form.md) | An administrator builds a supplemental form for a condition, with a section, a text question and a coded question, set to auto-assign; an investigator opens a case on that condition, finds the form on its Forms tab, answers it, saves, and reads the answers back. | `Survsys.E2ETests/CompleteASupplementalFormTests.cs` |
 | [Record a treatment](record-a-treatment.md) | A surveillance administrator adds a treatment, lists it for the diseases it is given for, saves it, and reads it back in the treatments list and on its own screen. | `Survsys.E2ETests/RecordATreatmentTests.cs` |
+| [Find a case](find-a-case.md) | An investigator opens a case, then finds it again on the Events screen by its patient and disease, reads its row, and opens the case from its record number. | `Survsys.E2ETests/FindACaseTests.cs` |
+| [Correct a laboratory result](correct-a-laboratory-result.md) | An investigator records a specimen with one test and one result on a case, then corrects that result's value and result code from the specimen's Edit, saves it, and reads the corrected result back from the database. | `Survsys.E2ETests/CorrectALaboratoryResultTests.cs` |
+| [Route a case to another agency](route-a-case-to-another-agency.md) | A state user routes a case from the health department it was assigned to over to another from the report's Workflow Options, with a note, and reads the new agency and the move in the Administrative tab's workflow history. | `Survsys.E2ETests/RouteACaseToAnotherAgencyTests.cs` |
+| [Promote a contact to a case](promote-a-contact-to-a-case.md) | An investigator adds a person exposed alongside the patient as a contact, which opens a contact event of their own, follows the link to that contact event, and promotes it to a morbidity report. | `Survsys.E2ETests/PromoteAContactToACaseTests.cs` |
+| [Record a case treatment](record-a-case-treatment.md) | An investigator records the treatment a case was given, chosen from the treatments listed for its disease, with its start and stop dates and dose, on the report's Treatments tab, and reads it back. | `Survsys.E2ETests/RecordACaseTreatmentTests.cs` |
 
 ## The contract every entry here is held to
 
@@ -62,7 +67,7 @@ dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj
 
 That starts both tiers on ports it finds free, seeds the database, performs
 every walkthrough in a browser and records each one. The whole run is the full
-walkthrough regression a release runs: it performs all twenty-four
+walkthrough regression a release runs: it performs all twenty-nine
 walkthroughs above, every one of them, with nothing selected out. It needs a reachable SQL
 Server; each walkthrough's own **Before you start** says what it needs to be
 performed by hand instead.
