@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 057 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 057 transcript</h1>
+<p class="stamp">Rendered 2026-10-18T10:40:33.821Z by dabbler-ai-router 3.21.0 at 01415127a8bd5c1d6f8cac9bf7a976e6780a448a.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-18T06:05:08.768-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 57: Phase 7 walkthroughs and the full walkthrough regression</h3>
+<ol><li>Register.</li><li><code>docs/walkthroughs/</code>: three documents — open an outbreak and link cases, complete a supplemental form, record a treatment.</li><li><code>Survsys.E2ETests</code>: the three Playwright tests named after them, and a pass over every walkthrough document written since session 7 to confirm each still reads exactly as its own test performs it.</li><li><code>docs/</code>: the user and technical documentation completed for 1.0.0.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Document the Phase 7 workflows sessions 51 to 53 shipped as three walkthroughs under docs/walkthroughs/, each with the one Playwright test named after it, recording video through the harness; run every walkthrough written since session 7 as the full walkthrough regression; and complete the user guide and the technical guide for 1.0.0. First the harness learns to clear what the new walkthroughs create - outbreaks and their access, report sections and updates, supplemental forms with their sections, questions, options, assignments and answers, treatments and their condition lists, and a person's vaccine records - so every run starts from the seed. Then, in turn: open-an-outbreak-and-link-cases (an outbreak is opened on the outbreaks screen, a case morbidity report is created and linked to it from its Administrative tab's outbreak-name picker, and the outbreak's screen lists the linked case); complete-a-supplemental-form (a form for a condition is built and set to auto-assign in the form builder, a case on that condition is opened, and its Forms tab shows the assigned form, which is completed, saved and read back afresh); and record-a-treatment (a treatment is added on the treatments screen, listed for a condition, saved, and read back in the treatments list and its editor). Each document is numbered steps naming controls by the words the screens show, with the Before-you-start and What-you-should-see sections the others carry and its row in the index; each test performs those steps in their written order and asserts by stable identifiers. Then the whole end-to-end suite is run, and every walkthrough document is read against its own test so each still reads exactly as its test performs it, any drift corrected in the document or the test (never by skipping a step). Last, every section of docs/user-guide/README.md and docs/technical/README.md still marked not yet built or not yet written is written for what the application does at 1.0.0, and docs/README.md stops calling them skeletons.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/7f2387c430c508ef0d7fb05f58b28cdb353d40e6"><code>7f2387c430c508ef0d7fb05f58b28cdb353d40e6</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Clear the phase 7 tables</td><td><p>Teach the end-to-end harness to clear what the Phase 7 walkthroughs create, so a run after them still seeds. Add to SurvsysHarness.TablesInDeletionOrder, each before the table it references, the rows a walkthrough creates: form_answers and form_assignments before person_conditions, form_question_options, form_questions and form_sections before forms, and forms before conditions; condition_treatments and treatments (leaving any treatment rows the migration seeds, if it seeds any - clear only what the suite would otherwise accumulate); person_vaccines before persons; and outbreak_access, outbreak_report_sections and outbreak_updates before outbreaks, with outbreaks after person_conditions (a case names its outbreak) and before conditions. Leave the vaccines catalogue, report_sections and audit_entries alone unless the schema forces their clearing. Extend the remarks to say why, in the style of the paragraphs already there, and confirm or extend SurvsysHarnessTests so the clearing is proved for the new tables.</p></td><td><span class="mono">Survsys.E2ETests/SurvsysHarness.cs</span><br><span class="mono">Survsys.E2ETests/SurvsysHarnessTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~SurvsysHarnessTests</code></td><td>yes</td></tr>
+<tr><td>Open an outbreak and link cases</td><td><p>Write docs/walkthroughs/open-an-outbreak-and-link-cases.md as one user story inferred from the legacy outbreak management under ../../../nedss/: a user opens a new outbreak on the outbreaks screen with its number, name, date, condition and owning agency and saves it; creates a case morbidity report through the New CMR screens; on its Administrative tab picks the outbreak in the Outbreak name list and saves; then opens the outbreak's own screen and reads the case among its linked cases, after reopening the address so it is read afresh from the database. Name each control by the words the Outbreaks, OutbreakEdit, MorbidityReport and AdministrativeTab screens show, with the Before-you-start and What-you-should-see sections the other walkthroughs carry, and add its row to docs/walkthroughs/README.md. Write Survsys.E2ETests/OpenAnOutbreakAndLinkCasesTests.cs performing those steps in their written order, opening selects by their accessible labels as the other tests' Choose helpers do, and asserting by the screens' stable identifiers.</p></td><td><span class="mono">docs/walkthroughs/open-an-outbreak-and-link-cases.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/OpenAnOutbreakAndLinkCasesTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~OpenAnOutbreakAndLinkCasesTests</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContract</code></td><td>yes</td></tr>
+<tr><td>Complete a supplemental form</td><td><p>Write docs/walkthroughs/complete-a-supplemental-form.md as one user story inferred from the legacy condition-specific forms under ../../../nedss/: a user builds a supplemental form in the form builder for a seeded condition no other walkthrough reports on, with one section, a text question and a coded question with its options, set to auto-assign, and saves it; creates a case morbidity report on that condition through the New CMR screens; opens its Forms tab, where the form is assigned; opens it, answers both questions and saves; then reopens the report's address and reads the answers back on the Forms tab. Name each control by the words the Forms, FormEdit, MorbidityReport and FormsTab screens show, with the usual Before-you-start and What-you-should-see sections, and add its row to docs/walkthroughs/README.md. Write Survsys.E2ETests/CompleteASupplementalFormTests.cs performing those steps in their written order and asserting by the screens' stable identifiers.</p></td><td><span class="mono">docs/walkthroughs/complete-a-supplemental-form.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/CompleteASupplementalFormTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~CompleteASupplementalFormTests</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContract</code></td><td>yes</td></tr>
+<tr><td>Record a treatment</td><td><p>Write docs/walkthroughs/record-a-treatment.md as one user story inferred from the legacy treatment administration under ../../../nedss/: a surveillance administrator opens the treatments screen, adds a treatment with its name and active flag, lists it for a seeded condition, saves it, reads it back in the treatments list, and opens it again to find the condition still chosen. Name each control by the words the Treatments and TreatmentEdit screens show, with the usual Before-you-start and What-you-should-see sections, and add its row to docs/walkthroughs/README.md. Write Survsys.E2ETests/RecordATreatmentTests.cs performing those steps in their written order and asserting by the screens' stable identifiers.</p></td><td><span class="mono">docs/walkthroughs/record-a-treatment.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/RecordATreatmentTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~RecordATreatmentTests</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContract</code></td><td>yes</td></tr>
+<tr><td>The full walkthrough regression</td><td><p>Read every walkthrough document under docs/walkthroughs/ against the test named after it and confirm each step is performed in its written order, by the route it describes, with the outcome it promises asserted; then run the whole end-to-end suite. Where a document and its test have drifted, correct whichever is wrong without skipping a step or changing the user story; where a step cannot be performed because the application is wrong, report the step blocked with the diagnosis rather than working around it. Record the pass in the index: in docs/walkthroughs/README.md's Running them all section, say that the whole suite is the full walkthrough regression a release runs, with the number of walkthroughs it performs. If a document or test has drifted, amend this step's files to name exactly what else changed.</p></td><td></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --blame-hang-timeout 5m</code></td><td>yes</td></tr>
+<tr><td>Complete the user guide</td><td><p>Write every section of docs/user-guide/README.md still marked not yet built - persons and case records, clinical, laboratory and workflow, investigation, contacts, notes and tasks, reference data administration and reporting, inbound laboratory messages, CDC notification, and outbreaks, forms, treatments and audit - as what each screen is for and how the work is done on it at 1.0.0, in the style of the conditions-catalogue section, each linking the walkthroughs that perform it. Correct the conditions-catalogue section where phase 4's administration has made it untrue, mark every section written in the table, and drop the skeleton paragraph. In docs/README.md, say the guides are complete for 1.0.0 rather than skeletons.</p></td><td><span class="mono">docs/user-guide/README.md</span><br><span class="mono">docs/README.md</span></td><td><code>pwsh -NoProfile -NonInteractive -Command if (Select-String -Path docs/user-guide/README.md -Pattern 'Not yet built', 'is a skeleton' -SimpleMatch -Quiet) { exit 1 }</code></td><td>yes</td></tr>
+<tr><td>Complete the technical guide</td><td><p>Write every section of docs/technical/README.md still marked not yet written or not yet built - deployment and configuration (the three handoff artifacts dabbler.yaml's packaging block produces, installing each tier as an IIS site, the database script, and the settings each tier reads, the administrator's among them), the data model, the API, the inbound laboratory message pipeline and the CDC notification pipeline - for what the code does at 1.0.0, and bring the existing sections up to date (the projects table, the seed fixtures, the suites). Mark every section written in the table and drop the skeleton paragraph. Describe what is there; do not restate the solution plan's reasoning.</p></td><td><span class="mono">docs/technical/README.md</span></td><td><code>pwsh -NoProfile -NonInteractive -Command if (Select-String -Path docs/technical/README.md -Pattern 'Not yet written', 'Not yet built', 'is a skeleton' -SimpleMatch -Quiet) { exit 1 }</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No application change: the outbreak, form builder, Forms tab and treatment screens and the endpoints behind them are sessions 51 to 56's, documented as they stand, so no Survsys.Web Razor, Survsys.Api endpoint, Survsys.Data entity or migration is written or altered. A walkthrough step the application cannot perform is reported as a defect for a session of its own, not fixed here.</li><li>Only the three named walkthroughs are written: vaccines, the outbreak report sections and activity log beyond what linking cases needs, audit, IBIS and ad-hoc reporting get no walkthrough of their own in this session.</li><li>The regression pass changes an existing walkthrough document or test only where the two have drifted apart; no existing walkthrough's user story, steps or assertions are otherwise rewritten, and no step is skipped or performed by another route.</li><li>The documentation describes only what the application does at this build: nothing planned and unbuilt is described as available, and the solution plan and brief under docs/planning/ are not edited.</li><li>No release packaging or publishing, and no packaging block in dabbler.yaml: that is session 58.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[10:05:08]</span> <span class="muted">run-started</span> session=057 mode=pull</div>
+<div class="line"><span class="at">[10:05:08]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[10:12:54]</span> <span class="muted">run-resumed</span> session=057 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[10:12:54]</span> <span class="muted">plan-accepted</span> steps=[&quot;clear-the-phase-7-tables&quot;,&quot;open-an-outbreak-and-link-cases&quot;,&quot;complete-a-supplemental-form&quot;,&quot;record-a-treatment&quot;,&quot;the-full-walkthrough-regression&quot;,&quot;complete-the-user-guide&quot;,&quot;complete-the-technical-guide&quot;] non_goals=5</div>
+<div class="line"><span class="at">[10:12:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[10:12:55]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=clear-the-phase-7-tables</div>
+<div class="line"><span class="at">[10:14:30]</span> <span class="muted">run-resumed</span> session=057 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:14:43]</span> <span class="muted">check-passed</span> step=clear-the-phase-7-tables argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~SurvsysHarnessTests&quot;]</div>
+<div class="line"><span class="at">[10:14:44]</span> <span class="muted">report-accepted</span> seq=2 step=clear-the-phase-7-tables files=[&quot;Survsys.E2ETests/SurvsysHarness.cs&quot;,&quot;Survsys.E2ETests/SurvsysHarnessTests.cs&quot;] notes=Harness clears the form, vaccine-record, outbreak and treatment tables in FK order; seeding test now covers every table before the people's details</div>
+<div class="line"><span class="at">[10:14:44]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=open-an-outbreak-and-link-cases</div>
+<div class="line"><span class="at">[10:17:02]</span> <span class="muted">run-resumed</span> session=057 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:17:14]</span> <span class="muted">check-passed</span> step=open-an-outbreak-and-link-cases argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~OpenAnOutbreakAndLinkCasesTests&quot;]</div>
+<div class="line"><span class="at">[10:17:18]</span> <span class="muted">check-passed</span> step=open-an-outbreak-and-link-cases argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContract&quot;]</div>
+<div class="line"><span class="at">[10:17:19]</span> <span class="muted">report-accepted</span> seq=3 step=open-an-outbreak-and-link-cases files=[&quot;docs/walkthroughs/open-an-outbreak-and-link-cases.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/OpenAnOutbreakAndLinkCasesTests.cs&quot;] notes=Outbreak walkthrough, its test and index row; the test passes in a browser</div>
+<div class="line"><span class="at">[10:17:19]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=complete-a-supplemental-form</div>
+<div class="line"><span class="at">[10:19:22]</span> <span class="muted">run-resumed</span> session=057 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:19:38]</span> <span class="muted">check-passed</span> step=complete-a-supplemental-form argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CompleteASupplementalFormTests&quot;]</div>
+<div class="line"><span class="at">[10:19:42]</span> <span class="muted">check-passed</span> step=complete-a-supplemental-form argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContract&quot;]</div>
+<div class="line"><span class="at">[10:19:42]</span> <span class="muted">report-accepted</span> seq=4 step=complete-a-supplemental-form files=[&quot;docs/walkthroughs/complete-a-supplemental-form.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/CompleteASupplementalFormTests.cs&quot;] notes=Supplemental form walkthrough, its test and index row; the test passes in a browser</div>
+<div class="line"><span class="at">[10:19:42]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=record-a-treatment</div>
+<div class="line"><span class="at">[10:20:52]</span> <span class="muted">run-resumed</span> session=057 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:21:04]</span> <span class="muted">check-passed</span> step=record-a-treatment argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~RecordATreatmentTests&quot;]</div>
+<div class="line"><span class="at">[10:21:07]</span> <span class="muted">check-passed</span> step=record-a-treatment argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContract&quot;]</div>
+<div class="line"><span class="at">[10:21:07]</span> <span class="muted">report-accepted</span> seq=5 step=record-a-treatment files=[&quot;docs/walkthroughs/record-a-treatment.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/RecordATreatmentTests.cs&quot;] notes=Treatment walkthrough, its test and index row; the test passes in a browser</div>
+<div class="line"><span class="at">[10:21:07]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=the-full-walkthrough-regression</div>
+<div class="line"><span class="at">[10:31:51]</span> <span class="muted">run-resumed</span> session=057 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:32:31]</span> <span class="muted">check-passed</span> step=the-full-walkthrough-regression argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--blame-hang-timeout&quot;,&quot;5m&quot;]</div>
+<div class="line"><span class="at">[10:32:31]</span> <span class="muted">report-accepted</span> seq=6 step=the-full-walkthrough-regression files=[] notes=Read all 21 earlier walkthroughs against their tests; corrected drift in 11 documents and 6 tests, moved the form walkthrough to Lyme disease so it cannot enter the export CSV; whole e2e suite 32/32</div>
+<div class="line"><span class="at">[10:32:31]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=complete-the-user-guide</div>
+<div class="line"><span class="at">[10:37:48]</span> <span class="muted">run-resumed</span> session=057 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:37:49]</span> <span class="muted">check-passed</span> step=complete-the-user-guide argv=[&quot;pwsh&quot;,&quot;-NoProfile&quot;,&quot;-NonInteractive&quot;,&quot;-Command&quot;,&quot;if (Select-String -Path docs/user-guide/README.md -Pattern 'Not yet built', 'is a skeleton' -SimpleMatch -Quiet) { exit 1 }&quot;]</div>
+<div class="line"><span class="at">[10:37:50]</span> <span class="muted">report-accepted</span> seq=7 step=complete-the-user-guide files=[&quot;docs/user-guide/README.md&quot;,&quot;docs/README.md&quot;] notes=User guide written for every screen at 1.0.0, with sign-in and privileges, and plain about what is not wired in (CDC generation and send, person matching, audit viewer); docs index updated</div>
+<div class="line"><span class="at">[10:37:50]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=complete-the-technical-guide</div>
+<div class="line"><span class="at">[10:39:10]</span> <span class="muted">run-resumed</span> session=057 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:39:11]</span> <span class="muted">check-passed</span> step=complete-the-technical-guide argv=[&quot;pwsh&quot;,&quot;-NoProfile&quot;,&quot;-NonInteractive&quot;,&quot;-Command&quot;,&quot;if (Select-String -Path docs/technical/README.md -Pattern 'Not yet written', 'Not yet built', 'is a skeleton' -SimpleMatch -Quiet) { exit 1 }&quot;]</div>
+<div class="line"><span class="at">[10:39:11]</span> <span class="muted">report-accepted</span> seq=8 step=complete-the-technical-guide files=[&quot;docs/technical/README.md&quot;] notes=Technical guide written for 1.0.0: projects incl. Survsys.Messaging, deployment and every setting, data model, API, both pipelines, stating plainly that matching, notification generation and sending are built but not wired in</div>
+<div class="line"><span class="at">[10:39:11]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[10:39:11]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[10:39:13]</span> <span class="muted">job-started</span> name=verification pid=56036 log=.dabbler/runs/s57/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:40:10]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s57/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:40:10]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[10:40:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[10:40:10]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[10:40:11]</span> <span class="muted">job-started</span> name=run of record: unit pid=34904 log=.dabbler/runs/s57/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[10:40:19]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s57/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[10:40:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[10:40:24]</span> <span class="muted">landed</span> commit=7f2387c430c508ef0d7fb05f58b28cdb353d40e6</div>
+<div class="line"><span class="at">[10:40:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[10:40:24]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[10:40:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[10:40:25]</span> <span class="muted">job-started</span> name=close pid=10204 log=.dabbler/runs/s57/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:40:33]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s57/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:40:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** Issue → The technical guide claims a current `dabbler.yaml` packaging block and release artifacts despite the session’s explicit non-goal: “no packaging block in `dabbler.yaml`: that is session 58.”</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>5s</td><td>1022</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
