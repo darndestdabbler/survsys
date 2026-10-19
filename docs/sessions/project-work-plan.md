@@ -85,7 +85,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 71 | Duplicate persons and merging them | no | 2026-10-19 |
 | 72 | Phase 9 walkthroughs | no | 2026-10-19 |
 | 73 | Repair the three walkthroughs Phase 9 broke | no | 2026-10-19 |
-| 74 | Release 0.10.0 (release: 0.10.0) | — | not declared |
+| 74 | Release 0.10.0 (release: 0.10.0) | yes | 2026-10-19 |
 | 75 | Parsed messages, the parser seam and MLLP | — | not declared |
 | 76 | Vocabulary and rules at intake | — | not declared |
 | 77 | The graylist, automatic assignment and the full queue | — | not declared |
@@ -662,3 +662,9 @@ Write the three Phase 9 walkthroughs and the Playwright test named after each. d
 **Releasable: no.**
 
 Repair the three end-to-end walkthroughs Phase 9 broke, before the 0.10.0 release. The find-a-person walkthrough and its test are brought up to the Score and Why columns session 70 added to every person search made with criteria: step 6 of docs/walkthroughs/find-a-person.md names the six column headings and says what Score and Why read on the two Rodriguez rows (30 (None) and Last name matches, since a last name alone scores only its own weight), and FindAPersonTests asserts those headings and values. The application bar in Survsys.Web's MainLayout.razor is made to wrap its buttons onto further lines instead of running past the right-hand edge of the window, so Treatments and every other button a user holds the privilege for is visible and pressable at the suite's window size, which repairs record-a-treatment and record-a-case-treatment without changing either.
+
+### Session 74 — Release 0.10.0 (release: 0.10.0)
+
+**Releasable: yes.**
+
+Release 0.10.0: the framework packs and publishes what is on the trunk.

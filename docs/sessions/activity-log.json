@@ -776,6 +776,13 @@
       "dateTime": "2026-10-19T14:20:04.543000-04:00",
       "task": "Repair the three end-to-end walkthroughs Phase 9 broke, before the 0.10.0 release. The find-a-person walkthrough and its test are brought up to the Score and Why columns session 70 added to every person search made with criteria: step 6 of docs/walkthroughs/find-a-person.md names the six column headings and says what Score and Why read on the two Rodriguez rows (30 (None) and Last name matches, since a last name alone scores only its own weight), and FindAPersonTests asserts those headings and values. The application bar in Survsys.Web's MainLayout.razor is made to wrap its buttons onto further lines instead of running past the right-hand edge of the window, so Treatments and every other button a user holds the privilege for is visible and pressable at the suite's window size, which repairs record-a-treatment and record-a-case-treatment without changing either.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 74,
+      "dateTime": "2026-10-19T15:01:58.231000-04:00",
+      "task": "Release 0.10.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }
