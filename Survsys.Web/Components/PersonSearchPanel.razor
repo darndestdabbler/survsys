@@ -1,0 +1,307 @@
+@* The person search form and its results, shared by the two screens that
+   search for a person: /people, where finding them is the whole point, and
+   /morbidity/create, where finding them is step one of opening a case
+   morbidity report. The legacy application uses one form for both — "Same
+   person search form as New CMR", as
+   ../nedss/docs/functional/epitrax-core-workflows.md puts it of its People
+   screen — so this is one component rather than two screens that agree until
+   one of them is changed.
+
+   What a row offers and what to offer when nobody was found are the caller's,
+   through RowAction and WhenNobodyFound: this screen's rows go nowhere, and
+   the creation flow's rows start a report. WhenNobodyFound is handed the
+   criteria that found nobody, because that is what the legacy "Create Person
+   and CMR" button creates the person from.
+
+   Every element a walkthrough will name carries an identifier of its own —
+   the five criteria, the two buttons, the busy indicator, the failure
+   message, the empty-state message, the count, the table, and one row per
+   person keyed by their identifier with each cell named by what it holds. A
+   test selects by those and not by a MudBlazor class or a cell's position, as
+   the conditions screen already does, so restyling this panel cannot break a
+   walkthrough that was passing.
+
+   Nothing is searched until Search is pressed. A screen that queried on every
+   keystroke would be making a different promise, and the one a walkthrough
+   can write down is the one made here. *@
+@inject PersonsClient Persons
+
+<MudPaper id="person-search-form" Elevation="1" Class="pa-4 mb-4">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="lastName" id="person-search-last-name"
+                          Label="Last name" Variant="Variant.Outlined"
+                          OnKeyUp="@OnKey" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="firstName" id="person-search-first-name"
+                          Label="First name" Variant="Variant.Outlined"
+                          OnKeyUp="@OnKey" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="middleName" id="person-search-middle-name"
+                          Label="Middle name" Variant="Variant.Outlined"
+                          OnKeyUp="@OnKey" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            @* A native date input rather than a date picker: what it yields is
+               always yyyy-mm-dd or nothing, which is what the API tier parses,
+               so there is no culture in the middle turning the fifteenth of
+               June into the sixth of March. *@
+            <MudTextField @bind-Value="birthDate" id="person-search-birth-date"
+                          Label="Date of birth" Variant="Variant.Outlined"
+                          InputType="InputType.Date" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="phone" id="person-search-phone"
+                          Label="Phone" Variant="Variant.Outlined"
+                          OnKeyUp="@OnKey" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            @* The legacy dropdown's own four rows: please select, Female,
+               Male, Unknown — over the codes the people on file carry. *@
+            <MudSelect @bind-Value="birthGender" id="person-search-birth-gender"
+                       Label="Birth sex" Variant="Variant.Outlined" Clearable="true">
+                <MudSelectItem Value="@("F")">Female</MudSelectItem>
+                <MudSelectItem Value="@("M")">Male</MudSelectItem>
+                <MudSelectItem Value="@("UNK")">Unknown</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+
+    <div class="d-flex gap-2 mt-4">
+        <MudButton id="person-search-search" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@searching" OnClick="@Search">
+            Search
+        </MudButton>
+        <MudButton id="person-search-clear" Variant="Variant.Outlined" Disabled="@searching"
+                   OnClick="@Clear">
+            Clear
+        </MudButton>
+    </div>
+</MudPaper>
+
+@if (complaint is { } whyNotASearch)
+{
+    @* The one thing a user can get wrong here: a date of birth that is not a
+       date. The native date input makes it hard to do, and a browser that
+       renders that input as a text box makes it easy again. *@
+    <MudAlert id="person-search-complaint" Severity="Severity.Warning" Class="mb-4">
+        @whyNotASearch
+    </MudAlert>
+}
+
+@if (searching)
+{
+    <MudProgressCircular id="person-search-busy" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked?.Failure is { } failure)
+{
+    @* The tier's contract: an API failure is a message on the screen, never
+       an unhandled exception in a circuit. PersonsClient hands over the
+       message; this is where it is shown. *@
+    <MudAlert id="person-search-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @failure
+    </MudAlert>
+}
+else if (asked?.Value is { } people)
+{
+    @if (people.Items.Count == 0)
+    {
+        <MudAlert id="person-search-none" Severity="Severity.Info" Class="mb-4">
+            No people found.
+        </MudAlert>
+
+        @WhenNobodyFound?.Invoke(searched)
+    }
+    else
+    {
+        <MudText id="person-search-total" Typo="Typo.body2" Class="mb-4">
+            @people.TotalCount person(s) found, showing @people.Items.Count.
+        </MudText>
+
+        @if (people.TotalCount > people.Items.Count)
+        {
+            @* No pager, because the promise this panel makes is one page: a
+               search that matched more than a page says so, and narrowing it
+               is what a user does about it. *@
+            <MudAlert id="person-search-more" Severity="Severity.Info" Class="mb-4">
+                More people match than this screen shows. Add to the search to
+                narrow it.
+            </MudAlert>
+        }
+
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="person-search-results" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Last, First</th>
+                        <th>Birth date</th>
+                        <th>Birth sex</th>
+                        @if (RowAction is not null)
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var person in people.Items)
+                    {
+                        <tr data-person="@person.Id">
+                            <td data-person-id>@person.Id</td>
+                            @* The name opens the person's own screen, wherever this
+                               panel is: on the People screen that is the point, and on
+                               the creation and contact screens it is a way to check
+                               who a row is before acting on it. *@
+                            <td data-person-name><a href="@($"/people/{person.Id}")">@Named(person)</a></td>
+                            @* A dash rather than an empty cell for what nobody
+                               has said, so a walkthrough can say what the
+                               reader will see. *@
+                            <td data-person-birth-date>@(person.BirthDate?.ToString("yyyy-MM-dd") ?? "—")</td>
+                            <td data-person-birth-gender>@(person.BirthGender ?? "—")</td>
+                            @if (RowAction is not null)
+                            {
+                                <td data-person-action>@RowAction(person)</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
+}
+
+@code {
+    /// <summary>
+    /// What this row offers, if anything: nothing on the People screen, and
+    /// the start of a report on the creation screen.
+    /// </summary>
+    [Parameter]
+    public RenderFragment<PersonResponse>? RowAction { get; set; }
+
+    /// <summary>
+    /// What to offer when the search found nobody, handed the criteria that
+    /// found nobody — which is what the legacy "Create Person and CMR" button
+    /// creates a person from.
+    /// </summary>
+    [Parameter]
+    public RenderFragment<PersonSearchCriteria>? WhenNobodyFound { get; set; }
+
+    private string? lastName;
+    private string? firstName;
+    private string? middleName;
+    private string? birthDate;
+    private string? phone;
+    private string? birthGender;
+
+    private Asked<PagedResult<PersonResponse>>? asked;
+
+    /// <summary>
+    /// The criteria the answer on screen was found with, which is not
+    /// necessarily what the boxes hold now: a user who typed a different
+    /// surname after searching has not searched for it yet, and the
+    /// create-this-person offer below the results belongs to the search that
+    /// was made.
+    /// </summary>
+    private PersonSearchCriteria searched = new();
+
+    private bool searching;
+
+    private string? complaint;
+
+    /// <summary>
+    /// How many people one page of this screen holds — the API tier's own
+    /// default, stated here because a screen that shows a count has to know
+    /// what it asked for.
+    /// </summary>
+    private const int PageSize = 50;
+
+    /// <summary>Searching with the keyboard, as the legacy form allows.</summary>
+    private async Task OnKey(KeyboardEventArgs key)
+    {
+        if (key.Key is "Enter")
+        {
+            await Search();
+        }
+    }
+
+    private async Task Search()
+    {
+        if (!TypedCriteria(out var criteria))
+        {
+            return;
+        }
+
+        complaint = null;
+        searching = true;
+
+        try
+        {
+            asked = await Persons.Page(criteria, 1, PageSize);
+            searched = criteria;
+        }
+        finally
+        {
+            searching = false;
+        }
+    }
+
+    private void Clear()
+    {
+        lastName = null;
+        firstName = null;
+        middleName = null;
+        birthDate = null;
+        phone = null;
+        birthGender = null;
+
+        asked = null;
+        searched = new();
+        complaint = null;
+    }
+
+    /// <summary>
+    /// The criteria in the boxes, or false with <see cref="complaint"/> set
+    /// where one of them is not something to search by.
+    /// </summary>
+    private bool TypedCriteria(out PersonSearchCriteria criteria)
+    {
+        criteria = new();
+
+        DateOnly? born = null;
+
+        if (!string.IsNullOrWhiteSpace(birthDate))
+        {
+            if (!DateOnly.TryParse(
+                birthDate,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var parsed))
+            {
+                complaint = "Give the date of birth as yyyy-mm-dd, or leave it empty.";
+                return false;
+            }
+
+            born = parsed;
+        }
+
+        criteria = new PersonSearchCriteria(
+            lastName,
+            firstName,
+            middleName,
+            born,
+            phone,
+            birthGender);
+
+        return true;
+    }
+
+    /// <summary>
+    /// A person's name as the results table shows it, which is the order the
+    /// API tier returns them in: last name first.
+    /// </summary>
+    private static string Named(PersonResponse person) =>
+        string.IsNullOrWhiteSpace(person.FirstName)
+            ? person.LastName
+            : $"{person.LastName}, {person.FirstName}";
+}
