@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 075 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 075 transcript</h1>
+<p class="stamp">Rendered 2026-10-19T19:30:47.260Z by dabbler-ai-router 3.21.0 at eabac52567034c8cd97fede7e1fb7c1918e5b013.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-19T15:11:18.380-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 75: Parsed messages, the parser seam and MLLP</h3>
+<ol><li>Register.</li><li><code>Survsys.Messaging</code> and <code>Survsys.Data</code>: a parser seam that takes raw message text to the parsed fields intake keeps, with <code>OruR01Parser</code> its HL7 v2 implementation and room for a CDA one in phase 13; a message type and format on every staged message; the parsed demographics, sending facility, orders, results and specimens stored, one staged message per OBR; with the migration.</li><li><code>Survsys.Api</code>: an MLLP listener beside the file drop, off unless configured, answering each message with an ACK or a NAK; a message from a sending facility (MSH-4) that is not on file held as an exception.</li><li><code>Survsys.UnitTests</code> and <code>Survsys.IntegrationTests</code>: the OBR split, ACK and NAK framing, and an unknown sender.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Put a parser seam in front of ELR intake and keep what it parses. Survsys.Messaging gains IMessageParser, which takes raw message text to a ParsedMessage (format, message type, sending facility from MSH-4.1, the patient's demographics and address from PID, and one ParsedOrder per OBR with its accession, test code and name, observation date, specimen from SPM and its ParsedResult rows from OBX); OruR01Parser is its HL7 v2 implementation and ParsedMessage replaces OruR01ParseResult, so a CDA parser in phase 13 is a second implementation and nothing else. Survsys.Data's StagedMessage gains a message format and type, the sending facility, the parsed demographics, its one order and specimen, and a new StagedMessageResult child table for that order's results, with the ParsedMessages migration; existing rows default to the HL7 v2 format. ElrIntakeService stages one message per OBR, each carrying the whole raw text, and holds a message whose sending facility (MSH-4.1) matches no facility's short name on file as an Exception with that reason; the file drop and a new MLLP listener share that one receive path. The MLLP listener is a BackgroundService in Survsys.Api, off unless ElrIntake:MllpPort is configured, reading VT/FS-CR framed messages over TCP and answering each with an HL7 ACK built from its MSH: AA when queued for review, AE when held as an exception (unparseable or unknown sender), AR when it could not be stored. Unit tests cover the parser's orders, the OBR split, the unknown sender and the ACK/NAK framing; integration tests cover the file drop with a seeded sending facility and the MLLP listener end to end with an unknown sender.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/969c782c1cf9efc2d6bb0abcd844467632db241c"><code>969c782c1cf9efc2d6bb0abcd844467632db241c</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Parser seam</td><td><p>In Survsys.Messaging add IMessageParser (Format plus ParsedMessage Parse(string raw)) and the records ParsedMessage, ParsedOrder and ParsedResult; make OruR01Parser implement it, returning the format 'HL7v2', MSH-9 message type, MSH-4.1 sending facility, the PID person (kept as CreatePersonRequest) and address, and one ParsedOrder per OBR with its specimen (SPM-4, SPM-17 falling back to OBR-7) and OBX results. Remove OruR01ParseResult. Update OruR01ParserTests for the new shape and add a two-OBR fixture proving one order per OBR.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~OruR01ParserTests</code></td><td>yes</td></tr>
+<tr><td>Staged message schema</td><td><p>Extend StagedMessage with MessageFormat (required, default 'HL7v2'), MessageType, SendingFacility, the patient's last, first and middle name, birth date, sex, street, city, state and zip, the order's index within the message, accession, test code and name, observation date, specimen source code and text and collection date, and a Results collection; add StagedMessageResult (and its configuration) for the order's OBX rows. Configure the columns on system_messages and a new system_message_results table, and add the ParsedMessages migration with its designer and the updated model snapshot.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet ef migrations has-pending-model-changes --project Survsys.Data --startup-project Survsys.Api</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~MigrationGateTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Intake staging</td><td><p>Change ElrIntakeService.Stage to take the raw text, its source and the set of known sending facilities and return one StagedMessage per OBR with the parsed fields and results copied on, an unparseable message as one Exception row, and an unknown MSH-4.1 sender held as Exception with that reason; add a shared Receive that loads the facility short names, stages and saves, used by the file drop. Update ElrIntakeServiceTests (OBR split, unknown sender, raw kept whole) and ElrIntakeTests (seed a facility for the fixture's sender, assert the parsed fields read back, and an unknown sender held as an exception).</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ElrIntakeServiceTests</code><br><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --filter FullyQualifiedName~ElrIntakeTests</code></td><td>yes</td></tr>
+<tr><td>Mllp listener</td><td><p>Add MllpFraming (frame and unframe VT...FS CR, and build an ACK for a raw message from its MSH with MSA-1 AA/AE/AR and MSA-2 its control id) and MllpListener, a BackgroundService that is off unless ElrIntake:MllpPort is set, accepts TCP connections, reads each framed message, hands it to ElrIntakeService.Receive with source 'mllp', and answers AA when queued, AE when held as an exception and AR when it could not be stored. Add MllpPort to ElrIntakeOptions, register the listener in Program.cs and document the key in appsettings.json. Add MllpFramingTests (framing round trip, partial frames, ACK and NAK fields) and MllpListenerTests (a known sender answered AA and queued, an unknown sender answered AE and held as an exception).</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~MllpFramingTests</code><br><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --filter FullyQualifiedName~MllpListenerTests|FullyQualifiedName~ElrIntakeTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No vocabulary translation, message filter, case-management rules or agency choice at intake: session 76.</li><li>No graylist, automatic assignment, or change to the queue screens, the staged-message API responses or promotion beyond compiling against the new parse result: session 77 and later.</li><li>No CDA parser (phase 13), no per-lab preprocessing pipeline, no TLS or acknowledgement-retry handling on MLLP, and no new column on Facility: a sending facility is on file when MSH-4.1 equals a facility's short name.</li><li>No release, packaging or change to dabbler.yaml.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[19:11:18]</span> <span class="muted">run-started</span> session=075 mode=pull</div>
+<div class="line"><span class="at">[19:11:18]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[19:13:35]</span> <span class="muted">run-resumed</span> session=075 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[19:13:35]</span> <span class="muted">plan-accepted</span> steps=[&quot;parser-seam&quot;,&quot;staged-message-schema&quot;,&quot;intake-staging&quot;,&quot;mllp-listener&quot;] non_goals=4</div>
+<div class="line"><span class="at">[19:13:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[19:13:36]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=parser-seam</div>
+<div class="line"><span class="at">[19:15:18]</span> <span class="muted">run-resumed</span> session=075 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:15:22]</span> <span class="muted">check-passed</span> step=parser-seam argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[19:15:26]</span> <span class="muted">check-passed</span> step=parser-seam argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~OruR01ParserTests&quot;]</div>
+<div class="line"><span class="at">[19:15:26]</span> <span class="muted">report-accepted</span> seq=2 step=parser-seam files=[] notes=IMessageParser seam with ParsedMessage/ParsedOrder/ParsedResult; OruR01Parser implements it, one order per OBR; OruR01ParseResult removed</div>
+<div class="line"><span class="at">[19:15:26]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=staged-message-schema</div>
+<div class="line"><span class="at">[19:16:46]</span> <span class="muted">run-resumed</span> session=075 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:16:49]</span> <span class="muted">check-passed</span> step=staged-message-schema argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[19:16:53]</span> <span class="muted">check-passed</span> step=staged-message-schema argv=[&quot;dotnet&quot;,&quot;ef&quot;,&quot;migrations&quot;,&quot;has-pending-model-changes&quot;,&quot;--project&quot;,&quot;Survsys.Data&quot;,&quot;--startup-project&quot;,&quot;Survsys.Api&quot;]</div>
+<div class="line"><span class="at">[19:16:56]</span> <span class="muted">check-passed</span> step=staged-message-schema argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MigrationGateTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[19:16:57]</span> <span class="muted">report-accepted</span> seq=3 step=staged-message-schema files=[] notes=StagedMessage carries format, type, sender, patient, one order and specimen; system_message_results child table; ParsedMessages migration</div>
+<div class="line"><span class="at">[19:16:57]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=intake-staging</div>
+<div class="line"><span class="at">[19:18:39]</span> <span class="muted">run-resumed</span> session=075 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:18:42]</span> <span class="muted">check-passed</span> step=intake-staging argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[19:18:46]</span> <span class="muted">check-passed</span> step=intake-staging argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ElrIntakeServiceTests&quot;]</div>
+<div class="line"><span class="at">[19:18:56]</span> <span class="muted">check-passed</span> step=intake-staging argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ElrIntakeTests&quot;]</div>
+<div class="line"><span class="at">[19:18:56]</span> <span class="muted">report-accepted</span> seq=4 step=intake-staging files=[] notes=Stage splits per OBR with parsed fields and results, holds unknown MSH-4.1 sender as Exception; shared Receive used by the file drop</div>
+<div class="line"><span class="at">[19:18:56]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=mllp-listener</div>
+<div class="line"><span class="at">[19:21:14]</span> <span class="muted">run-resumed</span> session=075 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:21:17]</span> <span class="muted">check-passed</span> step=mllp-listener argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[19:21:21]</span> <span class="muted">check-passed</span> step=mllp-listener argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MllpFramingTests&quot;]</div>
+<div class="line"><span class="at">[19:21:32]</span> <span class="muted">check-passed</span> step=mllp-listener argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MllpListenerTests|FullyQualifiedName~ElrIntakeTests&quot;]</div>
+<div class="line"><span class="at">[19:21:32]</span> <span class="muted">report-accepted</span> seq=5 step=mllp-listener files=[] notes=MllpFraming (frame/unframe, ACK with AA/AE/AR) and MllpListener off unless ElrIntake:MllpPort; registered in Program.cs; unit and integration tests</div>
+<div class="line"><span class="at">[19:21:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[19:21:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[19:21:34]</span> <span class="muted">job-started</span> name=verification pid=19360 log=.dabbler/runs/s75/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:23:14]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s75/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:23:14]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[19:23:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[19:23:14]</span> <span class="muted">instruction-issued</span> seq=6 kind=rejection reasons=2</div>
+<div class="line"><span class="at">[19:23:31]</span> <span class="muted">run-resumed</span> session=075 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[19:23:31]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0,1] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[19:23:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[19:23:31]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[19:25:56]</span> <span class="muted">run-resumed</span> session=075 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[19:25:59]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=parser-seam</div>
+<div class="line"><span class="at">[19:26:03]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~OruR01ParserTests&quot;] owner=parser-seam</div>
+<div class="line"><span class="at">[19:26:04]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=staged-message-schema</div>
+<div class="line"><span class="at">[19:26:09]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;ef&quot;,&quot;migrations&quot;,&quot;has-pending-model-changes&quot;,&quot;--project&quot;,&quot;Survsys.Data&quot;,&quot;--startup-project&quot;,&quot;Survsys.Api&quot;] owner=staged-message-schema</div>
+<div class="line"><span class="at">[19:26:13]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MigrationGateTests|FullyQualifiedName~ArchitectureTests&quot;] owner=staged-message-schema</div>
+<div class="line"><span class="at">[19:26:15]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=intake-staging</div>
+<div class="line"><span class="at">[19:26:18]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ElrIntakeServiceTests&quot;] owner=intake-staging</div>
+<div class="line"><span class="at">[19:26:28]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ElrIntakeTests&quot;] owner=intake-staging</div>
+<div class="line"><span class="at">[19:26:30]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=mllp-listener</div>
+<div class="line"><span class="at">[19:26:34]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MllpFramingTests&quot;] owner=mllp-listener</div>
+<div class="line"><span class="at">[19:26:45]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MllpListenerTests|FullyQualifiedName~ElrIntakeTests&quot;] owner=mllp-listener</div>
+<div class="line"><span class="at">[19:26:45]</span> <span class="muted">report-accepted</span> seq=7 step=fix-round-1 files=[] notes=IMessageParser registered in DI and injected into intake, MLLP listener and person match; parser reads every PATIENT_RESULT group, ParsedMessage.Rows pairs each OBR with its patient; two-patient fixture and tests</div>
+<div class="line"><span class="at">[19:26:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[19:26:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[19:26:46]</span> <span class="muted">job-started</span> name=verification pid=13700 log=.dabbler/runs/s75/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:28:18]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s75/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:28:18]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[19:28:18]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[19:28:18]</span> <span class="muted">instruction-issued</span> seq=8 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[19:28:36]</span> <span class="muted">run-resumed</span> session=075 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[19:28:36]</span> <span class="muted">dispute-recorded</span> round=2 finding=1</div>
+<div class="line"><span class="at">[19:28:36]</span> <span class="muted">dispositions-accepted</span> round=2 fix=[0,2] reject=[1] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The seam's contract already names its failure: IMessageParser.Parse is documented to throw Hl7ParseException when the text is not a message the parser can read, so a CDA implementation conforms by throwing it, exactly as OruR01Parser converts nHapi's HL7Exception into it. Generalising or renaming the exception now, for a parser the session's non-goals defer to phase 13, would be speculative churn the plan forbids; phase 13 can widen the contract with the implementation that needs it.&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[19:28:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[19:28:36]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=fix-round-2</div>
+<div class="line"><span class="at">[19:29:21]</span> <span class="muted">run-resumed</span> session=075 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[19:29:23]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=parser-seam</div>
+<div class="line"><span class="at">[19:29:27]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~OruR01ParserTests&quot;] owner=parser-seam</div>
+<div class="line"><span class="at">[19:29:29]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=staged-message-schema</div>
+<div class="line"><span class="at">[19:29:33]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;ef&quot;,&quot;migrations&quot;,&quot;has-pending-model-changes&quot;,&quot;--project&quot;,&quot;Survsys.Data&quot;,&quot;--startup-project&quot;,&quot;Survsys.Api&quot;] owner=staged-message-schema</div>
+<div class="line"><span class="at">[19:29:37]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MigrationGateTests|FullyQualifiedName~ArchitectureTests&quot;] owner=staged-message-schema</div>
+<div class="line"><span class="at">[19:29:38]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=intake-staging</div>
+<div class="line"><span class="at">[19:29:42]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ElrIntakeServiceTests&quot;] owner=intake-staging</div>
+<div class="line"><span class="at">[19:29:52]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ElrIntakeTests&quot;] owner=intake-staging</div>
+<div class="line"><span class="at">[19:29:54]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=mllp-listener</div>
+<div class="line"><span class="at">[19:29:58]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MllpFramingTests&quot;] owner=mllp-listener</div>
+<div class="line"><span class="at">[19:30:08]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MllpListenerTests|FullyQualifiedName~ElrIntakeTests&quot;] owner=mllp-listener</div>
+<div class="line"><span class="at">[19:30:09]</span> <span class="muted">report-accepted</span> seq=9 step=fix-round-2 files=[] notes=Person match back to the message's first patient as before (only the parser is injected); stub IMessageParser test proves Stage uses the parser it is given</div>
+<div class="line"><span class="at">[19:30:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[19:30:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[19:30:10]</span> <span class="muted">job-started</span> name=verification pid=52352 log=.dabbler/runs/s75/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:30:22]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s75/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:30:22]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[19:30:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[19:30:22]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[19:30:24]</span> <span class="muted">job-started</span> name=run of record: unit pid=46712 log=.dabbler/runs/s75/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[19:30:31]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s75/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[19:30:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[19:30:37]</span> <span class="muted">landed</span> commit=969c782c1cf9efc2d6bb0abcd844467632db241c</div>
+<div class="line"><span class="at">[19:30:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[19:30:37]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[19:30:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[19:30:38]</span> <span class="muted">job-started</span> name=close pid=54600 log=.dabbler/runs/s75/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:30:47]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s75/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:30:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The claimed parser seam is bypassed by intake, so a CDA parser cannot be introduced as “a second implementation and nothing else.”</td><td>fixed — IMessageParser registered in DI and injected into intake, MLLP listener and person match; parser reads every PATIENT_RESULT group, ParsedMessage.Rows pairs each OBR with its patient; two-patient fixture and tests</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** Add coverage for standard repeated `ORU_R01.PATIENT_RESULT` groups, not only multiple OBRs under the first patient group. With an ER7 ORU containing two `PID`/`PATIENT_RESULT` repetitions, each with an OBR, and a known `MSH-4.1` sender, `Stage` should produce a row for each OBR with the demographics associated with that OBR. Today `OruR01Parser.Parse` explicitly reads only `oru.GetPATIENT_RESULT(0)`, so it silently drops every OBR after the first patient-result group. The visible two-order fixture exercises only two orders within that first group.</td><td>fixed — IMessageParser registered in DI and injected into intake, MLLP listener and person match; parser reads every PATIENT_RESULT group, ParsedMessage.Rows pairs each OBR with its patient; two-patient fixture and tests</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The fix changes a staged-message API’s patient-match semantics despite the explicit non-goal prohibiting such changes.**</td><td>fixed — Person match back to the message's first patient as before (only the parser is injected); stub IMessageParser test proves Stage uses the parser it is given</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The parser seam still standardizes parse failure on the HL7-specific `Hl7ParseException`. With a future non-HL7 `IMessageParser` that signals malformed input using its native parse exception, `Stage` will let that exception escape; file-drop intake will move the input to `.failed`, and MLLP will return `AR` rather than the required `AE` for an unparseable message. This is dormant until phase 13’s CDA parser, so it is non-blocking. A useful case would use a test-only parser that throws a non-HL7 parse exception and assert that `Stage` creates one Exception row and MLLP emits `AE`; today it would escape `Stage` and MLLP would emit `AR`.</td><td>disputed — The seam's contract already names its failure: IMessageParser.Parse is documented to throw Hl7ParseException when the text is not a message the parser can read, so a CDA implementation conforms by throwing it, exactly as OruR01Parser converts nHapi's HL7Exception into it. Generalising or renaming the exception now, for a parser the session's non-goals defer to phase 13, would be speculative churn the plan forbids; phase 13 can widen the contract with the implementation that needs it.</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** The visible unit tests prove repeated HL7 patient groups but do not prove the newly repaired injection seam independently of `OruR01Parser`. A test-only `IMessageParser` returning a distinctive format, patient, and order should be passed to `Stage`; it should assert those distinctive parsed values are staged. The visible tests would still pass if `Stage` regressed to constructing `new OruR01Parser()` internally.</td><td>fixed — Person match back to the message's first patient as before (only the parser is injected); stub IMessageParser test proves Stage uses the parser it is given</td></tr>
+</table></td></tr>
+<tr><td>3</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>1496</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
