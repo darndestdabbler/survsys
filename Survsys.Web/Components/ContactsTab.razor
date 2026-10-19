@@ -1,0 +1,1350 @@
+@* The Contacts tab of a case morbidity report: the report's exposure events,
+   each with its place, its contacts and its sources, and manual entry of a
+   new one.
+
+   ../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md
+   records the legacy Investigation tab's "+ Exposure" panel, which writes the
+   exposure table and its related exposure_place, exposure_contact and
+   exposure_source rows, and the Contacts tab's data table, which shows each
+   contact's type, disposition and disposition date beside the person. This is
+   both, over the one chain: an exposure is built with its place, its contacts
+   and its sources and POSTed as one request, because the API tier records an
+   exposure whole and has no endpoint to change or remove a stored one, nor
+   one to set a contact's disposition on its own.
+
+   A contact recorded with its exposure in the entry form is an existing
+   person, named by id. The legacy Contacts tab searches for or creates a
+   person and links them, and that is the Add contact panel each exposure row
+   opens: the person search panel, whose rows add the person found and whose
+   empty result creates one from the criteria, each added as a contact event
+   of their own that the contact row then links to. The Import contacts panel
+   posts a CSV file under a chosen exposure; the API tier saves the rows it
+   accepts as contact events and answers with the rows it refused, which are
+   listed by line with their reasons. Every coded field (the place type, the state, the
+   contact's disposition and type, the source's person, report and type) is a
+   plain box holding the legacy value, as the Laboratory tab holds its coded
+   fields: the reference tables behind the legacy dropdowns do not exist yet.
+
+   The date-range rules and the coded-value rules stay the API tier's; an
+   answer it refuses is shown as the entry error rather than re-checked here.
+   The only checking here is that a date box holds a date, the same rule the
+   Laboratory tab reads its date boxes by.
+
+   The list reads each exposure whole, because what the Contacts tab shows is
+   the contacts, and the list endpoint carries the event alone. A row in a
+   list carries its position in its identifier, so a walkthrough can name it:
+   contacts-exposure-0, contacts-exposure-0-contact-1 and so on. *@
+@using System.Globalization
+@inject ExposuresClient Api
+@inject IDialogService Dialogs
+
+@if (listFailure is { } whyNoList)
+{
+    <MudAlert id="contacts-list-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNoList
+    </MudAlert>
+}
+
+@if (saved is { } stored)
+{
+    <MudAlert id="contacts-entry-saved" Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+        @stored
+    </MudAlert>
+}
+
+@if (entryFailure is { } whyNot)
+{
+    <MudAlert id="contacts-entry-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (complaint is { } whyNotYet)
+{
+    <MudAlert id="contacts-entry-complaint" Severity="Severity.Warning" Class="mb-4">
+        @whyNotYet
+    </MudAlert>
+}
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Exposures</MudText>
+    <MudSimpleTable id="contacts-exposures" Hover="true" Striped="true">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Place</th>
+                <th>Contacts</th>
+                <th>Sources</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (var n = 0; n < exposures.Count; n++)
+            {
+                var exposureAt = n;
+                var exposure = exposures[exposureAt];
+                <tr id="@($"contacts-exposure-{exposureAt}")" @key="exposure.Id">
+                    <td id="@($"contacts-exposure-{exposureAt}-name")">@Shown(exposure.Name)</td>
+                    <td id="@($"contacts-exposure-{exposureAt}-exposure-start")">@Shown(Written(exposure.ExposureStart))</td>
+                    <td id="@($"contacts-exposure-{exposureAt}-exposure-end")">@Shown(Written(exposure.ExposureEnd))</td>
+                    <td id="@($"contacts-exposure-{exposureAt}-place")">@Placed(exposure.Place)</td>
+                    <td>
+                        @if (exposure.Contacts.Count == 0)
+                        {
+                            <span id="@($"contacts-exposure-{exposureAt}-contacts-none")">—</span>
+                        }
+                        else
+                        {
+                            <table id="@($"contacts-exposure-{exposureAt}-contacts")" class="contacts-inner">
+                                <thead>
+                                    <tr>
+                                        <th>Person</th>
+                                        <th>Type</th>
+                                        <th>Disposition</th>
+                                        <th>Disposition date</th>
+                                        <th>From</th>
+                                        <th>To</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (var c = 0; c < exposure.Contacts.Count; c++)
+                                    {
+                                        var contact = exposure.Contacts[c];
+                                        <tr id="@($"contacts-exposure-{exposureAt}-contact-{c}")" @key="contact.Id">
+                                            @* A contact added as a contact event links to it beside
+                                               the person; one recorded with its exposure has none,
+                                               and its cell reads as it always has. *@
+                                            <td>
+                                                @Shown(contact.PersonId)
+                                                @if (contact.PersonConditionId is { } eventId)
+                                                {
+                                                    <a id="@($"contacts-exposure-{exposureAt}-contact-{c}-event")"
+                                                       href="@($"/event/edit/{eventId}")">(contact event)</a>
+                                                }
+                                            </td>
+                                            <td>@Shown(contact.ContactType)</td>
+                                            <td>@Shown(contact.DispositionId)</td>
+                                            <td>@Shown(Written(contact.DispositionDate))</td>
+                                            <td>@Shown(Written(contact.ExposureStart))</td>
+                                            <td>@Shown(Written(contact.ExposureEnd))</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </td>
+                    <td>
+                        @if (exposure.Sources.Count == 0)
+                        {
+                            <span id="@($"contacts-exposure-{exposureAt}-sources-none")">—</span>
+                        }
+                        else
+                        {
+                            <table id="@($"contacts-exposure-{exposureAt}-sources")" class="contacts-inner">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Person</th>
+                                        <th>Report</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (var s = 0; s < exposure.Sources.Count; s++)
+                                    {
+                                        var source = exposure.Sources[s];
+                                        <tr id="@($"contacts-exposure-{exposureAt}-source-{s}")" @key="source.Id">
+                                            <td>@Shown(source.SourceName)</td>
+                                            <td>@Shown(source.SourceType)</td>
+                                            <td>@Shown(source.PersonId)</td>
+                                            <td>@Shown(source.PersonConditionId)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </td>
+                    <td class="d-flex gap-1">
+                        <MudButton id="@($"contacts-exposure-{exposureAt}-add-contact")" Variant="Variant.Text"
+                                   Size="Size.Small" Disabled="@recording"
+                                   OnClick="@(() => OpenAddContact(exposure))">
+                            Add contact
+                        </MudButton>
+                        <MudButton id="@($"contacts-exposure-{exposureAt}-edit")" Variant="Variant.Text"
+                                   Size="Size.Small" Disabled="@recording"
+                                   OnClick="@(() => OpenForEdit(exposure))">
+                            Edit
+                        </MudButton>
+                        <MudButton id="@($"contacts-exposure-{exposureAt}-delete")" Variant="Variant.Text"
+                                   Color="Color.Error" Size="Size.Small" Disabled="@recording"
+                                   OnClick="@(() => RemoveExposure(exposure))">
+                            Delete
+                        </MudButton>
+                    </td>
+                </tr>
+            }
+            @if (exposures.Count == 0)
+            {
+                <tr>
+                    <td colspan="7">No exposures recorded yet.</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</MudPaper>
+
+@if (addingTo is { } target)
+{
+    <MudPaper id="contacts-add" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Add a contact to @Shown(target.Name)</MudText>
+
+        @if (addFailure is { } whyNotAdded)
+        {
+            <MudAlert id="contacts-add-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                @whyNotAdded
+            </MudAlert>
+        }
+
+        <MudGrid Spacing="2" Class="mb-2">
+            <MudItem xs="12" sm="4">
+                <CodeSelect List="@CodeLists.ContactType" @bind-Value="addContactType" id="contacts-add-contact-type"
+                            Label="Contact type" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudButton id="contacts-add-cancel" Variant="Variant.Outlined" Disabled="@adding"
+                           OnClick="@CloseAddContact">
+                    Cancel
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <PersonSearchPanel RowAction="@AddThisPerson" WhenNobodyFound="@CreateAndAdd" />
+    </MudPaper>
+}
+
+<MudPaper id="contacts-import" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Import contacts</MudText>
+
+    @if (importFailure is { } whyNotImported)
+    {
+        <MudAlert id="contacts-import-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @whyNotImported
+        </MudAlert>
+    }
+
+    <MudGrid Spacing="2" Class="align-center">
+        <MudItem xs="12" sm="4">
+            <MudSelect @bind-Value="importExposureId" id="contacts-import-exposure"
+                       Label="Exposure" Variant="Variant.Outlined">
+                @foreach (var exposure in exposures)
+                {
+                    <MudSelectItem T="int?" Value="@exposure.Id">@Shown(exposure.Name) (@exposure.Id)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <InputFile id="contacts-import-file" OnChange="ChosenCsv" accept=".csv,text/csv" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudButton id="contacts-import-run" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(importing || importExposureId is null || importCsv is null)"
+                       OnClick="@Import">
+                Import
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @if (imported is { } batch)
+    {
+        <MudText id="contacts-import-accepted" Typo="Typo.body2" Class="mt-4">
+            @batch.Accepted.Count imported, @batch.Rejected.Count refused.
+        </MudText>
+
+        @if (batch.Rejected.Count > 0)
+        {
+            <MudSimpleTable id="contacts-import-refused" Dense="true" Class="mt-2">
+                <thead>
+                    <tr>
+                        <th>Line</th>
+                        <th>Why it was refused</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var r = 0; r < batch.Rejected.Count; r++)
+                    {
+                        var refused = batch.Rejected[r];
+                        <tr id="@($"contacts-import-refused-{r}")">
+                            <td>@refused.Line</td>
+                            <td>@refused.Reason</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    }
+</MudPaper>
+
+<MudPaper id="contacts-entry" Elevation="1" Class="pa-4 mb-4">
+    @if (editingId is null)
+    {
+        <MudText Typo="Typo.h6" GutterBottom="true">Record an exposure</MudText>
+    }
+    else
+    {
+        <MudText id="contacts-entry-edit-heading" Typo="Typo.h6" GutterBottom="true">Edit exposure</MudText>
+    }
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6">
+            <MudTextField @bind-Value="exposureForm.Name" id="contacts-entry-name"
+                          Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudTextField @bind-Value="exposureForm.ExposureStart" id="contacts-entry-exposure-start"
+                          Label="Exposure start" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          InputType="InputType.Date" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudTextField @bind-Value="exposureForm.ExposureEnd" id="contacts-entry-exposure-end"
+                          Label="Exposure end" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          InputType="InputType.Date" />
+        </MudItem>
+        <MudItem xs="12">
+            <MudTextField @bind-Value="exposureForm.Description" id="contacts-entry-description"
+                          Label="Description" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Lines="2" />
+        </MudItem>
+    </MudGrid>
+
+    <div id="contacts-entry-place" class="mt-4">
+        <MudText Typo="Typo.subtitle1">Place</MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="placeForm.Name" id="contacts-entry-place-name"
+                              Label="Place name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <CodeSelect List="@CodeLists.ExposurePlaceType" @bind-CodeId="placeForm.ExposurePlaceTypeId"
+                            id="contacts-entry-place-type-id" Label="Place type" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="placeForm.Street" id="contacts-entry-place-street"
+                              Label="Street" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="placeForm.City" id="contacts-entry-place-city"
+                              Label="City" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <CodeSelect List="@CodeLists.State" @bind-Value="placeForm.State" id="contacts-entry-place-state"
+                            Label="State" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="placeForm.Zip" id="contacts-entry-place-zip"
+                              Label="Zip" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="placeForm.Latitude" id="contacts-entry-place-latitude"
+                              Label="Latitude" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Number" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="placeForm.Longitude" id="contacts-entry-place-longitude"
+                              Label="Longitude" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Number" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="placeForm.Phone" id="contacts-entry-place-phone"
+                              Label="Phone" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+        </MudGrid>
+        @if (editingId is not null && editingPlaceId is not null)
+        {
+            <MudButton id="contacts-entry-place-remove" Variant="Variant.Text" Color="Color.Error"
+                       Class="mt-2" Disabled="@recording" OnClick="@RemovePlace">
+                Remove place
+            </MudButton>
+        }
+    </div>
+
+    <div id="contacts-entry-contacts" class="mt-4">
+        <MudText Typo="Typo.subtitle1">Contacts</MudText>
+        @for (var c = 0; c < contacts.Count; c++)
+        {
+            var contactAt = c;
+            var contact = contacts[contactAt];
+            <MudGrid Spacing="2" Class="mb-1" id="@($"contacts-entry-contact-{contactAt}")" @key="contact">
+                <MudItem xs="12" sm="2">
+                    <MudTextField @bind-Value="contact.PersonId" id="@($"contacts-entry-contact-{contactAt}-person-id")"
+                                  Label="Person" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  InputType="InputType.Number" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <CodeSelect List="@CodeLists.ContactType" @bind-Value="contact.ContactType"
+                                id="@($"contacts-entry-contact-{contactAt}-contact-type")"
+                                Label="Contact type" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <CodeSelect List="@CodeLists.Disposition" @bind-CodeId="contact.DispositionId"
+                                id="@($"contacts-entry-contact-{contactAt}-disposition-id")"
+                                Label="Disposition" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudTextField @bind-Value="contact.DispositionDate" id="@($"contacts-entry-contact-{contactAt}-disposition-date")"
+                                  Label="Disposition date" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  InputType="InputType.Date" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudTextField @bind-Value="contact.ExposureStart" id="@($"contacts-entry-contact-{contactAt}-exposure-start")"
+                                  Label="From" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  InputType="InputType.Date" />
+                </MudItem>
+                <MudItem xs="12" sm="1">
+                    <MudTextField @bind-Value="contact.ExposureEnd" id="@($"contacts-entry-contact-{contactAt}-exposure-end")"
+                                  Label="To" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  InputType="InputType.Date" />
+                </MudItem>
+                <MudItem xs="12" sm="1" Class="d-flex align-center">
+                    <MudButton id="@($"contacts-entry-contact-remove-{contactAt}")" Variant="Variant.Text"
+                               Color="Color.Error" Disabled="@recording"
+                               OnClick="@(() => RemoveContact(contactAt))">
+                        Remove
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        }
+        @if (editingId is null)
+        {
+            <MudButton id="contacts-entry-contact-add" Variant="Variant.Outlined" Class="mt-2"
+                       OnClick="@(() => contacts.Add(new ContactForm()))">
+                Add contact
+            </MudButton>
+        }
+    </div>
+
+    <div id="contacts-entry-sources" class="mt-4">
+        <MudText Typo="Typo.subtitle1">Sources</MudText>
+        @for (var s = 0; s < sources.Count; s++)
+        {
+            var sourceAt = s;
+            var source = sources[sourceAt];
+            <MudGrid Spacing="2" Class="mb-1" id="@($"contacts-entry-source-{sourceAt}")" @key="source">
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="source.SourceName" id="@($"contacts-entry-source-{sourceAt}-source-name")"
+                                  Label="Source name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <CodeSelect List="@CodeLists.SourceType" @bind-Value="source.SourceType"
+                                id="@($"contacts-entry-source-{sourceAt}-source-type")"
+                                Label="Source type" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudTextField @bind-Value="source.PersonId" id="@($"contacts-entry-source-{sourceAt}-person-id")"
+                                  Label="Person" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  InputType="InputType.Number" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudTextField @bind-Value="source.PersonConditionId" id="@($"contacts-entry-source-{sourceAt}-person-condition-id")"
+                                  Label="Report" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  InputType="InputType.Number" />
+                </MudItem>
+                <MudItem xs="12" sm="2" Class="d-flex align-center">
+                    <MudButton id="@($"contacts-entry-source-remove-{sourceAt}")" Variant="Variant.Text"
+                               Color="Color.Error" Disabled="@recording"
+                               OnClick="@(() => RemoveSource(sourceAt))">
+                        Remove
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        }
+        @if (editingId is null)
+        {
+            <MudButton id="contacts-entry-source-add" Variant="Variant.Outlined" Class="mt-2"
+                       OnClick="@(() => sources.Add(new SourceForm()))">
+                Add source
+            </MudButton>
+        }
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+        @if (editingId is null)
+        {
+            <MudButton id="contacts-entry-record" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@recording" OnClick="@Record">
+                Record exposure
+            </MudButton>
+        }
+        else
+        {
+            <MudButton id="contacts-entry-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@recording" OnClick="@SaveEdit">
+                Save changes
+            </MudButton>
+            <MudButton id="contacts-entry-cancel" Variant="Variant.Outlined"
+                       Disabled="@recording" OnClick="@CancelEdit">
+                Cancel
+            </MudButton>
+        }
+    </div>
+</MudPaper>
+
+@code {
+    /// <summary>The report whose exposures this tab lists and records against.</summary>
+    [Parameter, EditorRequired]
+    public int ReportId { get; set; }
+
+    /// <summary>
+    /// How this tier writes a date into a date box and reads one out: the form
+    /// a native date input yields, under the culture the other tier parses it
+    /// with — the same form the other tabs use.
+    /// </summary>
+    private const string DateForm = "yyyy-MM-dd";
+
+    private List<ExposureDetailResponse> exposures = [];
+
+    private ExposureForm exposureForm = new();
+
+    private PlaceForm placeForm = new();
+
+    private List<ContactForm> contacts = [];
+
+    private List<SourceForm> sources = [];
+
+    private bool recording;
+
+    /// <summary>The id of the exposure the form is editing, or null when it is recording a new one.</summary>
+    private int? editingId;
+
+    /// <summary>The id of the open exposure's place, where it has one, so a correction reaches it.</summary>
+    private int? editingPlaceId;
+
+    private string? listFailure;
+
+    private string? saved;
+
+    private string? entryFailure;
+
+    private string? complaint;
+
+    /// <summary>
+    /// The largest CSV the import panel reads: far more contacts than one
+    /// exposure has, and small enough to hold as text.
+    /// </summary>
+    private const long MaxCsvBytes = 1024 * 1024;
+
+    /// <summary>The exposure the Add contact panel is open for, or null when it is closed.</summary>
+    private ExposureDetailResponse? addingTo;
+
+    private string? addContactType;
+
+    private bool adding;
+
+    private string? addFailure;
+
+    private int? importExposureId;
+
+    /// <summary>The chosen file's text, or null until a file is chosen.</summary>
+    private string? importCsv;
+
+    private bool importing;
+
+    private ContactImportResponse? imported;
+
+    private string? importFailure;
+
+    protected override Task OnInitializedAsync() => Reload();
+
+    private void OpenAddContact(ExposureDetailResponse exposure)
+    {
+        addingTo = exposure;
+        addContactType = null;
+        addFailure = null;
+    }
+
+    private void CloseAddContact() => addingTo = null;
+
+    /// <summary>What each person the search found offers: adding them as a contact.</summary>
+    private RenderFragment<PersonResponse> AddThisPerson => person =>
+        @<MudButton id="@($"contacts-add-person-{person.Id}")" Variant="Variant.Filled"
+                    Color="Color.Primary" Size="Size.Small" Disabled="@adding"
+                    OnClick="@(() => AddContact(new CreateContactEventRequest(PersonId: person.Id)))">
+            Add as contact
+        </MudButton>;
+
+    /// <summary>
+    /// What a search that found nobody offers: creating the person from the
+    /// criteria searched with, and adding them as a contact.
+    /// </summary>
+    private RenderFragment<PersonSearchCriteria> CreateAndAdd => criteria =>
+        @<div class="mb-4">
+            <MudButton id="contacts-add-create-person" Variant="Variant.Filled"
+                       Color="Color.Primary" Disabled="@adding"
+                       OnClick="@(() => AddContact(NewContact(criteria)))">
+                Create person and add as contact
+            </MudButton>
+        </div>;
+
+    /// <summary>The new person a search that found nobody describes, as a contact to add.</summary>
+    private static CreateContactEventRequest NewContact(PersonSearchCriteria criteria) =>
+        new(NewPerson: new CreatePersonRequest(
+            LastName: criteria.LastName,
+            FirstName: criteria.FirstName,
+            MiddleName: criteria.MiddleName,
+            BirthDate: criteria.BirthDate,
+            BirthGender: criteria.BirthGender));
+
+    /// <summary>
+    /// Adds the contact to the open exposure as a contact event of their own,
+    /// with the contact type typed, and reloads the list to show them.
+    /// </summary>
+    private async Task AddContact(CreateContactEventRequest contact)
+    {
+        if (addingTo is not { } exposure)
+        {
+            return;
+        }
+
+        addFailure = null;
+        adding = true;
+
+        try
+        {
+            var added = await Api.AddContactEvent(
+                exposure.Id, contact with { ContactType = Blank(addContactType) });
+
+            if (added.Value is null)
+            {
+                addFailure = added.Failure;
+
+                return;
+            }
+
+            addingTo = null;
+            saved = "The contact has been added as a contact event.";
+            await Reload();
+        }
+        finally
+        {
+            adding = false;
+        }
+    }
+
+    /// <summary>Reads the chosen CSV file's text, for the Import button to post.</summary>
+    private async Task ChosenCsv(InputFileChangeEventArgs chose)
+    {
+        importCsv = null;
+        importFailure = null;
+        imported = null;
+
+        try
+        {
+            using var reader = new StreamReader(chose.File.OpenReadStream(MaxCsvBytes));
+            importCsv = await reader.ReadToEndAsync();
+        }
+        catch (IOException)
+        {
+            importFailure = $"The file could not be read: a CSV of contacts is at most {MaxCsvBytes / 1024} KB.";
+        }
+    }
+
+    /// <summary>
+    /// Posts the chosen CSV under the chosen exposure, shows how many rows were
+    /// imported and each refused row with its reason, and reloads the list to
+    /// show the contacts imported.
+    /// </summary>
+    private async Task Import()
+    {
+        if (importExposureId is not { } exposureId || importCsv is not { } csv)
+        {
+            return;
+        }
+
+        importFailure = null;
+        imported = null;
+        importing = true;
+
+        try
+        {
+            var answered = await Api.ImportContacts(ReportId, new ImportContactsRequest(csv, exposureId));
+
+            if (answered.Value is { } batch)
+            {
+                imported = batch;
+                await Reload();
+            }
+            else
+            {
+                importFailure = answered.Failure;
+            }
+        }
+        finally
+        {
+            importing = false;
+        }
+    }
+
+    /// <summary>
+    /// Reads the report's exposures whole into the list, or why there are none.
+    /// </summary>
+    /// <remarks>
+    /// Every exposure of the report, however many pages the API tier lists them
+    /// over: the client walks the pages, so none is left off the end. Each is
+    /// then read whole, because the contacts are what this tab is for and the
+    /// list carries the event alone; the first read that fails is the one
+    /// reported, and the rest are shown.
+    /// </remarks>
+    private async Task Reload()
+    {
+        exposures = [];
+        listFailure = null;
+
+        var listed = await Api.All(ReportId);
+
+        if (listed.Value is not { } events)
+        {
+            listFailure = listed.Failure;
+
+            return;
+        }
+
+        foreach (var listedExposure in events)
+        {
+            var found = await Api.Detail(listedExposure.Id);
+
+            if (found.Value is { } whole)
+            {
+                exposures.Add(whole);
+            }
+            else
+            {
+                listFailure ??= found.Failure;
+            }
+        }
+    }
+
+    private async Task Record()
+    {
+        if (!TryDate(exposureForm.ExposureStart, "the exposure start", out var started, out var why)
+            || !TryDate(exposureForm.ExposureEnd, "the exposure end", out var ended, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        var builtContacts = new List<ExposureContactRequest>();
+
+        for (var c = 0; c < contacts.Count; c++)
+        {
+            var contact = contacts[c];
+
+            if (!TryDate(contact.ExposureStart, $"contact {c + 1}'s from date", out var from, out why)
+                || !TryDate(contact.ExposureEnd, $"contact {c + 1}'s to date", out var to, out why)
+                || !TryDate(contact.DispositionDate, $"contact {c + 1}'s disposition date", out var disposed, out why))
+            {
+                complaint = why;
+
+                return;
+            }
+
+            builtContacts.Add(new ExposureContactRequest(
+                PersonId: contact.PersonId,
+                ExposureStart: from,
+                ExposureEnd: to,
+                DispositionId: contact.DispositionId,
+                ContactType: Blank(contact.ContactType),
+                DispositionDate: disposed));
+        }
+
+        var builtSources = sources.Select(source => new ExposureSourceRequest(
+            PersonId: source.PersonId,
+            PersonConditionId: source.PersonConditionId,
+            SourceName: Blank(source.SourceName),
+            SourceType: Blank(source.SourceType))).ToList();
+
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+        recording = true;
+
+        try
+        {
+            var answered = await Api.Record(ReportId, new CreateExposureRequest(
+                Name: Blank(exposureForm.Name),
+                Description: Blank(exposureForm.Description),
+                ExposureStart: started,
+                ExposureEnd: ended,
+                Place: BuiltPlace(),
+                Contacts: builtContacts,
+                Sources: builtSources));
+
+            if (answered.Value is { } recorded)
+            {
+                // The new exposure goes to the top of the list, so what was
+                // just recorded is what the reader sees first.
+                exposures.Insert(0, recorded);
+                Clear();
+                saved = "The exposure has been recorded.";
+            }
+            else
+            {
+                entryFailure = answered.Failure;
+            }
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Opens a listed exposure into the entry form, so its own columns, its
+    /// place, its contacts and its sources can be corrected and removed in
+    /// place. The exposure is already in hand whole, so there is nothing to
+    /// read back.
+    /// </summary>
+    private void OpenForEdit(ExposureDetailResponse whole)
+    {
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+
+        editingId = whole.Id;
+        editingPlaceId = whole.Place?.Id;
+
+        exposureForm = new ExposureForm
+        {
+            Name = whole.Name,
+            Description = whole.Description,
+            ExposureStart = Written(whole.ExposureStart),
+            ExposureEnd = Written(whole.ExposureEnd),
+        };
+
+        placeForm = whole.Place is { } place
+            ? new PlaceForm
+            {
+                ExposurePlaceTypeId = place.ExposurePlaceTypeId,
+                Name = place.Name,
+                Street = place.Street,
+                City = place.City,
+                Zip = place.Zip,
+                State = place.State,
+                Latitude = place.Latitude,
+                Longitude = place.Longitude,
+                Phone = place.Phone,
+            }
+            : new PlaceForm();
+
+        contacts = whole.Contacts.Select(contact => new ContactForm
+        {
+            Id = contact.Id,
+            PersonId = contact.PersonId,
+            ContactType = contact.ContactType,
+            DispositionId = contact.DispositionId,
+            DispositionDate = Written(contact.DispositionDate),
+            ExposureStart = Written(contact.ExposureStart),
+            ExposureEnd = Written(contact.ExposureEnd),
+        }).ToList();
+
+        sources = whole.Sources.Select(source => new SourceForm
+        {
+            Id = source.Id,
+            SourceName = source.SourceName,
+            SourceType = source.SourceType,
+            PersonId = source.PersonId,
+            PersonConditionId = source.PersonConditionId,
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Saves the open exposure's own columns through its PUT, and its place,
+    /// contacts and sources through theirs — a contact's disposition and
+    /// disposition date among what a correction sets — stopping at the first
+    /// the API refuses and showing that refusal as the entry error. The dates
+    /// are all read before any save, so a bad one is a complaint and never a
+    /// half-saved exposure.
+    /// </summary>
+    private async Task SaveEdit()
+    {
+        if (editingId is not { } exposureId)
+        {
+            return;
+        }
+
+        if (!TryDate(exposureForm.ExposureStart, "the exposure start", out var started, out var why)
+            || !TryDate(exposureForm.ExposureEnd, "the exposure end", out var ended, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        for (var c = 0; c < contacts.Count; c++)
+        {
+            if (!TryDate(contacts[c].ExposureStart, $"contact {c + 1}'s from date", out _, out why)
+                || !TryDate(contacts[c].ExposureEnd, $"contact {c + 1}'s to date", out _, out why)
+                || !TryDate(contacts[c].DispositionDate, $"contact {c + 1}'s disposition date", out _, out why))
+            {
+                complaint = why;
+
+                return;
+            }
+        }
+
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+        recording = true;
+
+        try
+        {
+            var exposureSaved = await Api.UpdateExposure(exposureId, new UpdateExposureRequest(
+                Name: Blank(exposureForm.Name),
+                Description: Blank(exposureForm.Description),
+                ExposureStart: started,
+                ExposureEnd: ended,
+                ExposurePlaceId: editingPlaceId));
+
+            if (exposureSaved.Value is null)
+            {
+                entryFailure = exposureSaved.Failure;
+
+                return;
+            }
+
+            if (editingPlaceId is { } placeId)
+            {
+                var placeSaved = await Api.UpdatePlace(placeId, new ExposurePlaceRequest(
+                    ExposurePlaceTypeId: placeForm.ExposurePlaceTypeId,
+                    Name: Blank(placeForm.Name),
+                    Street: Blank(placeForm.Street),
+                    City: Blank(placeForm.City),
+                    Zip: Blank(placeForm.Zip),
+                    State: Blank(placeForm.State),
+                    Latitude: placeForm.Latitude,
+                    Longitude: placeForm.Longitude,
+                    Phone: Blank(placeForm.Phone)));
+
+                if (placeSaved.Value is null)
+                {
+                    entryFailure = placeSaved.Failure;
+
+                    return;
+                }
+            }
+
+            foreach (var contact in contacts)
+            {
+                if (contact.Id is not { } contactId)
+                {
+                    continue;
+                }
+
+                TryDate(contact.ExposureStart, "from", out var from, out _);
+                TryDate(contact.ExposureEnd, "to", out var to, out _);
+                TryDate(contact.DispositionDate, "disposition", out var disposed, out _);
+
+                var contactSaved = await Api.UpdateContact(contactId, new ExposureContactRequest(
+                    PersonId: contact.PersonId,
+                    ExposureStart: from,
+                    ExposureEnd: to,
+                    DispositionId: contact.DispositionId,
+                    ContactType: Blank(contact.ContactType),
+                    DispositionDate: disposed));
+
+                if (contactSaved.Value is null)
+                {
+                    entryFailure = contactSaved.Failure;
+
+                    return;
+                }
+            }
+
+            foreach (var source in sources)
+            {
+                if (source.Id is not { } sourceId)
+                {
+                    continue;
+                }
+
+                var sourceSaved = await Api.UpdateSource(sourceId, new ExposureSourceRequest(
+                    PersonId: source.PersonId,
+                    PersonConditionId: source.PersonConditionId,
+                    SourceName: Blank(source.SourceName),
+                    SourceType: Blank(source.SourceType)));
+
+                if (sourceSaved.Value is null)
+                {
+                    entryFailure = sourceSaved.Failure;
+
+                    return;
+                }
+            }
+
+            editingId = null;
+            editingPlaceId = null;
+            Clear();
+            await Reload();
+            saved = "The exposure has been saved.";
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>Closes the edit form without saving, back to recording a new exposure.</summary>
+    private void CancelEdit()
+    {
+        editingId = null;
+        editingPlaceId = null;
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+        Clear();
+    }
+
+    /// <summary>
+    /// Removes an exposure from its row, once confirmed. An exposure that still
+    /// has contacts or sources is refused by the API, and that refusal is shown
+    /// as the entry error.
+    /// </summary>
+    private async Task RemoveExposure(ExposureDetailResponse exposure)
+    {
+        if (!await Confirm($"Remove exposure {Shown(exposure.Name)}?",
+            "The exposure will be removed. This cannot be undone."))
+        {
+            return;
+        }
+
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+        recording = true;
+
+        try
+        {
+            if (await Api.DeleteExposure(exposure.Id) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            exposures.RemoveAll(listed => listed.Id == exposure.Id);
+
+            if (editingId == exposure.Id)
+            {
+                editingId = null;
+                editingPlaceId = null;
+                Clear();
+            }
+
+            saved = "The exposure has been removed.";
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Removes a contact row: a stored contact, once confirmed, through its own
+    /// route; an unsaved one from the form alone.
+    /// </summary>
+    private async Task RemoveContact(int contactAt)
+    {
+        var contact = contacts[contactAt];
+
+        if (editingId is null || contact.Id is not { } contactId)
+        {
+            contacts.RemoveAt(contactAt);
+
+            return;
+        }
+
+        if (!await Confirm("Remove contact?", "The contact will be removed. This cannot be undone."))
+        {
+            return;
+        }
+
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+        recording = true;
+
+        try
+        {
+            if (await Api.DeleteContact(contactId) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            contacts.RemoveAt(contactAt);
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Removes a source row: a stored source, once confirmed, through its own
+    /// route; an unsaved one from the form alone.
+    /// </summary>
+    private async Task RemoveSource(int sourceAt)
+    {
+        var source = sources[sourceAt];
+
+        if (editingId is null || source.Id is not { } sourceId)
+        {
+            sources.RemoveAt(sourceAt);
+
+            return;
+        }
+
+        if (!await Confirm("Remove source?", "The source will be removed. This cannot be undone."))
+        {
+            return;
+        }
+
+        saved = null;
+        entryFailure = null;
+        complaint = null;
+        recording = true;
+
+        try
+        {
+            if (await Api.DeleteSource(sourceId) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            sources.RemoveAt(sourceAt);
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Removes the open exposure's place, once confirmed: the exposure is
+    /// pointed at no place first, because a place an exposure still points at
+    /// cannot be deleted, and then the now-unreferenced place is removed
+    /// through its own route. A refusal at either step is shown as the entry
+    /// error.
+    /// </summary>
+    private async Task RemovePlace()
+    {
+        if (editingId is not { } exposureId || editingPlaceId is not { } placeId)
+        {
+            return;
+        }
+
+        if (!await Confirm("Remove place?", "The place will be removed from the exposure. This cannot be undone."))
+        {
+            return;
+        }
+
+        if (!TryDate(exposureForm.ExposureStart, "the exposure start", out var started, out var why)
+            || !TryDate(exposureForm.ExposureEnd, "the exposure end", out var ended, out why))
+        {
+            complaint = why;
+
+            return;
+        }
+
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+        recording = true;
+
+        try
+        {
+            var detached = await Api.UpdateExposure(exposureId, new UpdateExposureRequest(
+                Name: Blank(exposureForm.Name),
+                Description: Blank(exposureForm.Description),
+                ExposureStart: started,
+                ExposureEnd: ended,
+                ExposurePlaceId: null));
+
+            if (detached.Value is null)
+            {
+                entryFailure = detached.Failure;
+
+                return;
+            }
+
+            if (await Api.DeletePlace(placeId) is { } whyNot)
+            {
+                entryFailure = whyNot;
+
+                return;
+            }
+
+            editingPlaceId = null;
+            placeForm = new PlaceForm();
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Asks the operator to confirm a removal before it is sent, so a delete is
+    /// never one click away. True only where they chose to go ahead.
+    /// </summary>
+    private async Task<bool> Confirm(string title, string message) =>
+        await Dialogs.ShowMessageBoxAsync(title, message, yesText: "Delete", cancelText: "Cancel") == true;
+
+    /// <summary>
+    /// The place as the boxes hold it, or null where every box is empty: an
+    /// exposure with no place sends none rather than an empty row.
+    /// </summary>
+    private ExposurePlaceRequest? BuiltPlace()
+    {
+        var place = new ExposurePlaceRequest(
+            ExposurePlaceTypeId: placeForm.ExposurePlaceTypeId,
+            Name: Blank(placeForm.Name),
+            Street: Blank(placeForm.Street),
+            City: Blank(placeForm.City),
+            Zip: Blank(placeForm.Zip),
+            State: Blank(placeForm.State),
+            Latitude: placeForm.Latitude,
+            Longitude: placeForm.Longitude,
+            Phone: Blank(placeForm.Phone));
+
+        return place == new ExposurePlaceRequest() ? null : place;
+    }
+
+    /// <summary>Empties the entry form after an exposure is recorded.</summary>
+    private void Clear()
+    {
+        exposureForm = new ExposureForm();
+        placeForm = new PlaceForm();
+        contacts = [];
+        sources = [];
+    }
+
+    /// <summary>
+    /// The place as the list shows it: its name, or its street and city where
+    /// it has no name, or a dash where the exposure has no place.
+    /// </summary>
+    private static string Placed(ExposurePlaceResponse? place)
+    {
+        if (place is null)
+        {
+            return "—";
+        }
+
+        if (!string.IsNullOrWhiteSpace(place.Name))
+        {
+            return place.Name;
+        }
+
+        var address = string.Join(", ", new[] { place.Street, place.City }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
+
+        return string.IsNullOrWhiteSpace(address) ? $"place {place.Id}" : address;
+    }
+
+    /// <summary>A value as the list shows it, or a dash for what nobody has recorded.</summary>
+    private static string Shown(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "—" : value;
+
+    /// <summary>An identifier as the list shows it, or a dash where none is recorded.</summary>
+    private static string Shown(int? value) =>
+        value is { } id ? id.ToString(CultureInfo.InvariantCulture) : "—";
+
+    /// <summary>A coded box's content, trimmed, or null where it holds nothing.</summary>
+    private static string? Blank(string? typed) =>
+        string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
+
+    /// <summary>
+    /// A date box read: empty is no date, a date is the date, and anything
+    /// else is a complaint naming the box — the same rule the other tabs read
+    /// their date boxes by.
+    /// </summary>
+    private static bool TryDate(string? typed, string named, out DateOnly? date, out string? why)
+    {
+        date = null;
+        why = null;
+
+        if (string.IsNullOrWhiteSpace(typed))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParseExact(typed.Trim(), DateForm, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var parsed))
+        {
+            date = parsed;
+
+            return true;
+        }
+
+        why = $"Give {named} as yyyy-mm-dd, or leave it empty.";
+
+        return false;
+    }
+
+    /// <summary>A date as a date box holds it.</summary>
+    private static string? Written(DateOnly? date) =>
+        date?.ToString(DateForm, CultureInfo.InvariantCulture);
+
+    /// <summary>One exposure as its boxes hold it: the dates as text, until they are read.</summary>
+    private sealed class ExposureForm
+    {
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public string? ExposureStart { get; set; }
+        public string? ExposureEnd { get; set; }
+    }
+
+    /// <summary>The place as its boxes hold it.</summary>
+    private sealed class PlaceForm
+    {
+        public int? ExposurePlaceTypeId { get; set; }
+        public string? Name { get; set; }
+        public string? Street { get; set; }
+        public string? City { get; set; }
+        public string? Zip { get; set; }
+        public string? State { get; set; }
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
+        public string? Phone { get; set; }
+    }
+
+    /// <summary>One contact as its boxes hold it: a person id, a type and a disposition.</summary>
+    private sealed class ContactForm
+    {
+        /// <summary>The stored contact's id when editing one, or null for an unsaved contact.</summary>
+        public int? Id { get; set; }
+
+        public int? PersonId { get; set; }
+        public string? ContactType { get; set; }
+        public int? DispositionId { get; set; }
+        public string? DispositionDate { get; set; }
+        public string? ExposureStart { get; set; }
+        public string? ExposureEnd { get; set; }
+    }
+
+    /// <summary>One source as its boxes hold it.</summary>
+    private sealed class SourceForm
+    {
+        /// <summary>The stored source's id when editing one, or null for an unsaved source.</summary>
+        public int? Id { get; set; }
+
+        public string? SourceName { get; set; }
+        public string? SourceType { get; set; }
+        public int? PersonId { get; set; }
+        public int? PersonConditionId { get; set; }
+    }
+}

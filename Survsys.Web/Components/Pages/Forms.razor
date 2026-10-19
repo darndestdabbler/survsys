@@ -1,0 +1,69 @@
+@* The supplemental forms, for their building: every form newest first, each
+   name the way into its editor, and New form for an empty one. The condition
+   the form is for and whether it is auto-assigned are shown from the list the
+   API already names. *@
+@page "/forms"
+@inject FormsClient Client
+
+<PageTitle>Forms — Survsys</PageTitle>
+
+<MudText id="forms-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Forms
+</MudText>
+
+<MudButton id="forms-new" Variant="Variant.Filled" Color="Color.Primary" Class="mb-4"
+           Href="/forms/new">
+    New form
+</MudButton>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="forms-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result)
+{
+    <MudPaper Elevation="1">
+        <MudSimpleTable id="forms-table" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Condition</th>
+                    <th>Auto-assign</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (result.Items.Count == 0)
+                {
+                    <tr id="forms-empty">
+                        <td colspan="3">No forms have been built.</td>
+                    </tr>
+                }
+                @foreach (var form in result.Items)
+                {
+                    <tr data-form="@form.Id">
+                        <td data-form-name>
+                            <MudLink Href="@($"/forms/{form.Id}")">@form.Name</MudLink>
+                        </td>
+                        <td data-form-condition>@form.ConditionName</td>
+                        <td data-form-auto-assign>@(form.AutoAssign ? "Yes" : "No")</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+else
+{
+    <MudAlert id="forms-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    private Asked<PagedResult<FormResponse>>? asked;
+
+    protected override async Task OnInitializedAsync()
+    {
+        asked = await Client.All();
+    }
+}

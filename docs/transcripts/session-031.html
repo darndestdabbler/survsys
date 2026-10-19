@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 031 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 031 transcript</h1>
+<p class="stamp">Rendered 2026-10-16T19:14:23.195Z by dabbler-ai-router 3.21.0 at fb947f9fa4cc0a9ea432cc8b8e4680d48642ddb8.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-16T15:02:48.418-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 31: Core element configuration</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code> and <code>Survsys.Api</code>: core element configuration — field visibility per condition and per agency — with its migration and endpoints.</li><li><code>Survsys.Web</code>: the configuration screen, and the report tabs honouring what it says.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Give the case morbidity report core element configuration: which of its fields are shown, by default and per condition and per agency, as the legacy Min/Opt Visibility screen did. Survsys.Data gains a core_elements table (legacy core_element: uid, label, plus the tab the field sits on and whether it is hidden by default), seeded by the migration with one row for each field of the Clinical, Investigation and Administrative tabs under a stable uid (the legacy uid where one exists, such as disease_onset_date); a core_element_overrides table that folds the legacy core_element_condition and core_element_agency into one (core element, optional condition, optional agency, hidden), at least one of condition and agency set and one row per combination; and CoreElementVisibilityRules, the pure rule that decides whether an element is hidden for a report's condition and agency, where an agency-and-condition override beats an agency override, which beats a condition override, which beats the element's default. One migration carries the two tables. Survsys.Api adds CoreElementEndpoints: the catalogue with its defaults, setting an element's default, listing, saving and deleting overrides (the condition and agency checked against their tables), and GET /api/person-conditions/{id}/hidden-elements, the uids hidden for that report's condition and investigating agency. Survsys.Web gains a CoreElementsClient, a core element configuration screen reached from the navigation, and the Clinical, Investigation and Administrative tabs leave out every field the report's hidden elements name; a hidden field keeps its stored value, because the tabs still send the whole record. The unit suite proves CoreElementVisibilityRules, the override validator and the client calls.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/b9264a45d2a5ff17932a627f9906f716a13e2d03"><code>b9264a45d2a5ff17932a627f9906f716a13e2d03</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Data</td><td><p>Survsys.Data: the CoreElement and CoreElementOverride entities with their configurations (core elements seeded via HasData with the Clinical, Investigation and Administrative tab fields under stable uids, unique uid; overrides with a check that a condition or an agency is set and a unique index on element, condition and agency), their DbSets, and the pure CoreElementVisibilityRules.IsHidden, with CoreElementVisibilityRulesTests covering the default alone, a condition override, an agency override beating a condition override, an agency-and-condition override beating an agency override, an override that un-hides a hidden default, and overrides for another condition or agency being ignored.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CoreElementVisibilityRulesTests</code></td><td>yes</td></tr>
+<tr><td>Migration</td><td><p>Generate the CoreElements migration with dotnet ef under the migration id 20261016200000_CoreElements, and the updated model snapshot.</p></td><td><span class="mono">Survsys.Data/Migrations/20261016200000_CoreElements.cs</span><br><span class="mono">Survsys.Data/Migrations/20261016200000_CoreElements.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Api</td><td><p>Survsys.Contracts and Survsys.Api: CoreElementResponse, CoreElementOverrideResponse, SaveCoreElementRequest and SaveCoreElementOverrideRequest; CoreElementEndpoints with GET /api/core-elements, PUT /api/core-elements/{id} (the default), GET /api/core-elements/overrides, POST /api/core-elements/overrides (saving an existing combination replaces its hidden flag), DELETE /api/core-elements/overrides/{id}, and GET /api/person-conditions/{id}/hidden-elements resolved through CoreElementVisibilityRules; a WhyNotAnOverride validator (neither condition nor agency set; unknown element, condition or agency); registered in Program.cs; with CoreElementEndpointsTests.</p></td><td><span class="mono">Survsys.Contracts/CoreElementResponse.cs</span><br><span class="mono">Survsys.Contracts/CoreElementOverrideResponse.cs</span><br><span class="mono">Survsys.Contracts/SaveCoreElementRequest.cs</span><br><span class="mono">Survsys.Contracts/SaveCoreElementOverrideRequest.cs</span><br><span class="mono">Survsys.Api/CoreElementEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.UnitTests/CoreElementEndpointsTests.cs</span><br><span class="mono">Survsys.Data/CoreElementOverrideConfiguration.cs</span><br><span class="mono">Survsys.Data/Migrations/20261016200000_CoreElements.cs</span><br><span class="mono">Survsys.Data/Migrations/20261016200000_CoreElements.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CoreElementEndpointsTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Web client</td><td><p>Survsys.Web: CoreElementsClient with list, set default, list overrides, save override, delete override and the report's hidden elements, registered in Program.cs, with CoreElementsClientTests.</p></td><td><span class="mono">Survsys.Web/CoreElementsClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.UnitTests/CoreElementsClientTests.cs</span><br><span class="mono">Survsys.Web/ApiAsk.cs</span><br><span class="mono">Survsys.UnitTests/ApiAskTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CoreElementsClientTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Web screen</td><td><p>Survsys.Web: the core element configuration screen (each element with its tab, label and a hidden-by-default switch; the overrides with element, condition, agency and hidden, an add form and a delete per row), with stable element identifiers and a navigation entry.</p></td><td><span class="mono">Survsys.Web/Components/Pages/CoreElements.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Web tabs</td><td><p>Survsys.Web: the morbidity report fetches its hidden elements and passes them to the Clinical, Investigation and Administrative tabs, which leave out each field whose uid is hidden while keeping its loaded value in what they save; every existing element identifier stays as it is.</p></td><td><span class="mono">Survsys.Web/Components/Pages/MorbidityReport.razor</span><br><span class="mono">Survsys.Web/Components/ClinicalTab.razor</span><br><span class="mono">Survsys.Web/Components/InvestigationTab.razor</span><br><span class="mono">Survsys.Web/Components/AdministrativeTab.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No minimal/optimal data set levels or minimal-field highlighting: an element is shown or hidden, nothing more.</li><li>No core_section table or section-level visibility, and no form builder, form_core_element_data or question bank.</li><li>No visibility for the Demographic, Laboratory, Contacts or Notes tabs, nor for the report header (status, agency, record number): only the scalar fields of the Clinical, Investigation and Administrative tabs are core elements.</li><li>No per-user visibility: the legacy computes agency overrides from the signed-in user's agencies, and with users and roles still session 32's work the report's investigating agency stands in for them.</li><li>No change to what the API accepts or stores for a hidden field: visibility is a presentation rule, and the tabs' save requests and the API's validation are unchanged.</li><li>No users, roles, privileges, saved views, exports or walkthroughs: those are sessions 32 onward.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[19:02:48]</span> <span class="muted">run-started</span> session=031 mode=pull</div>
+<div class="line"><span class="at">[19:02:48]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[19:04:45]</span> <span class="muted">run-resumed</span> session=031 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[19:04:45]</span> <span class="muted">plan-accepted</span> steps=[&quot;data&quot;,&quot;migration&quot;,&quot;api&quot;,&quot;web-client&quot;,&quot;web-screen&quot;,&quot;web-tabs&quot;] non_goals=6</div>
+<div class="line"><span class="at">[19:04:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[19:04:46]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=data</div>
+<div class="line"><span class="at">[19:06:12]</span> <span class="muted">run-resumed</span> session=031 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:06:15]</span> <span class="muted">check-passed</span> step=data argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CoreElementVisibilityRulesTests&quot;]</div>
+<div class="line"><span class="at">[19:06:15]</span> <span class="muted">report-accepted</span> seq=2 step=data files=[] notes=CoreElement and CoreElementOverride entities and configurations (24 seeded tab fields), DbSets, CoreElementVisibilityRules.IsHidden with 7 tests</div>
+<div class="line"><span class="at">[19:06:15]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=migration</div>
+<div class="line"><span class="at">[19:06:52]</span> <span class="muted">run-resumed</span> session=031 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:06:54]</span> <span class="muted">check-passed</span> step=migration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[19:06:54]</span> <span class="muted">report-accepted</span> seq=3 step=migration files=[&quot;Survsys.Data/Migrations/20261016200000_CoreElements.cs&quot;,&quot;Survsys.Data/Migrations/20261016200000_CoreElements.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=CoreElements migration generated with dotnet ef and renamed to id 20261016200000; snapshot gains only the two new tables and seed</div>
+<div class="line"><span class="at">[19:06:54]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=api</div>
+<div class="line"><span class="at">[19:09:16]</span> <span class="muted">run-resumed</span> session=031 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:09:19]</span> <span class="muted">check-passed</span> step=api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CoreElementEndpointsTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[19:09:19]</span> <span class="muted">report-accepted</span> seq=4 step=api files=[&quot;Survsys.Contracts/CoreElementResponse.cs&quot;,&quot;Survsys.Contracts/CoreElementOverrideResponse.cs&quot;,&quot;Survsys.Contracts/SaveCoreElementRequest.cs&quot;,&quot;Survsys.Contracts/SaveCoreElementOverrideRequest.cs&quot;,&quot;Survsys.Api/CoreElementEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.UnitTests/CoreElementEndpointsTests.cs&quot;,&quot;Survsys.Data/CoreElementOverrideConfiguration.cs&quot;,&quot;Survsys.Data/Migrations/20261016200000_CoreElements.cs&quot;,&quot;Survsys.Data/Migrations/20261016200000_CoreElements.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=CoreElementEndpoints (catalogue, default, overrides list/save-upsert/delete, report hidden-elements) with contracts and tests; overrides unique index made unfiltered and migration regenerated (amended)</div>
+<div class="line"><span class="at">[19:09:19]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=web-client</div>
+<div class="line"><span class="at">[19:10:43]</span> <span class="muted">run-resumed</span> session=031 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:10:46]</span> <span class="muted">check-passed</span> step=web-client argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CoreElementsClientTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[19:10:47]</span> <span class="muted">report-accepted</span> seq=5 step=web-client files=[&quot;Survsys.Web/CoreElementsClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.UnitTests/CoreElementsClientTests.cs&quot;,&quot;Survsys.Web/ApiAsk.cs&quot;,&quot;Survsys.UnitTests/ApiAskTests.cs&quot;] notes=CoreElementsClient (all, set default, overrides, save, delete, report hidden elements) registered; ApiAsk gains Delete sharing the refused-status wording; tests for both</div>
+<div class="line"><span class="at">[19:10:47]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=web-screen</div>
+<div class="line"><span class="at">[19:11:35]</span> <span class="muted">run-resumed</span> session=031 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:11:37]</span> <span class="muted">check-passed</span> step=web-screen argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[19:11:37]</span> <span class="muted">report-accepted</span> seq=6 step=web-screen files=[&quot;Survsys.Web/Components/Pages/CoreElements.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;] notes=Field visibility screen at /core-elements (defaults switched and saved per element; overrides listed, added and deleted) and its nav entry</div>
+<div class="line"><span class="at">[19:11:37]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=web-tabs</div>
+<div class="line"><span class="at">[19:12:54]</span> <span class="muted">run-resumed</span> session=031 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:12:56]</span> <span class="muted">check-passed</span> step=web-tabs argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[19:12:59]</span> <span class="muted">check-passed</span> step=web-tabs argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[19:12:59]</span> <span class="muted">report-accepted</span> seq=7 step=web-tabs files=[&quot;Survsys.Web/Components/Pages/MorbidityReport.razor&quot;,&quot;Survsys.Web/Components/ClinicalTab.razor&quot;,&quot;Survsys.Web/Components/InvestigationTab.razor&quot;,&quot;Survsys.Web/Components/AdministrativeTab.razor&quot;] notes=Report shell reads its hidden elements and passes them to the Clinical, Investigation and Administrative tabs, which leave out each hidden field (values still saved as read); element ids unchanged</div>
+<div class="line"><span class="at">[19:12:59]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[19:12:59]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[19:13:01]</span> <span class="muted">job-started</span> name=verification pid=46208 log=.dabbler/runs/s31/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:14:03]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s31/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:14:03]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[19:14:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[19:14:03]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[19:14:04]</span> <span class="muted">job-started</span> name=run of record: unit pid=36112 log=.dabbler/runs/s31/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[19:14:10]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s31/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[19:14:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[19:14:14]</span> <span class="muted">landed</span> commit=b9264a45d2a5ff17932a627f9906f716a13e2d03</div>
+<div class="line"><span class="at">[19:14:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[19:14:14]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[19:14:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[19:14:16]</span> <span class="muted">job-started</span> name=close pid=49116 log=.dabbler/runs/s31/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:14:23]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s31/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:14:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.UnitTests/CoreElementsClientTests.cs`, `SaveOverridePostsToTheOverrides` asserts the HTTP method and request URI for `SaveOverride` but, unlike `SetDefaultPutsTheFlagToTheElement`, does not inspect the serialized request body. A case starting with a `Recording` client that captures `request.Content.ReadAsStringAsync()`, driving `await client.SaveOverride(new SaveCoreElementOverrideRequest(6, 40, null, false))`, and asserting that the captured JSON body contains `&quot;coreElementId&quot;:6`, `&quot;conditionId&quot;:40`, `&quot;agencyId&quot;:null`, and `&quot;hidden&quot;:false` would pin the wire serialization of `SaveCoreElementOverrideRequest`.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.UnitTests/CoreElementVisibilityRulesTests.cs`, `IsHiddenLetsAnAgencyAndConditionOverrideBeatAnAgencyOverride` only tests an agency-and-condition override with `hidden: true` against `Shown` (`Hidden = false`). A complementary case starting from `HiddenByDefault` (`Hidden = true`) with overrides `[Override(HiddenByDefault.Id, null, Agency, hidden: true), Override(HiddenByDefault.Id, Condition, Agency, hidden: false), Override(HiddenByDefault.Id, Condition, null, hidden: true)]`, driving `CoreElementVisibilityRules.IsHidden(HiddenByDefault, Condition, Agency, overrides)`, and asserting `false` would directly pin that an agency-and-condition override with `Hidden = false` beats both an agency-only override with `Hidden = true` and a default of `Hidden = true`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>4s</td><td>680</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
