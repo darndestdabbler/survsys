@@ -1,0 +1,250 @@
+@* The Investigation tab of a case morbidity report: the report's
+   investigation data, editable, and saved whole.
+
+   ../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md
+   records the legacy tab's five sections, and this is the two of them that
+   write to the report itself: Contact Oriented, with its four Yes/No/Unknown
+   dropdowns, and Other, with imported from, transmission mode, risk factors,
+   risk factors notes and the two other-data fields. The associated forms,
+   the occupations, the exposures and the binational reporting criteria are
+   each a table of their own and are later sessions' work; the tab shows
+   nothing for them rather than blanks that promise a feature.
+
+   The investigation data arrives as a parameter and is copied into fields on
+   initialisation, so that typing changes the fields and never the record the
+   shell holds. Save & Continue builds an UpdateInvestigationRequest from the
+   fields and sends it as one PUT; what comes back replaces the fields, so
+   the screen shows what was stored and not what it sent.
+
+   Every coded field (the four Contact Oriented codes, transmission mode) is
+   a text box holding the legacy code, as the Clinical tab holds its coded
+   fields: the reference tables behind the legacy dropdowns do not exist yet,
+   and imported from is a numeric box holding the legacy identifier for the
+   same reason. The coded-value rules stay the API tier's; an answer it
+   refuses is shown as the client's message rather than re-checked here.
+
+   Every element a walkthrough names carries a stable identifier. *@
+@inject InvestigationClient Api
+
+@if (saved is { } stored)
+{
+    <MudAlert id="investigation-saved" Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+        @stored
+    </MudAlert>
+}
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="investigation-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+<MudPaper id="investigation-contact" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Contact Oriented</MudText>
+    <MudGrid Spacing="2">
+        @if (Shows("food_handler"))
+        {
+            <MudItem xs="12" sm="3">
+                <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="foodHandler" id="investigation-food-handler"
+                            Label="Food handler" />
+            </MudItem>
+        }
+        @if (Shows("healthcare_worker"))
+        {
+            <MudItem xs="12" sm="3">
+                <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="healthcareWorker" id="investigation-healthcare-worker"
+                            Label="Health care worker" />
+            </MudItem>
+        }
+        @if (Shows("group_living"))
+        {
+            <MudItem xs="12" sm="3">
+                <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="groupLiving" id="investigation-group-living"
+                            Label="Group living" />
+            </MudItem>
+        }
+        @if (Shows("day_care_association"))
+        {
+            <MudItem xs="12" sm="3">
+                <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="dayCareAssociation" id="investigation-day-care-association"
+                            Label="Day care association" />
+            </MudItem>
+        }
+    </MudGrid>
+</MudPaper>
+
+<MudPaper id="investigation-other" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Other</MudText>
+    <MudGrid Spacing="2">
+        @if (Shows("imported_from"))
+        {
+            <MudItem xs="12" sm="4">
+                <CodeSelect List="@CodeLists.ImportedFrom" @bind-CodeId="importedFromId" id="investigation-imported-from-id"
+                            Label="Imported from" />
+            </MudItem>
+        }
+        @if (Shows("transmission_mode"))
+        {
+            <MudItem xs="12" sm="4">
+                <CodeSelect List="@CodeLists.TransmissionMode" @bind-Value="transmissionMode" id="investigation-transmission-mode"
+                            Label="Transmission mode" />
+            </MudItem>
+        }
+        @if (Shows("risk_factors"))
+        {
+            <MudItem xs="12">
+                <MudTextField @bind-Value="riskFactors" id="investigation-risk-factors"
+                              Label="Risk factors" Variant="Variant.Outlined"
+                              Lines="3" />
+            </MudItem>
+        }
+        @if (Shows("risk_factors_notes"))
+        {
+            <MudItem xs="12">
+                <MudTextField @bind-Value="riskFactorsNotes" id="investigation-risk-factors-notes"
+                              Label="Risk factors notes" Variant="Variant.Outlined"
+                              Lines="3" />
+            </MudItem>
+        }
+        @if (Shows("other_data_1"))
+        {
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="otherData1" id="investigation-other-data-1"
+                              Label="Other data 1" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        @if (Shows("other_data_2"))
+        {
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="otherData2" id="investigation-other-data-2"
+                              Label="Other data 2" Variant="Variant.Outlined" />
+            </MudItem>
+        }
+        <MudItem xs="12" sm="6">
+            <MudTextField @bind-Value="occupation" id="investigation-occupation"
+                          Label="Occupation" Variant="Variant.Outlined" MaxLength="255" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<div class="d-flex gap-2">
+    <MudButton id="investigation-save" Variant="Variant.Filled" Color="Color.Primary"
+               Disabled="@saving" OnClick="@Save">
+        Save &amp; Continue
+    </MudButton>
+</div>
+
+@code {
+    /// <summary>The report this tab's investigation data is for, from the shell.</summary>
+    [Parameter, EditorRequired]
+    public int ReportId { get; set; }
+
+    /// <summary>The report's investigation data, as the shell read it.</summary>
+    [Parameter, EditorRequired]
+    public InvestigationResponse Investigation { get; set; } = default!;
+
+    /// <summary>
+    /// The uids of the fields core element configuration hides on this
+    /// report. A hidden field is left off the tab, and its value still goes
+    /// back as it was read, because the tab saves the whole record.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<string> Hidden { get; set; } = new HashSet<string>();
+
+    private bool Shows(string uid) => !Hidden.Contains(uid);
+
+    private string? foodHandler;
+
+    private string? healthcareWorker;
+
+    private string? groupLiving;
+
+    private string? dayCareAssociation;
+
+    private int? importedFromId;
+
+    private string? transmissionMode;
+
+    private string? riskFactors;
+
+    private string? riskFactorsNotes;
+
+    private string? otherData1;
+
+    private string? otherData2;
+
+    private string? occupation;
+
+    private bool saving;
+
+    private string? saved;
+
+    private string? failure;
+
+    protected override void OnInitialized() => Load(Investigation);
+
+    /// <summary>
+    /// Copies the investigation data into the fields: on arrival, and again
+    /// with what a save answered.
+    /// </summary>
+    private void Load(InvestigationResponse investigation)
+    {
+        foodHandler = investigation.FoodHandler;
+        healthcareWorker = investigation.HealthcareWorker;
+        groupLiving = investigation.GroupLiving;
+        dayCareAssociation = investigation.DayCareAssociation;
+        importedFromId = investigation.ImportedFromId;
+        transmissionMode = investigation.TransmissionMode;
+        riskFactors = investigation.RiskFactors;
+        riskFactorsNotes = investigation.RiskFactorsNotes;
+        otherData1 = investigation.OtherData1;
+        otherData2 = investigation.OtherData2;
+        occupation = investigation.Occupation;
+    }
+
+    private async Task Save()
+    {
+        failure = null;
+        saved = null;
+        saving = true;
+
+        try
+        {
+            var answered = await Api.Save(ReportId, new UpdateInvestigationRequest(
+                FoodHandler: Blank(foodHandler),
+                HealthcareWorker: Blank(healthcareWorker),
+                GroupLiving: Blank(groupLiving),
+                DayCareAssociation: Blank(dayCareAssociation),
+                ImportedFromId: importedFromId,
+                TransmissionMode: Blank(transmissionMode),
+                RiskFactors: Blank(riskFactors),
+                RiskFactorsNotes: Blank(riskFactorsNotes),
+                OtherData1: Blank(otherData1),
+                OtherData2: Blank(otherData2),
+                Occupation: Blank(occupation)));
+
+            if (answered.Value is { } stored)
+            {
+                Load(stored);
+                saved = "The investigation data has been saved.";
+            }
+            else
+            {
+                failure = answered.Failure;
+            }
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    /// <summary>
+    /// A box's content, trimmed, or null where it holds nothing — so a box
+    /// cleared on the screen clears the column, which is what a whole
+    /// replacement means.
+    /// </summary>
+    private static string? Blank(string? typed) =>
+        string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
+}

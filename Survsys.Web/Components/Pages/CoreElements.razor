@@ -1,0 +1,227 @@
+@* Core element configuration — the legacy Min/Opt Visibility screen: which
+   fields of a case morbidity report are shown. Each element has a default,
+   switched here and saved as it is switched; an override shows or hides an
+   element for one condition, one agency, or one condition within one agency,
+   and beats the default. Which override wins where several apply is the API
+   tier's rule, not this screen's.
+
+   The condition and agency lists are only for naming and choosing; an
+   override's condition or agency left empty means every condition or every
+   agency, and at least one of the two is required, which the API tier
+   checks.
+
+   Every element a walkthrough would name carries a stable identifier. *@
+@page "/core-elements"
+@inject CoreElementsClient Client
+@inject ConditionsClient Conditions
+@inject AgenciesClient Agencies
+
+<PageTitle>Field visibility — Survsys</PageTitle>
+
+<MudText id="core-elements-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Field visibility
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="core-elements-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (elements is null)
+{
+    @if (failure is null)
+    {
+        <MudProgressCircular id="core-elements-loading" Color="Color.Primary" Indeterminate="true" />
+    }
+}
+else
+{
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Defaults</MudText>
+        <MudSimpleTable id="core-elements-table" Hover="true" Striped="true" Dense="true">
+            <thead>
+                <tr>
+                    <th>Tab</th>
+                    <th>Field</th>
+                    <th>Hidden by default</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var element in elements)
+                {
+                    <tr data-core-element="@element.Uid">
+                        <td>@element.Tab</td>
+                        <td>@element.Label</td>
+                        <td>
+                            <MudSwitch T="bool" Value="@element.Hidden" Color="Color.Primary"
+                                       id="@($"core-element-hidden-{element.Uid}")"
+                                       ValueChanged="@(hidden => SetDefault(element, hidden))" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+
+    <MudPaper Elevation="1" Class="pa-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Overrides</MudText>
+        <MudGrid Spacing="2" Class="mb-2">
+            <MudItem xs="12" sm="3">
+                @* Each item names its type, because the list binds a nullable
+                   integer and an item inferred from a plain one is
+                   MudSelectItem<int>: see NewMorbidityReportDetails. *@
+                <MudSelect @bind-Value="newElementId" id="core-element-override-element"
+                           Label="Field" Variant="Variant.Outlined">
+                    @foreach (var element in elements)
+                    {
+                        <MudSelectItem T="int?" Value="@element.Id">@element.Tab: @element.Label</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudSelect @bind-Value="newConditionId" id="core-element-override-condition"
+                           Label="Condition (empty for any)" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var condition in conditions)
+                    {
+                        <MudSelectItem T="int?" Value="@condition.Id">@condition.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudSelect @bind-Value="newAgencyId" id="core-element-override-agency"
+                           Label="Agency (empty for any)" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var agency in agencies)
+                    {
+                        <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="1">
+                <MudCheckBox @bind-Value="newHidden" id="core-element-override-hidden" Label="Hidden" />
+            </MudItem>
+            <MudItem xs="6" sm="2">
+                <MudButton id="core-element-override-save" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@(newElementId is null || (newConditionId is null && newAgencyId is null))"
+                           OnClick="@SaveOverride">
+                    Save override
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudSimpleTable id="core-element-overrides-table" Hover="true" Striped="true" Dense="true">
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Condition</th>
+                    <th>Agency</th>
+                    <th>Shown or hidden</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in overrides)
+                {
+                    <tr data-core-element-override="@o.Id">
+                        <td>@ElementLabel(o.CoreElementId)</td>
+                        <td>@(o.ConditionId is { } c ? ConditionName(c) : "Any")</td>
+                        <td>@(o.AgencyId is { } a ? AgencyName(a) : "Any")</td>
+                        <td>@(o.Hidden ? "Hidden" : "Shown")</td>
+                        <td>
+                            <MudButton id="@($"core-element-override-delete-{o.Id}")" Size="Size.Small"
+                                       Variant="Variant.Text" Color="Color.Error"
+                                       OnClick="@(() => DeleteOverride(o))">
+                                Delete
+                            </MudButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>The whole catalogue, as the new-report screen reads it.</summary>
+    private const int Catalogue = 200;
+
+    private List<CoreElementResponse>? elements;
+
+    private List<CoreElementOverrideResponse> overrides = [];
+
+    private IReadOnlyList<ConditionResponse> conditions = [];
+
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private string? failure;
+
+    private int? newElementId;
+
+    private int? newConditionId;
+
+    private int? newAgencyId;
+
+    private bool newHidden = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var askedElements = await Client.All();
+        var askedOverrides = await Client.Overrides();
+        var askedConditions = await Conditions.Page(1, Catalogue);
+        var askedAgencies = await Agencies.All();
+
+        failure = askedElements.Failure ?? askedOverrides.Failure ?? askedConditions.Failure ?? askedAgencies.Failure;
+
+        if (failure is null)
+        {
+            elements = [.. askedElements.Value!];
+            overrides = [.. askedOverrides.Value!];
+            conditions = askedConditions.Value!.Items;
+            agencies = askedAgencies.Value!.Items;
+        }
+    }
+
+    private async Task SetDefault(CoreElementResponse element, bool hidden)
+    {
+        var saved = await Client.SetDefault(element.Id, hidden);
+        failure = saved.Failure;
+
+        if (saved.Value is { } stored)
+        {
+            elements![elements.IndexOf(element)] = stored;
+        }
+    }
+
+    private async Task SaveOverride()
+    {
+        var saved = await Client.SaveOverride(
+            new SaveCoreElementOverrideRequest(newElementId!.Value, newConditionId, newAgencyId, newHidden));
+        failure = saved.Failure;
+
+        if (saved.Value is { } stored)
+        {
+            overrides.RemoveAll(o => o.Id == stored.Id);
+            overrides.Add(stored);
+        }
+    }
+
+    private async Task DeleteOverride(CoreElementOverrideResponse doomed)
+    {
+        failure = await Client.DeleteOverride(doomed.Id);
+
+        if (failure is null)
+        {
+            overrides.Remove(doomed);
+        }
+    }
+
+    private string ElementLabel(int id) =>
+        elements?.FirstOrDefault(element => element.Id == id) is { } element ? $"{element.Tab}: {element.Label}" : $"element {id}";
+
+    private string ConditionName(int id) =>
+        conditions.FirstOrDefault(condition => condition.Id == id)?.Name ?? $"condition {id}";
+
+    private string AgencyName(int id) =>
+        agencies.FirstOrDefault(agency => agency.Id == id)?.Name ?? $"agency {id}";
+}
