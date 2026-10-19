@@ -47,6 +47,11 @@ public sealed class MessageQueueClient(HttpClient http)
 
     private static readonly ApiAsk Promoting = new(PromoteFailurePrefix, "the case the message was promoted to");
 
+    /// <summary>How a failure to load a message's person matches starts.</summary>
+    public const string MatchFailurePrefix = "The message's person matches could not be loaded";
+
+    private static readonly ApiAsk Matching = new(MatchFailurePrefix, "the message's person matches");
+
     /// <summary>
     /// One page of the intake queue, oldest first, narrowed to one review state
     /// when a status code is given and the whole queue when it is not, or why
@@ -98,4 +103,14 @@ public sealed class MessageQueueClient(HttpClient http)
         CancellationToken cancellationToken = default) =>
         Promoting.Post<PromoteMessageRequest, PromoteMessageResponse>(
             http, $"api/staged-messages/{id}/case", request, cancellationToken);
+
+    /// <summary>
+    /// A staged message's patient and the people on file who may be them,
+    /// best first, or why there are none.
+    /// </summary>
+    public Task<Asked<StagedMessagePersonMatchResponse>> PersonMatches(
+        int id,
+        CancellationToken cancellationToken = default) =>
+        Matching.Get<StagedMessagePersonMatchResponse>(
+            http, $"api/staged-messages/{id}/person-matches", cancellationToken);
 }

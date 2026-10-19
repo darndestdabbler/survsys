@@ -748,6 +748,13 @@
       "what": "step 'integration-tests': its files",
       "reason": "The new integration test found that PersonQueries.Update reads counties by the zip as typed, so a nine-digit zip with no hyphen is never looked up; the one-line fix normalises the zip with AddressRules.PostalCode first, in PersonEndpoints.cs",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 70,
+      "dateTime": "2026-10-19T11:42:13.508000-04:00",
+      "task": "Wire person matching into the running application. Survsys.Messaging's PersonMatchRules gains a Score that compares an incoming person with a candidate (both a plain PersonMatchSubject: last and first name, birth date, birth gender, identifier values, and street-and-zip address keys) and returns a 0-100 score with the reasons behind it (last name 30, first name 20, birth date 30, sex 5, a shared street-and-zip address 15; a shared identifier is a reason and, as today's medical-record-number rule, promotes a probable match to exact), and Classify takes a PersonMatchThresholds (exact and probable scores, defaulting to today's 95 and 70). Survsys.Api adds PersonMatchEndpoints: POST /api/persons/match takes a PersonMatchRequest, gathers candidates sharing the last name, birth date or an identifier (or exactly the person ids the request names), scores and classifies each and returns them best first as PersonMatchCandidateResponse (the person, score, verdict Exact/Probable/None, reasons); GET /api/staged-messages/{id}/person-matches parses the message's patient with OruR01Parser and returns that patient with its candidates. The thresholds are read from a PersonMatching configuration section in appsettings.json. Survsys.Web's person search panel shows each row's score and why, scored by the match endpoint for the page's person ids, and the staged-message review proposes the best candidate with \"Use this person\" and, beside it, \"Create new person\" from the message's patient. Unit tests cover the scoring, thresholds and clients; integration tests give the endpoint's verdict on the legacy match cases in EMSA_PERSON_MATCHING.md (score at or above the exact threshold, below the no-match threshold, a probable match, a shared identifier promoting a probable match to exact, a missing birth date demoting one to no match).",
+      "releasable": false
     }
   ]
 }

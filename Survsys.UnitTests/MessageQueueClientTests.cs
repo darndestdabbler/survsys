@@ -271,6 +271,56 @@ public class MessageQueueClientTests
         Assert.DoesNotContain("99", detail.Failure, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A message's person matches: read from the message's own match route,
+    /// handed back with the patient and the candidates best first.
+    /// </summary>
+    [Fact]
+    public async Task PersonMatchesReadsTheMessagesPatientAndCandidates()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new MessageQueueClient(Transport(request =>
+        {
+            sent = request;
+
+            return Answer(
+                HttpStatusCode.OK,
+                """
+                {
+                  "patient": { "lastName": "Thorsen", "firstName": "Inge", "middleName": null,
+                               "birthDate": "1990-01-15", "birthGender": "F" },
+                  "candidates": [{
+                    "person": { "id": 13, "lastName": "Thorsen", "firstName": "Inge", "middleName": null,
+                                "birthDate": "1990-01-15", "birthGender": "F", "currentGender": null },
+                    "score": 85, "verdict": "Probable", "reasons": ["Last name matches"]
+                  }]
+                }
+                """);
+        }));
+
+        var matches = await client.PersonMatches(11);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal("http://api.example.test/api/staged-messages/11/person-matches", sent?.RequestUri?.ToString());
+        Assert.True(matches.Succeeded);
+        Assert.Equal("Thorsen", matches.Value?.Patient?.LastName);
+        Assert.Equal(13, Assert.Single(matches.Value!.Candidates).Person.Id);
+    }
+
+    [Fact]
+    public async Task PersonMatchesThatFailedCarryTheMatchPrefix()
+    {
+        var client = new MessageQueueClient(Transport(_ => Answer(
+            HttpStatusCode.NotFound, """{ "status": 404, "detail": "No staged message has id 99." }""")));
+
+        var matches = await client.PersonMatches(99);
+
+        Assert.False(matches.Succeeded);
+        Assert.StartsWith(MessageQueueClient.MatchFailurePrefix, matches.Failure);
+        Assert.Contains("404", matches.Failure);
+    }
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 

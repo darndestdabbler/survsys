@@ -14,6 +14,7 @@
 @inject MessageQueueClient Client
 @inject ConditionsClient Conditions
 @inject AgenciesClient Agencies
+@inject PersonsClient Persons
 
 <PageTitle>Staged message — Survsys</PageTitle>
 
@@ -105,6 +106,65 @@ else if (asked.Value is { } detail)
             the investigating agency. A case is opened only from what you
             confirm here.
         </MudText>
+
+        @* The proposal: the message's patient matched against the people on
+           file, the best candidate offered with its score and reasons and,
+           beside it, a new person made from the patient. A proposal only — the
+           search below stays for a reviewer who disagrees with it. *@
+        @if (matches?.Failure is { } whyNoMatches)
+        {
+            <MudAlert id="staged-message-match-error" Severity="Severity.Warning" Class="mb-4">
+                @whyNoMatches
+            </MudAlert>
+        }
+        else if (matches?.Value is { } proposal)
+        {
+            <MudPaper id="staged-message-match" Elevation="1" Class="pa-4 mb-4">
+                @if (BestMatch(proposal) is { } best)
+                {
+                    <MudText id="staged-message-match-person" Typo="Typo.body1">
+                        Proposed match: <strong>@Named(best.Person)</strong> (person @best.Person.Id),
+                        born @(best.Person.BirthDate?.ToString("yyyy-MM-dd") ?? "—")
+                    </MudText>
+                    <MudText id="staged-message-match-score" Typo="Typo.body2">
+                        Score @best.Score.ToString("0") — @best.Verdict match
+                    </MudText>
+                    <MudText id="staged-message-match-reasons" Typo="Typo.body2" Class="mb-2">
+                        @string.Join("; ", best.Reasons)
+                    </MudText>
+                }
+                else
+                {
+                    <MudText id="staged-message-match-none" Typo="Typo.body1" Class="mb-2">
+                        No person on file matches this message's patient.
+                    </MudText>
+                }
+
+                <div class="d-flex gap-2">
+                    @if (BestMatch(proposal) is { } chosen)
+                    {
+                        <MudButton id="staged-message-match-use" Variant="Variant.Filled" Color="Color.Primary"
+                                   Size="Size.Small" OnClick="@(() => SelectPerson(chosen.Person))">
+                            Use this person
+                        </MudButton>
+                    }
+                    @if (proposal.Patient is { LastName: { Length: > 0 } } patient)
+                    {
+                        <MudButton id="staged-message-match-create" Variant="Variant.Outlined" Color="Color.Primary"
+                                   Size="Size.Small" Disabled="@creating" OnClick="@(() => CreatePerson(patient))">
+                            Create new person
+                        </MudButton>
+                    }
+                </div>
+
+                @if (createFailure is { } whyNotCreated)
+                {
+                    <MudAlert id="staged-message-match-create-error" Severity="Severity.Error" Class="mt-2">
+                        @whyNotCreated
+                    </MudAlert>
+                }
+            </MudPaper>
+        }
 
         @if (loadFailure is { } whyNotReady)
         {
@@ -244,6 +304,12 @@ else
 
     private PromoteMessageResponse? promoted;
 
+    private Asked<StagedMessagePersonMatchResponse>? matches;
+
+    private bool creating;
+
+    private string? createFailure;
+
     /// <summary>
     /// The conditions and agencies a promotion chooses from, read once: the
     /// active conditions, because only those may be chosen for a new report,
@@ -264,8 +330,53 @@ else
     protected override async Task OnParametersSetAsync()
     {
         asked = null;
+        matches = null;
         asked = await Client.Find(Id);
+
+        if (asked.Value is { Message.ReviewStatus: not AssignedCode })
+        {
+            matches = await Client.PersonMatches(Id);
+        }
     }
+
+    /// <summary>
+    /// The candidate to propose: the best one that is a match at all, or none.
+    /// </summary>
+    private static PersonMatchCandidateResponse? BestMatch(StagedMessagePersonMatchResponse proposal) =>
+        proposal.Candidates.FirstOrDefault(candidate => candidate.Verdict != PersonMatchCandidateResponse.None);
+
+    /// <summary>
+    /// Puts the message's patient on file as a new person and makes them the
+    /// person this message is promoted on behalf of.
+    /// </summary>
+    private async Task CreatePerson(CreatePersonRequest patient)
+    {
+        createFailure = null;
+        creating = true;
+
+        try
+        {
+            var created = await Persons.Create(patient);
+
+            if (created.Value is { } person)
+            {
+                SelectPerson(person);
+            }
+            else
+            {
+                createFailure = created.Failure;
+            }
+        }
+        finally
+        {
+            creating = false;
+        }
+    }
+
+    private static string Named(PersonResponse person) =>
+        string.IsNullOrWhiteSpace(person.FirstName)
+            ? person.LastName
+            : $"{person.LastName}, {person.FirstName}";
 
     /// <summary>
     /// What each person found offers: becoming the person this message is
@@ -285,9 +396,7 @@ else
     private void SelectPerson(PersonResponse person)
     {
         selectedPersonId = person.Id;
-        selectedPersonName = string.IsNullOrWhiteSpace(person.FirstName)
-            ? person.LastName
-            : $"{person.LastName}, {person.FirstName}";
+        selectedPersonName = Named(person);
         complaint = null;
         promoteFailure = null;
     }

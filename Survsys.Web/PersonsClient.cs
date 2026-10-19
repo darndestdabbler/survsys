@@ -83,6 +83,21 @@ public sealed class PersonsClient(HttpClient http)
 
     private static readonly ApiAsk Updating = new(UpdateFailurePrefix, "the person's record as saved");
 
+    /// <summary>How a failure to score people against a person starts.</summary>
+    public const string MatchFailurePrefix = "The match scores could not be loaded";
+
+    private static readonly ApiAsk Matching = new(MatchFailurePrefix, "the people scored");
+
+    /// <summary>
+    /// The people on file scored against the person given, best first, each
+    /// with a verdict and its reasons, or why there are none.
+    /// </summary>
+    public Task<Asked<IReadOnlyList<PersonMatchCandidateResponse>>> Match(
+        PersonMatchRequest request,
+        CancellationToken cancellationToken = default) =>
+        Matching.Post<PersonMatchRequest, IReadOnlyList<PersonMatchCandidateResponse>>(
+            http, "api/persons/match", request, cancellationToken);
+
     /// <summary>
     /// One page of the people matching the criteria, or why there is none.
     /// </summary>

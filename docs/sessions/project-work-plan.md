@@ -81,7 +81,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 67 | Phase 8 walkthroughs | no | 2026-10-19 |
 | 68 | Release 0.9.0 (release: 0.9.0) | yes | 2026-10-19 |
 | 69 | Person identifiers, name history and address history | no | 2026-10-19 |
-| 70 | Person matching in the running application | — | not declared |
+| 70 | Person matching in the running application | no | 2026-10-19 |
 | 71 | Duplicate persons and merging them | — | not declared |
 | 72 | Phase 9 walkthroughs | — | not declared |
 | 73 | Release 0.10.0 (release: 0.10.0) | — | not declared |
@@ -91,29 +91,30 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 77 | Labs from messages, and updating an existing case | — | not declared |
 | 78 | Exceptions, reprocessing, notifications and statistics | — | not declared |
 | 79 | Connecticut ELR conformance | — | not declared |
-| 80 | Phase 10 walkthroughs | — | not declared |
-| 81 | Release 0.11.0 (release: 0.11.0) | — | not declared |
-| 82 | The notification queue worker and the export log | — | not declared |
-| 83 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
-| 84 | Guide, rule set and value set administration | — | not declared |
-| 85 | Transport to CDC | — | not declared |
-| 86 | Phase 11 walkthroughs | — | not declared |
-| 87 | Release 0.12.0 (release: 0.12.0) | — | not declared |
-| 88 | Audit with its user and values, and its screens | — | not declared |
-| 89 | Jurisdiction-scoped access and sign-in protection | — | not declared |
-| 90 | Classification rules on save | — | not declared |
-| 91 | IBIS, ad-hoc reporting and system configuration | — | not declared |
-| 92 | Phase 12 walkthroughs | — | not declared |
-| 93 | Release 0.13.0 (release: 0.13.0) | — | not declared |
-| 94 | eICR and RR parsing and document intake | — | not declared |
-| 95 | eCR validation and the eICR viewer | — | not declared |
-| 96 | Reportability and condition mapping | — | not declared |
-| 97 | Cases from eCR | — | not declared |
-| 98 | eCR senders and data quality | — | not declared |
-| 99 | Phase 13 walkthroughs | — | not declared |
-| 100 | Release 0.14.0 (release: 0.14.0) | — | not declared |
-| 101 | The parity check and the documentation for 1.0.0 | — | not declared |
-| 102 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 80 | Connecticut planning regions as county equivalents | — | not declared |
+| 81 | Phase 10 walkthroughs | — | not declared |
+| 82 | Release 0.11.0 (release: 0.11.0) | — | not declared |
+| 83 | The notification queue worker and the export log | — | not declared |
+| 84 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
+| 85 | Guide, rule set and value set administration | — | not declared |
+| 86 | Transport to CDC | — | not declared |
+| 87 | Phase 11 walkthroughs | — | not declared |
+| 88 | Release 0.12.0 (release: 0.12.0) | — | not declared |
+| 89 | Audit with its user and values, and its screens | — | not declared |
+| 90 | Jurisdiction-scoped access and sign-in protection | — | not declared |
+| 91 | Classification rules on save | — | not declared |
+| 92 | IBIS, ad-hoc reporting and system configuration | — | not declared |
+| 93 | Phase 12 walkthroughs | — | not declared |
+| 94 | Release 0.13.0 (release: 0.13.0) | — | not declared |
+| 95 | eICR and RR parsing and document intake | — | not declared |
+| 96 | eCR validation and the eICR viewer | — | not declared |
+| 97 | Reportability and condition mapping | — | not declared |
+| 98 | Cases from eCR | — | not declared |
+| 99 | eCR senders and data quality | — | not declared |
+| 100 | Phase 13 walkthroughs | — | not declared |
+| 101 | Release 0.14.0 (release: 0.14.0) | — | not declared |
+| 102 | The parity check and the documentation for 1.0.0 | — | not declared |
+| 103 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -636,3 +637,9 @@ Give a person identifiers, a name history and a disciplined address history, and
 **Amended after acceptance:**
 
 - 2026-10-19 — step 'integration-tests': its files: The new integration test found that PersonQueries.Update reads counties by the zip as typed, so a nine-digit zip with no hyphen is never looked up; the one-line fix normalises the zip with AddressRules.PostalCode first, in PersonEndpoints.cs (claude-code (anthropic, claude-opus-5-5))
+
+### Session 70 — Person matching in the running application
+
+**Releasable: no.**
+
+Wire person matching into the running application. Survsys.Messaging's PersonMatchRules gains a Score that compares an incoming person with a candidate (both a plain PersonMatchSubject: last and first name, birth date, birth gender, identifier values, and street-and-zip address keys) and returns a 0-100 score with the reasons behind it (last name 30, first name 20, birth date 30, sex 5, a shared street-and-zip address 15; a shared identifier is a reason and, as today's medical-record-number rule, promotes a probable match to exact), and Classify takes a PersonMatchThresholds (exact and probable scores, defaulting to today's 95 and 70). Survsys.Api adds PersonMatchEndpoints: POST /api/persons/match takes a PersonMatchRequest, gathers candidates sharing the last name, birth date or an identifier (or exactly the person ids the request names), scores and classifies each and returns them best first as PersonMatchCandidateResponse (the person, score, verdict Exact/Probable/None, reasons); GET /api/staged-messages/{id}/person-matches parses the message's patient with OruR01Parser and returns that patient with its candidates. The thresholds are read from a PersonMatching configuration section in appsettings.json. Survsys.Web's person search panel shows each row's score and why, scored by the match endpoint for the page's person ids, and the staged-message review proposes the best candidate with "Use this person" and, beside it, "Create new person" from the message's patient. Unit tests cover the scoring, thresholds and clients; integration tests give the endpoint's verdict on the legacy match cases in EMSA_PERSON_MATCHING.md (score at or above the exact threshold, below the no-match threshold, a probable match, a shared identifier promoting a probable match to exact, a missing birth date demoting one to no match).

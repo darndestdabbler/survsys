@@ -287,12 +287,20 @@ hand takes, and the message moves to `assigned`, from which it cannot be
 promoted again. The review states are `entry`, `pending`, `exception` and
 `assigned`, mapped to the legacy queue numbers by `MessageReviewStatusRules`.
 
-**Built but not wired in.** Person matching (`PersonMatchRules`), graylist
-duplicate detection (`GraylistRules`), vocabulary matching
-(`VocabularyMatcher`) and the rules engine (`ExpressionEvaluator`) are in
-`Survsys.Messaging` with their unit tests, but nothing in the API tier calls
-them, and nothing reads or writes the graylist or vocabulary tables at
-runtime. In 1.0.0 the reviewer chooses the person, and a message is routed by
+**Person matching proposes; the reviewer decides.** `PersonMatchRules` scores
+a person on file against an incoming one from name, birth date, sex at birth,
+identifiers and current address, and classifies the score as Exact, Probable or
+None at the thresholds in the `PersonMatching` configuration section (95 and
+70 by default). `POST /api/persons/match` answers the candidates best first,
+each with its reasons; `GET /api/staged-messages/{id}/person-matches` does the
+same for a staged message's patient, whom the review screen proposes a match
+for. Nothing is assigned without a reviewer.
+
+**Built but not wired in.** Graylist duplicate detection (`GraylistRules`),
+vocabulary matching (`VocabularyMatcher`) and the rules engine
+(`ExpressionEvaluator`) are in `Survsys.Messaging` with their unit tests, but
+nothing in the API tier calls them, and nothing reads or writes the graylist
+or vocabulary tables at runtime. In 1.0.0 a message is routed by
 no rule.
 
 ## The CDC notification pipeline

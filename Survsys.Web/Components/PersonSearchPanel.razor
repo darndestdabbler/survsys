@@ -21,6 +21,10 @@
    the conditions screen already does, so restyling this panel cannot break a
    walkthrough that was passing.
 
+   A search with criteria also scores the page's people against them, so each
+   row says how well it matches and why; a search with none has nothing to
+   score against and shows no score.
+
    Nothing is searched until Search is pressed. A screen that queried on every
    keystroke would be making a different promise, and the one a walkthrough
    can write down is the one made here. *@
@@ -140,6 +144,13 @@ else if (asked?.Value is { } people)
             </MudAlert>
         }
 
+        @if (scored?.Failure is { } scoreFailure)
+        {
+            <MudAlert id="person-search-score-error" Severity="Severity.Warning" Class="mb-4">
+                @scoreFailure
+            </MudAlert>
+        }
+
         <MudPaper Elevation="1">
             <MudSimpleTable id="person-search-results" Hover="true" Striped="true">
                 <thead>
@@ -148,6 +159,11 @@ else if (asked?.Value is { } people)
                         <th>Last, First</th>
                         <th>Birth date</th>
                         <th>Birth sex</th>
+                        @if (scores is not null)
+                        {
+                            <th>Score</th>
+                            <th>Why</th>
+                        }
                         @if (RowAction is not null)
                         {
                             <th></th>
@@ -169,6 +185,12 @@ else if (asked?.Value is { } people)
                                reader will see. *@
                             <td data-person-birth-date>@(person.BirthDate?.ToString("yyyy-MM-dd") ?? "—")</td>
                             <td data-person-birth-gender>@(person.BirthGender ?? "—")</td>
+                            @if (scores is not null)
+                            {
+                                var match = scores.GetValueOrDefault(person.Id);
+                                <td data-person-score>@(match is null ? "—" : $"{match.Score:0} ({match.Verdict})")</td>
+                                <td data-person-why>@(match is null ? "—" : string.Join("; ", match.Reasons))</td>
+                            }
                             @if (RowAction is not null)
                             {
                                 <td data-person-action>@RowAction(person)</td>
@@ -206,6 +228,15 @@ else if (asked?.Value is { } people)
     private string? identifier;
 
     private Asked<PagedResult<PersonResponse>>? asked;
+
+    /// <summary>
+    /// The page's people scored against the criteria, which is how a search
+    /// shows how well each row matches and why; null where nothing was typed
+    /// to score against or nobody was found.
+    /// </summary>
+    private Asked<IReadOnlyList<PersonMatchCandidateResponse>>? scored;
+
+    private Dictionary<int, PersonMatchCandidateResponse>? scores;
 
     /// <summary>
     /// The criteria the answer on screen was found with, which is not
@@ -250,6 +281,7 @@ else if (asked?.Value is { } people)
         {
             asked = await Persons.Page(criteria, 1, PageSize);
             searched = criteria;
+            await Score(criteria);
         }
         finally
         {
@@ -268,8 +300,35 @@ else if (asked?.Value is { } people)
         identifier = null;
 
         asked = null;
+        scored = null;
+        scores = null;
         searched = new();
         complaint = null;
+    }
+
+    /// <summary>
+    /// Scores the people on the page against what was searched for, the
+    /// page's own people named so that every row is scored and nobody else.
+    /// </summary>
+    private async Task Score(PersonSearchCriteria criteria)
+    {
+        scored = null;
+        scores = null;
+
+        if (criteria.IsEmpty || asked?.Value is not { Items.Count: > 0 } people)
+        {
+            return;
+        }
+
+        scored = await Persons.Match(new PersonMatchRequest(
+            criteria.LastName,
+            criteria.FirstName,
+            criteria.BirthDate,
+            criteria.BirthGender,
+            string.IsNullOrWhiteSpace(criteria.Identifier) ? null : [criteria.Identifier],
+            PersonIds: people.Items.Select(person => person.Id).ToList()));
+
+        scores = scored.Value?.ToDictionary(match => match.Person.Id);
     }
 
     /// <summary>

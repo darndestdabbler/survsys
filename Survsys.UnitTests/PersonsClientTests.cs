@@ -207,6 +207,57 @@ public class PersonsClientTests
     }
 
     [Fact]
+    public async Task MatchPostsTheRequestAndReturnsTheScoredCandidates()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new PersonsClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+
+            return Answer(
+                HttpStatusCode.OK,
+                """
+                [{
+                  "person": {
+                    "id": 42, "lastName": "Thorsen", "firstName": "Inge",
+                    "middleName": null, "birthDate": null,
+                    "birthGender": null, "currentGender": null
+                  },
+                  "score": 85, "verdict": "Probable", "reasons": ["Last name matches"]
+                }]
+                """);
+        }));
+
+        var matched = await client.Match(new PersonMatchRequest("Thorsen", PersonIds: [42]));
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/persons/match", sent?.RequestUri?.ToString());
+        Assert.Contains("\"personIds\":[42]", body, StringComparison.Ordinal);
+
+        Assert.True(matched.Succeeded);
+        var candidate = Assert.Single(matched.Value!);
+        Assert.Equal(42, candidate.Person.Id);
+        Assert.Equal(PersonMatchCandidateResponse.Probable, candidate.Verdict);
+        Assert.Equal(["Last name matches"], candidate.Reasons);
+    }
+
+    [Fact]
+    public async Task AMatchThatFailedCarriesTheMatchPrefix()
+    {
+        var client = new PersonsClient(Transport(_ => Answer(
+            HttpStatusCode.BadRequest, """{ "status": 400, "detail": "A match needs a last name." }""")));
+
+        var matched = await client.Match(new PersonMatchRequest(null));
+
+        Assert.False(matched.Succeeded);
+        Assert.StartsWith(PersonsClient.MatchFailurePrefix, matched.Failure);
+        Assert.Contains("400", matched.Failure);
+    }
+
+    [Fact]
     public async Task ThePersonFoundIsThePersonTheClientReturns()
     {
         Uri? asked = null;
