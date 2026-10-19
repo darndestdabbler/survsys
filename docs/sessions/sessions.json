@@ -1338,9 +1338,9 @@
     {
       "number": 65,
       "title": "Delete, print and lock a case, and private notes",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-19T02:12:19.419000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-19T02:45:13.109000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
