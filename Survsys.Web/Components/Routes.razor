@@ -1,0 +1,16 @@
+@* Every routable screen in this assembly, under the one layout. A screen is
+   reached only by a signed-in person: the fallback policy in Program.cs sends
+   anyone else to the sign-in page before a screen is rendered, and a screen
+   that asks for more than that says so here rather than rendering. *@
+<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="route">
+        <AuthorizeRouteView RouteData="@route" DefaultLayout="@typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                <MudText id="not-authorized" Typo="Typo.body1">
+                    You are not permitted to open this screen.
+                </MudText>
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="@route" Selector="h1" />
+    </Found>
+</Router>

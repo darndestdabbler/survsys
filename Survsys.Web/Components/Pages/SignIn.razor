@@ -1,0 +1,54 @@
+@* Signing in: a user name and a password, posted to this tier, which asks
+   the API tier for a token and writes the cookie every other screen needs.
+   Rendered statically, because a person who has not signed in has no
+   circuit; a refusal comes back here with what to tell them. *@
+@page "/sign-in"
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+
+<PageTitle>Sign in — Survsys</PageTitle>
+
+<MudText id="sign-in-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Sign in
+</MudText>
+
+@if (FailureText is { } failure)
+{
+    <MudAlert id="sign-in-failure" Severity="Severity.Error" Class="mb-4">@failure</MudAlert>
+}
+
+<MudPaper Elevation="1" Class="pa-4" Style="max-width: 24rem;">
+    <form method="post" action="/account/sign-in">
+        <AntiforgeryToken />
+        <input type="hidden" name="returnUrl" value="@(ReturnUrl ?? "/")" />
+        <label for="sign-in-user-name" class="d-block mb-1">User name</label>
+        <input id="sign-in-user-name" name="userName" autocomplete="username" required
+               class="d-block mb-4" style="width: 100%; padding: 0.5rem;" />
+        <label for="sign-in-password" class="d-block mb-1">Password</label>
+        <input id="sign-in-password" name="password" type="password" autocomplete="current-password" required
+               class="d-block mb-4" style="width: 100%; padding: 0.5rem;" />
+        <button id="sign-in-submit" type="submit"
+                class="mud-button-root mud-button mud-button-filled mud-button-filled-primary mud-button-filled-size-medium mud-ripple"
+                style="padding: 0.5rem 1rem;">
+            Sign in
+        </button>
+    </form>
+</MudPaper>
+
+@code {
+    /// <summary>Where to go once signed in: the screen the person was sent here from.</summary>
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    /// <summary>Why the last attempt failed, as the post sent it back: refused or unavailable.</summary>
+    [SupplyParameterFromQuery]
+    private string? Failure { get; set; }
+
+    private string? FailureText => Failure switch
+    {
+        "refused" => AccountClient.RefusedFailure,
+        "unavailable" => "Signing in could not be completed: the API tier did not answer as expected. "
+            + "Try again, and if it keeps happening the API tier's log holds what went wrong.",
+        _ => null,
+    };
+}
