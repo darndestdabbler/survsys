@@ -783,6 +783,13 @@
       "dateTime": "2026-10-19T15:01:58.231000-04:00",
       "task": "Release 0.10.0: the framework packs and publishes what is on the trunk.",
       "releasable": true
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 75,
+      "dateTime": "2026-10-19T15:13:35.770000-04:00",
+      "task": "Put a parser seam in front of ELR intake and keep what it parses. Survsys.Messaging gains IMessageParser, which takes raw message text to a ParsedMessage (format, message type, sending facility from MSH-4.1, the patient's demographics and address from PID, and one ParsedOrder per OBR with its accession, test code and name, observation date, specimen from SPM and its ParsedResult rows from OBX); OruR01Parser is its HL7 v2 implementation and ParsedMessage replaces OruR01ParseResult, so a CDA parser in phase 13 is a second implementation and nothing else. Survsys.Data's StagedMessage gains a message format and type, the sending facility, the parsed demographics, its one order and specimen, and a new StagedMessageResult child table for that order's results, with the ParsedMessages migration; existing rows default to the HL7 v2 format. ElrIntakeService stages one message per OBR, each carrying the whole raw text, and holds a message whose sending facility (MSH-4.1) matches no facility's short name on file as an Exception with that reason; the file drop and a new MLLP listener share that one receive path. The MLLP listener is a BackgroundService in Survsys.Api, off unless ElrIntake:MllpPort is configured, reading VT/FS-CR framed messages over TCP and answering each with an HL7 ACK built from its MSH: AA when queued for review, AE when held as an exception (unparseable or unknown sender), AR when it could not be stored. Unit tests cover the parser's orders, the OBR split, the unknown sender and the ACK/NAK framing; integration tests cover the file drop with a seeded sending facility and the MLLP listener end to end with an unknown sender.",
+      "releasable": false
     }
   ]
 }

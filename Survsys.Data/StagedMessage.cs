@@ -15,8 +15,10 @@ namespace Survsys.Data;
 /// enum column, so the vocabulary lives in one place and the row carries the
 /// code it was written under. This stages a message and resolves nothing — it
 /// holds no person, no lab and no case, because queuing for review creates
-/// none of those; the parsed person and specimen the message carries are the
-/// reviewer's to promote in a later session, not this table's to own.
+/// none of those. It does keep the fields the parser read, as the text the
+/// message gave: one staged message per order (OBR), each carrying the whole
+/// raw message, the patient, its one order and specimen, and that order's
+/// <see cref="Results"/>. A message that failed to parse keeps none of them.
 /// </remarks>
 public class StagedMessage
 {
@@ -65,4 +67,67 @@ public class StagedMessage
     /// to parse, the parser's account of why — and null otherwise.
     /// </summary>
     public string? ExceptionDetail { get; set; }
+
+    /// <summary>
+    /// The format the message was read as, such as <c>HL7v2</c>; a message
+    /// that failed to parse keeps the format its parser reads.
+    /// </summary>
+    public string MessageFormat { get; set; } = "HL7v2";
+
+    /// <summary>The message type, such as <c>ORU^R01</c> (MSH-9).</summary>
+    public string? MessageType { get; set; }
+
+    /// <summary>The sending facility's code (MSH-4.1).</summary>
+    public string? SendingFacility { get; set; }
+
+    public string? PatientLastName { get; set; }
+
+    public string? PatientFirstName { get; set; }
+
+    public string? PatientMiddleName { get; set; }
+
+    public DateOnly? PatientBirthDate { get; set; }
+
+    /// <summary>The patient's administrative sex (PID-8).</summary>
+    public string? PatientSex { get; set; }
+
+    public string? PatientStreet { get; set; }
+
+    public string? PatientCity { get; set; }
+
+    public string? PatientState { get; set; }
+
+    public string? PatientZip { get; set; }
+
+    /// <summary>
+    /// Which row of its message this is, counting from zero across every
+    /// patient's orders in message order — one row per order, and one for a
+    /// patient reported with none — or null for a message that failed to parse
+    /// or reported no patient.
+    /// </summary>
+    public int? OrderIndex { get; set; }
+
+    /// <summary>The filler order number (OBR-3.1).</summary>
+    public string? AccessionNo { get; set; }
+
+    /// <summary>The ordered test's code (OBR-4.1).</summary>
+    public string? TestCode { get; set; }
+
+    /// <summary>The ordered test's name (OBR-4.2).</summary>
+    public string? TestName { get; set; }
+
+    /// <summary>The observation date (OBR-7).</summary>
+    public DateOnly? ObservedOn { get; set; }
+
+    /// <summary>The specimen type's code (SPM-4.1).</summary>
+    public string? SpecimenSourceCode { get; set; }
+
+    /// <summary>The specimen type's text (SPM-4.2).</summary>
+    public string? SpecimenSourceText { get; set; }
+
+    /// <summary>The collection date (SPM-17, else OBR-7).</summary>
+    public DateOnly? CollectedOn { get; set; }
+
+    /// <summary>The order's results (its OBX segments), in message order.</summary>
+    public List<StagedMessageResult> Results { get; set; } = [];
 }

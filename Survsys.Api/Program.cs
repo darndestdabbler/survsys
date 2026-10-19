@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Api;
 using Survsys.Data;
+using Survsys.Messaging;
 
 // The API tier: the only module that reaches the database, and so the only
 // one that starts with a connection string.
@@ -99,12 +100,15 @@ builder.Services.AddCodes();
 builder.Services.AddIbis();
 builder.Services.AddReports();
 
-// The inbound ELR intake, a background worker that polls a file drop and
-// queues each message for review. Off unless a drop directory is configured,
-// so it is inert for a deployment that has not turned it on.
+// The inbound ELR intake: a background worker that polls a file drop, and an
+// MLLP listener beside it, each queuing every message for review. Each is off
+// unless configured (a drop directory, an MLLP port), so they are inert for a
+// deployment that has not turned them on.
 builder.Services.Configure<ElrIntakeOptions>(
     builder.Configuration.GetSection(ElrIntakeOptions.SectionName));
+builder.Services.AddSingleton<IMessageParser, OruR01Parser>();
 builder.Services.AddHostedService<ElrIntakeService>();
+builder.Services.AddHostedService<MllpListener>();
 
 // Direct transmission of a generated notification to CDC, in place of the
 // legacy Mirth export queue. A typed HttpClient so the transport is injected

@@ -86,7 +86,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 72 | Phase 9 walkthroughs | no | 2026-10-19 |
 | 73 | Repair the three walkthroughs Phase 9 broke | no | 2026-10-19 |
 | 74 | Release 0.10.0 (release: 0.10.0) | yes | 2026-10-19 |
-| 75 | Parsed messages, the parser seam and MLLP | — | not declared |
+| 75 | Parsed messages, the parser seam and MLLP | no | 2026-10-19 |
 | 76 | Vocabulary and rules at intake | — | not declared |
 | 77 | The graylist, automatic assignment and the full queue | — | not declared |
 | 78 | Labs from messages, and updating an existing case | — | not declared |
@@ -668,3 +668,9 @@ Repair the three end-to-end walkthroughs Phase 9 broke, before the 0.10.0 releas
 **Releasable: yes.**
 
 Release 0.10.0: the framework packs and publishes what is on the trunk.
+
+### Session 75 — Parsed messages, the parser seam and MLLP
+
+**Releasable: no.**
+
+Put a parser seam in front of ELR intake and keep what it parses. Survsys.Messaging gains IMessageParser, which takes raw message text to a ParsedMessage (format, message type, sending facility from MSH-4.1, the patient's demographics and address from PID, and one ParsedOrder per OBR with its accession, test code and name, observation date, specimen from SPM and its ParsedResult rows from OBX); OruR01Parser is its HL7 v2 implementation and ParsedMessage replaces OruR01ParseResult, so a CDA parser in phase 13 is a second implementation and nothing else. Survsys.Data's StagedMessage gains a message format and type, the sending facility, the parsed demographics, its one order and specimen, and a new StagedMessageResult child table for that order's results, with the ParsedMessages migration; existing rows default to the HL7 v2 format. ElrIntakeService stages one message per OBR, each carrying the whole raw text, and holds a message whose sending facility (MSH-4.1) matches no facility's short name on file as an Exception with that reason; the file drop and a new MLLP listener share that one receive path. The MLLP listener is a BackgroundService in Survsys.Api, off unless ElrIntake:MllpPort is configured, reading VT/FS-CR framed messages over TCP and answering each with an HL7 ACK built from its MSH: AA when queued for review, AE when held as an exception (unparseable or unknown sender), AR when it could not be stored. Unit tests cover the parser's orders, the OBR split, the unknown sender and the ACK/NAK framing; integration tests cover the file drop with a seeded sending facility and the MLLP listener end to end with an unknown sender.

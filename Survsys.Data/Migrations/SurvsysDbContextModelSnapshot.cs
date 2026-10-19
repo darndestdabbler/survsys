@@ -13038,9 +13038,83 @@ namespace Survsys.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AccessionNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("accession_no");
+
+                    b.Property<DateOnly?>("CollectedOn")
+                        .HasColumnType("date")
+                        .HasColumnName("collected_on");
+
                     b.Property<string>("ExceptionDetail")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("exception_detail");
+
+                    b.Property<string>("MessageFormat")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("HL7v2")
+                        .HasColumnName("message_format");
+
+                    b.Property<string>("MessageType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("message_type");
+
+                    b.Property<DateOnly?>("ObservedOn")
+                        .HasColumnType("date")
+                        .HasColumnName("observed_on");
+
+                    b.Property<int?>("OrderIndex")
+                        .HasColumnType("int")
+                        .HasColumnName("order_index");
+
+                    b.Property<DateOnly?>("PatientBirthDate")
+                        .HasColumnType("date")
+                        .HasColumnName("patient_birth_date");
+
+                    b.Property<string>("PatientCity")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("patient_city");
+
+                    b.Property<string>("PatientFirstName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("patient_first_name");
+
+                    b.Property<string>("PatientLastName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("patient_last_name");
+
+                    b.Property<string>("PatientMiddleName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("patient_middle_name");
+
+                    b.Property<string>("PatientSex")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("patient_sex");
+
+                    b.Property<string>("PatientState")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("patient_state");
+
+                    b.Property<string>("PatientStreet")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("patient_street");
+
+                    b.Property<string>("PatientZip")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("patient_zip");
 
                     b.Property<bool>("QaFlagged")
                         .HasColumnType("bit")
@@ -13061,14 +13135,103 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("final_status");
 
+                    b.Property<string>("SendingFacility")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("sending_facility");
+
                     b.Property<string>("Source")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("source");
 
+                    b.Property<string>("SpecimenSourceCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("specimen_source_code");
+
+                    b.Property<string>("SpecimenSourceText")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("specimen_source_text");
+
+                    b.Property<string>("TestCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("test_code");
+
+                    b.Property<string>("TestName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("test_name");
+
                     b.HasKey("Id");
 
                     b.ToTable("system_messages", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.StagedMessageResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AbnormalFlag")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("abnormal_flag");
+
+                    b.Property<string>("CodedResult")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("coded_result");
+
+                    b.Property<string>("ObservationCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("observation_code");
+
+                    b.Property<string>("ObservationName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("observation_name");
+
+                    b.Property<string>("ReferenceRange")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("reference_range");
+
+                    b.Property<string>("ResultStatus")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("result_status");
+
+                    b.Property<string>("ResultValue")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("result_value");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int")
+                        .HasColumnName("sequence");
+
+                    b.Property<int>("StagedMessageId")
+                        .HasColumnType("int")
+                        .HasColumnName("system_message_id");
+
+                    b.Property<string>("Units")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("units");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StagedMessageId");
+
+                    b.ToTable("system_message_results", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.Treatment", b =>
@@ -14073,6 +14236,15 @@ namespace Survsys.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Survsys.Data.StagedMessageResult", b =>
+                {
+                    b.HasOne("Survsys.Data.StagedMessage", null)
+                        .WithMany("Results")
+                        .HasForeignKey("StagedMessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Survsys.Data.UserRole", b =>
                 {
                     b.HasOne("Survsys.Data.Role", null)
@@ -14129,6 +14301,11 @@ namespace Survsys.Data.Migrations
                     b.Navigation("Races");
 
                     b.Navigation("Telephones");
+                });
+
+            modelBuilder.Entity("Survsys.Data.StagedMessage", b =>
+                {
+                    b.Navigation("Results");
                 });
 #pragma warning restore 612, 618
         }

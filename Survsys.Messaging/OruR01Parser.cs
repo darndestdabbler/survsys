@@ -4,6 +4,7 @@ using NHapi.Base.Model;
 using NHapi.Base.Parser;
 using NHapi.Base.Validation.Implementation;
 using NHapi.Model.V251.Datatype;
+using NHapi.Model.V251.Group;
 using NHapi.Model.V251.Message;
 using NHapi.Model.V251.Segment;
 using Survsys.Contracts;
@@ -12,33 +13,34 @@ namespace Survsys.Messaging;
 
 /// <summary>
 /// Parses a raw HL7 v2.5.1 ORU^R01 lab-result message into the
-/// Survsys.Contracts intake records. This is the inbound half of what Mirth
+/// <see cref="ParsedMessage"/> intake keeps — the HL7 v2 implementation of
+/// <see cref="IMessageParser"/>. This is the inbound half of what Mirth
 /// did in the legacy pipeline, absorbed rather than kept: the preprocessing
 /// Mirth performed before a parser ever saw the message is folded into
 /// <see cref="Preprocess"/>, and nHapi parses directly to objects, so there is
 /// no integration engine, no intermediate master XML and no SOAP hop.
 /// </summary>
 /// <remarks>
-/// The reference-table ids on the intake records — the facility, specimen
-/// source, test type, status and organism — are left null, exactly as those
-/// records document for the fields whose lookup tables do not exist yet. The
-/// codes the message carries (LOINC, the coded result) are carried through as
-/// the text the message gives; matching them to vocabulary is a later
-/// session's work, not this parser's.
+/// The codes the message carries (LOINC, the specimen type, the coded result)
+/// are carried through as the text the message gives; matching them to
+/// vocabulary is a later session's work, not this parser's. Each patient-result
+/// group becomes one <see cref="ParsedPatient"/>, and each OBR under it one
+/// <see cref="ParsedOrder"/>, with the first SPM under it as its specimen.
 /// </remarks>
-public sealed class OruR01Parser
+public sealed class OruR01Parser : IMessageParser
 {
-    // An empty validation context: nHapi parses the structure but enforces no
-    // conformance rules, which is the leniency Mirth gave real lab messages on
-    // the way in. A message that is not parseable at all still throws.
-    private readonly PipeParser _parser = new() { ValidationContext = new ValidationContextImpl() };
+    /// <summary>The format this parser reads, as it is recorded on a staged message.</summary>
+    public const string Hl7V2Format = "HL7v2";
+
+    /// <inheritdoc />
+    public string Format => Hl7V2Format;
 
     /// <summary>
     /// Parse one ER7 ORU^R01 message. Throws <see cref="Hl7ParseException"/>
     /// when the text is not a parseable HL7 v2 message or is of some type
     /// other than ORU^R01.
     /// </summary>
-    public OruR01ParseResult Parse(string raw)
+    public ParsedMessage Parse(string raw)
     {
         ArgumentNullException.ThrowIfNull(raw);
 
@@ -48,10 +50,17 @@ public sealed class OruR01Parser
             throw new Hl7ParseException("The message was empty once preprocessed.");
         }
 
+        // An empty validation context: nHapi parses the structure but enforces
+        // no conformance rules, which is the leniency Mirth gave real lab
+        // messages on the way in. A message that is not parseable at all still
+        // throws. A parser per call, so one OruR01Parser is safe to share
+        // between the intake's concurrent receivers.
+        var parser = new PipeParser { ValidationContext = new ValidationContextImpl() };
+
         IMessage message;
         try
         {
-            message = _parser.Parse(er7);
+            message = parser.Parse(er7);
         }
         catch (HL7Exception ex)
         {
@@ -64,7 +73,20 @@ public sealed class OruR01Parser
                 $"Expected an ORU^R01 message but the message parsed as {message.GetType().Name}.");
         }
 
-        return new OruR01ParseResult(ReadPerson(oru), ReadLab(oru));
+        var msh = oru.MSH;
+        var messageCode = NullIfEmpty(msh.MessageType.MessageCode.Value);
+        var triggerEvent = NullIfEmpty(msh.MessageType.TriggerEvent.Value);
+
+        var patients = Enumerable
+            .Range(0, oru.PATIENT_RESULTRepetitionsUsed)
+            .Select(index => ReadPatient(oru.GetPATIENT_RESULT(index)))
+            .ToList();
+
+        return new ParsedMessage(
+            Format: Format,
+            MessageType: triggerEvent is null ? messageCode : $"{messageCode}^{triggerEvent}",
+            SendingFacility: NullIfEmpty(msh.SendingFacility.NamespaceID.Value),
+            Patients: patients);
     }
 
     /// <summary>
@@ -90,9 +112,22 @@ public sealed class OruR01Parser
         return string.Join('\r', segments);
     }
 
-    private static CreatePersonRequest ReadPerson(ORU_R01 oru)
+    private static ParsedPatient ReadPatient(ORU_R01_PATIENT_RESULT patientResult)
     {
-        var pid = oru.GetPATIENT_RESULT(0).PATIENT.PID;
+        var pid = patientResult.PATIENT.PID;
+        var address = pid.GetPatientAddress(0);
+
+        return new ParsedPatient(
+            Person: ReadPerson(pid),
+            Street: NullIfEmpty(address.StreetAddress.StreetOrMailingAddress.Value),
+            City: NullIfEmpty(address.City.Value),
+            State: NullIfEmpty(address.StateOrProvince.Value),
+            Zip: NullIfEmpty(address.ZipOrPostalCode.Value),
+            Orders: ReadOrders(patientResult));
+    }
+
+    private static CreatePersonRequest ReadPerson(PID pid)
+    {
         var name = pid.GetPatientName(0);
 
         return new CreatePersonRequest(
@@ -103,56 +138,51 @@ public sealed class OruR01Parser
             BirthGender: NullIfEmpty(pid.AdministrativeSex.Value));
     }
 
-    private static CreateLabRequest ReadLab(ORU_R01 oru)
+    private static IReadOnlyList<ParsedOrder> ReadOrders(ORU_R01_PATIENT_RESULT patientResult)
     {
-        var patientResult = oru.GetPATIENT_RESULT(0);
-
-        var tests = new List<CreateLabTestRequest>();
-        DateOnly? collectionDate = null;
-        string? accessionNo = null;
+        var orders = new List<ParsedOrder>();
 
         for (var order = 0; order < patientResult.ORDER_OBSERVATIONRepetitionsUsed; order++)
         {
             var orderObservation = patientResult.GetORDER_OBSERVATION(order);
             var obr = orderObservation.OBR;
-
             var observedOn = ParseHl7Date(obr.ObservationDateTime.Time.Value);
-            collectionDate ??= observedOn;
-            accessionNo ??= NullIfEmpty(obr.FillerOrderNumber.EntityIdentifier.Value);
 
-            var loincCode = NullIfEmpty(obr.UniversalServiceIdentifier.Identifier.Value);
-            string? referenceRange = null;
-            var results = new List<CreateLabTestResultRequest>();
-
+            var results = new List<ParsedResult>();
             for (var observation = 0; observation < orderObservation.OBSERVATIONRepetitionsUsed; observation++)
             {
                 var obx = orderObservation.GetOBSERVATION(observation).OBX;
-                loincCode ??= NullIfEmpty(obx.ObservationIdentifier.Identifier.Value);
-                referenceRange ??= NullIfEmpty(obx.ReferencesRange.Value);
-
                 var (resultValue, codedResult) = ReadObservationValue(obx);
-                results.Add(new CreateLabTestResultRequest(
-                    OrganismId: null,
+                var abnormalFlags = obx.GetAbnormalFlags();
+
+                results.Add(new ParsedResult(
+                    ObservationCode: NullIfEmpty(obx.ObservationIdentifier.Identifier.Value),
+                    ObservationName: NullIfEmpty(obx.ObservationIdentifier.Text.Value),
                     ResultValue: resultValue,
-                    TestResult: codedResult,
-                    Comment: null,
+                    CodedResult: codedResult,
                     Units: ReadUnits(obx),
-                    PrimaryLabResult: results.Count == 0));
+                    ReferenceRange: NullIfEmpty(obx.ReferencesRange.Value),
+                    AbnormalFlag: abnormalFlags.Length == 0 ? null : NullIfEmpty(abnormalFlags[0].Value),
+                    ResultStatus: NullIfEmpty(obx.ObservationResultStatus.Value)));
             }
 
-            tests.Add(new CreateLabTestRequest(
-                TestTypeId: null,
-                TestStatusId: null,
-                LoincCode: loincCode,
-                ReferenceRange: referenceRange,
-                LabTestDate: observedOn,
+            SPM? spm = orderObservation.SPECIMENRepetitionsUsed > 0
+                ? orderObservation.GetSPECIMEN(0).SPM
+                : null;
+
+            orders.Add(new ParsedOrder(
+                AccessionNo: NullIfEmpty(obr.FillerOrderNumber.EntityIdentifier.Value),
+                TestCode: NullIfEmpty(obr.UniversalServiceIdentifier.Identifier.Value)
+                    ?? results.Select(result => result.ObservationCode).FirstOrDefault(code => code is not null),
+                TestName: NullIfEmpty(obr.UniversalServiceIdentifier.Text.Value),
+                ObservedOn: observedOn,
+                SpecimenCode: NullIfEmpty(spm?.SpecimenType.Identifier.Value),
+                SpecimenText: NullIfEmpty(spm?.SpecimenType.Text.Value),
+                CollectedOn: ParseHl7Date(spm?.SpecimenCollectionDateTime.RangeStartDateTime.Time.Value) ?? observedOn,
                 Results: results));
         }
 
-        return new CreateLabRequest(
-            CollectionDate: collectionDate,
-            AccessionNo: accessionNo,
-            Tests: tests);
+        return orders;
     }
 
     /// <summary>

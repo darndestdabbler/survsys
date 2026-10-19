@@ -179,7 +179,8 @@ public static class PersonMatchEndpoints
 /// The reads behind the match endpoints: the candidates, loaded with their
 /// identifiers and addresses, and a staged message's raw text.
 /// </summary>
-internal sealed class PersonMatchQueries(SurvsysDbContext database, PersonMatchThresholds thresholds)
+internal sealed class PersonMatchQueries(
+    SurvsysDbContext database, PersonMatchThresholds thresholds, IMessageParser parser)
 {
     /// <summary>
     /// The candidates for a request, scored and best first: the live people
@@ -236,7 +237,12 @@ internal sealed class PersonMatchQueries(SurvsysDbContext database, PersonMatchT
         CreatePersonRequest patient;
         try
         {
-            patient = new OruR01Parser().Parse(raw).Person;
+            if (parser.Parse(raw).Patients is not [var first, ..])
+            {
+                return new StagedMessagePersonMatchResponse(null, []);
+            }
+
+            patient = first.Person;
         }
         catch (Hl7ParseException)
         {

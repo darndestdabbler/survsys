@@ -7,11 +7,12 @@ namespace Survsys.Api;
 
 /// <summary>
 /// What the inbound ELR intake reads from configuration: the directory files
-/// are dropped into, how often to poll it, and how long one message may take
-/// before it is set aside.
+/// are dropped into, how often to poll it, how long one message may take
+/// before it is set aside, and the port the MLLP listener listens on.
 /// </summary>
 /// <remarks>
-/// The drop directory is empty by default, which turns the intake off: a
+/// The drop directory is empty and the MLLP port unset by default, which turns
+/// both transports off: a
 /// deployment that wants it points this at a directory, and one that does not
 /// is left alone. The two intervals are in seconds because that is how a
 /// configuration file reads them, and both fall back to their default rather
@@ -31,8 +32,14 @@ public sealed class ElrIntakeOptions
     /// <summary>How often the drop directory is polled, in seconds.</summary>
     public int PollIntervalSeconds { get; set; } = 120;
 
-    /// <summary>How long the handling of one file may take before it is set aside, in seconds.</summary>
+    /// <summary>How long the handling of one message may take before it is set aside, in seconds.</summary>
     public int MessageTimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// The TCP port <see cref="MllpListener"/> listens on, or null to leave the
+    /// MLLP listener off.
+    /// </summary>
+    public int? MllpPort { get; set; }
 }
 
 /// <summary>
@@ -43,10 +50,11 @@ public sealed class ElrIntakeOptions
 /// XML between the lab's file and the queue.
 /// </summary>
 /// <remarks>
-/// A parseable message is queued in the <see cref="MessageReviewStatus.Entry"/>
-/// state for a reviewer; a message that cannot be parsed is held in the
-/// <see cref="MessageReviewStatus.Exception"/> state with the parser's account
-/// of why, rather than dropped. This stages a message and no more: it writes no
+/// A parseable message from a sending facility on file is queued in the
+/// <see cref="MessageReviewStatus.Entry"/> state for a reviewer, one staged
+/// message per order; a message that cannot be parsed, or comes from a sender
+/// not on file, is held in the <see cref="MessageReviewStatus.Exception"/>
+/// state with the reason, rather than dropped. This stages a message and no more: it writes no
 /// person, no lab and no case, because promoting a queued message to a case is
 /// a later session's work and needs a reviewer.
 ///
@@ -60,6 +68,7 @@ public sealed class ElrIntakeOptions
 /// turned it on.
 /// </remarks>
 public sealed class ElrIntakeService(
+    IMessageParser parser,
     IServiceScopeFactory scopeFactory,
     IOptions<ElrIntakeOptions> options,
     ILogger<ElrIntakeService> logger) : BackgroundService
@@ -71,36 +80,143 @@ public sealed class ElrIntakeService(
     private const string FailedFolder = ".failed";
 
     /// <summary>
-    /// Classifies one raw message into the staged message it becomes: a
-    /// parseable message into the <see cref="MessageReviewStatus.Entry"/> state
-    /// queued for review, and a message that fails to parse into the
-    /// <see cref="MessageReviewStatus.Exception"/> state carrying the parser's
-    /// detail. The one decision the intake makes, kept pure and static so it is
-    /// proven without a host, a database or a file.
+    /// Classifies one raw message, read by <paramref name="parser"/>, into the
+    /// staged messages it becomes: one per row of
+    /// <see cref="ParsedMessage.Rows"/> — an order (OBR) with the patient it was
+    /// reported against — each carrying the whole raw text, the parsed patient, its
+    /// order, specimen and results, queued for review in the
+    /// <see cref="MessageReviewStatus.Entry"/> state. A message that fails to
+    /// parse becomes one row in the <see cref="MessageReviewStatus.Exception"/>
+    /// state carrying the parser's detail, and a message whose sending facility
+    /// (MSH-4.1) is not among <paramref name="knownSendingFacilities"/> has every
+    /// row held in that state with that reason. The one decision the intake
+    /// makes, kept pure and static so it is proven without a host, a database
+    /// or a file.
     /// </summary>
-    public static StagedMessage Stage(string raw, string? source)
+    public static IReadOnlyList<StagedMessage> Stage(
+        IMessageParser parser, string raw, string? source, IReadOnlySet<string> knownSendingFacilities)
     {
+        ArgumentNullException.ThrowIfNull(parser);
         ArgumentNullException.ThrowIfNull(raw);
+        ArgumentNullException.ThrowIfNull(knownSendingFacilities);
 
-        var message = new StagedMessage
+        var receivedAt = DateTime.UtcNow;
+
+        StagedMessage NewMessage() => new()
         {
             RawMessage = raw,
             Source = source,
-            ReceivedAt = DateTime.UtcNow,
+            ReceivedAt = receivedAt,
+            MessageFormat = parser.Format,
         };
 
+        ParsedMessage parsed;
         try
         {
-            _ = new OruR01Parser().Parse(raw);
-            message.ReviewStatus = MessageReviewStatusRules.EntryCode;
+            parsed = parser.Parse(raw);
         }
         catch (Hl7ParseException unparseable)
         {
-            message.ReviewStatus = MessageReviewStatusRules.ExceptionCode;
-            message.ExceptionDetail = unparseable.Message;
+            var excepted = NewMessage();
+            excepted.ReviewStatus = MessageReviewStatusRules.ExceptionCode;
+            excepted.ExceptionDetail = unparseable.Message;
+            return [excepted];
         }
 
-        return message;
+        string? unknownSender = parsed.SendingFacility is { } sender && knownSendingFacilities.Contains(sender)
+            ? null
+            : $"The sending facility '{parsed.SendingFacility}' (MSH-4.1) is not on file.";
+
+        // A message that reports no patient at all is still staged, once, so it
+        // is not lost.
+        var rows = parsed.Rows;
+        if (rows.Count == 0)
+        {
+            var empty = NewMessage();
+            empty.MessageType = parsed.MessageType;
+            empty.SendingFacility = parsed.SendingFacility;
+            empty.ReviewStatus = unknownSender is null
+                ? MessageReviewStatusRules.EntryCode
+                : MessageReviewStatusRules.ExceptionCode;
+            empty.ExceptionDetail = unknownSender;
+            return [empty];
+        }
+
+        return rows
+            .Select((row, index) =>
+            {
+                var (patient, order) = row;
+                var message = NewMessage();
+                message.MessageType = parsed.MessageType;
+                message.SendingFacility = parsed.SendingFacility;
+                message.OrderIndex = index;
+                message.PatientLastName = patient.Person.LastName;
+                message.PatientFirstName = patient.Person.FirstName;
+                message.PatientMiddleName = patient.Person.MiddleName;
+                message.PatientBirthDate = patient.Person.BirthDate;
+                message.PatientSex = patient.Person.BirthGender;
+                message.PatientStreet = patient.Street;
+                message.PatientCity = patient.City;
+                message.PatientState = patient.State;
+                message.PatientZip = patient.Zip;
+                message.ReviewStatus = unknownSender is null
+                    ? MessageReviewStatusRules.EntryCode
+                    : MessageReviewStatusRules.ExceptionCode;
+                message.ExceptionDetail = unknownSender;
+
+                if (order is not null)
+                {
+                    message.AccessionNo = order.AccessionNo;
+                    message.TestCode = order.TestCode;
+                    message.TestName = order.TestName;
+                    message.ObservedOn = order.ObservedOn;
+                    message.SpecimenSourceCode = order.SpecimenCode;
+                    message.SpecimenSourceText = order.SpecimenText;
+                    message.CollectedOn = order.CollectedOn;
+                    message.Results = order.Results
+                        .Select((result, sequence) => new StagedMessageResult
+                        {
+                            Sequence = sequence,
+                            ObservationCode = result.ObservationCode,
+                            ObservationName = result.ObservationName,
+                            ResultValue = result.ResultValue,
+                            CodedResult = result.CodedResult,
+                            Units = result.Units,
+                            ReferenceRange = result.ReferenceRange,
+                            AbnormalFlag = result.AbnormalFlag,
+                            ResultStatus = result.ResultStatus,
+                        })
+                        .ToList();
+                }
+
+                return message;
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// Receives one raw message from any transport — the file drop or MLLP:
+    /// stages it against the sending facilities on file, a facility being on
+    /// file when its short name is the message's MSH-4.1, and saves what it
+    /// staged.
+    /// </summary>
+    public static async Task<IReadOnlyList<StagedMessage>> Receive(
+        IMessageParser parser,
+        SurvsysDbContext database,
+        string raw,
+        string? source,
+        CancellationToken cancellationToken)
+    {
+        var shortNames = await database.Facilities
+            .Where(facility => facility.ShortName != null)
+            .Select(facility => facility.ShortName!)
+            .ToListAsync(cancellationToken);
+
+        var staged = Stage(parser, raw, source, shortNames.ToHashSet(StringComparer.OrdinalIgnoreCase));
+        database.StagedMessages.AddRange(staged);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return staged;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -186,15 +302,17 @@ public sealed class ElrIntakeService(
         try
         {
             var raw = await File.ReadAllTextAsync(file, perMessage.Token);
-            var staged = Stage(raw, fileName);
 
             using var scope = scopeFactory.CreateScope();
             var database = scope.ServiceProvider.GetRequiredService<SurvsysDbContext>();
-            database.StagedMessages.Add(staged);
-            await database.SaveChangesAsync(perMessage.Token);
+            var staged = await Receive(parser, database, raw, fileName, perMessage.Token);
 
             Move(file, Path.Combine(dropDirectory, ProcessedFolder));
-            logger.LogInformation("Staged ELR file {File} as {Status}.", fileName, staged.ReviewStatus);
+            logger.LogInformation(
+                "Staged ELR file {File} as {Count} message(s) in {Status}.",
+                fileName,
+                staged.Count,
+                staged[0].ReviewStatus);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {

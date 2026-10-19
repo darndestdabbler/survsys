@@ -8,8 +8,9 @@ namespace Survsys.IntegrationTests;
 
 /// <summary>
 /// The inbound ELR intake end to end, against the real host and database: a
-/// message carried from a dropped file to queued-for-review, and a message
-/// that cannot be parsed held as an exception.
+/// message from a sending facility on file carried from a dropped file to
+/// queued-for-review with its parsed fields, and a message that cannot be
+/// parsed or comes from a sender not on file held as an exception.
 /// </summary>
 /// <remarks>
 /// The host is the real <c>Program.cs</c> started as Production, with its
@@ -41,6 +42,10 @@ public class ElrIntakeTests(SqlServerFixture server)
         Environment.SetEnvironmentVariable("ElrIntake__DropDirectory", drop.FullName);
         Environment.SetEnvironmentVariable("ElrIntake__PollIntervalSeconds", "1");
 
+        // The fixture's sender, MSH-4.1 TEST_LAB, put on file as a facility's
+        // short name, so its message is queued rather than held.
+        var senderId = await EnsureSendingFacility("TEST_LAB");
+
         try
         {
             // The valid message is dropped before the host starts, so the
@@ -60,6 +65,19 @@ public class ElrIntakeTests(SqlServerFixture server)
             Assert.Equal(validFile, queued.Source);
             Assert.Equal(validRaw, queued.RawMessage);
             Assert.Null(queued.ExceptionDetail);
+
+            // The parsed fields are kept on the row, with the order's results
+            // beside it.
+            Assert.Equal("HL7v2", queued.MessageFormat);
+            Assert.Equal("ORU^R01", queued.MessageType);
+            Assert.Equal("TEST_LAB", queued.SendingFacility);
+            Assert.Equal("DOE", queued.PatientLastName);
+            Assert.Equal(new DateOnly(1980, 1, 15), queued.PatientBirthDate);
+            Assert.Equal("11585-7", queued.TestCode);
+            Assert.Equal("119364003", queued.SpecimenSourceCode);
+            var result = Assert.Single(queued.Results);
+            Assert.Equal("260373001", result.ResultValue);
+            Assert.Equal("Detected", result.CodedResult);
 
             // The same message read back through the wire: the detail endpoint
             // carries the raw text and the Entry state, which is the stack end
@@ -82,9 +100,23 @@ public class ElrIntakeTests(SqlServerFixture server)
             Assert.Equal(
                 MessageReviewStatus.Exception, MessageReviewStatusRules.Read(excepted.ReviewStatus));
             Assert.False(string.IsNullOrWhiteSpace(excepted.ExceptionDetail));
+
+            // A parseable message from a sender not on file is held as an
+            // exception naming the sender.
+            const string unknownFile = "unknown-sender.hl7";
+            await File.WriteAllTextAsync(
+                Path.Combine(drop.FullName, unknownFile),
+                validRaw.Replace("|TEST_LAB^2.16", "|UNKNOWN_LAB^2.16", StringComparison.Ordinal));
+
+            var held = await WaitForStaged(unknownFile);
+            Assert.NotNull(held);
+            Assert.Equal(MessageReviewStatusRules.ExceptionCode, held!.ReviewStatus);
+            Assert.Equal("UNKNOWN_LAB", held.SendingFacility);
+            Assert.Contains("UNKNOWN_LAB", held.ExceptionDetail);
         }
         finally
         {
+            await RemoveSendingFacility(senderId);
             Environment.SetEnvironmentVariable("ElrIntake__DropDirectory", null);
             Environment.SetEnvironmentVariable("ElrIntake__PollIntervalSeconds", null);
             TryDeleteDirectory(drop.FullName);
@@ -106,6 +138,7 @@ public class ElrIntakeTests(SqlServerFixture server)
 
             var found = await context.StagedMessages
                 .AsNoTracking()
+                .Include(message => message.Results)
                 .Where(message => message.Source == source)
                 .OrderByDescending(message => message.Id)
                 .FirstOrDefaultAsync();
@@ -119,6 +152,37 @@ public class ElrIntakeTests(SqlServerFixture server)
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Puts a facility with this short name on file unless one already is,
+    /// answering the id of the one it added, or null where it added none.
+    /// </summary>
+    private async Task<int?> EnsureSendingFacility(string shortName)
+    {
+        await using var context = server.NewContext();
+
+        if (await context.Facilities.AnyAsync(facility => facility.ShortName == shortName))
+        {
+            return null;
+        }
+
+        var facility = new Facility { Name = "ELR intake test lab", ShortName = shortName, AgencyId = 1 };
+        context.Facilities.Add(facility);
+        await context.SaveChangesAsync();
+
+        return facility.Id;
+    }
+
+    private async Task RemoveSendingFacility(int? facilityId)
+    {
+        if (facilityId is null)
+        {
+            return;
+        }
+
+        await using var context = server.NewContext();
+        await context.Facilities.Where(facility => facility.Id == facilityId).ExecuteDeleteAsync();
     }
 
     private static void TryDeleteDirectory(string path)
