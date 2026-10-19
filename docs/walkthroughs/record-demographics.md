@@ -160,7 +160,7 @@ of every test it runs, and writes the recordings to
     birth** reads **Mexico**. Under them, **Race** has two rows, in
     alphabetical order by code: **American Indian** (`AA`), then **White**
     (`W`).
-15. In the **Addresses** section, change **Unit number** from `Apt 5B` to
+15. Press **Edit** at the top of the report, which opens it for editing. In the **Addresses** section, change **Unit number** from `Apt 5B` to
     `Apt 7C`.
 16. In the **Telephones** section, press **Add telephone**. A second,
     empty telephone row appears under the first. In that new row, type

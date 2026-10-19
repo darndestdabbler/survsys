@@ -88,7 +88,13 @@
                     var note = notes[noteAt];
                     <tr id="@($"notes-note-{noteAt}")" @key="note.Id">
                         <td id="@($"notes-note-{noteAt}-user")">@Shown(note.UserId)</td>
-                        <td id="@($"notes-note-{noteAt}-note-type")">@Shown(note.NoteType)</td>
+                        <td id="@($"notes-note-{noteAt}-note-type")">
+                            @Shown(note.NoteType)
+                            @if (note.Private)
+                            {
+                                <em id="@($"notes-note-{noteAt}-private")"> (private)</em>
+                            }
+                        </td>
                         <td id="@($"notes-note-{noteAt}-created-at")">@Written(note.CreatedAt)</td>
                         <td id="@($"notes-note-{noteAt}-text")"
                             style="@(note.Struckthrough ? "text-decoration: line-through" : null)">
@@ -125,6 +131,12 @@
             <MudTextField @bind-Value="noteForm.ExposureId" id="notes-entry-exposure-id"
                           Label="Exposure" Variant="Variant.Outlined" Margin="Margin.Dense"
                           InputType="InputType.Number" />
+        </MudItem>
+        <MudItem xs="12" sm="4" Class="d-flex align-center">
+            @* A private note is recorded under the signed-in user and listed
+               to them alone, whatever the Creator box says. *@
+            <MudCheckBox T="bool" @bind-Value="noteForm.Private" id="notes-entry-private"
+                         Label="Private" />
         </MudItem>
         <MudItem xs="12">
             <MudTextField @bind-Value="noteForm.Text" id="notes-entry-text"
@@ -221,7 +233,8 @@
                 Text: noteForm.Text.Trim(),
                 NoteType: noteForm.NoteType,
                 UserId: noteForm.UserId,
-                ExposureId: noteForm.ExposureId));
+                ExposureId: noteForm.ExposureId,
+                Private: noteForm.Private));
 
             if (answered.Value is { } recorded)
             {
@@ -323,5 +336,7 @@
         public int? UserId { get; set; }
 
         public int? ExposureId { get; set; }
+
+        public bool Private { get; set; }
     }
 }

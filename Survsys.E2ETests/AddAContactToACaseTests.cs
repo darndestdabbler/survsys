@@ -158,8 +158,10 @@ public class AddAContactToACaseTests(SurvsysHarness harness) : SurvsysPageTest
         });
 
         // 12. The Contacts tab: no exposures yet, and no contact in the form.
-        await Step(Document, 12, "press the Contacts tab and read the empty Exposures table and the Contacts section", async () =>
+        await Step(Document, 12, "press Edit, then the Contacts tab, and read the empty Exposures table and the Contacts section", async () =>
         {
+            await Page.Locator("#report-edit").ClickAsync();
+            await Expect(Page.Locator("#report-done")).ToBeVisibleAsync();
             await OpenContactsTab();
 
             await Expect(Page.Locator("#contacts-exposures tbody tr"))

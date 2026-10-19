@@ -141,7 +141,7 @@ of every test it runs, and writes the recordings to
    **Disease** reads **Malaria**. Note the address in your browser's address
    bar: it ends in `/event/edit/` and a number — **that number is the
    report's**, and step 13 reads it again in a column of the task list.
-9. Press the **Notes** tab and scroll to the bottom of it, past the
+9. Press **Edit** at the top of the report, which opens it for editing, then press the **Notes** tab and scroll to the bottom of it, past the
    **Attachments** and **Notes** sections, to the **Tasks** section. It is
    headed **Tasks**, with a **Show** box beside the heading reading **To
    do**, and under the heading it reads **No tasks found.** Below it is the

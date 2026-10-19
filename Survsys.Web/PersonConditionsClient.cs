@@ -44,7 +44,35 @@ public sealed class PersonConditionsClient(HttpClient http)
     /// <summary>How a failure to save the header's brief note starts.</summary>
     public const string BriefNoteFailurePrefix = "The brief note could not be saved";
 
+    /// <summary>How a failure to delete a report starts.</summary>
+    public const string DeleteFailurePrefix = "The case morbidity report could not be deleted";
+
+    /// <summary>How a failure to restore a deleted report starts.</summary>
+    public const string RestoreFailurePrefix = "The case morbidity report could not be restored";
+
+    /// <summary>How a failure to read a report's edit lock starts.</summary>
+    public const string LockFailurePrefix = "The case morbidity report's edit lock could not be loaded";
+
+    /// <summary>
+    /// How a failure to take a report's edit lock starts — somebody else
+    /// holding it among the reasons.
+    /// </summary>
+    public const string TakeLockFailurePrefix = "The case morbidity report could not be opened for editing";
+
+    /// <summary>How a failure to release a report's edit lock starts.</summary>
+    public const string ReleaseLockFailurePrefix = "The case morbidity report's edit lock could not be released";
+
     private static readonly ApiAsk Opening = new(FailurePrefix, "the report created");
+
+    private static readonly ApiAsk Deleting = new(DeleteFailurePrefix, "nothing");
+
+    private static readonly ApiAsk Restoring = new(RestoreFailurePrefix, "the report as restored");
+
+    private static readonly ApiAsk LoadingLock = new(LockFailurePrefix, "the report's edit lock");
+
+    private static readonly ApiAsk TakingLock = new(TakeLockFailurePrefix, "the edit lock taken");
+
+    private static readonly ApiAsk ReleasingLock = new(ReleaseLockFailurePrefix, "nothing");
 
     private static readonly ApiAsk Finding = new(FindFailurePrefix, "the report");
 
@@ -159,4 +187,54 @@ public sealed class PersonConditionsClient(HttpClient http)
         return await Promoting.PostContent<PersonConditionResponse>(
             http, $"api/person-conditions/{id}/promote", nothing, cancellationToken);
     }
+
+    /// <summary>
+    /// Deletes a report softly — the API tier keeps it, marked deleted — and
+    /// answers null, or why it was not deleted.
+    /// </summary>
+    public Task<string?> Delete(int id, CancellationToken cancellationToken = default) =>
+        Deleting.Delete(http, $"api/person-conditions/{id}", cancellationToken);
+
+    /// <summary>
+    /// Restores a deleted report and answers with it as the API tier now holds
+    /// it, or with why it was not restored.
+    /// </summary>
+    public async Task<Asked<PersonConditionResponse>> Restore(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        using var nothing = new StringContent(string.Empty);
+
+        return await Restoring.PostContent<PersonConditionResponse>(
+            http, $"api/person-conditions/{id}/restore", nothing, cancellationToken);
+    }
+
+    /// <summary>
+    /// Who holds a report's edit lock, and until when — an empty lock where
+    /// nobody does — or why it could not be read.
+    /// </summary>
+    public Task<Asked<EditLockResponse>> Lock(int id, CancellationToken cancellationToken = default) =>
+        LoadingLock.Get<EditLockResponse>(http, $"api/person-conditions/{id}/lock", cancellationToken);
+
+    /// <summary>
+    /// Takes a report's edit lock for the signed-in user and answers with it,
+    /// or with why it was not taken — somebody else holding it, or the report
+    /// being deleted, which the screen reads <see cref="Lock"/> to explain.
+    /// </summary>
+    public async Task<Asked<EditLockResponse>> TakeLock(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        using var nothing = new StringContent(string.Empty);
+
+        return await TakingLock.PostContent<EditLockResponse>(
+            http, $"api/person-conditions/{id}/lock", nothing, cancellationToken);
+    }
+
+    /// <summary>
+    /// Releases the signed-in user's edit lock on a report, answering null, or
+    /// why it was not released.
+    /// </summary>
+    public Task<string?> ReleaseLock(int id, CancellationToken cancellationToken = default) =>
+        ReleasingLock.Delete(http, $"api/person-conditions/{id}/lock", cancellationToken);
 }

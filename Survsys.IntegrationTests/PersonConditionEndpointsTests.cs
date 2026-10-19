@@ -20,7 +20,7 @@ namespace Survsys.IntegrationTests;
 /// asserts and again after it, because the record number a report takes
 /// depends on the reports already there: a test that left one behind would
 /// decide what the next test's record number was. The clearing is done through
-/// the context, since this tier has no delete endpoint and is not getting one.
+/// the context, since this tier's delete is soft and leaves the row in place.
 /// </remarks>
 [Collection(SqlServerCollection.Name)]
 public class PersonConditionEndpointsTests(SqlServerFixture server) : IDisposable
@@ -387,6 +387,61 @@ public class PersonConditionEndpointsTests(SqlServerFixture server) : IDisposabl
         using var missing = await client.PutAsJsonAsync(
             "/api/person-conditions/987654/brief-note", new UpdateBriefNoteRequest("note"), Json);
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+    }
+
+    /// <summary>
+    /// A deleted report is kept and still read, carrying when it was deleted;
+    /// deleting it again keeps that moment; a restore clears it; and a report
+    /// nobody has is a 404 to both.
+    /// </summary>
+    [Fact]
+    public async Task AReportDeletedIsKeptAndARestoreBringsItBack()
+    {
+        await Clear();
+
+        var person = await PersonId("Doe, ");
+        var condition = await ActiveConditionId();
+        var client = api.CreateClient();
+
+        try
+        {
+            var report = await Open(new CreatePersonConditionRequest(person, condition));
+
+            using (var deleted = await client.DeleteAsync($"/api/person-conditions/{report.Id}"))
+            {
+                Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+            }
+
+            var read = (await client.GetFromJsonAsync<PersonConditionResponse>(
+                $"/api/person-conditions/{report.Id}", Json))!;
+            Assert.NotNull(read.DeletedAt);
+            Assert.Equal(1, await Reports());
+
+            using (var again = await client.DeleteAsync($"/api/person-conditions/{report.Id}"))
+            {
+                Assert.Equal(HttpStatusCode.NoContent, again.StatusCode);
+            }
+
+            var readAgain = (await client.GetFromJsonAsync<PersonConditionResponse>(
+                $"/api/person-conditions/{report.Id}", Json))!;
+            Assert.Equal(read.DeletedAt, readAgain.DeletedAt);
+
+            using (var restored = await client.PostAsync($"/api/person-conditions/{report.Id}/restore", null))
+            {
+                Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+                Assert.Null((await restored.Content.ReadFromJsonAsync<PersonConditionResponse>(Json))!.DeletedAt);
+            }
+        }
+        finally
+        {
+            await Clear();
+        }
+
+        using var missingDelete = await client.DeleteAsync("/api/person-conditions/987654");
+        Assert.Equal(HttpStatusCode.NotFound, missingDelete.StatusCode);
+
+        using var missingRestore = await client.PostAsync("/api/person-conditions/987654/restore", null);
+        Assert.Equal(HttpStatusCode.NotFound, missingRestore.StatusCode);
     }
 
     /// <summary>

@@ -145,8 +145,10 @@ public class AttachADocumentTests(SurvsysHarness harness) : SurvsysPageTest
             });
 
             // 10. The Notes tab: no attachments found, and the entry panel.
-            await Step(Document, 10, "press the Notes tab and read the empty Attachments section and the entry panel", async () =>
+            await Step(Document, 10, "press Edit, then the Notes tab, and read the empty Attachments section and the entry panel", async () =>
             {
+                await Page.Locator("#report-edit").ClickAsync();
+                await Expect(Page.Locator("#report-done")).ToBeVisibleAsync();
                 await OpenNotesTab();
 
                 await Expect(Page.Locator("#attachments-none"))

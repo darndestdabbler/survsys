@@ -29,6 +29,7 @@ namespace Survsys.Contracts;
 /// <param name="Text">What the note says, as plain text.</param>
 /// <param name="Struckthrough">Whether the note has been struck through, which is this release's soft delete.</param>
 /// <param name="CreatedAt">When the note was written, with the offset it was written at.</param>
+/// <param name="Private">Whether only its author may see the note.</param>
 public record NoteResponse(
     int Id,
     int? PersonConditionId,
@@ -38,4 +39,5 @@ public record NoteResponse(
     string? NoteType,
     string? Text,
     bool Struckthrough,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    bool Private = false);

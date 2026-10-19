@@ -174,8 +174,12 @@ public class CompleteASupplementalFormTests(SurvsysHarness harness) : SurvsysPag
         });
 
         // 12. The Forms tab: the one assigned form.
-        await Step(Document, 12, "press the Forms tab and read the one assigned form", async () =>
-            await OpenFormsTab());
+        await Step(Document, 12, "press Edit, then the Forms tab, and read the one assigned form", async () =>
+        {
+            await Page.Locator("#report-edit").ClickAsync();
+            await Expect(Page.Locator("#report-done")).ToBeVisibleAsync();
+            await OpenFormsTab();
+        });
 
         // 13. Open: the form, its section and its two empty questions.
         await Step(Document, 13, "press Open and read the form's section and its two empty questions", async () =>

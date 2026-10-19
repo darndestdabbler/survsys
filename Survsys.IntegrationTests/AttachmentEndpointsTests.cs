@@ -163,6 +163,51 @@ public class AttachmentEndpointsTests(SqlServerFixture server) : IDisposable
         Assert.Contains("Delete", await AuditOperations("attachment_files", fileId));
     }
 
+    /// <summary>
+    /// A file attached to an outbreak is listed under it and under no report,
+    /// downloads as stored, and goes with its file when the outbreak is
+    /// deleted; an outbreak nobody has is a 404 to both routes.
+    /// </summary>
+    [Fact]
+    public async Task AFileAttachedToAnOutbreakIsListedUnderItAndGoesWithIt()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        using var created = await client.PostAsJsonAsync(
+            "/api/outbreaks", new SaveOutbreakRequest("Attachment outbreak"), Json);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var outbreakId = (await created.Content.ReadFromJsonAsync<OutbreakDetailResponse>(Json))!.Id;
+
+        var stored = await Upload(client, outbreakId, "lab", bytes: [9, 8, 7],
+            route: $"/api/outbreaks/{outbreakId}/attachments");
+        Assert.Equal(outbreakId, stored.OutbreakId);
+        Assert.Null(stored.PersonConditionId);
+
+        var listed = (await client.GetFromJsonAsync<PagedResult<AttachmentResponse>>(
+            $"/api/outbreaks/{outbreakId}/attachments", Json))!;
+        Assert.Equal([stored.Id], listed.Items.Select(attachment => attachment.Id));
+
+        var onReport = (await client.GetFromJsonAsync<PagedResult<AttachmentResponse>>(
+            $"/api/person-conditions/{reportId}/attachments?pageSize=100", Json))!;
+        Assert.DoesNotContain(onReport.Items, attachment => attachment.Id == stored.Id);
+
+        Assert.Equal([9, 8, 7], await client.GetByteArrayAsync($"/api/attachments/{stored.Id}/content"));
+
+        using (var deleted = await client.DeleteAsync($"/api/outbreaks/{outbreakId}"))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        }
+
+        await using (var context = server.NewContext())
+        {
+            Assert.False(await context.Attachments.AnyAsync(attachment => attachment.Id == stored.Id));
+        }
+
+        using var missingList = await client.GetAsync("/api/outbreaks/987654/attachments");
+        Assert.Equal(HttpStatusCode.NotFound, missingList.StatusCode);
+    }
+
     [Fact]
     public async Task AnEditOrDeleteOfAnAttachmentNobodyHasIsA404()
     {
@@ -177,8 +222,9 @@ public class AttachmentEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     /// <summary>
-    /// Uploads one file to a report and answers with the attachment as stored,
-    /// through the multipart form the upload route takes.
+    /// Uploads one file to a report — or to the route given — and answers with
+    /// the attachment as stored, through the multipart form the upload route
+    /// takes.
     /// </summary>
     private async Task<AttachmentResponse> Upload(
         HttpClient client,
@@ -186,7 +232,8 @@ public class AttachmentEndpointsTests(SqlServerFixture server) : IDisposable
         string category,
         string filename = "culture-result.pdf",
         string contentType = "application/pdf",
-        byte[]? bytes = null)
+        byte[]? bytes = null,
+        string? route = null)
     {
         using var form = new MultipartFormDataContent();
 
@@ -196,7 +243,7 @@ public class AttachmentEndpointsTests(SqlServerFixture server) : IDisposable
         form.Add(new StringContent(category), "category");
 
         using var response = await client.PostAsync(
-            $"/api/person-conditions/{reportId}/attachments", form);
+            route ?? $"/api/person-conditions/{reportId}/attachments", form);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 

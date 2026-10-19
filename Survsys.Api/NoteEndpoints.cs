@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -31,6 +32,10 @@ namespace Survsys.Api;
 /// <see cref="NoteResponse.Struckthrough"/> true, and the screen shows it
 /// struck. Nothing here hides a struck note, because hiding it would make the
 /// soft delete a hard one with extra steps.
+///
+/// A private note is the one thing the list does hide: it is recorded under
+/// the signed-in user rather than the user on the wire, and listed only to
+/// that user, the page's total counting only what the caller may see.
 /// </remarks>
 public static class NoteEndpoints
 {
@@ -71,7 +76,8 @@ public static class NoteEndpoints
             note.NoteType,
             note.Text,
             note.Struckthrough,
-            note.CreatedAt);
+            note.CreatedAt,
+            note.Private);
 
     /// <summary>
     /// <see cref="NoteToResponse"/> compiled, for the two writes that answer
@@ -151,6 +157,7 @@ public static class NoteEndpoints
 
     private static async Task<Results<Created<NoteResponse>, ProblemHttpResult>> CreateNote(
         NoteQueries notes,
+        ClaimsPrincipal user,
         int id,
         CreateNoteRequest request,
         CancellationToken cancellationToken = default)
@@ -168,13 +175,14 @@ public static class NoteEndpoints
             return NoSuchReport(id);
         }
 
-        var recorded = await notes.Add(id, request, cancellationToken);
+        var recorded = await notes.Add(id, request, AccountEndpoints.UserIdOf(user), cancellationToken);
 
         return TypedResults.Created($"/api/notes/{recorded.Id}", recorded);
     }
 
     private static async Task<Results<Ok<PagedResult<NoteResponse>>, ProblemHttpResult>> GetNotes(
         NoteQueries notes,
+        ClaimsPrincipal user,
         int id,
         int page = Paging.DefaultPage,
         int pageSize = Paging.DefaultPageSize,
@@ -193,18 +201,20 @@ public static class NoteEndpoints
             return NoSuchReport(id);
         }
 
-        return TypedResults.Ok(await notes.Page(id, page, pageSize, cancellationToken));
+        return TypedResults.Ok(await notes.Page(id, AccountEndpoints.UserIdOf(user), page, pageSize, cancellationToken));
     }
 
     private static async Task<Results<Ok<NoteResponse>, ProblemHttpResult>> SetStrikethrough(
         NoteQueries notes,
+        ClaimsPrincipal user,
         int id,
         UpdateNoteStrikethroughRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (await notes.Strike(id, request.Struckthrough, cancellationToken) is not { } struck)
+        if (await notes.Strike(id, request.Struckthrough, AccountEndpoints.UserIdOf(user), cancellationToken)
+            is not { } struck)
         {
             return TypedResults.Problem(
                 detail: $"No note has id {id}.",
@@ -256,13 +266,15 @@ internal sealed class NoteQueries(SurvsysDbContext database)
     public async Task<NoteResponse> Add(
         int reportId,
         CreateNoteRequest request,
+        int? callerId,
         CancellationToken cancellationToken)
     {
         var note = new Note
         {
             PersonConditionId = reportId,
             ExposureId = request.ExposureId,
-            UserId = request.UserId,
+            UserId = request.Private ? callerId : request.UserId,
+            Private = request.Private,
             NoteType = request.NoteType,
             Text = request.Text,
             Struckthrough = false,
@@ -288,11 +300,13 @@ internal sealed class NoteQueries(SurvsysDbContext database)
     /// </remarks>
     public async Task<PagedResult<NoteResponse>> Page(
         int reportId,
+        int? callerId,
         int page,
         int pageSize,
         CancellationToken cancellationToken)
     {
-        var notes = database.Notes.Where(note => note.PersonConditionId == reportId);
+        var notes = database.Notes.Where(note => note.PersonConditionId == reportId
+            && (!note.Private || note.UserId == callerId));
 
         var total = await notes.CountAsync(cancellationToken);
 
@@ -309,15 +323,19 @@ internal sealed class NoteQueries(SurvsysDbContext database)
 
     /// <summary>
     /// Strikes a note through or restores it, and answers with the note as it
-    /// now stands, or null where no note has that id.
+    /// now stands, or null where no note has that id — or where it is another
+    /// user's private note, which this caller may not see and so may not strike.
     /// </summary>
     public async Task<NoteResponse?> Strike(
         int noteId,
         bool struckthrough,
+        int? callerId,
         CancellationToken cancellationToken)
     {
         var note = await database.Notes
-            .SingleOrDefaultAsync(candidate => candidate.Id == noteId, cancellationToken);
+            .SingleOrDefaultAsync(
+                candidate => candidate.Id == noteId && (!candidate.Private || candidate.UserId == callerId),
+                cancellationToken);
 
         if (note is null)
         {

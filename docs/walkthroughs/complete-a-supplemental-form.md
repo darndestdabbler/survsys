@@ -132,7 +132,7 @@ of every test it runs, and writes the recordings to
     and **Disease** reads **Lyme disease**. Note the address in your
     browser's address bar: it ends in `/event/edit/` and a number, and step
     16 comes back to it.
-12. Press the **Forms** tab. Its **Assigned forms** table has one row,
+12. Press **Edit** at the top of the report, which opens it for editing, then press the **Forms** tab. Its **Assigned forms** table has one row,
     **Lyme disease tick exposure**, with an **Open** button.
 13. Press **Open**. The form opens below the table under its name,
     **Lyme disease tick exposure**, with the section **Tick exposure**,

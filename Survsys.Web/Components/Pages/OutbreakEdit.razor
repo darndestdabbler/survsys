@@ -243,6 +243,12 @@ else
                 </tbody>
             </MudSimpleTable>
         </MudPaper>
+
+        @* The files filed against the outbreak itself, in the panel a
+           report's Notes tab uses for its own. *@
+        <div id="outbreak-attachments">
+            <AttachmentsPanel OutbreakId="@outbreakId" />
+        </div>
     }
 }
 

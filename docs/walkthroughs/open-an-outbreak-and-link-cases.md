@@ -127,7 +127,7 @@ of every test it runs, and writes the recordings to
     **Disease** reads **Hepatitis A**. Note the **Record number** in the
     header bar, and the address in your browser's address bar: it ends in
     `/event/edit/` and a number, and step 15 comes back to it.
-12. Press the **Administrative** tab. Its **Case / Outbreak** section has a
+12. Press **Edit** at the top of the report, which opens it for editing, then press the **Administrative** tab. Its **Case / Outbreak** section has a
     list labelled **Outbreak name**.
 13. Open the **Outbreak name** list and choose **Provo church supper
     hepatitis A**. The list closes, and the box now reads **Provo church

@@ -148,5 +148,16 @@ public class CaseSearchEndpointsTests
         Assert.Null(row.MmwrWeek);
         Assert.Null(row.MmwrYear);
         Assert.Null(row.EventOnsetDate);
+        Assert.False(row.Deleted);
+    }
+
+    /// <summary>A deleted report is marked deleted on its row.</summary>
+    [Fact]
+    public void ToResponseMarksADeletedReport()
+    {
+        var report = Report();
+        report.DeletedAt = new DateTimeOffset(2026, 10, 19, 9, 0, 0, TimeSpan.Zero);
+
+        Assert.True(Respond(Joined(report, Patient(), Malaria(), SaltLake())).Deleted);
     }
 }

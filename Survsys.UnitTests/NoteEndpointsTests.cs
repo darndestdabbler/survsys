@@ -84,6 +84,18 @@ public class NoteEndpointsTests
         Assert.True(NoteEndpoints.Respond(note).Struckthrough);
     }
 
+    /// <summary>A private note projects as private, and a note by default as not.</summary>
+    [Fact]
+    public void NoteToResponseCarriesWhetherTheNoteIsPrivate()
+    {
+        var note = Recorded();
+        Assert.False(NoteEndpoints.Respond(note).Private);
+
+        note.Private = true;
+
+        Assert.True(NoteEndpoints.Respond(note).Private);
+    }
+
     [Theory]
     [InlineData(NoteEndpoints.ClinicalNoteType)]
     [InlineData(NoteEndpoints.AdministrativeNoteType)]

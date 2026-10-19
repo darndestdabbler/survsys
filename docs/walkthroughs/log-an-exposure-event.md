@@ -133,7 +133,7 @@ of every test it runs, and writes the recordings to
    **Treatments**, **Encounters**, **Contacts** and **Notes**. Note
    the address in your browser's address bar: it ends in `/event/edit/` and a
    number, and step 14 comes back to it.
-10. Press the **Contacts** tab. The tab opens on two panels. The first,
+10. Press **Edit** at the top of the report, which opens it for editing, then press the **Contacts** tab. The tab opens on two panels. The first,
     headed **Exposures**, is a table with the columns **Name**, **From**,
     **To**, **Place**, **Contacts**, **Sources** and **Actions**, and its one
     row reads

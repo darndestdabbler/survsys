@@ -568,10 +568,29 @@ internal sealed class OutbreakQueries(SurvsysDbContext database)
     /// access, report sections and activity go with it by their cascade, and
     /// the cases that named it are left with their link nulled.
     /// </summary>
-    public async Task<bool> Delete(int id, CancellationToken cancellationToken) =>
-        await database.Outbreaks
+    /// <remarks>
+    /// Its attachments' stored files are deleted first, in the same
+    /// transaction, and the attachments go with their files by that cascade:
+    /// the outbreak's own key on <c>attachments</c> cannot cascade, because
+    /// SQL Server allows only one cascade path from <c>outbreaks</c> to it.
+    /// </remarks>
+    public async Task<bool> Delete(int id, CancellationToken cancellationToken)
+    {
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+
+        await database.AttachmentFiles
+            .Where(file => database.Attachments.Any(
+                attachment => attachment.AttachmentFileId == file.Id && attachment.OutbreakId == id))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        var deleted = await database.Outbreaks
             .Where(outbreak => outbreak.Id == id)
             .ExecuteDeleteAsync(cancellationToken) > 0;
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return deleted;
+    }
 
     /// <summary>
     /// The agencies granted sight of the outbreak, ordered by name; null where

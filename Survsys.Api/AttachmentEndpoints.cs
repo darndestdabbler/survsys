@@ -11,7 +11,9 @@ namespace Survsys.Api;
 /// <summary>
 /// <c>POST /api/person-conditions/{id}/attachments</c>: attaches one file to a
 /// report. <c>GET /api/person-conditions/{id}/attachments</c>: that report's
-/// attachments, newest first and paged, metadata only. And
+/// attachments, newest first and paged, metadata only. The same two under
+/// <c>/api/outbreaks/{id}/attachments</c> for a file filed against an
+/// outbreak. And
 /// <c>GET /api/attachments/{id}/content</c>: the stored bytes of one, under
 /// the content type and filename they were stored with.
 /// </summary>
@@ -125,7 +127,8 @@ public static class AttachmentEndpoints
             attachment.ContentType!,
             attachment.Size,
             attachment.Category!,
-            attachment.CreatedAt);
+            attachment.CreatedAt,
+            attachment.OutbreakId);
 
     /// <summary>
     /// <see cref="AttachmentToResponse"/> compiled, for the upload that
@@ -251,6 +254,16 @@ public static class AttachmentEndpoints
             .WithName("GetAttachments")
             .WithSummary("A case morbidity report's attachments, newest first and paged.");
 
+        routes.MapPost("/api/outbreaks/{id:int}/attachments", UploadOutbreakAttachment)
+            .WithName("UploadOutbreakAttachment")
+            .WithSummary("Attaches one file to an outbreak.")
+            .DisableAntiforgery()
+            .WithMetadata(new RequestSizeLimitAttribute(MaxBytes + MultipartEnvelopeBytes));
+
+        routes.MapGet("/api/outbreaks/{id:int}/attachments", GetOutbreakAttachments)
+            .WithName("GetOutbreakAttachments")
+            .WithSummary("An outbreak's attachments, newest first and paged.");
+
         routes.MapGet("/api/attachments/{id:int}/content", GetAttachmentContent)
             .WithName("GetAttachmentContent")
             .WithSummary("The stored bytes of one attachment.");
@@ -266,13 +279,52 @@ public static class AttachmentEndpoints
         return routes;
     }
 
-    private static async Task<Results<Created<AttachmentResponse>, ProblemHttpResult>>
+    private static Task<Results<Created<AttachmentResponse>, ProblemHttpResult>>
         UploadAttachment(
             AttachmentQueries attachments,
             int id,
             IFormFile file,
             [FromForm] string? category,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default) =>
+        Upload(attachments, AttachmentOwner.Report(id), file, category, cancellationToken);
+
+    private static Task<Results<Created<AttachmentResponse>, ProblemHttpResult>>
+        UploadOutbreakAttachment(
+            AttachmentQueries attachments,
+            int id,
+            IFormFile file,
+            [FromForm] string? category,
+            CancellationToken cancellationToken = default) =>
+        Upload(attachments, AttachmentOwner.Outbreak(id), file, category, cancellationToken);
+
+    private static Task<Results<Ok<PagedResult<AttachmentResponse>>, ProblemHttpResult>>
+        GetAttachments(
+            AttachmentQueries attachments,
+            int id,
+            int page = Paging.DefaultPage,
+            int pageSize = Paging.DefaultPageSize,
+            CancellationToken cancellationToken = default) =>
+        List(attachments, AttachmentOwner.Report(id), page, pageSize, cancellationToken);
+
+    private static Task<Results<Ok<PagedResult<AttachmentResponse>>, ProblemHttpResult>>
+        GetOutbreakAttachments(
+            AttachmentQueries attachments,
+            int id,
+            int page = Paging.DefaultPage,
+            int pageSize = Paging.DefaultPageSize,
+            CancellationToken cancellationToken = default) =>
+        List(attachments, AttachmentOwner.Outbreak(id), page, pageSize, cancellationToken);
+
+    /// <remarks>
+    /// One upload for both owners: the refusals are the same, and only which
+    /// record the route names — and so which 404 a missing one is — differs.
+    /// </remarks>
+    private static async Task<Results<Created<AttachmentResponse>, ProblemHttpResult>> Upload(
+        AttachmentQueries attachments,
+        AttachmentOwner owner,
+        IFormFile file,
+        string? category,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(file);
 
@@ -285,23 +337,22 @@ public static class AttachmentEndpoints
                 title: "The file offered is not one this endpoint can store.");
         }
 
-        if (!await attachments.HasReport(id, cancellationToken))
+        if (!await attachments.HasOwner(owner, cancellationToken))
         {
-            return NoSuchReport(id);
+            return NoSuchOwner(owner);
         }
 
-        var stored = await attachments.Store(id, file, category!, cancellationToken);
+        var stored = await attachments.Store(owner, file, category!, cancellationToken);
 
         return TypedResults.Created($"/api/attachments/{stored.Id}", stored);
     }
 
-    private static async Task<Results<Ok<PagedResult<AttachmentResponse>>, ProblemHttpResult>>
-        GetAttachments(
-            AttachmentQueries attachments,
-            int id,
-            int page = Paging.DefaultPage,
-            int pageSize = Paging.DefaultPageSize,
-            CancellationToken cancellationToken = default)
+    private static async Task<Results<Ok<PagedResult<AttachmentResponse>>, ProblemHttpResult>> List(
+        AttachmentQueries attachments,
+        AttachmentOwner owner,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
     {
         if (Paging.WhyNotAPage(page, pageSize) is { } why)
         {
@@ -311,12 +362,12 @@ public static class AttachmentEndpoints
                 title: "The page asked for is not one this endpoint can return.");
         }
 
-        if (!await attachments.HasReport(id, cancellationToken))
+        if (!await attachments.HasOwner(owner, cancellationToken))
         {
-            return NoSuchReport(id);
+            return NoSuchOwner(owner);
         }
 
-        return TypedResults.Ok(await attachments.Page(id, page, pageSize, cancellationToken));
+        return TypedResults.Ok(await attachments.Page(owner, page, pageSize, cancellationToken));
     }
 
     private static async Task<Results<FileContentHttpResult, ProblemHttpResult>>
@@ -371,11 +422,16 @@ public static class AttachmentEndpoints
             ? TypedResults.NoContent()
             : NoSuchAttachment(id);
 
-    private static ProblemHttpResult NoSuchReport(int id) =>
-        TypedResults.Problem(
-            detail: $"No case morbidity report has id {id}.",
-            statusCode: StatusCodes.Status404NotFound,
-            title: "There is no such case morbidity report.");
+    private static ProblemHttpResult NoSuchOwner(AttachmentOwner owner) =>
+        owner.ReportId is { } reportId
+            ? TypedResults.Problem(
+                detail: $"No case morbidity report has id {reportId}.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "There is no such case morbidity report.")
+            : TypedResults.Problem(
+                detail: $"No outbreak has id {owner.OutbreakId}.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "There is no such outbreak.");
 
     private static ProblemHttpResult NoSuchAttachment(int id) =>
         TypedResults.Problem(
@@ -399,6 +455,17 @@ public static class AttachmentEndpoints
 internal sealed record StoredFile(byte[] Bytes, string ContentType, string Filename);
 
 /// <summary>
+/// What an attachment is filed against: a report or an outbreak, exactly one
+/// of the two, as the route names it.
+/// </summary>
+internal sealed record AttachmentOwner(int? ReportId, int? OutbreakId)
+{
+    public static AttachmentOwner Report(int id) => new(id, null);
+
+    public static AttachmentOwner Outbreak(int id) => new(null, id);
+}
+
+/// <summary>
 /// The attachment queries and the storing, and the only thing in this tier
 /// that holds the <c>DbContext</c> for them.
 /// </summary>
@@ -412,11 +479,13 @@ internal sealed record StoredFile(byte[] Bytes, string ContentType, string Filen
 internal sealed class AttachmentQueries(SurvsysDbContext database)
 {
     /// <summary>
-    /// Whether a report has that id — false is the answer the endpoint turns
-    /// into a 404, because the report is the resource the route names.
+    /// Whether the report or outbreak the route names is on file — false is
+    /// the answer the endpoint turns into a 404.
     /// </summary>
-    public Task<bool> HasReport(int reportId, CancellationToken cancellationToken) =>
-        database.PersonConditions.AnyAsync(report => report.Id == reportId, cancellationToken);
+    public Task<bool> HasOwner(AttachmentOwner owner, CancellationToken cancellationToken) =>
+        owner.ReportId is { } reportId
+            ? database.PersonConditions.AnyAsync(report => report.Id == reportId, cancellationToken)
+            : database.Outbreaks.AnyAsync(outbreak => outbreak.Id == owner.OutbreakId, cancellationToken);
 
     /// <summary>
     /// The categories an attachment may be filed under: the active codes on
@@ -448,7 +517,7 @@ internal sealed class AttachmentQueries(SurvsysDbContext database)
     /// it is the length the endpoint already held to the limit.
     /// </remarks>
     public async Task<AttachmentResponse> Store(
-        int reportId,
+        AttachmentOwner owner,
         IFormFile file,
         string category,
         CancellationToken cancellationToken)
@@ -465,7 +534,8 @@ internal sealed class AttachmentQueries(SurvsysDbContext database)
 
         var attachment = new Attachment
         {
-            PersonConditionId = reportId,
+            PersonConditionId = owner.ReportId,
+            OutbreakId = owner.OutbreakId,
             AttachmentFileId = stored.Id,
             Filename = file.FileName,
             ContentType = file.ContentType,
@@ -494,13 +564,14 @@ internal sealed class AttachmentQueries(SurvsysDbContext database)
     /// never pulls a file out of the database.
     /// </remarks>
     public async Task<PagedResult<AttachmentResponse>> Page(
-        int reportId,
+        AttachmentOwner owner,
         int page,
         int pageSize,
         CancellationToken cancellationToken)
     {
-        var attachments = database.Attachments
-            .Where(attachment => attachment.PersonConditionId == reportId);
+        var attachments = owner.ReportId is { } reportId
+            ? database.Attachments.Where(attachment => attachment.PersonConditionId == reportId)
+            : database.Attachments.Where(attachment => attachment.OutbreakId == owner.OutbreakId);
 
         var total = await attachments.CountAsync(cancellationToken);
 

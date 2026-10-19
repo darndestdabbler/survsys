@@ -161,7 +161,7 @@ of every test it runs, and writes the recordings to
     and **Disease** reads **Hepatitis A**. Note the address in your browser's
     address bar: it ends in `/event/edit/` and a number, and step 16 comes
     back to it.
-12. Press the **Contacts** tab. The tab opens on two panels: **Exposures**,
+12. Press **Edit** at the top of the report, which opens it for editing, then press the **Contacts** tab. The tab opens on two panels: **Exposures**,
     a table whose one row reads **No exposures recorded yet.**, and **Record
     an exposure**, the entry form, whose **Contacts** section has an **Add
     contact** button with nothing under it.

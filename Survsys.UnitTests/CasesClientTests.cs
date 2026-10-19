@@ -33,6 +33,19 @@ public class CasesClientTests
             CasesClient.Url(new CaseSearchCriteria(), 1, 50));
     }
 
+    /// <summary>
+    /// Showing deleted cases is asked for only when it is switched on, and does
+    /// not make the criteria any less empty.
+    /// </summary>
+    [Fact]
+    public void TheUrlAsksForDeletedCasesOnlyWhenTheyAreShown()
+    {
+        Assert.Equal(
+            "api/cases?page=1&pageSize=50&showDeleted=true",
+            CasesClient.Url(new CaseSearchCriteria(ShowDeleted: true), 1, 50));
+        Assert.True(new CaseSearchCriteria(ShowDeleted: true).IsEmpty);
+    }
+
     [Fact]
     public void TheUrlCarriesEveryCriterionThatWasTyped()
     {

@@ -24,7 +24,10 @@
    that tier's address or proxying the file, and an attachment is stored once.
 
    A row in a list carries its position in its identifier, so a walkthrough
-   can name it: attachments-file-0, attachments-file-0-filename and so on. *@
+   can name it: attachments-file-0, attachments-file-0-filename and so on.
+
+   The same panel serves an outbreak's attachments on the outbreak screen,
+   given an OutbreakId in place of a ReportId. *@
 @using System.Globalization
 @using Microsoft.AspNetCore.Components.Forms
 @inject AttachmentsClient Api
@@ -118,9 +121,13 @@
 </MudPaper>
 
 @code {
-    /// <summary>The report whose attachments this panel lists and attaches to.</summary>
-    [Parameter, EditorRequired]
-    public int ReportId { get; set; }
+    /// <summary>The report whose attachments this panel lists and attaches to, where it serves a report.</summary>
+    [Parameter]
+    public int? ReportId { get; set; }
+
+    /// <summary>The outbreak whose attachments this panel lists and attaches to, where it serves one.</summary>
+    [Parameter]
+    public int? OutbreakId { get; set; }
 
     /// <summary>
     /// The seeded category codes: the one a new attachment starts under, and
@@ -180,7 +187,9 @@
         // Every attachment of the report, however many pages the API tier
         // lists them over: the client walks the pages, so none is left off the
         // end of the list. Metadata only -- no file is read to show this.
-        var listed = await Api.All(ReportId);
+        var listed = OutbreakId is { } outbreakId
+            ? await Api.AllForOutbreak(outbreakId)
+            : await Api.All(ReportId ?? 0);
 
         if (listed.Value is not { } filed)
         {
@@ -233,8 +242,9 @@
         {
             await using var content = file.OpenReadStream(AttachmentsClient.MaxBytes);
 
-            var answered = await Api.Attach(
-                ReportId, file.Name, file.ContentType, category, content);
+            var answered = OutbreakId is { } outbreakId
+                ? await Api.AttachToOutbreak(outbreakId, file.Name, file.ContentType, category, content)
+                : await Api.Attach(ReportId ?? 0, file.Name, file.ContentType, category, content);
 
             if (answered.Value is { } stored)
             {

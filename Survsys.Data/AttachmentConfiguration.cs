@@ -13,16 +13,16 @@ namespace Survsys.Data;
 /// it by scanning the assembly. The table is <c>attachments</c>, the plural
 /// every table here is given.
 ///
-/// Two real foreign keys, both required and both cascading, declared with no
-/// navigation on either side as <see cref="LabTestConfiguration"/>'s and
+/// Real foreign keys, declared with no navigation on either side as
+/// <see cref="LabTestConfiguration"/>'s and
 /// <see cref="ExposureContactConfiguration"/>'s are:
 /// <see cref="Attachment.PersonConditionId"/> to <c>person_conditions</c>,
-/// because an attachment is a detail of the report it is filed against and
-/// goes when the report does, as a test goes with its specimen; and
-/// <see cref="Attachment.AttachmentFileId"/> to <c>attachment_files</c>, so an
-/// attachment cannot outlive the bytes it describes. The legacy leaves both
-/// columns nullable and this schema does not, for the reason
-/// <see cref="Attachment"/> gives.
+/// cascading because an attachment is a detail of the report it is filed
+/// against and goes when the report does, as a test goes with its specimen;
+/// <see cref="Attachment.OutbreakId"/> to <c>outbreaks</c>, exactly one of the
+/// two set; and the required <see cref="Attachment.AttachmentFileId"/> to
+/// <c>attachment_files</c>, so an attachment cannot outlive the bytes it
+/// describes.
 ///
 /// <see cref="Attachment.Filename"/>, <see cref="Attachment.ContentType"/> and
 /// <see cref="Attachment.Category"/> are required and bounded rather than left
@@ -79,8 +79,15 @@ internal sealed class AttachmentConfiguration : IEntityTypeConfiguration<Attachm
             .IsRequired();
         builder.Property(attachment => attachment.PersonConditionId)
             .HasColumnName("person_condition_id");
+        builder.Property(attachment => attachment.OutbreakId)
+            .HasColumnName("outbreak_id");
         builder.Property(attachment => attachment.AttachmentFileId)
             .HasColumnName("attachment_file_id");
+
+        // Filed against a report or an outbreak, and never both or neither.
+        builder.ToTable(table => table.HasCheckConstraint(
+            "CK_attachments_one_owner",
+            "(person_condition_id IS NULL AND outbreak_id IS NOT NULL) OR (person_condition_id IS NOT NULL AND outbreak_id IS NULL)"));
 
         // No navigation on either side. An attachment is a detail of the
         // report it is filed against, so it cascades: deleting the report
@@ -88,8 +95,17 @@ internal sealed class AttachmentConfiguration : IEntityTypeConfiguration<Attachm
         builder.HasOne<PersonCondition>()
             .WithMany()
             .HasForeignKey(attachment => attachment.PersonConditionId)
-            .IsRequired()
             .OnDelete(DeleteBehavior.Cascade);
+
+        // The outbreak's does not cascade, because SQL Server refuses a second
+        // cascade path from outbreaks to this table (outbreaks to
+        // person_conditions sets null, and person_conditions cascades here):
+        // deleting an outbreak removes its attachments' files first, which
+        // cascade to the attachments.
+        builder.HasOne<Outbreak>()
+            .WithMany()
+            .HasForeignKey(attachment => attachment.OutbreakId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // No navigation on either side. The bytes exist for this row alone, so
         // deleting the file row deletes the attachment that describes it --

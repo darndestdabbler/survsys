@@ -23,9 +23,10 @@ namespace Survsys.Data;
 /// megabytes beside it: a list of twenty files costs a few hundred bytes of
 /// metadata rather than everything anybody ever uploaded.
 ///
-/// Both ids are required: an attachment is filed against a report and
-/// describes a stored file, and neither is optional for a row that means
-/// anything. So are <see cref="Filename"/>, <see cref="ContentType"/> and
+/// An attachment is filed against a report or, since session 65, an outbreak
+/// — exactly one of <see cref="PersonConditionId"/> and
+/// <see cref="OutbreakId"/>, which a check constraint holds — and always
+/// describes a stored file. So are <see cref="Filename"/>, <see cref="ContentType"/> and
 /// <see cref="Category"/>, where the legacy columns are nullable — an
 /// attachment nobody can name, open or find under a category is not one this
 /// tier stores.
@@ -34,11 +35,9 @@ namespace Survsys.Data;
 /// <c>width</c> are written by a server that decodes the uploaded image, and
 /// <c>attachment_file.data_text</c> by one that extracts its text; this tier
 /// decodes nothing and extracts nothing, so three columns nothing would ever
-/// write are not here. <c>outbreak_id</c>, <c>outbreak_update_id</c> and
-/// <c>master_id</c> are not here either: there is no outbreak table and no
-/// master record in this schema to point at, which is why
-/// <see cref="Exposure"/> has no <c>outbreak_id</c> of its own, so an
-/// attachment hangs off a report and nothing else.
+/// write are not here. <c>outbreak_update_id</c> and <c>master_id</c> are not
+/// here either: nothing attaches a file to an outbreak's activity entry or to a
+/// master record.
 ///
 /// There is no behaviour here and no navigation out: the bytes are read by
 /// composing a query over <see cref="AttachmentFile"/> rather than by walking
@@ -106,10 +105,17 @@ public class Attachment
 
     /// <summary>
     /// The case morbidity report this file is attached to, as the legacy
-    /// <c>person_condition_id</c>. Required, and set from the report in the
-    /// route the file is uploaded through.
+    /// <c>person_condition_id</c>, set from the report in the route the file
+    /// is uploaded through; null for a file attached to an outbreak.
     /// </summary>
-    public int PersonConditionId { get; set; }
+    public int? PersonConditionId { get; set; }
+
+    /// <summary>
+    /// The outbreak this file is attached to, as the legacy
+    /// <c>outbreak_id</c>, set from the outbreak in the route; null for a file
+    /// attached to a report.
+    /// </summary>
+    public int? OutbreakId { get; set; }
 
     /// <summary>
     /// The <see cref="AttachmentFile"/> row holding the bytes, as the legacy

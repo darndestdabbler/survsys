@@ -80,10 +80,7 @@ public sealed class AttachmentsClient(HttpClient http)
         int page,
         int pageSize,
         CancellationToken cancellationToken = default) =>
-        Listing.Get<PagedResult<AttachmentResponse>>(
-            http,
-            $"api/person-conditions/{reportId}/attachments?page={page}&pageSize={pageSize}",
-            cancellationToken);
+        PageOf($"api/person-conditions/{reportId}", page, pageSize, cancellationToken);
 
     /// <summary>
     /// Every attachment of a report, newest first, read page by page until the
@@ -98,15 +95,39 @@ public sealed class AttachmentsClient(HttpClient http)
     /// fails is the failure of the whole, in the list's own words, because a
     /// list with a hole in it is not the list.
     /// </remarks>
-    public async Task<Asked<IReadOnlyList<AttachmentResponse>>> All(
+    public Task<Asked<IReadOnlyList<AttachmentResponse>>> All(
         int reportId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        AllOf($"api/person-conditions/{reportId}", cancellationToken);
+
+    /// <summary>
+    /// Every attachment of an outbreak, newest first, read as <see cref="All"/>
+    /// reads a report's, or why there is none.
+    /// </summary>
+    public Task<Asked<IReadOnlyList<AttachmentResponse>>> AllForOutbreak(
+        int outbreakId,
+        CancellationToken cancellationToken = default) =>
+        AllOf($"api/outbreaks/{outbreakId}", cancellationToken);
+
+    private Task<Asked<PagedResult<AttachmentResponse>>> PageOf(
+        string owner,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken) =>
+        Listing.Get<PagedResult<AttachmentResponse>>(
+            http,
+            $"{owner}/attachments?page={page}&pageSize={pageSize}",
+            cancellationToken);
+
+    private async Task<Asked<IReadOnlyList<AttachmentResponse>>> AllOf(
+        string owner,
+        CancellationToken cancellationToken)
     {
         var all = new List<AttachmentResponse>();
 
         for (var page = 1; ; page++)
         {
-            var asked = await Page(reportId, page, FullPage, cancellationToken);
+            var asked = await PageOf(owner, page, FullPage, cancellationToken);
 
             if (asked.Value is not { } listed)
             {
@@ -138,13 +159,36 @@ public sealed class AttachmentsClient(HttpClient http)
     /// the part rather than guessed at, which the API tier then refuses by the
     /// same rule it refuses any type it does not store.
     /// </remarks>
-    public async Task<Asked<AttachmentResponse>> Attach(
+    public Task<Asked<AttachmentResponse>> Attach(
         int reportId,
         string filename,
         string? contentType,
         string? category,
         Stream content,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        AttachTo($"api/person-conditions/{reportId}", filename, contentType, category, content, cancellationToken);
+
+    /// <summary>
+    /// Attaches one file to an outbreak, as <see cref="Attach"/> attaches one
+    /// to a report, and answers with the attachment as it was stored, or with
+    /// why nothing was stored.
+    /// </summary>
+    public Task<Asked<AttachmentResponse>> AttachToOutbreak(
+        int outbreakId,
+        string filename,
+        string? contentType,
+        string? category,
+        Stream content,
+        CancellationToken cancellationToken = default) =>
+        AttachTo($"api/outbreaks/{outbreakId}", filename, contentType, category, content, cancellationToken);
+
+    private async Task<Asked<AttachmentResponse>> AttachTo(
+        string owner,
+        string filename,
+        string? contentType,
+        string? category,
+        Stream content,
+        CancellationToken cancellationToken)
     {
         using var form = new MultipartFormDataContent();
         using var file = new StreamContent(content);
@@ -159,7 +203,7 @@ public sealed class AttachmentsClient(HttpClient http)
 
         return await Uploading.PostContent<AttachmentResponse>(
             http,
-            $"api/person-conditions/{reportId}/attachments",
+            $"{owner}/attachments",
             form,
             cancellationToken);
     }

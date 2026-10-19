@@ -486,6 +486,140 @@ public class PersonConditionsClientTests
         Assert.StartsWith(PersonConditionsClient.BriefNoteFailurePrefix, saved.Failure);
     }
 
+    [Fact]
+    public async Task DeleteDeletesTheReportAndAnswersNothing()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new PersonConditionsClient(Transport(request =>
+        {
+            sent = request;
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }));
+
+        Assert.Null(await client.Delete(11));
+        Assert.Equal(HttpMethod.Delete, sent?.Method);
+        Assert.Equal("http://api.example.test/api/person-conditions/11", sent?.RequestUri?.ToString());
+    }
+
+    [Fact]
+    public async Task DeleteThatWasRefusedCarriesTheDeletePrefix()
+    {
+        var client = new PersonConditionsClient(Transport(_ => Answer(HttpStatusCode.NotFound, "{}")));
+
+        Assert.StartsWith(PersonConditionsClient.DeleteFailurePrefix, await client.Delete(11));
+    }
+
+    [Fact]
+    public async Task RestorePostsTheRestoreUrlAndTheReportComesBack()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new PersonConditionsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK,
+                """{ "id": 11, "personId": 13, "conditionId": 74, "recordNumber": "202600001", "createdAt": "2026-03-12T22:07:16-06:00" }""");
+        }));
+
+        var restored = await client.Restore(11);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/person-conditions/11/restore", sent?.RequestUri?.ToString());
+        Assert.Null(restored.Value?.DeletedAt);
+    }
+
+    [Fact]
+    public async Task RestoreThatWasRefusedCarriesTheRestorePrefix()
+    {
+        var client = new PersonConditionsClient(Transport(_ => Answer(HttpStatusCode.NotFound, "{}")));
+
+        Assert.StartsWith(PersonConditionsClient.RestoreFailurePrefix, (await client.Restore(11)).Failure);
+    }
+
+    [Fact]
+    public async Task LockReadsWhoHoldsTheLock()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new PersonConditionsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK,
+                """{ "userId": 7, "userName": "Ada Investigator", "lockedAt": "2026-10-19T09:00:00Z", "expiresAt": "2026-10-19T09:30:00Z" }""");
+        }));
+
+        var held = await client.Lock(11);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal("http://api.example.test/api/person-conditions/11/lock", sent?.RequestUri?.ToString());
+        Assert.Equal("Ada Investigator", held.Value?.UserName);
+    }
+
+    [Fact]
+    public async Task LockThatCouldNotBeReadCarriesTheLockPrefix()
+    {
+        var client = new PersonConditionsClient(Transport(_ => Answer(HttpStatusCode.NotFound, "{}")));
+
+        Assert.StartsWith(PersonConditionsClient.LockFailurePrefix, (await client.Lock(11)).Failure);
+    }
+
+    [Fact]
+    public async Task TakeLockPostsTheLockUrlAndTheLockComesBack()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new PersonConditionsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK,
+                """{ "userId": 7, "userName": "Ada Investigator", "lockedAt": "2026-10-19T09:00:00Z", "expiresAt": "2026-10-19T09:30:00Z" }""");
+        }));
+
+        var taken = await client.TakeLock(11);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/person-conditions/11/lock", sent?.RequestUri?.ToString());
+        Assert.Equal(7, taken.Value?.UserId);
+    }
+
+    [Fact]
+    public async Task TakeLockHeldByAnotherCarriesTheTakeLockPrefix()
+    {
+        var client = new PersonConditionsClient(Transport(_ => Answer(
+            HttpStatusCode.Conflict,
+            """{ "status": 409, "detail": "This case is being edited by Ada Investigator." }""")));
+
+        var taken = await client.TakeLock(11);
+
+        Assert.StartsWith(PersonConditionsClient.TakeLockFailurePrefix, taken.Failure);
+        Assert.Contains("409", taken.Failure);
+    }
+
+    [Fact]
+    public async Task ReleaseLockDeletesTheLockAndAnswersNothing()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new PersonConditionsClient(Transport(request =>
+        {
+            sent = request;
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }));
+
+        Assert.Null(await client.ReleaseLock(11));
+        Assert.Equal(HttpMethod.Delete, sent?.Method);
+        Assert.Equal("http://api.example.test/api/person-conditions/11/lock", sent?.RequestUri?.ToString());
+    }
+
+    [Fact]
+    public async Task ReleaseLockThatWasRefusedCarriesTheReleaseLockPrefix()
+    {
+        var client = new PersonConditionsClient(Transport(_ => Answer(HttpStatusCode.Conflict, "{}")));
+
+        Assert.StartsWith(PersonConditionsClient.ReleaseLockFailurePrefix, await client.ReleaseLock(11));
+    }
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 

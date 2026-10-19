@@ -141,7 +141,7 @@ of every test it runs, and writes the recordings to
    address in
    your browser's address bar: it ends in `/event/edit/` and a number, and
    step 15 comes back to it.
-10. Press the **Laboratory** tab. The tab opens on two panels. The first,
+10. Press **Edit** at the top of the report, which opens it for editing, then press the **Laboratory** tab. The tab opens on two panels. The first,
     headed **Specimens**, is a table with the columns **Accession**,
     **Collected**, **Source**, **Lab facility**, **Provider**,
     **Diagnostic**, **Reporting**, **Sent to state** and **Actions**, and

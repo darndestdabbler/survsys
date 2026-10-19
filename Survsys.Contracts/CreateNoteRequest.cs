@@ -40,8 +40,13 @@ namespace Survsys.Contracts;
 /// The exposure this note is about, where it is about one, as the legacy
 /// <c>exposure_id</c>; null for a note about the report itself.
 /// </param>
+/// <param name="Private">
+/// Whether only its author may see the note. A private note is recorded under
+/// the signed-in user, whatever <paramref name="UserId"/> says.
+/// </param>
 public record CreateNoteRequest(
     string? Text = null,
     string? NoteType = null,
     int? UserId = null,
-    int? ExposureId = null);
+    int? ExposureId = null,
+    bool Private = false);

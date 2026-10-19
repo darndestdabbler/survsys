@@ -57,6 +57,11 @@ namespace Survsys.Api;
 /// <param name="CaseStatus">The legacy case status code the report holds, exactly.</param>
 /// <param name="OnsetFrom">The earliest event onset date to include, inclusive.</param>
 /// <param name="OnsetTo">The latest event onset date to include, inclusive.</param>
+/// <param name="ShowDeleted">
+/// Whether deleted reports are included; they are left out unless this is set.
+/// It is a switch on what is shown rather than a criterion, so
+/// <see cref="IsEmpty"/> does not count it.
+/// </param>
 public sealed record CaseSearch(
     string? RecordNumber = null,
     string? LastName = null,
@@ -67,7 +72,8 @@ public sealed record CaseSearch(
     string? WorkflowState = null,
     string? CaseStatus = null,
     DateOnly? OnsetFrom = null,
-    DateOnly? OnsetTo = null)
+    DateOnly? OnsetTo = null,
+    bool ShowDeleted = false)
 {
     /// <summary>
     /// Whether no criterion was given at all, in which case the page is
@@ -114,7 +120,8 @@ public sealed record CaseSearch(
         Said(WorkflowState),
         Said(CaseStatus),
         OnsetFrom,
-        OnsetTo);
+        OnsetTo,
+        ShowDeleted);
 
     /// <summary>
     /// A criterion trimmed, or null where nothing was said in it.

@@ -51,5 +51,8 @@ internal sealed class NoteConfiguration : IEntityTypeConfiguration<Note>
         builder.Property(note => note.NoteType)
             .HasColumnName("note_type")
             .HasMaxLength(CodeLength);
+        builder.Property(note => note.Private)
+            .HasColumnName("private")
+            .IsRequired();
     }
 }

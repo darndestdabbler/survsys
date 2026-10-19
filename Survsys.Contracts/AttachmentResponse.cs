@@ -30,17 +30,25 @@ namespace Survsys.Contracts;
 /// a caller to fill in.
 /// </remarks>
 /// <param name="Id">The attachment's identifier, as the download route names it.</param>
-/// <param name="PersonConditionId">The case morbidity report this file is attached to.</param>
+/// <param name="PersonConditionId">
+/// The case morbidity report this file is attached to, or null for a file
+/// attached to an outbreak.
+/// </param>
 /// <param name="Filename">What the file is called, and the name a download is offered under.</param>
 /// <param name="ContentType">What the file is, as it was declared when it was uploaded.</param>
 /// <param name="Size">How many bytes were stored.</param>
 /// <param name="Category">What the file was filed under: one of the categories the API tier accepts.</param>
 /// <param name="CreatedAt">When the file was attached, with the offset it was attached at.</param>
+/// <param name="OutbreakId">
+/// The outbreak this file is attached to, or null for a file attached to a
+/// report.
+/// </param>
 public record AttachmentResponse(
     int Id,
-    int PersonConditionId,
+    int? PersonConditionId,
     string Filename,
     string ContentType,
     long Size,
     string Category,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    int? OutbreakId = null);

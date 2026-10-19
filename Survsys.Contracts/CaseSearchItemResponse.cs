@@ -43,6 +43,10 @@ namespace Survsys.Contracts;
 /// <param name="EventOnsetDate">
 /// The date the event began, or null where it is not set.
 /// </param>
+/// <param name="Deleted">
+/// Whether the report has been deleted — only ever true where the search was
+/// asked to show deleted reports.
+/// </param>
 public record CaseSearchItemResponse(
     int Id,
     string RecordNumber,
@@ -56,4 +60,5 @@ public record CaseSearchItemResponse(
     string? CaseStatus,
     int? MmwrWeek,
     int? MmwrYear,
-    DateOnly? EventOnsetDate);
+    DateOnly? EventOnsetDate,
+    bool Deleted = false);

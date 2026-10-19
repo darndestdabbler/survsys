@@ -255,6 +255,27 @@ public class CaseSearchEndpointsTests(SqlServerFixture server) : IAsyncLifetime
     }
 
     /// <summary>
+    /// A deleted case is left out of the search unless deleted cases are asked
+    /// for, and is then found marked deleted.
+    /// </summary>
+    [Fact]
+    public async Task ADeletedCaseIsHiddenUnlessDeletedCasesAreShown()
+    {
+        using (var deleted = await client.DeleteAsync($"/api/person-conditions/{amosMalaria.Id}"))
+        {
+            deleted.EnsureSuccessStatusCode();
+        }
+
+        var hidden = await Cases("?pageSize=200");
+        var shown = await Cases("?showDeleted=true&pageSize=200");
+
+        Assert.Equal([amaraOther.Id, beaOther.Id, amaraMalaria.Id], Mine(hidden));
+        Assert.Equal([amaraOther.Id, beaOther.Id, amosMalaria.Id, amaraMalaria.Id], Mine(shown));
+        Assert.True(Assert.Single(shown.Items, row => row.Id == amosMalaria.Id).Deleted);
+        Assert.All(hidden.Items, row => Assert.False(row.Deleted));
+    }
+
+    /// <summary>
     /// Each of the three states a case here sits in finds the cases at it,
     /// the initial one included: a case opened and never moved is stored at
     /// the initial code, and one whose code was never stored at all reads as

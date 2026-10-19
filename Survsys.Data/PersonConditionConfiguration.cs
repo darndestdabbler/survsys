@@ -170,6 +170,11 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
             .HasColumnName("brief_note")
             .HasMaxLength(BriefNoteLength);
 
+        // The soft delete and the edit lock, added in session 65.
+        builder.Property(report => report.DeletedAt).HasColumnName("deleted_at");
+        builder.Property(report => report.LockedByUserId).HasColumnName("locked_by_user_id");
+        builder.Property(report => report.LockedAt).HasColumnName("locked_at");
+
         // What makes a record number a way of referring to a report. The rule
         // that issues one reads the highest already issued for the year and
         // adds to it, which two creations in the same instant can both do: the
@@ -214,6 +219,13 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
         builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(report => report.InvestigatorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The edit lock's holder, for the same reason: optional, and the
+        // account is never deleted out from under it.
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(report => report.LockedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // The expected delivery facility is optional and does not cascade: a

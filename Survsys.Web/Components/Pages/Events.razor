@@ -113,6 +113,11 @@
                           Label="Onset to" Variant="Variant.Outlined"
                           InputType="InputType.Date" />
         </MudItem>
+        <MudItem xs="12" sm="4" Class="d-flex align-center">
+            @* Deleted cases are left out of the search unless asked for. *@
+            <MudCheckBox T="bool" @bind-Value="showDeleted" id="events-show-deleted"
+                         Label="Show deleted cases" />
+        </MudItem>
     </MudGrid>
 
     <div class="d-flex gap-2 mt-4">
@@ -178,6 +183,10 @@ else if (asked?.Value is { } cases)
                         <tr id="@($"events-row-{row.Id}")">
                             <td id="@($"events-row-{row.Id}-record")">
                                 <a href="@($"/event/edit/{row.Id}")">@row.RecordNumber</a>
+                                @if (row.Deleted)
+                                {
+                                    <em id="@($"events-row-{row.Id}-deleted")"> (deleted)</em>
+                                }
                             </td>
                             <td id="@($"events-row-{row.Id}-patient")">@row.PatientName</td>
                             <td id="@($"events-row-{row.Id}-disease")">@row.ConditionName</td>
@@ -234,6 +243,7 @@ else if (asked?.Value is { } cases)
     private string? caseStatus;
     private string? onsetFrom;
     private string? onsetTo;
+    private bool showDeleted;
 
     private IReadOnlyList<ConditionResponse> conditions = [];
     private IReadOnlyList<AgencyResponse> agencies = [];
@@ -334,6 +344,7 @@ else if (asked?.Value is { } cases)
         caseStatus = null;
         onsetFrom = null;
         onsetTo = null;
+        showDeleted = false;
 
         asked = null;
         searched = new();
@@ -382,7 +393,8 @@ else if (asked?.Value is { } cases)
             workflowState,
             caseStatus,
             from,
-            to);
+            to,
+            showDeleted);
 
         return true;
     }

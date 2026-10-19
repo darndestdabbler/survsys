@@ -166,8 +166,12 @@ public class RecordDemographicsTests(SurvsysHarness harness) : SurvsysPageTest
         });
 
         // 15. The unit number, changed.
-        await Step(Document, 15, "change Unit number to Apt 7C", async () =>
-            await Page.Locator("#demographics-address-0-unit-number").FillAsync("Apt 7C"));
+        await Step(Document, 15, "press Edit and change Unit number to Apt 7C", async () =>
+        {
+            await Page.Locator("#report-edit").ClickAsync();
+            await Expect(Page.Locator("#report-done")).ToBeVisibleAsync();
+            await Page.Locator("#demographics-address-0-unit-number").FillAsync("Apt 7C");
+        });
 
         // 16. A second telephone.
         await Step(Document, 16, "press Add telephone and fill the new row's Area and Phone", async () =>

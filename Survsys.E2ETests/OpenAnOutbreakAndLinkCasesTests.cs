@@ -140,8 +140,10 @@ public class OpenAnOutbreakAndLinkCasesTests(SurvsysHarness harness) : SurvsysPa
         });
 
         // 12. The Administrative tab and its Outbreak name list.
-        await Step(Document, 12, "press the Administrative tab and find the Outbreak name list", async () =>
+        await Step(Document, 12, "press Edit, then the Administrative tab, and find the Outbreak name list", async () =>
         {
+            await Page.Locator("#report-edit").ClickAsync();
+            await Expect(Page.Locator("#report-done")).ToBeVisibleAsync();
             await Page.Locator("#report-tab-administrative").ClickAsync();
 
             await Expect(Page.Locator("#administrative-case")).ToContainTextAsync("Case / Outbreak");

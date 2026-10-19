@@ -117,8 +117,10 @@ public class WorkATaskListTests(SurvsysHarness harness) : SurvsysPageTest
         });
 
         // 9. The Notes tab's Tasks section: no tasks, and the entry panel.
-        await Step(Document, 9, "press the Notes tab and read the empty Tasks section and the Add a task panel", async () =>
+        await Step(Document, 9, "press Edit, then the Notes tab, and read the empty Tasks section and the Add a task panel", async () =>
         {
+            await Page.Locator("#report-edit").ClickAsync();
+            await Expect(Page.Locator("#report-done")).ToBeVisibleAsync();
             await OpenNotesTab();
 
             await Expect(Page.Locator("#tasks-none")).ToHaveTextAsync("No tasks found.");

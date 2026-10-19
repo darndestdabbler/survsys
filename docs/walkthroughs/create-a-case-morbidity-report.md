@@ -152,7 +152,9 @@ of every test it runs, and writes the recordings to
     is the date first reported to public health, which the header does not
     show. The MMWR week is the event date's, and the case status reads
     **Unknown** because none has been set.
-12. Under the header bar are two panels, headed **Case status** and **CDC
+12. Above the header bar are the buttons **Edit**, **Delete** and **Print**:
+    the report opens read-only, and **Edit** opens it for editing. Under the
+    header bar are two panels, headed **Case status** and **CDC
     notification**, and under them is the tab strip. It shows eleven tabs,
     left to right: **Demographic**, **Clinical**, **Laboratory**,
     **Investigation**, **Administrative**, **Forms**, **Vaccines**,

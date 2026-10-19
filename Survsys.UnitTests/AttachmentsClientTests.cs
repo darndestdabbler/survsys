@@ -175,6 +175,45 @@ public class AttachmentsClientTests
         Assert.Equal("chest.png", stored.Value?.Filename);
     }
 
+    [Fact]
+    public async Task AttachToOutbreakPostsToTheOutbreaksAttachmentsUrl()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new AttachmentsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.Created, Attachment);
+        }));
+
+        using var content = new MemoryStream([1, 2, 3]);
+
+        var stored = await client.AttachToOutbreak(9, "line-list.csv", "text/csv", "lab", content);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/outbreaks/9/attachments", sent?.RequestUri?.ToString());
+        Assert.True(stored.Succeeded);
+    }
+
+    [Fact]
+    public async Task AllForOutbreakReadsTheOutbreaksAttachments()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new AttachmentsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, PageOf([4], 1, 1));
+        }));
+
+        var all = await client.AllForOutbreak(9);
+
+        Assert.Equal(
+            $"http://api.example.test/api/outbreaks/9/attachments?page=1&pageSize={AttachmentsClient.FullPage}",
+            sent?.RequestUri?.ToString());
+        Assert.Equal(1, all.Value?.Count);
+    }
+
     /// <summary>
     /// A declared type that is not a media type at all is left off the part
     /// rather than guessed at: the upload still goes, and the API tier refuses

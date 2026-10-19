@@ -704,4 +704,29 @@ public class PersonCondition
     /// line an investigator keeps at the top of the case; null until written.
     /// </summary>
     public string? BriefNote { get; set; }
+
+    /// <summary>
+    /// When this report was deleted, or null while it stands — the soft
+    /// delete the report screen offers and its restore clears.
+    /// </summary>
+    /// <remarks>
+    /// Added in session 65. A moment rather than a flag so that a deleted case
+    /// says when it went; nothing is removed, and the case search leaves a
+    /// deleted report out unless it is asked to show deleted ones.
+    /// </remarks>
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    /// <summary>
+    /// The user who took the edit lock on this report, or null where none was
+    /// taken — a foreign key into <see cref="User"/> that does not cascade.
+    /// </summary>
+    /// <remarks>
+    /// Added in session 65 with <see cref="LockedAt"/>. Who holds the lock at
+    /// a moment is <see cref="EditLockRules.HolderAt"/>'s to say: a lock older
+    /// than its timeout is held by nobody, whatever this column still holds.
+    /// </remarks>
+    public int? LockedByUserId { get; set; }
+
+    /// <summary>When the edit lock was last taken, or null where none was.</summary>
+    public DateTimeOffset? LockedAt { get; set; }
 }

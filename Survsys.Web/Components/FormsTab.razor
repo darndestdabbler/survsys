@@ -49,11 +49,15 @@ else
                     <tr data-assignment="@assignment.Id">
                         <td data-assignment-name>@assignment.FormName</td>
                         <td>
-                            <MudButton id="@($"forms-tab-open-{assignment.Id}")" Variant="Variant.Text"
-                                       Color="Color.Primary" Size="Size.Small"
-                                       OnClick="@(() => Open(assignment.Id))">
-                                Open
-                            </MudButton>
+                            @* Opening a form only shows it, so it stays enabled on a
+                               report opened read-only; its answers stay disabled. *@
+                            <CascadingValue Name="ParentDisabled" Value="false">
+                                <MudButton id="@($"forms-tab-open-{assignment.Id}")" Variant="Variant.Text"
+                                           Color="Color.Primary" Size="Size.Small"
+                                           OnClick="@(() => Open(assignment.Id))">
+                                    Open
+                                </MudButton>
+                            </CascadingValue>
                         </td>
                     </tr>
                 }
@@ -67,9 +71,11 @@ else
             <div class="d-flex align-center mb-2">
                 <MudText Typo="Typo.h6">@form.FormName</MudText>
                 <MudSpacer />
-                <MudButton id="forms-tab-close" Variant="Variant.Text" Size="Size.Small" OnClick="@Close">
-                    Close
-                </MudButton>
+                <CascadingValue Name="ParentDisabled" Value="false">
+                    <MudButton id="forms-tab-close" Variant="Variant.Text" Size="Size.Small" OnClick="@Close">
+                        Close
+                    </MudButton>
+                </CascadingValue>
             </div>
 
             @if (saved is { } ok)

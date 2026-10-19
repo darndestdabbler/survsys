@@ -29,6 +29,10 @@ namespace Survsys.Web;
 /// <param name="CaseStatus">The legacy case status code the report holds.</param>
 /// <param name="OnsetFrom">The earliest event onset date to include, inclusive.</param>
 /// <param name="OnsetTo">The latest event onset date to include, inclusive.</param>
+/// <param name="ShowDeleted">
+/// Whether deleted reports are shown too. A switch on what is shown rather
+/// than a criterion, so <see cref="IsEmpty"/> does not count it.
+/// </param>
 public sealed record CaseSearchCriteria(
     string? RecordNumber = null,
     string? LastName = null,
@@ -39,7 +43,8 @@ public sealed record CaseSearchCriteria(
     string? WorkflowState = null,
     string? CaseStatus = null,
     DateOnly? OnsetFrom = null,
-    DateOnly? OnsetTo = null)
+    DateOnly? OnsetTo = null,
+    bool ShowDeleted = false)
 {
     /// <summary>Whether nothing has been typed into the form at all.</summary>
     /// <remarks>
@@ -131,6 +136,11 @@ public sealed class CasesClient(HttpClient http)
         Typed("caseStatus", criteria.CaseStatus);
         Dated("onsetFrom", criteria.OnsetFrom);
         Dated("onsetTo", criteria.OnsetTo);
+
+        if (criteria.ShowDeleted)
+        {
+            asked.Add("showDeleted=true");
+        }
 
         return $"api/cases?{string.Join('&', asked)}";
 

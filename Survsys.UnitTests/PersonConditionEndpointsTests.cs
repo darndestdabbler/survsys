@@ -275,6 +275,22 @@ public class PersonConditionEndpointsTests
     }
 
     /// <summary>
+    /// When a report was deleted rides on its response, and a standing report
+    /// carries none.
+    /// </summary>
+    [Fact]
+    public void ToResponseCarriesWhenTheReportWasDeleted()
+    {
+        var report = Created();
+        Assert.Null(PersonConditionEndpoints.ToResponse.Compile().Invoke(report).DeletedAt);
+
+        var deletedAt = new DateTimeOffset(2026, 10, 19, 9, 0, 0, TimeSpan.Zero);
+        report.DeletedAt = deletedAt;
+
+        Assert.Equal(deletedAt, PersonConditionEndpoints.ToResponse.Compile().Invoke(report).DeletedAt);
+    }
+
+    /// <summary>
     /// Every transition passes with what it needs: a bare code for most, an
     /// agency for a route, an investigator for an assignment, and a note that
     /// fits the column on any of them.

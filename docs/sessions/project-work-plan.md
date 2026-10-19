@@ -76,7 +76,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 62 | Event types, contact cases and the contact import | no | 2026-10-18 |
 | 63 | Treatments, encounters, occupation and pregnancy on a case | no | 2026-10-18 |
 | 64 | The reference code lists behind every coded field | no | 2026-10-19 |
-| 65 | Delete, print and lock a case, and private notes | — | not declared |
+| 65 | Delete, print and lock a case, and private notes | no | 2026-10-19 |
 | 66 | Phase 8 walkthroughs | — | not declared |
 | 67 | Release 0.9.0 (release: 0.9.0) | — | not declared |
 | 68 | Person identifiers, name history and address history | — | not declared |
@@ -592,3 +592,14 @@ Give every field typed as a free-text code a reference list to choose it from. S
 
 - 2026-10-19 — step 'walkthroughs-choose-codes': its files: Running the walkthroughs found two defects in the earlier select steps: CodeSelect's ToStringFunc left a chosen entry's text blank (removed), and the new task category select shared the attachment panel's Category label on the Notes tab (relabelled Task category). The create-a-case-morbidity-report pair reads the case status panel this session changed and the tab strip session 63 grew, and was the one other failing walkthrough. (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-19 — step 'walkthroughs-choose-codes': its checks: The create-a-case-morbidity-report walkthrough this step now changes joins the step's E2E check. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 65 — Delete, print and lock a case, and private notes
+
+**Releasable: no.**
+
+Let a case be deleted softly and restored, locked while one user edits it, printed whole, and let a note be private, and let an outbreak carry attachments. Survsys.Data gains on person_condition a deleted_at moment and an edit lock (locked_by_user_id, a foreign key to users, and locked_at), a private flag on notes, and EditLockRules, the pure rule saying who holds a lock at a moment given a fixed 30-minute timeout from when it was taken, in one migration; a second migration lets an attachment hang off an outbreak instead of a report. Survsys.Api gains DELETE /api/person-conditions/{id} (stamps deleted_at) and POST /api/person-conditions/{id}/restore (clears it), deleted_at on the report's wire shape, a showDeleted criterion on GET /api/cases that otherwise leaves deleted cases out, GET/POST/DELETE /api/person-conditions/{id}/lock (read the holder; take it when free, expired or already the caller's, else 409 naming the holder; release the caller's own), a private note recorded under the signed-in user and listed only to that user, and POST/GET /api/outbreaks/{id}/attachments. Survsys.Web opens the report read-only with an Edit button that takes the lock and a Done button that releases it (as does leaving the page), shows the lock's holder to anyone else, offers delete and restore, links to a printable view of the whole case for the browser to print or save as PDF, adds a show-deleted box on the Events screen, a private box on the Notes tab and the Attachments panel on an outbreak. Survsys.IntegrationTests prove deletion, restoring, the show-deleted filter, the lock's contention and its timeout, private notes and outbreak attachments; the walkthroughs that edit a report click Edit first, document and test changed together.
+
+**Amended after acceptance:**
+
+- 2026-10-19 — step 'outbreak-attachments': its files: SQL Server refuses a second cascade path from outbreaks to attachments (outbreaks->person_conditions SET NULL->attachments CASCADE), so the outbreak foreign key does not cascade and the outbreak delete removes its attachments' files (which cascade to the attachments) first (claude-code (anthropic, claude-opus-5-5))
+- 2026-10-19 — step 'walkthroughs-click-edit': its files: The complete-a-supplemental-form walkthrough reads a form's answers back on a read-only report; the Forms tab's Open and Close buttons only show a form, so they stay enabled when the report is read-only (claude-code (anthropic, claude-opus-5-5))

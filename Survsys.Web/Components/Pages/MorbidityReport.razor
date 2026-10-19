@@ -32,6 +32,8 @@
 @inject CoreElementsClient CoreElements
 @inject NotificationQueueClient Notifications
 @inject UsersClient Users
+@inject IDialogService Dialogs
+@implements IAsyncDisposable
 
 <PageTitle>@Title — Survsys</PageTitle>
 
@@ -52,6 +54,70 @@ else if (failure is { } whyNot)
 else if (report is { } shown && person is not null && clinical is { } clinicalData
          && investigation is { } investigationData && administrative is { } administrativeData)
 {
+    @* The report opens read-only. Edit takes the case's edit lock and enables
+       everything below the header; Done releases it, as leaving the page
+       does. Somebody else's live lock is named, and refuses Edit. A deleted
+       case offers Restore in place of Edit, and stays read-only. *@
+    <MudPaper id="report-actions" Elevation="1" Class="pa-4 mb-4">
+        @if (shown.DeletedAt is not null)
+        {
+            <MudAlert id="report-deleted" Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-2">
+                This case has been deleted. Restore it to work on it again.
+            </MudAlert>
+        }
+
+        @if (lockHolder is { } holder)
+        {
+            <MudAlert id="report-lock-holder" Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-2">
+                @holder
+            </MudAlert>
+        }
+
+        @if (actionError is { } whyNotActed)
+        {
+            <MudAlert id="report-action-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-2">
+                @whyNotActed
+            </MudAlert>
+        }
+
+        <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+            @if (shown.DeletedAt is not null)
+            {
+                <MudButton id="report-restore" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@acting" OnClick="@Restore">
+                    Restore
+                </MudButton>
+            }
+            else if (editing)
+            {
+                <MudButton id="report-done" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@acting" OnClick="@Done">
+                    Done
+                </MudButton>
+            }
+            else
+            {
+                <MudButton id="report-edit" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@acting" OnClick="@Edit">
+                    Edit
+                </MudButton>
+            }
+
+            @if (shown.DeletedAt is null)
+            {
+                <MudButton id="report-delete" Variant="Variant.Outlined" Color="Color.Error"
+                           Disabled="@acting" OnClick="@Delete">
+                    Delete
+                </MudButton>
+            }
+
+            <MudButton id="report-print" Variant="Variant.Outlined" Color="Color.Default"
+                       Href="@($"/event/print/{shown.Id}")">
+                Print
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
     @* The header bar: a label and a value per field, each value with the
        identifier a walkthrough names it by. *@
     <MudPaper id="report-header" Elevation="1" Class="pa-4 mb-4">
@@ -104,6 +170,11 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
             </MudItem>
         </MudGrid>
 
+        @* Everything a user changes on the report, from here to the last tab,
+           is disabled through MudBlazor's cascading ParentDisabled until Edit
+           has taken the lock. *@
+        <CascadingValue Name="ParentDisabled" Value="@(!editing)">
+
         @* The brief note: a line kept at the top of the case, saved on its
            own, as the legacy header's text box and Save button are. *@
         <MudGrid Spacing="2" Class="align-center mt-2">
@@ -153,7 +224,10 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 Promote to morbidity report
             </MudButton>
         }
+        </CascadingValue>
     </MudPaper>
+
+    <CascadingValue Name="ParentDisabled" Value="@(!editing)">
 
     @* The case status editor: a text box holding the legacy code, as every
        coded field in this tier is, and the API tier's to validate — a code it
@@ -409,6 +483,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
             </ChildContent>
         </MudTabPanel>
     </MudTabs>
+    </CascadingValue>
 }
 
 @code {
@@ -483,6 +558,16 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
 
     private string? workflowError;
 
+    /// <summary>Whether this page holds the case's edit lock, and so lets the report be changed.</summary>
+    private bool editing;
+
+    /// <summary>Who else holds the edit lock and until when, or null where nobody else does.</summary>
+    private string? lockHolder;
+
+    private bool acting;
+
+    private string? actionError;
+
     /// <summary>
     /// How many conditions this screen asks for: the whole catalogue in one
     /// page, for the reason the creation screen gives.
@@ -532,7 +617,145 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
             ?? investigationData.Failure ?? administrativeData.Failure ?? hiddenElements.Failure
             ?? workflowData.Failure ?? investigatorList.Failure;
 
+        await ReadLockHolder();
+
         loading = false;
+    }
+
+    /// <summary>
+    /// Reads who holds the edit lock, so a user opening a case somebody is
+    /// editing is told who and until when before they ask.
+    /// </summary>
+    private async Task ReadLockHolder()
+    {
+        var read = await Reports.Lock(ReportId);
+
+        lockHolder = read.Value is { UserId: not null, ExpiresAt: { } expires } held
+            ? $"Being edited by {held.UserName} until {expires.ToLocalTime():yyyy-MM-dd HH:mm}."
+            : null;
+    }
+
+    /// <summary>
+    /// Takes the edit lock and opens the report for editing, or shows why not
+    /// — somebody else holding it, named from a fresh read of the lock.
+    /// </summary>
+    private async Task Edit()
+    {
+        actionError = null;
+        acting = true;
+
+        try
+        {
+            var taken = await Reports.TakeLock(ReportId);
+
+            if (taken.Succeeded)
+            {
+                editing = true;
+                lockHolder = null;
+            }
+            else
+            {
+                actionError = taken.Failure;
+                await ReadLockHolder();
+            }
+        }
+        finally
+        {
+            acting = false;
+        }
+    }
+
+    /// <summary>Releases the edit lock and returns the report to read-only.</summary>
+    private async Task Done()
+    {
+        actionError = null;
+        acting = true;
+
+        try
+        {
+            actionError = await Reports.ReleaseLock(ReportId);
+            editing = false;
+        }
+        finally
+        {
+            acting = false;
+        }
+    }
+
+    /// <summary>
+    /// Deletes the case softly once the user confirms, releasing the lock
+    /// first where this page holds it, and shows the case as deleted.
+    /// </summary>
+    private async Task Delete()
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync(
+            "Delete this case?",
+            "The case is kept and can be restored, but it leaves the case search.",
+            yesText: "Delete",
+            cancelText: "Cancel") == true;
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        actionError = null;
+        acting = true;
+
+        try
+        {
+            if (editing)
+            {
+                await Reports.ReleaseLock(ReportId);
+                editing = false;
+            }
+
+            if (await Reports.Delete(ReportId) is { } whyNotDeleted)
+            {
+                actionError = whyNotDeleted;
+
+                return;
+            }
+
+            var reread = await Reports.Find(ReportId);
+            report = reread.Value ?? report;
+            actionError = reread.Failure;
+        }
+        finally
+        {
+            acting = false;
+        }
+    }
+
+    /// <summary>Restores a deleted case, which then opens read-only like any other.</summary>
+    private async Task Restore()
+    {
+        actionError = null;
+        acting = true;
+
+        try
+        {
+            var restored = await Reports.Restore(ReportId);
+            report = restored.Value ?? report;
+            actionError = restored.Failure;
+        }
+        finally
+        {
+            acting = false;
+        }
+    }
+
+    /// <summary>
+    /// Leaving the page releases the lock it holds, so nobody waits out the
+    /// timeout for a case its editor has closed.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (editing)
+        {
+            editing = false;
+            await Reports.ReleaseLock(ReportId);
+        }
     }
 
     /// <summary>What the browser tab says: the record number, once there is one.</summary>

@@ -144,7 +144,7 @@ runs, and writes the recordings to
    **Disease** reads **Listeriosis**. Note the address in your browser's
    address bar: it ends in `/event/edit/` and a number, and step 14 comes
    back to it.
-10. Press the **Notes** tab. The tab opens on the **Attachments** section
+10. Press **Edit** at the top of the report, which opens it for editing, then press the **Notes** tab. The tab opens on the **Attachments** section
     first, which reads **No attachments found.** — there is no table yet.
     Under it is the **Add an attachment** panel: a **Category** box reading
     **Correspondence**, a file picker beside it, a line reading **No file

@@ -117,6 +117,20 @@ public class CaseSearchTests
     }
 
     /// <summary>
+    /// Showing deleted reports is a switch on what is shown and not a
+    /// criterion: it leaves the search empty, and trimming keeps it.
+    /// </summary>
+    [Fact]
+    public void ShowDeletedIsNotACriterionAndTrimmedKeepsIt()
+    {
+        var search = new CaseSearch(ShowDeleted: true);
+
+        Assert.True(search.IsEmpty);
+        Assert.True(search.Trimmed().ShowDeleted);
+        Assert.False(new CaseSearch().ShowDeleted);
+    }
+
+    /// <summary>
     /// A name with a space inside it keeps it: "Van Dyke" is one surname, and
     /// only the spaces a form puts around a value come off.
     /// </summary>

@@ -100,7 +100,7 @@ It records video of every test it runs, and writes the recordings to
     disease and **Davis County** for the agency, with a record number of the
     current year and five more digits. Note the record number: it is how you
     will find the case on the queue.
-11. Below the header, find the panel headed **CDC notification**. It reads
+11. Press **Edit** at the top of the report, which opens it for editing. Below the header, find the panel headed **CDC notification**. It reads
     **Queue this case to be notified to CDC. A case change queues it
     automatically; this queues it again by hand.** Press **Queue for
     notification**.

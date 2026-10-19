@@ -117,8 +117,10 @@ public class EnterALaboratoryResultTests(SurvsysHarness harness) : SurvsysPageTe
         });
 
         // 10. The Laboratory tab: no specimens yet, and the empty entry form.
-        await Step(Document, 10, "press the Laboratory tab and read the empty Specimens table and the entry form", async () =>
+        await Step(Document, 10, "press Edit, then the Laboratory tab, and read the empty Specimens table and the entry form", async () =>
         {
+            await Page.Locator("#report-edit").ClickAsync();
+            await Expect(Page.Locator("#report-done")).ToBeVisibleAsync();
             await OpenLaboratoryTab();
 
             await Expect(Page.Locator("#lab-specimens thead th")).ToHaveTextAsync(

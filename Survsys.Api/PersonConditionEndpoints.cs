@@ -68,7 +68,8 @@ public static class PersonConditionEndpoints
             report.EventType,
             report.BriefNote,
             report.LhdCaseStatusId,
-            report.StateCaseStatusId);
+            report.StateCaseStatusId,
+            report.DeletedAt);
 
     /// <summary>
     /// <see cref="ToResponse"/> compiled, for the one caller that has a report
@@ -341,7 +342,47 @@ public static class PersonConditionEndpoints
             .WithName("PromotePersonCondition")
             .WithSummary("Promotes a contact event to a morbidity report.");
 
+        routes.MapDelete("/api/person-conditions/{id:int}", DeletePersonCondition)
+            .WithName("DeletePersonCondition")
+            .WithSummary("Deletes a case morbidity report softly: it is kept, marked deleted "
+                + "and left out of the case search.");
+
+        routes.MapPost("/api/person-conditions/{id:int}/restore", RestorePersonCondition)
+            .WithName("RestorePersonCondition")
+            .WithSummary("Restores a deleted case morbidity report.");
+
         return routes;
+    }
+
+    /// <remarks>
+    /// The soft delete: the report is stamped and kept, so a restore brings it
+    /// back whole. Deleting a report already deleted keeps its first stamp and
+    /// answers the same 204, as a repeated DELETE should.
+    /// </remarks>
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeletePersonCondition(
+        PersonConditionQueries reports,
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        if (await reports.SetDeleted(id, DateTimeOffset.UtcNow, cancellationToken) is null)
+        {
+            return NoSuchReport(id);
+        }
+
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> RestorePersonCondition(
+        PersonConditionQueries reports,
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        if (await reports.SetDeleted(id, null, cancellationToken) is not { } report)
+        {
+            return NoSuchReport(id);
+        }
+
+        return TypedResults.Ok(report);
     }
 
     /// <remarks>
@@ -907,6 +948,32 @@ internal sealed class PersonConditionQueries(
         report.BriefNote = string.IsNullOrWhiteSpace(request.BriefNote)
             ? null
             : request.BriefNote.Trim();
+        await database.SaveChangesAsync(cancellationToken);
+
+        return PersonConditionEndpoints.Respond(report);
+    }
+
+    /// <summary>
+    /// Deletes the report softly, or restores it where <paramref name="deletedAt"/>
+    /// is null, and answers the report; null where no report has that id.
+    /// </summary>
+    /// <remarks>
+    /// A report already deleted keeps the moment it was first deleted.
+    /// </remarks>
+    public async Task<PersonConditionResponse?> SetDeleted(
+        int id,
+        DateTimeOffset? deletedAt,
+        CancellationToken cancellationToken)
+    {
+        var report = await database.PersonConditions
+            .SingleOrDefaultAsync(report => report.Id == id, cancellationToken);
+
+        if (report is null)
+        {
+            return null;
+        }
+
+        report.DeletedAt = deletedAt is null ? null : report.DeletedAt ?? deletedAt;
         await database.SaveChangesAsync(cancellationToken);
 
         return PersonConditionEndpoints.Respond(report);

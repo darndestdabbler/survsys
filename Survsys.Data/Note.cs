@@ -121,4 +121,13 @@ public class Note
     /// what an offered value may be is the API tier's to say.
     /// </remarks>
     public string? NoteType { get; set; }
+
+    /// <summary>
+    /// Whether this note is private — listed only to the user who wrote it.
+    /// </summary>
+    /// <remarks>
+    /// Added in session 65. Required and false by default, so every note
+    /// written before it stays as visible as it was.
+    /// </remarks>
+    public bool Private { get; set; }
 }

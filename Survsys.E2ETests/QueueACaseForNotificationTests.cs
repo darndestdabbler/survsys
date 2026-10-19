@@ -123,8 +123,10 @@ public class QueueACaseForNotificationTests(SurvsysHarness harness) : SurvsysPag
         });
 
         // 11. The CDC notification panel, and Queue for notification.
-        await Step(Document, 11, "read the CDC notification panel and press Queue for notification", async () =>
+        await Step(Document, 11, "press Edit, read the CDC notification panel and press Queue for notification", async () =>
         {
+            await Page.Locator("#report-edit").ClickAsync();
+            await Expect(Page.Locator("#report-done")).ToBeVisibleAsync();
             await Expect(Page.Locator("#report-notify")).ToContainTextAsync("CDC notification");
             await Expect(Page.Locator("#report-notify")).ToContainTextAsync(
                 "Queue this case to be notified to CDC. A case change queues it automatically; "

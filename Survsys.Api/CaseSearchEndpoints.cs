@@ -55,6 +55,9 @@ public sealed record JoinedCase
 /// carried on the wire and when it is filtered for — asking for the initial
 /// code finds the reports that have never been moved as well as the ones
 /// stored at it, as the saved views' export already does.
+///
+/// A deleted report is left out unless the search asks to show deleted ones,
+/// and is then marked on its row.
 /// </remarks>
 public static class CaseSearchEndpoints
 {
@@ -86,7 +89,8 @@ public static class CaseSearchEndpoints
             joined.Report.CaseStatus,
             joined.Report.MmwrWeek,
             joined.Report.MmwrYear,
-            joined.Report.EventOnsetDate);
+            joined.Report.EventOnsetDate,
+            joined.Report.DeletedAt != null);
 
     public static IServiceCollection AddCaseSearch(this IServiceCollection services) =>
         services.AddScoped<CaseSearchQueries>();
@@ -162,6 +166,11 @@ internal sealed class CaseSearchQueries(SurvsysDbContext database)
         var search = criteria.Trimmed();
 
         var reports = database.PersonConditions.AsQueryable();
+
+        if (!search.ShowDeleted)
+        {
+            reports = reports.Where(report => report.DeletedAt == null);
+        }
 
         if (search.RecordNumber is { Length: > 0 } recordNumber)
         {

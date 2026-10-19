@@ -121,8 +121,11 @@ public class CreateACaseMorbidityReportTests(SurvsysHarness harness) : SurvsysPa
         });
 
         // 12. The two panels, then the tab strip's eleven tabs.
-        await Step(Document, 12, "read the Case status and CDC notification panels and the tab strip", async () =>
+        await Step(Document, 12, "read the Edit, Delete and Print buttons, the Case status and CDC notification panels and the tab strip", async () =>
         {
+            await Expect(Page.Locator("#report-edit")).ToHaveTextAsync("Edit");
+            await Expect(Page.Locator("#report-delete")).ToHaveTextAsync("Delete");
+            await Expect(Page.Locator("#report-print")).ToHaveTextAsync("Print");
             await Expect(Page.Locator("#report-status")).ToContainTextAsync("Case status");
             await Expect(Page.Locator("#report-notify")).ToContainTextAsync("CDC notification");
             await Expect(Page.Locator("[id^='report-tab-']")).ToHaveTextAsync(

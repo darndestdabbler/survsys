@@ -64,6 +64,20 @@ public class AttachmentEndpointsTests
             response);
     }
 
+    /// <summary>A file filed against an outbreak carries the outbreak and no report.</summary>
+    [Fact]
+    public void AttachmentToResponseCarriesAnOutbreaksAttachment()
+    {
+        var attachment = Stored();
+        attachment.PersonConditionId = null;
+        attachment.OutbreakId = 9;
+
+        var response = AttachmentEndpoints.Respond(attachment);
+
+        Assert.Null(response.PersonConditionId);
+        Assert.Equal(9, response.OutbreakId);
+    }
+
     [Fact]
     public void AnAttachmentThisTierStoresIsNotRefused() =>
         Assert.Null(WhyNot(size: 184_320));
