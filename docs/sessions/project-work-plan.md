@@ -77,42 +77,43 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 63 | Treatments, encounters, occupation and pregnancy on a case | no | 2026-10-18 |
 | 64 | The reference code lists behind every coded field | no | 2026-10-19 |
 | 65 | Delete, print and lock a case, and private notes | no | 2026-10-19 |
-| 66 | Phase 8 walkthroughs | — | not declared |
-| 67 | Release 0.9.0 (release: 0.9.0) | — | not declared |
-| 68 | Person identifiers, name history and address history | — | not declared |
-| 69 | Person matching in the running application | — | not declared |
-| 70 | Duplicate persons and merging them | — | not declared |
-| 71 | Phase 9 walkthroughs | — | not declared |
-| 72 | Release 0.10.0 (release: 0.10.0) | — | not declared |
-| 73 | Parsed messages, the parser seam and MLLP | — | not declared |
-| 74 | Vocabulary and rules at intake | — | not declared |
-| 75 | The graylist, automatic assignment and the full queue | — | not declared |
-| 76 | Labs from messages, and updating an existing case | — | not declared |
-| 77 | Exceptions, reprocessing, notifications and statistics | — | not declared |
-| 78 | Connecticut ELR conformance | — | not declared |
-| 79 | Phase 10 walkthroughs | — | not declared |
-| 80 | Release 0.11.0 (release: 0.11.0) | — | not declared |
-| 81 | The notification queue worker and the export log | — | not declared |
-| 82 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
-| 83 | Guide, rule set and value set administration | — | not declared |
-| 84 | Transport to CDC | — | not declared |
-| 85 | Phase 11 walkthroughs | — | not declared |
-| 86 | Release 0.12.0 (release: 0.12.0) | — | not declared |
-| 87 | Audit with its user and values, and its screens | — | not declared |
-| 88 | Jurisdiction-scoped access and sign-in protection | — | not declared |
-| 89 | Classification rules on save | — | not declared |
-| 90 | IBIS, ad-hoc reporting and system configuration | — | not declared |
-| 91 | Phase 12 walkthroughs | — | not declared |
-| 92 | Release 0.13.0 (release: 0.13.0) | — | not declared |
-| 93 | eICR and RR parsing and document intake | — | not declared |
-| 94 | eCR validation and the eICR viewer | — | not declared |
-| 95 | Reportability and condition mapping | — | not declared |
-| 96 | Cases from eCR | — | not declared |
-| 97 | eCR senders and data quality | — | not declared |
-| 98 | Phase 13 walkthroughs | — | not declared |
-| 99 | Release 0.14.0 (release: 0.14.0) | — | not declared |
-| 100 | The parity check and the documentation for 1.0.0 | — | not declared |
-| 101 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 66 | Reload the report when the address names another case | no | 2026-10-19 |
+| 67 | Phase 8 walkthroughs | — | not declared |
+| 68 | Release 0.9.0 (release: 0.9.0) | — | not declared |
+| 69 | Person identifiers, name history and address history | — | not declared |
+| 70 | Person matching in the running application | — | not declared |
+| 71 | Duplicate persons and merging them | — | not declared |
+| 72 | Phase 9 walkthroughs | — | not declared |
+| 73 | Release 0.10.0 (release: 0.10.0) | — | not declared |
+| 74 | Parsed messages, the parser seam and MLLP | — | not declared |
+| 75 | Vocabulary and rules at intake | — | not declared |
+| 76 | The graylist, automatic assignment and the full queue | — | not declared |
+| 77 | Labs from messages, and updating an existing case | — | not declared |
+| 78 | Exceptions, reprocessing, notifications and statistics | — | not declared |
+| 79 | Connecticut ELR conformance | — | not declared |
+| 80 | Phase 10 walkthroughs | — | not declared |
+| 81 | Release 0.11.0 (release: 0.11.0) | — | not declared |
+| 82 | The notification queue worker and the export log | — | not declared |
+| 83 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
+| 84 | Guide, rule set and value set administration | — | not declared |
+| 85 | Transport to CDC | — | not declared |
+| 86 | Phase 11 walkthroughs | — | not declared |
+| 87 | Release 0.12.0 (release: 0.12.0) | — | not declared |
+| 88 | Audit with its user and values, and its screens | — | not declared |
+| 89 | Jurisdiction-scoped access and sign-in protection | — | not declared |
+| 90 | Classification rules on save | — | not declared |
+| 91 | IBIS, ad-hoc reporting and system configuration | — | not declared |
+| 92 | Phase 12 walkthroughs | — | not declared |
+| 93 | Release 0.13.0 (release: 0.13.0) | — | not declared |
+| 94 | eICR and RR parsing and document intake | — | not declared |
+| 95 | eCR validation and the eICR viewer | — | not declared |
+| 96 | Reportability and condition mapping | — | not declared |
+| 97 | Cases from eCR | — | not declared |
+| 98 | eCR senders and data quality | — | not declared |
+| 99 | Phase 13 walkthroughs | — | not declared |
+| 100 | Release 0.14.0 (release: 0.14.0) | — | not declared |
+| 101 | The parity check and the documentation for 1.0.0 | — | not declared |
+| 102 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -604,7 +605,11 @@ Let a case be deleted softly and restored, locked while one user edits it, print
 - 2026-10-19 — step 'outbreak-attachments': its files: SQL Server refuses a second cascade path from outbreaks to attachments (outbreaks->person_conditions SET NULL->attachments CASCADE), so the outbreak foreign key does not cascade and the outbreak delete removes its attachments' files (which cascade to the attachments) first (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-19 — step 'walkthroughs-click-edit': its files: The complete-a-supplemental-form walkthrough reads a form's answers back on a read-only report; the Forms tab's Open and Close buttons only show a form, so they stay enabled when the report is read-only (claude-code (anthropic, claude-opus-5-5))
 
-### Session 66 — Phase 8 walkthroughs
+### Session 66 — Reload the report when the address names another case
+
+**Releasable: no.**
+
+Make the case morbidity report screen follow a link from one report to another. MorbidityReport.razor reads its report only in OnInitializedAsync, and Blazor reuses the page component when only ReportId changes, so /event/edit/{id} to another id keeps showing the first case. The load moves to OnParametersSetAsync, guarded by the report id last loaded, so it runs on first render and whenever ReportId changes and on no other parameter set. Before loading another case it releases the edit lock this page holds on the case it leaves (as DisposeAsync does today), and it resets the edit mode, the lock holder and every saved/error message of the case it leaves. Showing the busy indicator while loading takes the tabs out of the tree, so the tab strip returns to its first tab and each tab component is created afresh for the new report.
 
 **Rolled back:**
 

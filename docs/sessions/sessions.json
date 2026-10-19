@@ -1348,17 +1348,39 @@
         "identityProvenance": "direct"
       },
       "verificationVerdict": "VERIFIED",
-      "startCommit": "a79ac8c624e13bbc8e04a427d805a04d78dfb3a8",
-      "frameworkVersion": "3.21.0",
       "verification": {
         "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "a79ac8c624e13bbc8e04a427d805a04d78dfb3a8"
+    },
+    {
+      "number": 66,
+      "title": "Reload the report when the address names another case",
+      "status": "in-progress",
+      "startedAt": "2026-10-19T06:28:14.174000-04:00",
+      "completedAt": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "startCommit": "f9a0e176a992a00a5bc7c01c245756ee1f841d0b",
+      "frameworkVersion": "3.21.0",
+      "verification": {
+        "rounds": 1,
         "verifierModel": "gpt-5.6-terra",
         "verifierProvider": "openai",
         "transport": "api"
       }
     },
     {
-      "number": 66,
+      "number": 67,
       "title": "Phase 8 walkthroughs",
       "status": "not-started",
       "startedAt": null,
@@ -1367,7 +1389,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 67,
+      "number": 68,
       "title": "Release 0.9.0 (release: 0.9.0)",
       "status": "not-started",
       "startedAt": null,
@@ -1376,7 +1398,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 68,
+      "number": 69,
       "title": "Person identifiers, name history and address history",
       "status": "not-started",
       "startedAt": null,
@@ -1385,7 +1407,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 69,
+      "number": 70,
       "title": "Person matching in the running application",
       "status": "not-started",
       "startedAt": null,
@@ -1394,7 +1416,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 70,
+      "number": 71,
       "title": "Duplicate persons and merging them",
       "status": "not-started",
       "startedAt": null,
@@ -1403,7 +1425,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 71,
+      "number": 72,
       "title": "Phase 9 walkthroughs",
       "status": "not-started",
       "startedAt": null,
@@ -1412,7 +1434,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 72,
+      "number": 73,
       "title": "Release 0.10.0 (release: 0.10.0)",
       "status": "not-started",
       "startedAt": null,
@@ -1421,7 +1443,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 73,
+      "number": 74,
       "title": "Parsed messages, the parser seam and MLLP",
       "status": "not-started",
       "startedAt": null,
@@ -1430,7 +1452,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 74,
+      "number": 75,
       "title": "Vocabulary and rules at intake",
       "status": "not-started",
       "startedAt": null,
@@ -1439,7 +1461,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 75,
+      "number": 76,
       "title": "The graylist, automatic assignment and the full queue",
       "status": "not-started",
       "startedAt": null,
@@ -1448,7 +1470,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 76,
+      "number": 77,
       "title": "Labs from messages, and updating an existing case",
       "status": "not-started",
       "startedAt": null,
@@ -1457,7 +1479,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 77,
+      "number": 78,
       "title": "Exceptions, reprocessing, notifications and statistics",
       "status": "not-started",
       "startedAt": null,
@@ -1466,7 +1488,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 78,
+      "number": 79,
       "title": "Connecticut ELR conformance",
       "status": "not-started",
       "startedAt": null,
@@ -1475,7 +1497,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 79,
+      "number": 80,
       "title": "Phase 10 walkthroughs",
       "status": "not-started",
       "startedAt": null,
@@ -1484,7 +1506,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 80,
+      "number": 81,
       "title": "Release 0.11.0 (release: 0.11.0)",
       "status": "not-started",
       "startedAt": null,
@@ -1493,7 +1515,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 81,
+      "number": 82,
       "title": "The notification queue worker and the export log",
       "status": "not-started",
       "startedAt": null,
@@ -1502,7 +1524,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 82,
+      "number": 83,
       "title": "Auto-queue on every change, queue actions and reconciliation",
       "status": "not-started",
       "startedAt": null,
@@ -1511,7 +1533,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 83,
+      "number": 84,
       "title": "Guide, rule set and value set administration",
       "status": "not-started",
       "startedAt": null,
@@ -1520,7 +1542,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 84,
+      "number": 85,
       "title": "Transport to CDC",
       "status": "not-started",
       "startedAt": null,
@@ -1529,7 +1551,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 85,
+      "number": 86,
       "title": "Phase 11 walkthroughs",
       "status": "not-started",
       "startedAt": null,
@@ -1538,7 +1560,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 86,
+      "number": 87,
       "title": "Release 0.12.0 (release: 0.12.0)",
       "status": "not-started",
       "startedAt": null,
@@ -1547,7 +1569,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 87,
+      "number": 88,
       "title": "Audit with its user and values, and its screens",
       "status": "not-started",
       "startedAt": null,
@@ -1556,7 +1578,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 88,
+      "number": 89,
       "title": "Jurisdiction-scoped access and sign-in protection",
       "status": "not-started",
       "startedAt": null,
@@ -1565,7 +1587,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 89,
+      "number": 90,
       "title": "Classification rules on save",
       "status": "not-started",
       "startedAt": null,
@@ -1574,7 +1596,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 90,
+      "number": 91,
       "title": "IBIS, ad-hoc reporting and system configuration",
       "status": "not-started",
       "startedAt": null,
@@ -1583,7 +1605,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 91,
+      "number": 92,
       "title": "Phase 12 walkthroughs",
       "status": "not-started",
       "startedAt": null,
@@ -1592,7 +1614,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 92,
+      "number": 93,
       "title": "Release 0.13.0 (release: 0.13.0)",
       "status": "not-started",
       "startedAt": null,
@@ -1601,7 +1623,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 93,
+      "number": 94,
       "title": "eICR and RR parsing and document intake",
       "status": "not-started",
       "startedAt": null,
@@ -1610,7 +1632,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 94,
+      "number": 95,
       "title": "eCR validation and the eICR viewer",
       "status": "not-started",
       "startedAt": null,
@@ -1619,7 +1641,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 95,
+      "number": 96,
       "title": "Reportability and condition mapping",
       "status": "not-started",
       "startedAt": null,
@@ -1628,7 +1650,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 96,
+      "number": 97,
       "title": "Cases from eCR",
       "status": "not-started",
       "startedAt": null,
@@ -1637,7 +1659,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 97,
+      "number": 98,
       "title": "eCR senders and data quality",
       "status": "not-started",
       "startedAt": null,
@@ -1646,7 +1668,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 98,
+      "number": 99,
       "title": "Phase 13 walkthroughs",
       "status": "not-started",
       "startedAt": null,
@@ -1655,7 +1677,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 99,
+      "number": 100,
       "title": "Release 0.14.0 (release: 0.14.0)",
       "status": "not-started",
       "startedAt": null,
@@ -1664,7 +1686,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 100,
+      "number": 101,
       "title": "The parity check and the documentation for 1.0.0",
       "status": "not-started",
       "startedAt": null,
@@ -1673,7 +1695,7 @@
       "verificationVerdict": null
     },
     {
-      "number": 101,
+      "number": 102,
       "title": "Release 1.0.0 (release: 1.0.0)",
       "status": "not-started",
       "startedAt": null,

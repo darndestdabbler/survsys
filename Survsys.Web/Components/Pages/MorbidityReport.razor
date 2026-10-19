@@ -574,8 +574,47 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     /// </summary>
     private const int Catalogue = 200;
 
-    protected override async Task OnInitializedAsync()
+    /// <summary>
+    /// The report this page last loaded, which is the one an edit lock it
+    /// holds is on: Blazor keeps the page when a link names another case, so
+    /// the load follows <see cref="ReportId"/> rather than the first render.
+    /// </summary>
+    private int? loadedId;
+
+    protected override async Task OnParametersSetAsync()
     {
+        if (loadedId == ReportId)
+        {
+            return;
+        }
+
+        // Leaving one case for another releases its lock, as leaving the
+        // page does, and nothing said about it carries over to the next.
+        if (editing && loadedId is { } left)
+        {
+            editing = false;
+            await Reports.ReleaseLock(left);
+        }
+
+        loadedId = ReportId;
+        loading = true;
+        report = null;
+        failure = null;
+        lockHolder = null;
+        actionError = null;
+        statusSaved = null;
+        statusError = null;
+        briefNoteError = null;
+        promoted = null;
+        promoteError = null;
+        notifyQueued = null;
+        notifyError = null;
+        workflowSaved = null;
+        workflowError = null;
+        workflowNote = null;
+        routeAgencyId = null;
+        assignInvestigatorId = null;
+
         // The report first, because every other ask depends on what it
         // says; a report that could not be read leaves nothing else to ask.
         var found = await Reports.Find(ReportId);
@@ -751,10 +790,10 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        if (editing)
+        if (editing && loadedId is { } held)
         {
             editing = false;
-            await Reports.ReleaseLock(ReportId);
+            await Reports.ReleaseLock(held);
         }
     }
 
