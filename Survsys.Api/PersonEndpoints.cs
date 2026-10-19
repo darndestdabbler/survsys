@@ -830,6 +830,9 @@ internal sealed class PersonQueries(SurvsysDbContext database)
     {
         var search = criteria.Trimmed();
 
+        // A person merged away is a tombstone and is not found.
+        persons = persons.Where(person => person.MergedIntoPersonId == null);
+
         if (search is not { LastName: null, FirstName: null, MiddleName: null })
         {
             var lastName = search.LastName;

@@ -296,6 +296,21 @@ each with its reasons; `GET /api/staged-messages/{id}/person-matches` does the
 same for a staged message's patient, whom the review screen proposes a match
 for. Nothing is assigned without a reviewer.
 
+**Duplicate persons are merged by a person, in one transaction.**
+`GET /api/person-merges/candidates` pairs live people who share a last name,
+birth date or identifier value and answers the pairs `PersonMatchRules` calls
+Exact or Probable, best first. `POST /api/person-merges` keeps one person and
+moves the other's cases (with everything on them), labs, contact and
+exposure-source links, guardian links, identifiers, aliases, name history,
+races, telephones, emails and addresses onto them; the merged-away person's
+current address is closed where the kept one already has one, and the record
+stays on file as a tombstone (`merged_into_person_id`, `merged_at`) that
+person search and matching no longer find. The `AuditInterceptor` audits every
+moved row inside the same transaction, so a failed merge changes nothing. Both
+routes, and `GET /api/person-merges/persons/{id}` through which the merge
+screen reads the two records it compares, need the `merge_persons` privilege
+and nothing more.
+
 **Built but not wired in.** Graylist duplicate detection (`GraylistRules`),
 vocabulary matching (`VocabularyMatcher`) and the rules engine
 (`ExpressionEvaluator`) are in `Survsys.Messaging` with their unit tests, but

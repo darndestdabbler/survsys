@@ -17,7 +17,8 @@
    conditions catalogue to anyone signed in, because reading reference data
    needs nothing more; the case screens — and, since session 33, the saved
    views and their exports — to view_cases, and a new report to
-   edit_cases; the reference data administration to manage_reference_data;
+   edit_cases; the duplicate persons, since session 71, to merge_persons;
+   the reference data administration to manage_reference_data;
    and the users and roles to manage_users. The API tier enforces the same
    privileges whatever the bar shows. The signed-in person's name and Sign
    out close the bar, and a person not signed in sees neither.
@@ -86,6 +87,12 @@
             {
                 <MudButton id="nav-reports" Href="/reports" Color="Color.Inherit">
                     Reports
+                </MudButton>
+            }
+            @if (Holds(Privileges.MergePersons))
+            {
+                <MudButton id="nav-duplicate-persons" Href="/persons/duplicates" Color="Color.Inherit">
+                    Duplicate persons
                 </MudButton>
             }
             @if (Holds(Privileges.ManageReferenceData))

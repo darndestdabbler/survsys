@@ -78,6 +78,15 @@ public class PrivilegeRulesTests
     }
 
     [Theory]
+    [InlineData("GET", "/api/person-merges/candidates")]
+    [InlineData("GET", "/api/person-merges/persons/4")]
+    [InlineData("POST", "/api/person-merges")]
+    public void RequiredForDuplicatePersonsAndMergesIsMergePersonsWhateverTheMethod(string method, string path)
+    {
+        Assert.Equal(Privileges.MergePersons, PrivilegeRules.RequiredFor(method, path));
+    }
+
+    [Theory]
     [InlineData("GET", "/api/reports")]
     [InlineData("POST", "/api/reports")]
     [InlineData("GET", "/api/reports/case-counts")]

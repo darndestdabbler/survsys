@@ -182,8 +182,8 @@ public static class PersonMatchEndpoints
 internal sealed class PersonMatchQueries(SurvsysDbContext database, PersonMatchThresholds thresholds)
 {
     /// <summary>
-    /// The candidates for a request, scored and best first: the people it
-    /// names, or else every person sharing its last name, its date of birth or
+    /// The candidates for a request, scored and best first: the live people
+    /// it names, or else every live person (none merged away) sharing its last name, its date of birth or
     /// one of its identifier values. None is left unscored, because only the
     /// score can say which candidate is best.
     /// </summary>
@@ -192,6 +192,7 @@ internal sealed class PersonMatchQueries(SurvsysDbContext database, PersonMatchT
     {
         IQueryable<Person> persons = database.Persons
             .AsNoTracking()
+            .Where(person => person.MergedIntoPersonId == null)
             .Include(person => person.Identifiers)
             .Include(person => person.Addresses);
 

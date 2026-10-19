@@ -77,6 +77,15 @@ internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
             .HasColumnName("death_status")
             .HasMaxLength(CodeLength);
         builder.Property(person => person.DateOfDeath).HasColumnName("date_of_death");
+        builder.Property(person => person.MergedIntoPersonId).HasColumnName("merged_into_person_id");
+        builder.Property(person => person.MergedAt).HasColumnName("merged_at");
+
+        // A tombstone points at the person it was merged into, and that person
+        // cannot be deleted from under it.
+        builder.HasOne<Person>()
+            .WithMany()
+            .HasForeignKey(person => person.MergedIntoPersonId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // The two columns a list of people is ordered by and the two a search
         // for a person filters on first, in that order, so one index serves

@@ -11871,12 +11871,22 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("last_name");
 
+                    b.Property<DateTime?>("MergedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("merged_at");
+
+                    b.Property<int?>("MergedIntoPersonId")
+                        .HasColumnType("int")
+                        .HasColumnName("merged_into_person_id");
+
                     b.Property<string>("MiddleName")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("middle_name");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MergedIntoPersonId");
 
                     b.HasIndex("LastName", "FirstName");
 
@@ -13883,6 +13893,14 @@ namespace Survsys.Data.Migrations
                         .HasForeignKey("ChildId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.Person", b =>
+                {
+                    b.HasOne("Survsys.Data.Person", null)
+                        .WithMany()
+                        .HasForeignKey("MergedIntoPersonId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Survsys.Data.PersonAddress", b =>

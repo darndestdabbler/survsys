@@ -22,7 +22,9 @@ namespace Survsys.Api;
 /// (<c>/api/me</c>) needs nothing beyond being signed in; a saved view and its
 /// export need <see cref="Privileges.ViewCases"/> whatever the method, because
 /// a view is the caller's own and changes no case; an ad-hoc report needs
-/// <see cref="Privileges.RunReports"/> whatever the method; a workflow move
+/// <see cref="Privileges.RunReports"/> whatever the method; duplicate persons
+/// and their merges (<c>/api/person-merges</c>) need
+/// <see cref="Privileges.MergePersons"/> whatever the method; a workflow move
 /// (<c>PUT /api/person-conditions/{id}/workflow</c>) needs only
 /// <see cref="Privileges.ViewCases"/> here, because the endpoint itself asks
 /// the privilege the particular transition needs — a state approver need not
@@ -46,6 +48,8 @@ public static class PrivilegeRules
     private static readonly string[] CaseReadsWhateverTheMethod = ["/api/saved-views"];
 
     private static readonly string[] Reports = ["/api/reports"];
+
+    private static readonly string[] PersonMerges = ["/api/person-merges"];
 
     /// <summary>
     /// The privilege a request needs, or null where being signed in is enough.
@@ -80,6 +84,11 @@ public static class PrivilegeRules
         if (Under(path, Reports))
         {
             return Privileges.RunReports;
+        }
+
+        if (Under(path, PersonMerges))
+        {
+            return Privileges.MergePersons;
         }
 
         if (AWorkflowMove(path))

@@ -98,6 +98,44 @@ public sealed class PersonsClient(HttpClient http)
         Matching.Post<PersonMatchRequest, IReadOnlyList<PersonMatchCandidateResponse>>(
             http, "api/persons/match", request, cancellationToken);
 
+    /// <summary>How a failure to load the duplicate pairs starts.</summary>
+    public const string DuplicatesFailurePrefix = "The duplicate people could not be loaded";
+
+    /// <summary>How a failure to merge two people starts.</summary>
+    public const string MergeFailurePrefix = "The people could not be merged";
+
+    private static readonly ApiAsk FindingDuplicates = new(DuplicatesFailurePrefix, "the duplicate pairs");
+
+    private static readonly ApiAsk Merging = new(MergeFailurePrefix, "the person kept");
+
+    /// <summary>
+    /// The pairs of people on file the matcher takes for one person, best
+    /// first, or why there are none.
+    /// </summary>
+    public Task<Asked<IReadOnlyList<DuplicatePersonPairResponse>>> DuplicateCandidates(
+        CancellationToken cancellationToken = default) =>
+        FindingDuplicates.Get<IReadOnlyList<DuplicatePersonPairResponse>>(
+            http, "api/person-merges/candidates", cancellationToken);
+
+    /// <summary>
+    /// One person's whole demographic record as the merge screen compares it,
+    /// read through the merge routes so that merge_persons alone reads it, or
+    /// why there is none.
+    /// </summary>
+    public Task<Asked<PersonDetailResponse>> PersonToMerge(
+        int id,
+        CancellationToken cancellationToken = default) =>
+        Finding.Get<PersonDetailResponse>(http, $"api/person-merges/persons/{id}", cancellationToken);
+
+    /// <summary>
+    /// Merges one person into another and answers with the person kept, or
+    /// with why nothing was merged.
+    /// </summary>
+    public Task<Asked<PersonResponse>> Merge(
+        PersonMergeRequest request,
+        CancellationToken cancellationToken = default) =>
+        Merging.Post<PersonMergeRequest, PersonResponse>(http, "api/person-merges", request, cancellationToken);
+
     /// <summary>
     /// One page of the people matching the criteria, or why there is none.
     /// </summary>

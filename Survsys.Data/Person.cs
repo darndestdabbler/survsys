@@ -128,6 +128,17 @@ public class Person
     public DateOnly? DateOfDeath { get; set; }
 
     /// <summary>
+    /// The person this record was merged into, which makes this record a
+    /// tombstone: everything on it has moved to that person, and it stays on
+    /// file only so that what pointed at it can still be followed. Null for a
+    /// live person.
+    /// </summary>
+    public int? MergedIntoPersonId { get; set; }
+
+    /// <summary>When this record was merged away; null for a live person.</summary>
+    public DateTime? MergedAt { get; set; }
+
+    /// <summary>
     /// Every address this person has had, the current one included: the one
     /// with no <see cref="PersonAddress.Ending"/> is where they live now, and
     /// there is at most one such, which <see cref="AddressRules.CloseHistoric"/>

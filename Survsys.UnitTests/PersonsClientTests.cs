@@ -258,6 +258,108 @@ public class PersonsClientTests
     }
 
     [Fact]
+    public async Task TheDuplicatePairsAreThePairsTheClientReturns()
+    {
+        Uri? asked = null;
+
+        var client = new PersonsClient(Transport(request =>
+        {
+            asked = request.RequestUri;
+
+            return Answer(
+                HttpStatusCode.OK,
+                """
+                [{
+                  "first": { "id": 4, "lastName": "Thorsen", "firstName": "Inge", "middleName": null,
+                             "birthDate": "1980-02-03", "birthGender": "F", "currentGender": null },
+                  "second": { "id": 9, "lastName": "Thorsen", "firstName": "Inge", "middleName": null,
+                              "birthDate": "1980-02-03", "birthGender": "F", "currentGender": null },
+                  "score": 85, "verdict": "Probable", "reasons": ["Last name matches"]
+                }]
+                """);
+        }));
+
+        var pairs = await client.DuplicateCandidates();
+
+        Assert.Equal("http://api.example.test/api/person-merges/candidates", asked?.ToString());
+        var pair = Assert.Single(pairs.Value!);
+        Assert.Equal((4, 9), (pair.First.Id, pair.Second.Id));
+        Assert.Equal(PersonMatchCandidateResponse.Probable, pair.Verdict);
+    }
+
+    [Fact]
+    public async Task DuplicatePairsThatFailedCarryTheDuplicatesPrefix()
+    {
+        var client = new PersonsClient(Transport(_ => Answer(
+            HttpStatusCode.Forbidden, """{ "status": 403 }""")));
+
+        var pairs = await client.DuplicateCandidates();
+
+        Assert.False(pairs.Succeeded);
+        Assert.StartsWith(PersonsClient.DuplicatesFailurePrefix, pairs.Failure);
+    }
+
+    [Fact]
+    public async Task APersonToMergeIsReadThroughTheMergeRoutes()
+    {
+        Uri? asked = null;
+
+        var client = new PersonsClient(Transport(request =>
+        {
+            asked = request.RequestUri;
+
+            return Answer(HttpStatusCode.NotFound, """{ "status": 404 }""");
+        }));
+
+        var person = await client.PersonToMerge(9);
+
+        Assert.Equal("http://api.example.test/api/person-merges/persons/9", asked?.ToString());
+        Assert.False(person.Succeeded);
+        Assert.StartsWith(PersonsClient.FindFailurePrefix, person.Failure);
+    }
+
+    [Fact]
+    public async Task AMergePostsBothPeopleAndReturnsThePersonKept()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new PersonsClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+
+            return Answer(
+                HttpStatusCode.OK,
+                """
+                { "id": 4, "lastName": "Thorsen", "firstName": "Inge", "middleName": null,
+                  "birthDate": null, "birthGender": null, "currentGender": null }
+                """);
+        }));
+
+        var merged = await client.Merge(new PersonMergeRequest(4, 9));
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/person-merges", sent?.RequestUri?.ToString());
+        Assert.Contains("\"keepPersonId\":4", body, StringComparison.Ordinal);
+        Assert.Contains("\"mergePersonId\":9", body, StringComparison.Ordinal);
+        Assert.Equal(4, merged.Value?.Id);
+    }
+
+    [Fact]
+    public async Task AMergeThatFailedCarriesTheMergePrefix()
+    {
+        var client = new PersonsClient(Transport(_ => Answer(
+            HttpStatusCode.Conflict, """{ "status": 409, "detail": "A person cannot be merged into themselves." }""")));
+
+        var merged = await client.Merge(new PersonMergeRequest(4, 4));
+
+        Assert.False(merged.Succeeded);
+        Assert.StartsWith(PersonsClient.MergeFailurePrefix, merged.Failure);
+        Assert.Contains("409", merged.Failure);
+    }
+
+    [Fact]
     public async Task ThePersonFoundIsThePersonTheClientReturns()
     {
         Uri? asked = null;

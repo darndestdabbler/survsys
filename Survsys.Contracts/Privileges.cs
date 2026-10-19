@@ -53,7 +53,13 @@ public static class Privileges
     /// </summary>
     public const string ApproveCases = "approve_cases";
 
+    /// <summary>
+    /// Finding duplicate persons and merging one into another, which moves
+    /// every case and record from one person to the other.
+    /// </summary>
+    public const string MergePersons = "merge_persons";
+
     /// <summary>Every privilege there is, in the order a screen lists them.</summary>
     public static IReadOnlyList<string> All { get; } =
-        [ViewCases, EditCases, ManageReferenceData, ManageUsers, RunReports, RouteCases, AssignInvestigators, ApproveCases];
+        [ViewCases, EditCases, ManageReferenceData, ManageUsers, RunReports, RouteCases, AssignInvestigators, ApproveCases, MergePersons];
 }
