@@ -1506,9 +1506,9 @@
     {
       "number": 73,
       "title": "Repair the three walkthroughs Phase 9 broke",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-19T14:18:42.345000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-19T14:22:51.288000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
