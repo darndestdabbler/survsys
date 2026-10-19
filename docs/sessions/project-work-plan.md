@@ -603,3 +603,9 @@ Let a case be deleted softly and restored, locked while one user edits it, print
 
 - 2026-10-19 — step 'outbreak-attachments': its files: SQL Server refuses a second cascade path from outbreaks to attachments (outbreaks->person_conditions SET NULL->attachments CASCADE), so the outbreak foreign key does not cascade and the outbreak delete removes its attachments' files (which cascade to the attachments) first (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-19 — step 'walkthroughs-click-edit': its files: The complete-a-supplemental-form walkthrough reads a form's answers back on a read-only report; the Forms tab's Open and Close buttons only show a form, so they stay enabled when the report is read-only (claude-code (anthropic, claude-opus-5-5))
+
+### Session 66 — Phase 8 walkthroughs
+
+**Rolled back:**
+
+- 2026-10-19 — session 66 — Rollback to Start of This Session from the Work Explorer (operator)

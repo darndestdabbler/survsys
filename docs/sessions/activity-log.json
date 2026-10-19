@@ -704,6 +704,14 @@
       "what": "step 'walkthroughs-click-edit': its files",
       "reason": "The complete-a-supplemental-form walkthrough reads a form's answers back on a read-only report; the Forms tab's Open and Close buttons only show a form, so they stay enabled when the report is read-only",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "rollback",
+      "sessionNumber": 66,
+      "through": 66,
+      "dateTime": "2026-10-19T06:21:51.805000-04:00",
+      "reason": "Rollback to Start of This Session from the Work Explorer",
+      "by": "operator"
     }
   ]
 }
