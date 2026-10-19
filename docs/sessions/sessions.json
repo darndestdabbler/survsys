@@ -1294,9 +1294,9 @@
     {
       "number": 63,
       "title": "Treatments, encounters, occupation and pregnancy on a case",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-18T20:15:39.052000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-18T20:37:55.049000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
