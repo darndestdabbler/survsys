@@ -34,6 +34,9 @@ running Survsys. Perform them in any order; each one stands alone.
 | [Route a case to another agency](route-a-case-to-another-agency.md) | A state user routes a case from the health department it was assigned to over to another from the report's Workflow Options, with a note, and reads the new agency and the move in the Administrative tab's workflow history. | `Survsys.E2ETests/RouteACaseToAnotherAgencyTests.cs` |
 | [Promote a contact to a case](promote-a-contact-to-a-case.md) | An investigator adds a person exposed alongside the patient as a contact, which opens a contact event of their own, follows the link to that contact event, and promotes it to a morbidity report. | `Survsys.E2ETests/PromoteAContactToACaseTests.cs` |
 | [Record a case treatment](record-a-case-treatment.md) | An investigator records the treatment a case was given, chosen from the treatments listed for its disease, with its start and stop dates and dose, on the report's Treatments tab, and reads it back. | `Survsys.E2ETests/RecordACaseTreatmentTests.cs` |
+| [Find a person by a former name](find-a-person-by-a-former-name.md) | An investigator changes a patient's last name on their case's Demographic tab, then finds them on the People screen by the name they used to have, and reads the former name on their own screen. | `Survsys.E2ETests/FindAPersonByAFormerNameTests.cs` |
+| [Record a person's address history](record-a-persons-address-history.md) | An investigator dates a patient's current address and adds the one they lived at before with the dates they lived there, saves, and reads both back — the earlier one historic by its dates and stored made regular. | `Survsys.E2ETests/RecordAPersonsAddressHistoryTests.cs` |
+| [Merge duplicate persons](merge-duplicate-persons.md) | A user trusted to merge people finds two records for one person on the Duplicate persons screen, compares them side by side, keeps the record on file, and reads both records' cases under it. | `Survsys.E2ETests/MergeDuplicatePersonsTests.cs` |
 
 ## The contract every entry here is held to
 
@@ -67,7 +70,7 @@ dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj
 
 That starts both tiers on ports it finds free, seeds the database, performs
 every walkthrough in a browser and records each one. The whole run is the full
-walkthrough regression a release runs: it performs all twenty-nine
+walkthrough regression a release runs: it performs all thirty-two
 walkthroughs above, every one of them, with nothing selected out. It needs a reachable SQL
 Server; each walkthrough's own **Before you start** says what it needs to be
 performed by hand instead.
