@@ -79,7 +79,8 @@ public static class ExposureEndpoints
             contact.ExposureEnd,
             contact.DispositionId,
             contact.ContactType,
-            contact.DispositionDate);
+            contact.DispositionDate,
+            contact.PersonConditionId);
 
     /// <summary>The projection from a stored source to its wire shape.</summary>
     public static readonly Expression<Func<ExposureSource, ExposureSourceResponse>> SourceToResponse =

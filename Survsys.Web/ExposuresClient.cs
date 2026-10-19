@@ -35,6 +35,12 @@ public sealed class ExposuresClient(HttpClient http)
     /// <summary>How a failure to remove an exposure row starts.</summary>
     public const string RemoveFailurePrefix = "The exposure record could not be removed";
 
+    /// <summary>How a failure to add a contact as a contact event starts.</summary>
+    public const string AddContactFailurePrefix = "The contact could not be added";
+
+    /// <summary>How a failure to import a batch of contacts starts.</summary>
+    public const string ImportFailurePrefix = "The contacts could not be imported";
+
     /// <summary>
     /// The page size <see cref="All"/> walks a report's exposures at: the
     /// largest the API tier allows, so a report's exposures arrive in as few
@@ -51,6 +57,10 @@ public sealed class ExposuresClient(HttpClient http)
     private static readonly ApiAsk Saving = new(SaveFailurePrefix, "the exposure record as saved");
 
     private static readonly ApiAsk Removing = new(RemoveFailurePrefix, "the exposure record removed");
+
+    private static readonly ApiAsk AddingContact = new(AddContactFailurePrefix, "the contact added");
+
+    private static readonly ApiAsk Importing = new(ImportFailurePrefix, "the contacts imported");
 
     /// <summary>One page of a report's exposure events, or why there is none.</summary>
     public Task<Asked<PagedResult<ExposureResponse>>> Page(
@@ -185,6 +195,35 @@ public sealed class ExposuresClient(HttpClient http)
     /// <summary>Removes a contact, or answers with why it was not.</summary>
     public Task<string?> DeleteContact(int contactId, CancellationToken cancellationToken = default) =>
         Removing.Delete(http, $"api/exposure-contacts/{contactId}", cancellationToken);
+
+    /// <summary>
+    /// Adds a contact to an exposure as a contact event of their own — the
+    /// person found by search or created new — and answers with the contact
+    /// row naming the event, or with why none was added.
+    /// </summary>
+    public Task<Asked<ExposureContactResponse>> AddContactEvent(
+        int exposureId,
+        CreateContactEventRequest contact,
+        CancellationToken cancellationToken = default) =>
+        AddingContact.Post<CreateContactEventRequest, ExposureContactResponse>(
+            http, $"api/exposures/{exposureId}/contact-events", contact, cancellationToken);
+
+    /// <summary>
+    /// Imports a batch CSV of contacts under one of a report's exposures, and
+    /// answers with the rows saved and the rows refused, or with why the batch
+    /// was not taken at all.
+    /// </summary>
+    /// <remarks>
+    /// A refused row is part of a successful answer, not a failure: the API
+    /// tier saves what it can and lists the rest with their reasons, so the
+    /// screen shows both.
+    /// </remarks>
+    public Task<Asked<ContactImportResponse>> ImportContacts(
+        int reportId,
+        ImportContactsRequest batch,
+        CancellationToken cancellationToken = default) =>
+        Importing.Post<ImportContactsRequest, ContactImportResponse>(
+            http, $"api/person-conditions/{reportId}/contacts/import", batch, cancellationToken);
 
     /// <summary>Removes a source, or answers with why it was not.</summary>
     public Task<string?> DeleteSource(int sourceId, CancellationToken cancellationToken = default) =>

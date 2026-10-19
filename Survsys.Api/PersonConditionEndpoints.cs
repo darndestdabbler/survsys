@@ -64,7 +64,8 @@ public static class PersonConditionEndpoints
             report.MmwrWeek,
             report.MmwrYear,
             report.WorkflowState,
-            report.InvestigatorId);
+            report.InvestigatorId,
+            report.EventType);
 
     /// <summary>
     /// <see cref="ToResponse"/> compiled, for the one caller that has a report
@@ -115,6 +116,17 @@ public static class PersonConditionEndpoints
         {
             return AgencyEndpoints.NotAnAgency(agencyId)
                 + " Leave agencyId out to create a report with no investigating agency.";
+        }
+
+        // A contact event is opened from the exposure the contact was at, so
+        // the one route that opens one by hand offers the other two kinds.
+        if (request.EventType is { } eventType
+            && eventType != EventTypes.Morbidity
+            && eventType != EventTypes.Assessment)
+        {
+            return $"eventType '{eventType}' cannot be opened here: a report is opened as "
+                + $"'{EventTypes.Morbidity}' or '{EventTypes.Assessment}', and a contact event "
+                + "is added from the exposure the contact was at.";
         }
 
         return null;
@@ -249,6 +261,21 @@ public static class PersonConditionEndpoints
         Enum.GetValues<WorkflowTransition>().Select(WorkflowRules.CodeOf));
 
     /// <summary>
+    /// Why a case with this event type cannot be promoted to a morbidity
+    /// report, or null when it can.
+    /// </summary>
+    /// <remarks>
+    /// Only a contact event is promoted: a morbidity report is one already,
+    /// and an assessment is opened by hand and becomes a case by being opened
+    /// as one. Public because the unit suite proves it.
+    /// </remarks>
+    public static string? WhyNotAPromotion(string eventType) =>
+        eventType == EventTypes.Contact
+            ? null
+            : $"This case is a {eventType} event, and only a contact event is promoted "
+                + "to a morbidity report.";
+
+    /// <summary>
     /// Registers what the person-conditions endpoints need of the container.
     /// Kept here with the endpoints so the slice's wiring is in one place, and
     /// so that <c>Program.cs</c> need not name an internal type.
@@ -282,6 +309,10 @@ public static class PersonConditionEndpoints
             .WithName("SetPersonConditionWorkflow")
             .WithSummary("Makes a workflow move on a case morbidity report, where its state "
                 + "allows the move and the caller holds the privilege it needs.");
+
+        routes.MapPost("/api/person-conditions/{id:int}/promote", Promote)
+            .WithName("PromotePersonCondition")
+            .WithSummary("Promotes a contact event to a morbidity report.");
 
         return routes;
     }
@@ -510,6 +541,27 @@ public static class PersonConditionEndpoints
         return TypedResults.Ok(report);
     }
 
+    private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> Promote(
+        PersonConditionQueries reports,
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        if (await reports.EventTypeOf(id, cancellationToken) is not { } eventType)
+        {
+            return NoSuchReport(id);
+        }
+
+        if (WhyNotAPromotion(eventType) is { } why)
+        {
+            return TypedResults.Problem(
+                detail: why,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The case is not one this endpoint can promote.");
+        }
+
+        return TypedResults.Ok(await reports.Promote(id, cancellationToken));
+    }
+
     private static ProblemHttpResult NoSuchReport(int id) =>
         TypedResults.Problem(
             detail: $"No case morbidity report has id {id}.",
@@ -707,6 +759,7 @@ internal sealed class PersonConditionQueries(
             MmwrWeek = mmwr.Week,
             MmwrYear = mmwr.Year,
             WorkflowState = WorkflowRules.InitialCode,
+            EventType = request.EventType ?? EventTypes.Morbidity,
         };
 
         database.PersonConditions.Add(report);
@@ -716,6 +769,34 @@ internal sealed class PersonConditionQueries(
         // and the notification queue entry are added after the insert and in a
         // second save rather than the one above.
         await AutoAssignForms(report, cancellationToken);
+        await QueueForNotification(report.Id, cancellationToken);
+        await database.SaveChangesAsync(cancellationToken);
+
+        return PersonConditionEndpoints.Respond(report);
+    }
+
+    /// <summary>The event type of the report with that id, or null where there is none.</summary>
+    public Task<string?> EventTypeOf(int id, CancellationToken cancellationToken) =>
+        database.PersonConditions
+            .Where(report => report.Id == id)
+            .Select(report => report.EventType)
+            .SingleOrDefaultAsync(cancellationToken);
+
+    /// <summary>
+    /// Makes a contact event a morbidity report in place, and answers with it
+    /// as stored.
+    /// </summary>
+    /// <remarks>
+    /// The endpoint has confirmed the report is a contact event. A contact
+    /// event is not queued for notification when it is opened, so it is queued
+    /// here, in the same save, as a newly opened report is.
+    /// </remarks>
+    public async Task<PersonConditionResponse> Promote(int id, CancellationToken cancellationToken)
+    {
+        var report = await database.PersonConditions
+            .SingleAsync(report => report.Id == id, cancellationToken);
+
+        report.EventType = EventTypes.Morbidity;
         await QueueForNotification(report.Id, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 

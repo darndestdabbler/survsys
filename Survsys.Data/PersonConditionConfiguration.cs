@@ -85,6 +85,16 @@ internal sealed class PersonConditionConfiguration : IEntityTypeConfiguration<Pe
             .HasMaxLength(CodeLength);
         builder.Property(report => report.InvestigatorId).HasColumnName("investigator_id");
 
+        // The event type, added in session 62. Required, and defaulted in the
+        // database as well as on the entity, so every row written before the
+        // column existed, and every row a raw-SQL fixture inserts, reads as a
+        // morbidity report.
+        builder.Property(report => report.EventType)
+            .HasColumnName("event_type")
+            .HasMaxLength(CodeLength)
+            .IsRequired()
+            .HasDefaultValue(EventTypes.Morbidity);
+
         // The Investigation tab's columns, added in session 24: the four
         // Contact Oriented codes, the imported-from key, the transmission-mode
         // code and the four free-text fields. The codes are bounded like every

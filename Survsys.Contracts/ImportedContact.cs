@@ -1,7 +1,7 @@
 namespace Survsys.Contracts;
 
 /// <summary>
-/// One contact a batch import would accept, as its row parsed: part of what
+/// One contact a batch import accepts, as its row parsed: part of what
 /// <c>POST /api/person-conditions/{id}/contacts/import</c> answers with,
 /// inside <see cref="ContactImportResponse"/>.
 /// </summary>
@@ -10,14 +10,13 @@ namespace Survsys.Contracts;
 /// declared in
 /// <c>legacy/nedss-jpa/src/main/resources/db/migration/V0001__create.sql</c>
 /// under <c>../nedss</c>, less the <c>contact_</c> prefix each carries there
-/// and less the batch, status and exposure columns a persisted import would
+/// and less the batch, status and exposure columns a batch history would
 /// fill. The last name and the birth date are required, because together
 /// with the first and middle names they are what tells one contact in a batch
 /// from another; everything else is carried as given, or null where the row
-/// left it empty. Nothing here is a person on file: no contact becomes a
-/// person through the import, as
-/// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>
-/// records that the legacy tab does by hand.
+/// left it empty. Each contact the import accepts is saved as a new person and
+/// a contact event of theirs, and <see cref="PersonConditionId"/> names that
+/// event.
 /// </remarks>
 /// <param name="Line">The one-based line of the CSV the contact was read from.</param>
 /// <param name="FirstName">The contact's first name, or null where the row left it empty.</param>
@@ -33,6 +32,7 @@ namespace Survsys.Contracts;
 /// <param name="County">The county, as a code, or null.</param>
 /// <param name="Phone">The contact's phone number, or null.</param>
 /// <param name="Email">The contact's email address, or null.</param>
+/// <param name="PersonConditionId">The contact event the row was saved as, or null before it is saved.</param>
 public record ImportedContact(
     int Line,
     string? FirstName,
@@ -47,4 +47,5 @@ public record ImportedContact(
     string? Zip,
     string? County,
     string? Phone,
-    string? Email);
+    string? Email,
+    int? PersonConditionId = null);

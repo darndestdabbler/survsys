@@ -12,9 +12,15 @@
    exposure whole and has no endpoint to change or remove a stored one, nor
    one to set a contact's disposition on its own.
 
-   A contact is an existing person, named by id: the legacy Contacts tab
-   searches for or creates a person and links them, and no contact is created
-   as a person here. Every coded field (the place type, the state, the
+   A contact recorded with its exposure in the entry form is an existing
+   person, named by id. The legacy Contacts tab searches for or creates a
+   person and links them, and that is the Add contact panel each exposure row
+   opens: the person search panel, whose rows add the person found and whose
+   empty result creates one from the criteria, each added as a contact event
+   of their own that the contact row then links to. The Import contacts panel
+   posts a CSV file under a chosen exposure; the API tier saves the rows it
+   accepts as contact events and answers with the rows it refused, which are
+   listed by line with their reasons. Every coded field (the place type, the state, the
    contact's disposition and type, the source's person, report and type) is a
    plain box holding the legacy value, as the Laboratory tab holds its coded
    fields: the reference tables behind the legacy dropdowns do not exist yet.
@@ -107,7 +113,17 @@
                                     {
                                         var contact = exposure.Contacts[c];
                                         <tr id="@($"contacts-exposure-{exposureAt}-contact-{c}")" @key="contact.Id">
-                                            <td>@Shown(contact.PersonId)</td>
+                                            @* A contact added as a contact event links to it beside
+                                               the person; one recorded with its exposure has none,
+                                               and its cell reads as it always has. *@
+                                            <td>
+                                                @Shown(contact.PersonId)
+                                                @if (contact.PersonConditionId is { } eventId)
+                                                {
+                                                    <a id="@($"contacts-exposure-{exposureAt}-contact-{c}-event")"
+                                                       href="@($"/event/edit/{eventId}")">(contact event)</a>
+                                                }
+                                            </td>
                                             <td>@Shown(contact.ContactType)</td>
                                             <td>@Shown(contact.DispositionId)</td>
                                             <td>@Shown(Written(contact.DispositionDate))</td>
@@ -151,6 +167,11 @@
                         }
                     </td>
                     <td class="d-flex gap-1">
+                        <MudButton id="@($"contacts-exposure-{exposureAt}-add-contact")" Variant="Variant.Text"
+                                   Size="Size.Small" Disabled="@recording"
+                                   OnClick="@(() => OpenAddContact(exposure))">
+                            Add contact
+                        </MudButton>
                         <MudButton id="@($"contacts-exposure-{exposureAt}-edit")" Variant="Variant.Text"
                                    Size="Size.Small" Disabled="@recording"
                                    OnClick="@(() => OpenForEdit(exposure))">
@@ -172,6 +193,97 @@
             }
         </tbody>
     </MudSimpleTable>
+</MudPaper>
+
+@if (addingTo is { } target)
+{
+    <MudPaper id="contacts-add" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Add a contact to @Shown(target.Name)</MudText>
+
+        @if (addFailure is { } whyNotAdded)
+        {
+            <MudAlert id="contacts-add-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                @whyNotAdded
+            </MudAlert>
+        }
+
+        <MudGrid Spacing="2" Class="mb-2">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="addContactType" id="contacts-add-contact-type"
+                              Label="Contact type" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudButton id="contacts-add-cancel" Variant="Variant.Outlined" Disabled="@adding"
+                           OnClick="@CloseAddContact">
+                    Cancel
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <PersonSearchPanel RowAction="@AddThisPerson" WhenNobodyFound="@CreateAndAdd" />
+    </MudPaper>
+}
+
+<MudPaper id="contacts-import" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Import contacts</MudText>
+
+    @if (importFailure is { } whyNotImported)
+    {
+        <MudAlert id="contacts-import-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @whyNotImported
+        </MudAlert>
+    }
+
+    <MudGrid Spacing="2" Class="align-center">
+        <MudItem xs="12" sm="4">
+            <MudSelect @bind-Value="importExposureId" id="contacts-import-exposure"
+                       Label="Exposure" Variant="Variant.Outlined">
+                @foreach (var exposure in exposures)
+                {
+                    <MudSelectItem T="int?" Value="@exposure.Id">@Shown(exposure.Name) (@exposure.Id)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <InputFile id="contacts-import-file" OnChange="ChosenCsv" accept=".csv,text/csv" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudButton id="contacts-import-run" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(importing || importExposureId is null || importCsv is null)"
+                       OnClick="@Import">
+                Import
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @if (imported is { } batch)
+    {
+        <MudText id="contacts-import-accepted" Typo="Typo.body2" Class="mt-4">
+            @batch.Accepted.Count imported, @batch.Rejected.Count refused.
+        </MudText>
+
+        @if (batch.Rejected.Count > 0)
+        {
+            <MudSimpleTable id="contacts-import-refused" Dense="true" Class="mt-2">
+                <thead>
+                    <tr>
+                        <th>Line</th>
+                        <th>Why it was refused</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var r = 0; r < batch.Rejected.Count; r++)
+                    {
+                        var refused = batch.Rejected[r];
+                        <tr id="@($"contacts-import-refused-{r}")">
+                            <td>@refused.Line</td>
+                            <td>@refused.Reason</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    }
 </MudPaper>
 
 <MudPaper id="contacts-entry" Elevation="1" Class="pa-4 mb-4">
@@ -414,7 +526,162 @@
 
     private string? complaint;
 
+    /// <summary>
+    /// The largest CSV the import panel reads: far more contacts than one
+    /// exposure has, and small enough to hold as text.
+    /// </summary>
+    private const long MaxCsvBytes = 1024 * 1024;
+
+    /// <summary>The exposure the Add contact panel is open for, or null when it is closed.</summary>
+    private ExposureDetailResponse? addingTo;
+
+    private string? addContactType;
+
+    private bool adding;
+
+    private string? addFailure;
+
+    private int? importExposureId;
+
+    /// <summary>The chosen file's text, or null until a file is chosen.</summary>
+    private string? importCsv;
+
+    private bool importing;
+
+    private ContactImportResponse? imported;
+
+    private string? importFailure;
+
     protected override Task OnInitializedAsync() => Reload();
+
+    private void OpenAddContact(ExposureDetailResponse exposure)
+    {
+        addingTo = exposure;
+        addContactType = null;
+        addFailure = null;
+    }
+
+    private void CloseAddContact() => addingTo = null;
+
+    /// <summary>What each person the search found offers: adding them as a contact.</summary>
+    private RenderFragment<PersonResponse> AddThisPerson => person =>
+        @<MudButton id="@($"contacts-add-person-{person.Id}")" Variant="Variant.Filled"
+                    Color="Color.Primary" Size="Size.Small" Disabled="@adding"
+                    OnClick="@(() => AddContact(new CreateContactEventRequest(PersonId: person.Id)))">
+            Add as contact
+        </MudButton>;
+
+    /// <summary>
+    /// What a search that found nobody offers: creating the person from the
+    /// criteria searched with, and adding them as a contact.
+    /// </summary>
+    private RenderFragment<PersonSearchCriteria> CreateAndAdd => criteria =>
+        @<div class="mb-4">
+            <MudButton id="contacts-add-create-person" Variant="Variant.Filled"
+                       Color="Color.Primary" Disabled="@adding"
+                       OnClick="@(() => AddContact(NewContact(criteria)))">
+                Create person and add as contact
+            </MudButton>
+        </div>;
+
+    /// <summary>The new person a search that found nobody describes, as a contact to add.</summary>
+    private static CreateContactEventRequest NewContact(PersonSearchCriteria criteria) =>
+        new(NewPerson: new CreatePersonRequest(
+            LastName: criteria.LastName,
+            FirstName: criteria.FirstName,
+            MiddleName: criteria.MiddleName,
+            BirthDate: criteria.BirthDate,
+            BirthGender: criteria.BirthGender));
+
+    /// <summary>
+    /// Adds the contact to the open exposure as a contact event of their own,
+    /// with the contact type typed, and reloads the list to show them.
+    /// </summary>
+    private async Task AddContact(CreateContactEventRequest contact)
+    {
+        if (addingTo is not { } exposure)
+        {
+            return;
+        }
+
+        addFailure = null;
+        adding = true;
+
+        try
+        {
+            var added = await Api.AddContactEvent(
+                exposure.Id, contact with { ContactType = Blank(addContactType) });
+
+            if (added.Value is null)
+            {
+                addFailure = added.Failure;
+
+                return;
+            }
+
+            addingTo = null;
+            saved = "The contact has been added as a contact event.";
+            await Reload();
+        }
+        finally
+        {
+            adding = false;
+        }
+    }
+
+    /// <summary>Reads the chosen CSV file's text, for the Import button to post.</summary>
+    private async Task ChosenCsv(InputFileChangeEventArgs chose)
+    {
+        importCsv = null;
+        importFailure = null;
+        imported = null;
+
+        try
+        {
+            using var reader = new StreamReader(chose.File.OpenReadStream(MaxCsvBytes));
+            importCsv = await reader.ReadToEndAsync();
+        }
+        catch (IOException)
+        {
+            importFailure = $"The file could not be read: a CSV of contacts is at most {MaxCsvBytes / 1024} KB.";
+        }
+    }
+
+    /// <summary>
+    /// Posts the chosen CSV under the chosen exposure, shows how many rows were
+    /// imported and each refused row with its reason, and reloads the list to
+    /// show the contacts imported.
+    /// </summary>
+    private async Task Import()
+    {
+        if (importExposureId is not { } exposureId || importCsv is not { } csv)
+        {
+            return;
+        }
+
+        importFailure = null;
+        imported = null;
+        importing = true;
+
+        try
+        {
+            var answered = await Api.ImportContacts(ReportId, new ImportContactsRequest(csv, exposureId));
+
+            if (answered.Value is { } batch)
+            {
+                imported = batch;
+                await Reload();
+            }
+            else
+            {
+                importFailure = answered.Failure;
+            }
+        }
+        finally
+        {
+            importing = false;
+        }
+    }
 
     /// <summary>
     /// Reads the report's exposures whole into the list, or why there are none.

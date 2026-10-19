@@ -97,6 +97,16 @@ else
                         }
                     </MudSelect>
                 </MudItem>
+                <MudItem xs="12" sm="4">
+                    @* A morbidity report unless an assessment is asked for; a
+                       contact event is opened from an exposure on the Contacts
+                       tab and is not offered here. *@
+                    <MudSelect @bind-Value="eventType" id="report-event-type"
+                               Label="Event type" Variant="Variant.Outlined">
+                        <MudSelectItem T="string" Value="@("morbidity")">Morbidity</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("assessment")">Assessment</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
             </MudGrid>
 
             <div class="d-flex gap-2 mt-4">
@@ -129,6 +139,8 @@ else
     private int? conditionId;
 
     private int? agencyId;
+
+    private string eventType = "morbidity";
 
     private bool loading = true;
 
@@ -219,7 +231,8 @@ else
                 PersonId: PersonId,
                 ConditionId: disease,
                 AgencyId: agency,
-                FirstReportedPhDate: reported));
+                FirstReportedPhDate: reported,
+                EventType: eventType));
 
             // The report exists: the flow ends on its own form, as the
             // legacy one does, with the record number in that form's header.

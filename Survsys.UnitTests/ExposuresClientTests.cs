@@ -474,6 +474,90 @@ public class ExposuresClientTests
         Assert.DoesNotContain("987654", saved.Failure!, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task AddContactEventPostsTheExposuresContactEventsUrlWithTheNewPerson()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new ExposuresClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+            return Answer(HttpStatusCode.Created,
+                """{"id":51,"exposureId":31,"personId":15,"exposureStart":null,"exposureEnd":null,"dispositionId":null,"contactType":"household","dispositionDate":null,"personConditionId":62}""");
+        }));
+
+        var added = await client.AddContactEvent(31, new CreateContactEventRequest(
+            NewPerson: new CreatePersonRequest("Ortiz", "Ana"), ContactType: "household"));
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/exposures/31/contact-events", sent?.RequestUri?.ToString());
+        Assert.Contains("\"lastName\":\"Ortiz\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"contactType\":\"household\"", body, StringComparison.Ordinal);
+
+        Assert.True(added.Succeeded);
+        Assert.Equal(62, added.Value?.PersonConditionId);
+    }
+
+    [Fact]
+    public async Task AddContactEventThatWasRefusedCarriesTheAddContactPrefix()
+    {
+        var client = new ExposuresClient(Transport(_ => Answer(
+            HttpStatusCode.BadRequest, """{"status":400,"detail":"Name the contact exactly one way."}""")));
+
+        var added = await client.AddContactEvent(31, new CreateContactEventRequest());
+
+        Assert.False(added.Succeeded);
+        Assert.StartsWith(ExposuresClient.AddContactFailurePrefix, added.Failure);
+        Assert.Contains("400", added.Failure);
+    }
+
+    /// <summary>
+    /// The import: a POST of the CSV and the exposure to the report's import
+    /// URL, and the saved and refused rows are both what the screen gets.
+    /// </summary>
+    [Fact]
+    public async Task ImportContactsPostsTheBatchAndHandsBackTheSavedAndRefusedRows()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new ExposuresClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+            return Answer(HttpStatusCode.OK,
+                """{"accepted":[{"line":2,"firstName":null,"middleName":null,"lastName":"Ortiz","birthDate":"1990-04-02","sex":null,"street":null,"unit":null,"city":null,"state":null,"zip":null,"county":null,"phone":null,"email":null,"personConditionId":62}],"rejected":[{"line":3,"reason":"the last name is missing"}]}""");
+        }));
+
+        var imported = await client.ImportContacts(11,
+            new ImportContactsRequest("last_name,birth_date\nOrtiz,1990-04-02\n,1990-04-02", 31));
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/person-conditions/11/contacts/import",
+            sent?.RequestUri?.ToString());
+        Assert.Contains("\"exposureId\":31", body, StringComparison.Ordinal);
+        Assert.Contains("\"csv\":", body, StringComparison.Ordinal);
+
+        Assert.True(imported.Succeeded);
+        Assert.Equal(62, Assert.Single(imported.Value!.Accepted).PersonConditionId);
+        Assert.Equal("the last name is missing", Assert.Single(imported.Value.Rejected).Reason);
+    }
+
+    [Fact]
+    public async Task ImportContactsThatWasRefusedCarriesTheImportPrefix()
+    {
+        var client = new ExposuresClient(Transport(_ => Answer(
+            HttpStatusCode.BadRequest, """{"status":400,"detail":"exposureId is required."}""")));
+
+        var imported = await client.ImportContacts(11, new ImportContactsRequest("last_name,birth_date"));
+
+        Assert.False(imported.Succeeded);
+        Assert.StartsWith(ExposuresClient.ImportFailurePrefix, imported.Failure);
+        Assert.Contains("400", imported.Failure);
+    }
+
     /// <summary>
     /// One page of bare exposures with the given ids, as the API tier writes
     /// it, carrying the page number and the total the client reads to decide

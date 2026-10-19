@@ -179,6 +179,58 @@ public class PersonConditionEndpointsTests(SqlServerFixture server) : IDisposabl
         }
     }
 
+    /// <summary>
+    /// A report opened without an event type is a morbidity report, and one
+    /// opened as an assessment is stored and read back as one.
+    /// </summary>
+    [Fact]
+    public async Task AReportIsAMorbidityReportUnlessOpenedAsAnAssessment()
+    {
+        await Clear();
+
+        var person = await PersonId("Rodriguez, Maria");
+        var condition = await ActiveConditionId();
+
+        try
+        {
+            var morbidity = await Open(new CreatePersonConditionRequest(person, condition));
+            var assessment = await Open(new CreatePersonConditionRequest(
+                person, condition, EventType: EventTypes.Assessment));
+
+            Assert.Equal(EventTypes.Morbidity, morbidity.EventType);
+            Assert.Equal(EventTypes.Assessment, assessment.EventType);
+
+            var read = await api.CreateClient().GetFromJsonAsync<PersonConditionResponse>(
+                $"/api/person-conditions/{assessment.Id}", Json);
+
+            Assert.Equal(EventTypes.Assessment, read!.EventType);
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    /// <summary>
+    /// A contact event is opened from an exposure, so asking this route for
+    /// one is refused and opens nothing.
+    /// </summary>
+    [Fact]
+    public async Task AContactEventAskedForHereIsAProblemDetailsAndNothingIsOpened()
+    {
+        await Clear();
+
+        var person = await PersonId("Rodriguez, Maria");
+        var condition = await ActiveConditionId();
+
+        var refused = await Refused(new CreatePersonConditionRequest(
+            person, condition, EventType: EventTypes.Contact));
+
+        Assert.Contains("eventType 'contact' cannot be opened here", refused,
+            StringComparison.Ordinal);
+        Assert.Equal(0, await Reports());
+    }
+
     [Fact]
     public async Task APersonNobodyHasIsAProblemDetailsAndNothingIsOpened()
     {

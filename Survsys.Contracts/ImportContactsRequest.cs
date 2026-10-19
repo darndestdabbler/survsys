@@ -11,12 +11,14 @@ namespace Survsys.Contracts;
 /// <c>contact_import_batch</c> and <c>contact_import_row</c> tables declared in
 /// <c>legacy/nedss-jpa/src/main/resources/db/migration/V0001__create.sql</c>
 /// under <c>../nedss</c>. Here the file's text is posted whole and parsed, and
-/// nothing is written: the answer says which rows would be accepted and which
-/// are rejected, and a persisted import is later work.
+/// every row accepted is saved as a new person and a contact event under the
+/// exposure the batch names; the answer says which rows were saved and which
+/// were refused. No batch history is kept.
 ///
 /// The CSV is a header row naming the columns, then one contact per row, with
 /// the columns named after the legacy <c>contact_import_row</c> fields. The
 /// parser says which names it reads.
 /// </remarks>
 /// <param name="Csv">The CSV text, header row first.</param>
-public record ImportContactsRequest(string? Csv = null);
+/// <param name="ExposureId">The exposure of the report the contacts were at.</param>
+public record ImportContactsRequest(string? Csv = null, int? ExposureId = null);

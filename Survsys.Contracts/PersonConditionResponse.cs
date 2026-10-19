@@ -63,6 +63,10 @@ namespace Survsys.Contracts;
 /// The user investigating the report, named by the assign-investigator
 /// transition, or null where none is assigned.
 /// </param>
+/// <param name="EventType">
+/// What kind of event this is — <c>morbidity</c>, <c>contact</c> or
+/// <c>assessment</c>.
+/// </param>
 public record PersonConditionResponse(
     int Id,
     int PersonId,
@@ -76,4 +80,5 @@ public record PersonConditionResponse(
     int? MmwrWeek,
     int? MmwrYear,
     string? WorkflowState,
-    int? InvestigatorId = null);
+    int? InvestigatorId = null,
+    string EventType = "morbidity");

@@ -66,7 +66,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.caption">Event type</MudText>
-                <MudText id="report-header-event-type" Typo="Typo.body1">Morbidity</MudText>
+                <MudText id="report-header-event-type" Typo="Typo.body1">@EventType</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.caption">Disease</MudText>
@@ -89,6 +89,33 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <MudText id="report-header-case-status" Typo="Typo.body1">@Status</MudText>
             </MudItem>
         </MudGrid>
+
+        @* A contact event is promoted to a morbidity report when the contact
+           turns out to have the condition; the API tier refuses it on any
+           other case, so the button is offered on a contact event alone. *@
+        @if (promoteError is { } whyNotPromoted)
+        {
+            <MudAlert id="report-promote-error" Severity="Severity.Error" Variant="Variant.Filled"
+                      Class="mt-4">
+                @whyNotPromoted
+            </MudAlert>
+        }
+
+        @if (promoted is { } promotedMessage)
+        {
+            <MudAlert id="report-promoted" Severity="Severity.Success" Variant="Variant.Filled"
+                      Class="mt-4">
+                @promotedMessage
+            </MudAlert>
+        }
+
+        @if (shown.EventType == "contact")
+        {
+            <MudButton id="report-promote" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4"
+                       Disabled="@promoting" OnClick="@Promote">
+                Promote to morbidity report
+            </MudButton>
+        }
     </MudPaper>
 
     @* The case status editor: a text box holding the legacy code, as every
@@ -365,6 +392,12 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
 
     private string? statusError;
 
+    private bool promoting;
+
+    private string? promoted;
+
+    private string? promoteError;
+
     private bool queuing;
 
     private string? notifyQueued;
@@ -471,6 +504,17 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
             ?? $"agency {agencyId}";
 
     /// <summary>
+    /// The event type as the legacy header writes it: Morbidity, Contact or
+    /// Assessment.
+    /// </summary>
+    private string EventType => report?.EventType switch
+    {
+        "contact" => "Contact",
+        "assessment" => "Assessment",
+        _ => "Morbidity",
+    };
+
+    /// <summary>
     /// The event date, written as the date boxes in this tier take one, or
     /// "(not recorded)" where the report has none.
     /// </summary>
@@ -530,6 +574,41 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         finally
         {
             savingStatus = false;
+        }
+    }
+
+    /// <summary>
+    /// Makes this contact event a morbidity report, and shows the report as
+    /// the API tier now holds it or why it was not promoted.
+    /// </summary>
+    private async Task Promote()
+    {
+        if (report is not { } current)
+        {
+            return;
+        }
+
+        promoted = null;
+        promoteError = null;
+        promoting = true;
+
+        try
+        {
+            var answered = await Reports.Promote(current.Id);
+
+            if (answered.Value is { } updated)
+            {
+                report = updated;
+                promoted = "The contact event is now a morbidity report.";
+            }
+            else
+            {
+                promoteError = answered.Failure;
+            }
+        }
+        finally
+        {
+            promoting = false;
         }
     }
 

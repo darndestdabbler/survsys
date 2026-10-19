@@ -73,7 +73,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 59 | Case search and getting back to a case | no | 2026-10-18 |
 | 60 | Correcting and removing a case's child records | no | 2026-10-18 |
 | 61 | The full investigation workflow | no | 2026-10-18 |
-| 62 | Event types, contact cases and the contact import | — | not declared |
+| 62 | Event types, contact cases and the contact import | no | 2026-10-18 |
 | 63 | Treatments, encounters, occupation and pregnancy on a case | — | not declared |
 | 64 | The reference code lists behind every coded field | — | not declared |
 | 65 | Delete, print and lock a case, and private notes | — | not declared |
@@ -565,3 +565,13 @@ Give the case morbidity report the legacy investigation workflow in full. Survsy
 **Amended after acceptance:**
 
 - 2026-10-18 — step 'workflow-transitions-endpoint': its files: Two existing callers of what this step removes were missed at planning: CaseSearchEndpointsTests moves reports through PUT /workflow by target state and must send transitions to keep passing, and WorkQueueEndpoints has a doc cref to WhyNotAnAssignment that would dangle once it is removed. Both are one-line-scale edits with no new behaviour. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 62 — Event types, contact cases and the contact import
+
+**Releasable: no.**
+
+Give every case an event type and make contacts cases of their own. Survsys.Data gains the event type vocabulary -- EventTypes with the codes morbidity, contact and assessment -- and an event_type column on person_conditions, required, defaulting to morbidity so every existing case becomes a morbidity report through the migration; exposure_contacts gains a nullable person_condition_id naming the contact event a contact row opened, in the same migration. Survsys.Api stores and answers the event type: POST /api/person-conditions takes an optional event type of morbidity (the default) or assessment, and PersonConditionResponse carries it. POST /api/exposures/{id}/contact-events adds a contact to an exposure as a contact event of its own -- the person either an existing one found by search (personId) or a new one created from the request -- writing in one save the person where new, the exposure_contacts row and a person_conditions row of type contact with the index case's condition and agency and a record number of its own; POST /api/person-conditions/{id}/promote turns a contact event into a morbidity report in place and queues it for notification, refusing any case that is not a contact event. The batch CSV contact import stops being a dry run: it takes the exposure the batch is under, and every row the parser accepts is saved as a new person and a contact event under that exposure in one save, while each refused row comes back with its line and reason. Survsys.Web shows the event type in the report header, offers Promote to morbidity report on a contact event, lets the new-report screen choose morbidity or assessment, and on the Contacts tab adds a contact to an exposure through the person search panel or a new person, links each contact row to its contact event, and gives an upload panel that imports a CSV under a chosen exposure and lists each refused row and why. Survsys.UnitTests proves the vocabulary, the pure request rules, the row-to-person mapping and the clients; Survsys.IntegrationTests proves against SQL Server a contact event's creation (existing and new person) and promotion, and an import of good and refused rows.
+
+**Amended after acceptance:**
+
+- 2026-10-18 — step 'contact-events-endpoint': its files: ExposureEndpoints.ContactToResponse now carries PersonConditionId, so its unit test in ExposureEndpointsTests.cs is updated to prove it (claude-code (anthropic, claude-opus-5-5))

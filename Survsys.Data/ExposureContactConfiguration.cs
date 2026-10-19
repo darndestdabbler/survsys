@@ -18,7 +18,10 @@ namespace Survsys.Data;
 /// of <c>Restrict</c>, as <see cref="Lab.PersonId"/> is: a person with a contact
 /// record against them is not deleted out from under it. The contact type is
 /// bounded at the code bound the other configurations use; the disposition is a
-/// plain nullable int.
+/// plain nullable int. <see cref="ExposureContact.PersonConditionId"/>, the
+/// contact event, is an optional foreign key to the reports that does not
+/// cascade: the exposure already cascades from a report, and SQL Server
+/// refuses a second cascade path into the same table.
 /// </remarks>
 internal sealed class ExposureContactConfiguration : IEntityTypeConfiguration<ExposureContact>
 {
@@ -43,6 +46,7 @@ internal sealed class ExposureContactConfiguration : IEntityTypeConfiguration<Ex
             .HasColumnName("contact_type")
             .HasMaxLength(CodeLength);
         builder.Property(contact => contact.DispositionDate).HasColumnName("disposition_date");
+        builder.Property(contact => contact.PersonConditionId).HasColumnName("person_condition_id");
 
         // No navigation on either side. A contact is a detail of its exposure,
         // so it cascades: deleting the exposure deletes its contacts.
@@ -60,5 +64,12 @@ internal sealed class ExposureContactConfiguration : IEntityTypeConfiguration<Ex
             .HasForeignKey(contact => contact.PersonId)
             .IsRequired()
             .OnDelete(DeleteBehavior.Restrict);
+
+        // No navigation on either side. The contact event is optional and is
+        // not deleted with the contact row, nor the row with the event.
+        builder.HasOne<PersonCondition>()
+            .WithMany()
+            .HasForeignKey(contact => contact.PersonConditionId)
+            .OnDelete(DeleteBehavior.NoAction);
     }
 }

@@ -818,6 +818,10 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("date")
                         .HasColumnName("exposure_start");
 
+                    b.Property<int?>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
                     b.Property<int>("PersonId")
                         .HasColumnType("int")
                         .HasColumnName("person_id");
@@ -825,6 +829,8 @@ namespace Survsys.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ExposureId");
+
+                    b.HasIndex("PersonConditionId");
 
                     b.HasIndex("PersonId");
 
@@ -1933,6 +1939,14 @@ namespace Survsys.Data.Migrations
                     b.Property<DateOnly?>("EventOnsetDate")
                         .HasColumnType("date")
                         .HasColumnName("event_onset_date");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("morbidity")
+                        .HasColumnName("event_type");
 
                     b.Property<DateOnly?>("FirstReportedPhDate")
                         .HasColumnType("date")
@@ -3346,6 +3360,11 @@ namespace Survsys.Data.Migrations
                         .HasForeignKey("ExposureId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("Survsys.Data.Person", null)
                         .WithMany()

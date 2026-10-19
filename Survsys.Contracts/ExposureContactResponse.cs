@@ -24,6 +24,10 @@ namespace Survsys.Contracts;
 /// <param name="DispositionId">What the investigation decided about the contact, as the legacy <c>disposition_id</c>, or null.</param>
 /// <param name="ContactType">What kind of contact this was, as a code, or null.</param>
 /// <param name="DispositionDate">The day the disposition was reached, or null where it is not known.</param>
+/// <param name="PersonConditionId">
+/// The contact event opened for this contact, or null for a contact recorded
+/// with its exposure and given none.
+/// </param>
 public record ExposureContactResponse(
     int Id,
     int ExposureId,
@@ -32,4 +36,5 @@ public record ExposureContactResponse(
     DateOnly? ExposureEnd,
     int? DispositionId,
     string? ContactType,
-    DateOnly? DispositionDate);
+    DateOnly? DispositionDate,
+    int? PersonConditionId = null);

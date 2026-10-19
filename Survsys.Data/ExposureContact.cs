@@ -25,6 +25,11 @@ namespace Survsys.Data;
 /// Clinical and Laboratory slices hold their coded fields. All three are set
 /// when the contact is recorded with its exposure and not changed through an
 /// endpoint of their own. There is no behaviour here and no navigation out.
+///
+/// A contact added through the contact-event route, or imported in a batch,
+/// is also a case of their own: <see cref="PersonConditionId"/> names the
+/// contact event that was opened for them. A contact recorded with its
+/// exposure through the entry form has none.
 /// </remarks>
 public class ExposureContact
 {
@@ -71,4 +76,18 @@ public class ExposureContact
     /// <c>DATE</c>.
     /// </summary>
     public DateOnly? DispositionDate { get; set; }
+
+    /// <summary>
+    /// The contact event this contact row opened — a <see cref="PersonCondition"/>
+    /// of <see cref="EventTypes.Contact"/> — or null for a contact recorded
+    /// without one.
+    /// </summary>
+    /// <remarks>
+    /// Not a legacy column: the legacy ties a contact event to its case by
+    /// <c>parent_id</c>, and this ties it to the exposure it was found at,
+    /// which names the case already. A bare identifier with no navigation, as
+    /// <see cref="ExposureSource.PersonConditionId"/> is; the configuration
+    /// makes it a foreign key that does not cascade.
+    /// </remarks>
+    public int? PersonConditionId { get; set; }
 }

@@ -38,6 +38,9 @@ public sealed class PersonConditionsClient(HttpClient http)
     /// <summary>How a failure to read a report's workflow starts.</summary>
     public const string WorkflowLoadFailurePrefix = "The case morbidity report workflow could not be loaded";
 
+    /// <summary>How a failure to promote a contact event starts.</summary>
+    public const string PromoteFailurePrefix = "The contact event could not be promoted";
+
     private static readonly ApiAsk Opening = new(FailurePrefix, "the report created");
 
     private static readonly ApiAsk Finding = new(FindFailurePrefix, "the report");
@@ -47,6 +50,8 @@ public sealed class PersonConditionsClient(HttpClient http)
     private static readonly ApiAsk Advancing = new(WorkflowFailurePrefix, "the report as advanced");
 
     private static readonly ApiAsk LoadingWorkflow = new(WorkflowLoadFailurePrefix, "the report's workflow");
+
+    private static readonly ApiAsk Promoting = new(PromoteFailurePrefix, "the report as promoted");
 
     /// <summary>
     /// Opens a case morbidity report and answers with it — its record number
@@ -118,4 +123,23 @@ public sealed class PersonConditionsClient(HttpClient http)
         int id,
         CancellationToken cancellationToken = default) =>
         LoadingWorkflow.Get<WorkflowResponse>(http, $"api/person-conditions/{id}/workflow", cancellationToken);
+
+    /// <summary>
+    /// Promotes a contact event to a morbidity report and answers with the
+    /// report as the API tier now holds it, or with why it was not promoted.
+    /// </summary>
+    /// <remarks>
+    /// The route takes no body, so an empty one is sent; a case that is not a
+    /// contact event is the API tier's to refuse, and comes back as this
+    /// failure.
+    /// </remarks>
+    public async Task<Asked<PersonConditionResponse>> Promote(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        using var nothing = new StringContent(string.Empty);
+
+        return await Promoting.PostContent<PersonConditionResponse>(
+            http, $"api/person-conditions/{id}/promote", nothing, cancellationToken);
+    }
 }

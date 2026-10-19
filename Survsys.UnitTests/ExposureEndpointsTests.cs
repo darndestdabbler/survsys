@@ -101,6 +101,7 @@ public class ExposureEndpointsTests
             DispositionId = 4,
             ContactType = "household",
             DispositionDate = new DateOnly(2026, 3, 12),
+            PersonConditionId = 62,
         };
 
         var response = ExposureEndpoints.ContactToResponse.Compile().Invoke(contact);
@@ -108,7 +109,7 @@ public class ExposureEndpointsTests
         Assert.Equal(
             new ExposureContactResponse(
                 51, 31, 15, new DateOnly(2026, 3, 8), new DateOnly(2026, 3, 8), 4, "household",
-                new DateOnly(2026, 3, 12)),
+                new DateOnly(2026, 3, 12), 62),
             response);
     }
 

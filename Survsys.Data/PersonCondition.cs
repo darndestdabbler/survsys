@@ -16,9 +16,9 @@ namespace Survsys.Data;
 /// this entity reads worse than it could. Users call this a CMR — a case
 /// morbidity report — and the screens that create one say so. The table is
 /// called <c>person_condition</c> because a morbidity report is not the only
-/// thing in it: a contact record, the kind phase 3 adds, is a row of this same
-/// table distinguished by <c>person_condition_type_id</c>, and so is every
-/// other way a person can be linked to a condition. An entity called
+/// thing in it: a contact event is a row of this same table, and so is an
+/// assessment, distinguished by <see cref="EventType"/> as the legacy
+/// distinguishes them by <c>person_condition_type_id</c>. An entity called
 /// <c>MorbidityReport</c> would be the wrong name for half the rows the table
 /// will hold, so it keeps the name of the thing it is.
 ///
@@ -283,6 +283,23 @@ public class PersonCondition
     /// one is assigned.
     /// </remarks>
     public int? InvestigatorId { get; set; }
+
+    /// <summary>
+    /// What kind of event this row is — a morbidity report, a contact or an
+    /// assessment — as one of the <see cref="EventTypes"/> codes.
+    /// </summary>
+    /// <remarks>
+    /// The legacy <c>person_condition_type_id</c>, held as a code rather than
+    /// a key because no event type table stands behind it here, as
+    /// <see cref="EventTypes"/> explains. Required, and a morbidity report
+    /// unless said otherwise: the column defaults to
+    /// <see cref="EventTypes.Morbidity"/>, which is what every case written
+    /// before session 62 became. A contact event is opened from an exposure
+    /// and named by the <see cref="ExposureContact.PersonConditionId"/> of the
+    /// contact row that opened it; promoting it to a morbidity report changes
+    /// this in place.
+    /// </remarks>
+    public string EventType { get; set; } = EventTypes.Morbidity;
 
     /// <summary>
     /// Whether the person handles food, as the legacy <c>food_handler</c>

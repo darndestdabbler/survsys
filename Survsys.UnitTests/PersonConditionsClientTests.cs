@@ -413,6 +413,44 @@ public class PersonConditionsClientTests
             PersonConditionsClient.WorkflowFailurePrefix, PersonConditionsClient.WorkflowLoadFailurePrefix);
     }
 
+    /// <summary>
+    /// The promotion: a POST to the report's promote URL, and the report the
+    /// API answered — a morbidity report now — is what the screen gets.
+    /// </summary>
+    [Fact]
+    public async Task PromotePostsThePromoteUrlAndTheMorbidityReportComesBack()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new PersonConditionsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK,
+                """{ "id": 11, "personId": 13, "conditionId": 74, "recordNumber": "202600001", "createdAt": "2026-03-12T22:07:16-06:00", "eventType": "morbidity" }""");
+        }));
+
+        var promoted = await client.Promote(11);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/person-conditions/11/promote", sent?.RequestUri?.ToString());
+        Assert.True(promoted.Succeeded);
+        Assert.Equal("morbidity", promoted.Value?.EventType);
+    }
+
+    [Fact]
+    public async Task PromoteThatWasRefusedCarriesThePromotePrefix()
+    {
+        var client = new PersonConditionsClient(Transport(_ => Answer(
+            HttpStatusCode.BadRequest,
+            """{ "status": 400, "detail": "This case is a morbidity event." }""")));
+
+        var promoted = await client.Promote(11);
+
+        Assert.False(promoted.Succeeded);
+        Assert.StartsWith(PersonConditionsClient.PromoteFailurePrefix, promoted.Failure);
+        Assert.Contains("400", promoted.Failure);
+    }
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 

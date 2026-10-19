@@ -37,8 +37,14 @@ namespace Survsys.Contracts;
 /// The date the condition was first reported to public health, where it is
 /// known.
 /// </param>
+/// <param name="EventType">
+/// What kind of event to open — <c>morbidity</c> or <c>assessment</c> — or
+/// null for a morbidity report. A contact event is not opened here but from
+/// the exposure the contact was at.
+/// </param>
 public record CreatePersonConditionRequest(
     int PersonId,
     int ConditionId,
     int? AgencyId = null,
-    DateOnly? FirstReportedPhDate = null);
+    DateOnly? FirstReportedPhDate = null,
+    string? EventType = null);

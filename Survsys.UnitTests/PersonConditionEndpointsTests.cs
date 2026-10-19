@@ -145,6 +145,68 @@ public class PersonConditionEndpointsTests
             StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The event type a report is stored under comes back as it is stored.
+    /// </summary>
+    [Fact]
+    public void ToResponseCarriesTheEventType()
+    {
+        var report = Created();
+        report.EventType = EventTypes.Contact;
+
+        Assert.Equal(EventTypes.Contact,
+            PersonConditionEndpoints.ToResponse.Compile().Invoke(report).EventType);
+    }
+
+    /// <summary>
+    /// No event type is a morbidity report, and the two kinds opened by hand
+    /// are accepted as themselves.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData(EventTypes.Morbidity)]
+    [InlineData(EventTypes.Assessment)]
+    public void WhyNotAReportAcceptsAMorbidityReportOrAnAssessment(string? eventType)
+    {
+        Assert.Null(PersonConditionEndpoints.WhyNotAReport(
+            new CreatePersonConditionRequest(PersonId: 13, ConditionId: 74, EventType: eventType)));
+    }
+
+    /// <summary>
+    /// A contact event is opened from an exposure and not here, and a code of
+    /// no kind is refused with it.
+    /// </summary>
+    [Theory]
+    [InlineData(EventTypes.Contact)]
+    [InlineData("Morbidity")]
+    [InlineData("case")]
+    public void WhyNotAReportRefusesAContactEventOrAnUnknownEventType(string eventType)
+    {
+        Assert.Contains($"eventType '{eventType}' cannot be opened here",
+            PersonConditionEndpoints.WhyNotAReport(
+                new CreatePersonConditionRequest(PersonId: 13, ConditionId: 74, EventType: eventType)),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotAPromotionAcceptsAContactEvent()
+    {
+        Assert.Null(PersonConditionEndpoints.WhyNotAPromotion(EventTypes.Contact));
+    }
+
+    /// <summary>
+    /// A morbidity report is one already, and an assessment is not promoted.
+    /// </summary>
+    [Theory]
+    [InlineData(EventTypes.Morbidity)]
+    [InlineData(EventTypes.Assessment)]
+    public void WhyNotAPromotionRefusesAnyOtherEvent(string eventType)
+    {
+        Assert.Contains($"This case is a {eventType} event",
+            PersonConditionEndpoints.WhyNotAPromotion(eventType),
+            StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(16)]
