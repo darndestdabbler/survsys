@@ -1019,7 +1019,32 @@ and `phase-1.6-feature-matrix.md` §1–§8.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 66: Phase 8 walkthroughs
+### Session 66: Reload the report when the address names another case
+
+*Inserted after session 65. Writing the Phase 8 walkthroughs, the promote a
+contact to a case walkthrough could not be performed: pressing **(contact
+event)** on the Contacts tab changes the address from one `/event/edit/{id}` to
+another, but the screen keeps showing the index case. `MorbidityReport.razor`
+reads its report only in `OnInitializedAsync`, and Blazor reuses the page
+component when only its route parameter changes, so a link from one report to
+another never loads the second. The walkthroughs cannot ship a step their
+tests cannot perform, so this comes before them.*
+
+1. Register.
+2. `Survsys.Web`: `MorbidityReport.razor` loads the report, its workflow and
+   everything else it reads whenever `ReportId` changes, not only on first
+   render, resetting the edit mode, the tab and the messages of the case it
+   leaves; an edit lock held on the case it leaves is released first, as
+   leaving the page releases it today. No other screen and no API route
+   changes.
+3. `Survsys.E2ETests`: the existing walkthrough tests still pass; the
+   promote a contact to a case walkthrough in session 67 is what follows the
+   link, so no walkthrough is written here.
+4. Cross-provider verification.
+5. Full test suite, recorded as the run of record.
+6. Close-out.
+
+### Session 67: Phase 8 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: five documents — find a case, correct a laboratory
@@ -1030,7 +1055,7 @@ and `phase-1.6-feature-matrix.md` §1–§8.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 67: Release 0.9.0 (release: 0.9.0)
+### Session 68: Release 0.9.0 (release: 0.9.0)
 
 ---
 
@@ -1038,7 +1063,7 @@ and `phase-1.6-feature-matrix.md` §1–§8.*
 `EMSA_PERSON_MATCHING.md`, `phase-1.6-cross-system-data-model.md` and
 `CT_SITE_REQUIREMENTS.md`. Phases 10 and 13 match inbound people against it.*
 
-### Session 68: Person identifiers, name history and address history
+### Session 69: Person identifiers, name history and address history
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: person identifiers (type, value,
@@ -1056,7 +1081,7 @@ and `phase-1.6-feature-matrix.md` §1–§8.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 69: Person matching in the running application
+### Session 70: Person matching in the running application
 
 1. Register.
 2. `Survsys.Api`: a person-match endpoint that scores candidates with
@@ -1072,7 +1097,7 @@ and `phase-1.6-feature-matrix.md` §1–§8.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 70: Duplicate persons and merging them
+### Session 71: Duplicate persons and merging them
 
 1. Register.
 2. `Survsys.Api`: candidate duplicate pairs found by the matcher, and a merge
@@ -1087,7 +1112,7 @@ and `phase-1.6-feature-matrix.md` §1–§8.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 71: Phase 9 walkthroughs
+### Session 72: Phase 9 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: three documents — find a person by a former name,
@@ -1097,7 +1122,7 @@ and `phase-1.6-feature-matrix.md` §1–§8.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 72: Release 0.10.0 (release: 0.10.0)
+### Session 73: Release 0.10.0 (release: 0.10.0)
 
 ---
 
@@ -1108,7 +1133,7 @@ libraries phase 5 built are wired into intake. Specified by
 `MIRTH_REPLACEMENT_SPEC.md`, `emsa-ui-overview.md` and
 `CT_SITE_REQUIREMENTS.md` §1.*
 
-### Session 73: Parsed messages, the parser seam and MLLP
+### Session 74: Parsed messages, the parser seam and MLLP
 
 1. Register.
 2. `Survsys.Messaging` and `Survsys.Data`: a parser seam that takes raw
@@ -1126,7 +1151,7 @@ libraries phase 5 built are wired into intake. Specified by
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 74: Vocabulary and rules at intake
+### Session 75: Vocabulary and rules at intake
 
 1. Register.
 2. `Survsys.Api`: intake translating each result through `VocabularyMatcher`'s
@@ -1143,7 +1168,7 @@ libraries phase 5 built are wired into intake. Specified by
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 75: The graylist, automatic assignment and the full queue
+### Session 76: The graylist, automatic assignment and the full queue
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: the remaining legacy queue states —
@@ -1161,7 +1186,7 @@ libraries phase 5 built are wired into intake. Specified by
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 76: Labs from messages, and updating an existing case
+### Session 77: Labs from messages, and updating an existing case
 
 1. Register.
 2. `Survsys.Api`: promotion writing the message's specimen, tests, results and
@@ -1178,7 +1203,7 @@ libraries phase 5 built are wired into intake. Specified by
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 77: Exceptions, reprocessing, notifications and statistics
+### Session 78: Exceptions, reprocessing, notifications and statistics
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: typed exceptions with the legacy
@@ -1193,7 +1218,7 @@ libraries phase 5 built are wired into intake. Specified by
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 78: Connecticut ELR conformance
+### Session 79: Connecticut ELR conformance
 
 1. Register.
 2. `Survsys.Messaging`: a conformance profile engine for the usage codes R,
@@ -1211,7 +1236,7 @@ libraries phase 5 built are wired into intake. Specified by
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 79: Phase 10 walkthroughs
+### Session 80: Phase 10 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: four documents — find a message assigned
@@ -1222,7 +1247,7 @@ libraries phase 5 built are wired into intake. Specified by
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 80: Release 0.11.0 (release: 0.11.0)
+### Session 81: Release 0.11.0 (release: 0.11.0)
 
 ---
 
@@ -1232,7 +1257,7 @@ Specified by `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md
 and `nmi-ui-overview.md`. NETSS stays unbuilt until the operator records CDC's
 answer in `docs/planning/netss-export-question.md`.*
 
-### Session 81: The notification queue worker and the export log
+### Session 82: The notification queue worker and the export log
 
 1. Register.
 2. `Survsys.Api`: a hosted service that takes each released entry off
@@ -1250,7 +1275,7 @@ answer in `docs/planning/netss-export-question.md`.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 82: Auto-queue on every change, queue actions and reconciliation
+### Session 83: Auto-queue on every change, queue actions and reconciliation
 
 1. Register.
 2. `Survsys.Api`: a case queued for notification on every change that reaches
@@ -1265,7 +1290,7 @@ answer in `docs/planning/netss-export-question.md`.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 83: Guide, rule set and value set administration
+### Session 84: Guide, rule set and value set administration
 
 1. Register.
 2. `Survsys.Api` and `Survsys.Web`: screens for notification guides, their
@@ -1280,7 +1305,7 @@ answer in `docs/planning/netss-export-question.md`.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 84: Transport to CDC
+### Session 85: Transport to CDC
 
 1. Register.
 2. `Survsys.Api`: a transport chosen in configuration — the HTTP post that
@@ -1294,7 +1319,7 @@ answer in `docs/planning/netss-export-question.md`.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 85: Phase 11 walkthroughs
+### Session 86: Phase 11 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: three documents — send a case to CDC, retract a
@@ -1307,7 +1332,7 @@ answer in `docs/planning/netss-export-question.md`.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 86: Release 0.12.0 (release: 0.12.0)
+### Session 87: Release 0.12.0 (release: 0.12.0)
 
 ---
 
@@ -1315,7 +1340,7 @@ answer in `docs/planning/netss-export-question.md`.*
 Specified by `phase-1.6-cross-cutting-patterns.md`, `CLASSIFICATION_RULES.md`
 and `phase-1.6-feature-matrix.md` §11–§14.*
 
-### Session 87: Audit with its user and values, and its screens
+### Session 88: Audit with its user and values, and its screens
 
 1. Register.
 2. `Survsys.Data`: the audit interceptor recording the signed-in user and the
@@ -1329,7 +1354,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 88: Jurisdiction-scoped access and sign-in protection
+### Session 89: Jurisdiction-scoped access and sign-in protection
 
 1. Register.
 2. `Survsys.Api`: a user's case access scoped to their agencies' jurisdictions
@@ -1345,7 +1370,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 89: Classification rules on save
+### Session 90: Classification rules on save
 
 1. Register.
 2. `Survsys.Data`: the validation and classification rules of
@@ -1359,7 +1384,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 90: IBIS, ad-hoc reporting and system configuration
+### Session 91: IBIS, ad-hoc reporting and system configuration
 
 1. Register.
 2. `Survsys.Web`: a Send to IBIS action on the report, privilege-gated, over
@@ -1374,7 +1399,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 91: Phase 12 walkthroughs
+### Session 92: Phase 12 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: four documents — review a case's audit history, run
@@ -1384,7 +1409,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 92: Release 0.13.0 (release: 0.13.0)
+### Session 93: Release 0.13.0 (release: 0.13.0)
 
 ---
 
@@ -1394,7 +1419,7 @@ eCR documents in `../nedss/docs/specs/site-specs/`. Its items marked
 **[confirm]** are confirmed with the APHL eCR service desk before the session
 that depends on them, and a session that finds one wrong amends this phase.*
 
-### Session 93: eICR and RR parsing and document intake
+### Session 94: eICR and RR parsing and document intake
 
 1. Register.
 2. `Survsys.Messaging`: a CDA parser behind phase 10's parser seam, reading
@@ -1412,7 +1437,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 94: eCR validation and the eICR viewer
+### Session 95: eCR validation and the eICR viewer
 
 1. Register.
 2. `Survsys.Messaging`: validation against the CDA schema and the HL7
@@ -1425,7 +1450,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 95: Reportability and condition mapping
+### Session 96: Reportability and condition mapping
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: a mapping from RCTC and SNOMED condition
@@ -1439,7 +1464,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 96: Cases from eCR
+### Session 97: Cases from eCR
 
 1. Register.
 2. `Survsys.Api`: a reportable eICR's patient matched by phase 9's matcher,
@@ -1456,7 +1481,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 97: eCR senders and data quality
+### Session 98: eCR senders and data quality
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: eCR senders with their onboarding stage —
@@ -1469,7 +1494,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 98: Phase 13 walkthroughs
+### Session 99: Phase 13 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: four documents — review an eICR and its reportability
@@ -1480,13 +1505,13 @@ that depends on them, and a session that finds one wrong amends this phase.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 99: Release 0.14.0 (release: 0.14.0)
+### Session 100: Release 0.14.0 (release: 0.14.0)
 
 ---
 
 *Phase 14 — parity → release 1.0.0, the first release that claims parity.*
 
-### Session 100: The parity check and the documentation for 1.0.0
+### Session 101: The parity check and the documentation for 1.0.0
 
 1. Register.
 2. `docs/planning/gap-analysis.md`: every gap marked closed with the session
@@ -1500,4 +1525,4 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 101: Release 1.0.0 (release: 1.0.0)
+### Session 102: Release 1.0.0 (release: 1.0.0)
