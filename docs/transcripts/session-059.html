@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 059 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 059 transcript</h1>
+<p class="stamp">Rendered 2026-10-18T14:29:00.897Z by dabbler-ai-router 3.21.0 at 5fe183c891323920745f1ac73888234cebb0a910.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-18T09:57:24.766-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 59: Case search and getting back to a case</h3>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: a paged case search over the case morbidity reports — by record number, patient name, disease, investigating agency, workflow state, case status and a date range — returning one row per case with its patient, disease, agency, state and MMWR week.</li><li><code>Survsys.Web</code>: an Events screen in the navigation bar that runs the search and opens a case from its row; the record numbers on the work queues, the task list and the People results become links to the case; a person screen reached from People that shows the person's demographics and lists their cases.</li><li><code>Survsys.IntegrationTests</code>: the search against SQL Server, each filter alone and combined, and paging.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Give the application a way to find a case and get back to it. Survsys.Api gains GET /api/cases, a paged search over the case morbidity reports bound from the query string the way GET /api/persons is: a record-number prefix, patient last- and first-name prefixes, a condition, an investigating agency, a workflow state, a case status, and an inclusive event-onset date range (from, to), plus a personId so one endpoint also lists a person's cases; every criterion is optional, and the page comes back newest record number first as one row per case carrying its id, record number, patient id and name, disease, agency, workflow state (the initial code where none is stored, as the work queue reads it), case status, MMWR week and year and onset date, joined from persons, conditions and agencies by key since the entity carries no navigations. Survsys.Web gains a CasesClient that builds that query string, an Events screen at /events in the navigation bar that runs the search from a form with those criteria and opens a case from its row's record number, and a person screen at /people/{id} reached from the People results that shows the person's demographics and lists their cases, each a link to the case; the record numbers on the work queues and the task list's report column become links to /event/edit/{id}, and the name on every People results row becomes a link to the person screen, with every existing identifier and visible text left exactly as it is so the walkthroughs still read. Survsys.IntegrationTests proves the search against SQL Server with cases the test creates itself: the empty search, each filter alone, the filters combined, and paging; this session reaches SQL Server in that step, which the unit run of record does not.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/64732fcb4bf6e72a002e86eb7b2a2489d6b65305"><code>64732fcb4bf6e72a002e86eb7b2a2489d6b65305</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Case search criteria</td><td><p>Write Survsys.Api/CaseSearch.cs: a sealed record, the sibling of PersonSearch, bound with [AsParameters] from the query string of GET /api/cases, with the optional criteria RecordNumber, LastName, FirstName (string prefixes), ConditionId, AgencyId, PersonId (int?), WorkflowState, CaseStatus (string codes), OnsetFrom and OnsetTo (DateOnly?, inclusive). Give it Trimmed(), which turns a blank string criterion into an absent one and trims the rest, and IsEmpty, read off the trimmed criteria, with remarks saying what each criterion means and why the date range is over the event onset date (the legacy Events list's 'Event date after/before'). Write Survsys.UnitTests/CaseSearchTests.cs proving IsEmpty for no criteria, for all-blank criteria and for one that says something, and Trimmed for a blank, a padded and an inner-spaced criterion, leaving the record it was asked of alone.</p></td><td><span class="mono">Survsys.Api/CaseSearch.cs</span><br><span class="mono">Survsys.UnitTests/CaseSearchTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CaseSearchTests</code></td><td>yes</td></tr>
+<tr><td>Case search endpoint</td><td><p>Write Survsys.Contracts/CaseSearchItemResponse.cs, one row of the search: Id, RecordNumber, PersonId, PatientName ('Last, First' or the last name alone where there is no first name), ConditionId, ConditionName, AgencyId, AgencyName (null where the case has no agency), WorkflowState, CaseStatus, MmwrWeek, MmwrYear and EventOnsetDate. Write Survsys.Api/CaseSearchEndpoints.cs with AddCaseSearch, MapCaseSearch mapping GET /api/cases, and an internal CaseSearchQueries that applies each criterion present and no other (prefix matches for RecordNumber, LastName and FirstName; equality for ConditionId, AgencyId, PersonId, WorkflowState and CaseStatus; EventOnsetDate between OnsetFrom and OnsetTo inclusive), joins persons and conditions by key and agencies by left join, reads a null or blank stored workflow state as WorkflowRules.InitialCode as WorkQueueEndpoints.ToResponse does, orders by RecordNumber descending then Id descending, pages through Paging.WhyNotAPage, and returns PagedResult&lt;CaseSearchItemResponse&gt;. Register it in Survsys.Api/Program.cs beside the other Add and Map calls. Write Survsys.UnitTests/CaseSearchEndpointsTests.cs proving the row shape the public mapping produces, the patient-name rule, and the workflow-state default; the endpoint signature names no Survsys.Data type, which ArchitectureTests holds it to.</p></td><td><span class="mono">Survsys.Contracts/CaseSearchItemResponse.cs</span><br><span class="mono">Survsys.Api/CaseSearchEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.UnitTests/CaseSearchEndpointsTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CaseSearchEndpointsTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Case search against sql server</td><td><p>Write Survsys.IntegrationTests/CaseSearchEndpointsTests.cs in the SqlServerCollection, the sibling of PersonEndpointsTests. It creates the people and cases it asserts on through the API with names no other test uses, setting an agency, a workflow state and a case status on some of them through the routes that already exist and onset dates through the clinical route, so the rows the shared database accumulates from other tests never change its answers. It proves: the empty search returns the seeded Malaria report among its rows, newest record number first, with its patient, disease, agency, state and MMWR week carried; each filter alone - record-number prefix, last-name prefix, first-name prefix, conditionId, agencyId, personId, workflowState, caseStatus, and the onset range from, to, and both - narrows to exactly the cases it should; the filters combined narrow to their intersection; paging partitions the result in order with the total on every page and an empty page past the last row; and a bad page is a Problem Details. This step reaches SQL Server at the fixture's connection string.</p></td><td><span class="mono">Survsys.IntegrationTests/CaseSearchEndpointsTests.cs</span><br><span class="mono">Survsys.Api/CaseSearchEndpoints.cs</span><br><span class="mono">Survsys.UnitTests/CaseSearchEndpointsTests.cs</span></td><td><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --filter FullyQualifiedName~CaseSearchEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Cases client</td><td><p>Write Survsys.Web/CasesClient.cs, the sibling of PersonsClient: a CaseSearchCriteria record with the ten criteria and IsEmpty, a static Url(criteria, page, pageSize) that writes api/cases with the page and only the criteria that were typed, trimmed and escaped, dates as yyyy-MM-dd, and a Page method returning Asked&lt;PagedResult&lt;CaseSearchItemResponse&gt;&gt; through an ApiAsk with a failure prefix of its own. Register it in Survsys.Web/Program.cs with the ApiTokenHandler like the others. Write Survsys.UnitTests/CasesClientTests.cs proving the URL carries the page and no criterion nobody typed, every criterion that was typed, blanks left out, trimming, escaping, the date format, that the request asks for that URL, and that a page the API returned is the page the client returns, with the message-handler fake the sibling tests use.</p></td><td><span class="mono">Survsys.Web/CasesClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.UnitTests/CasesClientTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CasesClientTests</code></td><td>yes</td></tr>
+<tr><td>Events screen</td><td><p>Write Survsys.Web/Components/Pages/Events.razor at /events, titled 'Events - Survsys' with an h1 'Events' and a lead-in, laid out as People.razor and PersonSearchPanel are: a form with Record #, Last name and First name text boxes, Disease (ConditionsClient.Page catalogue) and Investigating agency (AgenciesClient.All) selects each with an Any choice, Workflow state and Case status selects over the four codes each, labelled as WorkQueuePanel labels them, with Any, and Onset from and Onset to date boxes; Search and Clear buttons; a complaint for a date that does not parse; the busy, error, none and total states; and a results table, one row per case, with Record #, Patient, Disease, Agency, Workflow, Status, MMWR week (week/year) and Onset columns and Previous/Next paging over the client's page size, the record number in each row an anchor to /event/edit/{id}. Give every control and state a stable id prefixed events- and every row an id of events-row-{id} with the record cell events-row-{id}-record, so session 66's walkthrough has identifiers to hold on to. Add a nav-events button 'Events' to Survsys.Web/Components/Layout/MainLayout.razor inside the ViewCases block beside People.</p></td><td><span class="mono">Survsys.Web/Components/Pages/Events.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Person screen</td><td><p>Write Survsys.Web/Components/Pages/PersonRecord.razor at /people/{PersonId:int}, titled with the person's name: it loads the person through PersonsClient.Find and shows the demographics the detail carries read-only - name, date of birth, birth and current sex, ethnicity, language, country of birth, races, aliases, guardians, addresses, telephones and emails - as labelled values with ids prefixed person-, a not-found and an error state, and below them a 'Cases' table of the person's cases from CasesClient.Page with personId set, with Record #, Disease, Agency, Workflow, Status, MMWR week and Onset columns, the record number an anchor to /event/edit/{id}, rows person-case-row-{id} with the record cell person-case-row-{id}-record, and a line saying the person has no cases where there are none. No editing on this screen.</p></td><td><span class="mono">Survsys.Web/Components/Pages/PersonRecord.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Links back to a case</td><td><p>Turn the three places a case or person is already listed into links without changing an identifier or a visible text. In Survsys.Web/Components/WorkQueuePanel.razor the record cell keeps its id queue-row-{id}-record and wraps the record number in an anchor to /event/edit/{id}. In Survsys.Web/Components/TasksPanel.razor the report cell keeps its id tasks-row-{id}-report and, where the task has a PersonConditionId, wraps that number in an anchor to /event/edit/{PersonConditionId}, showing the dash as before where it has none. In Survsys.Web/Components/PersonSearchPanel.razor the name cell keeps data-person-name and wraps the name in an anchor to /people/{id}, so the People results, the New CMR search and the contact search all open the person; the column headings and the row action column are untouched. The walkthroughs that read those cells by text and by heading are then run to prove they still read.</p></td><td><span class="mono">Survsys.Web/Components/WorkQueuePanel.razor</span><br><span class="mono">Survsys.Web/Components/TasksPanel.razor</span><br><span class="mono">Survsys.Web/Components/PersonSearchPanel.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code><br><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~FindAPersonTests|FullyQualifiedName~AssignAndAcceptACaseTests|FullyQualifiedName~WorkATaskListTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No walkthrough document under docs/walkthroughs/ and no Playwright test is written for the Events screen or the person screen: those are session 66's Phase 8 walkthroughs. The existing walkthroughs are not edited, and the end-to-end tests this session runs are run only to prove the links broke nothing they assert.</li><li>No case or child record is edited or deleted here, and the person screen does not edit demographics: edit and delete routes are session 60's, and the case's own Demographics tab remains where a person's record is changed.</li><li>The search carries the criteria its plan section names and a personId, and nothing of the legacy Events list beyond them: no saved views on the Events screen, no age range, tags, investigators, queues, language, address-at-diagnosis or facility criteria, no multi-select of diseases or agencies, no deleted-events toggle, and no scoring or fuzzy matching - names and record numbers match by prefix exactly as the people search does.</li><li>No Survsys.Data entity, navigation property, migration or index is added or changed, and no new privilege or PrivilegeRules change is made: GET /api/cases is a read under /api and falls to view_cases by the rule already there.</li><li>No release packaging or publishing, no packaging change to dabbler.yaml, and no edit to the user guide or technical guide, which session 100 brings up to date for 1.0.0.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[13:57:24]</span> <span class="muted">run-started</span> session=059 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[13:57:24]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[13:57:24]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[14:04:33]</span> <span class="muted">engine-session</span> id=0d4faff4-1e2f-41eb-b5f3-019a62157fe4</div>
+<div class="line"><span class="at">[14:04:33]</span> <span class="muted">engine-returned</span> seq=1 exit=<span class="good">0</span> seconds=429 transcript=.dabbler/runs/s59/driver/engine-01.log</div>
+<div class="line"><span class="at">[14:04:33]</span> <span class="muted">plan-accepted</span> steps=[&quot;case-search-criteria&quot;,&quot;case-search-endpoint&quot;,&quot;case-search-against-sql-server&quot;,&quot;cases-client&quot;,&quot;events-screen&quot;,&quot;person-screen&quot;,&quot;links-back-to-a-case&quot;] non_goals=5</div>
+<div class="line"><span class="at">[14:04:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[14:04:34]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=case-search-criteria</div>
+<div class="line"><span class="at">[14:04:34]</span> <span class="muted">engine-invoked</span> seq=2 invocation=2/24 first=false output=stream</div>
+<div class="line"><span class="at">[14:06:26]</span> <span class="muted">engine-returned</span> seq=2 exit=<span class="good">0</span> seconds=112 transcript=.dabbler/runs/s59/driver/engine-02.log</div>
+<div class="line"><span class="at">[14:06:31]</span> <span class="muted">check-passed</span> step=case-search-criteria argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseSearchTests&quot;]</div>
+<div class="line"><span class="at">[14:06:31]</span> <span class="muted">report-accepted</span> seq=2 step=case-search-criteria files=[&quot;Survsys.Api/CaseSearch.cs&quot;,&quot;Survsys.UnitTests/CaseSearchTests.cs&quot;] notes=CaseSearch record with ten optional criteria, Trimmed() and IsEmpty, remarks on each criterion and the onset date range; CaseSearchTests proves IsEmpty and Trimmed, 10 tests passing</div>
+<div class="line"><span class="at">[14:06:31]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=case-search-endpoint</div>
+<div class="line"><span class="at">[14:06:31]</span> <span class="muted">engine-invoked</span> seq=3 invocation=3/24 first=false output=stream</div>
+<div class="line"><span class="at">[14:09:38]</span> <span class="muted">engine-returned</span> seq=3 exit=<span class="good">0</span> seconds=187 transcript=.dabbler/runs/s59/driver/engine-03.log</div>
+<div class="line"><span class="at">[14:09:42]</span> <span class="muted">check-passed</span> step=case-search-endpoint argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseSearchEndpointsTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[14:09:43]</span> <span class="muted">report-accepted</span> seq=3 step=case-search-endpoint files=[&quot;Survsys.Contracts/CaseSearchItemResponse.cs&quot;,&quot;Survsys.Api/CaseSearchEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.UnitTests/CaseSearchEndpointsTests.cs&quot;] notes=GET /api/cases: CaseSearchItemResponse row, CaseSearchEndpoints with public ToResponse over a JoinedCase of report, person, condition and optional agency, CaseSearchQueries applying each criterion present and paging newest record number first, registered in Program.cs; 8 endpoint tests and the architecture tests pass</div>
+<div class="line"><span class="at">[14:09:43]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=case-search-against-sql-server</div>
+<div class="line"><span class="at">[14:09:43]</span> <span class="muted">engine-invoked</span> seq=4 invocation=4/24 first=false output=stream</div>
+<div class="line"><span class="at">[14:17:07]</span> <span class="muted">engine-returned</span> seq=4 exit=<span class="good">0</span> seconds=444 transcript=.dabbler/runs/s59/driver/engine-04.log</div>
+<div class="line"><span class="at">[14:17:24]</span> <span class="muted">check-passed</span> step=case-search-against-sql-server argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseSearchEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[14:17:25]</span> <span class="muted">report-accepted</span> seq=4 step=case-search-against-sql-server files=[&quot;Survsys.IntegrationTests/CaseSearchEndpointsTests.cs&quot;,&quot;Survsys.Api/CaseSearchEndpoints.cs&quot;,&quot;Survsys.UnitTests/CaseSearchEndpointsTests.cs&quot;] notes=CaseSearchEndpointsTests against SQL Server: 17 tests over four cases the class opens and removes, proving the empty search with the seeded report, each filter alone, the combination, blank criteria, paging and bad pages; the run showed the positional JoinedCase record did not translate under OrderBy, so it is now bound by member initialiser (step files amended on the record); event onsets are set through the context because the clinical route writes the disease onset, not the event onset</div>
+<div class="line"><span class="at">[14:17:25]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=cases-client</div>
+<div class="line"><span class="at">[14:17:25]</span> <span class="muted">engine-invoked</span> seq=5 invocation=5/24 first=false output=stream</div>
+<div class="line"><span class="at">[14:19:42]</span> <span class="muted">engine-returned</span> seq=5 exit=<span class="good">0</span> seconds=137 transcript=.dabbler/runs/s59/driver/engine-05.log</div>
+<div class="line"><span class="at">[14:19:46]</span> <span class="muted">check-passed</span> step=cases-client argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CasesClientTests&quot;]</div>
+<div class="line"><span class="at">[14:19:47]</span> <span class="muted">report-accepted</span> seq=5 step=cases-client files=[&quot;Survsys.Web/CasesClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.UnitTests/CasesClientTests.cs&quot;] notes=CasesClient with CaseSearchCriteria (ten criteria, IsEmpty), a public Url writing api/cases with the page and only the typed criteria trimmed, escaped and dated yyyy-MM-dd, and Page through an ApiAsk with its own failure prefix; registered with the ApiTokenHandler; 17 client tests pass</div>
+<div class="line"><span class="at">[14:19:47]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=events-screen</div>
+<div class="line"><span class="at">[14:19:47]</span> <span class="muted">engine-invoked</span> seq=6 invocation=6/24 first=false output=stream</div>
+<div class="line"><span class="at">[14:23:01]</span> <span class="muted">engine-returned</span> seq=6 exit=<span class="good">0</span> seconds=195 transcript=.dabbler/runs/s59/driver/engine-06.log</div>
+<div class="line"><span class="at">[14:23:04]</span> <span class="muted">check-passed</span> step=events-screen argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[14:23:04]</span> <span class="muted">report-accepted</span> seq=6 step=events-screen files=[&quot;Survsys.Web/Components/Pages/Events.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;] notes=Events screen at /events: criteria form with text, catalogue, code and date boxes, Search and Clear, a date complaint, busy, error, none and total states, a paged results table with one row per case and the record number linking to /event/edit/{id}, every element with an events- id; nav-events button beside People; Survsys.Web builds clean</div>
+<div class="line"><span class="at">[14:23:04]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=person-screen</div>
+<div class="line"><span class="at">[14:23:04]</span> <span class="muted">engine-invoked</span> seq=7 invocation=7/24 first=false output=stream</div>
+<div class="line"><span class="at">[14:25:21]</span> <span class="muted">engine-returned</span> seq=7 exit=<span class="good">0</span> seconds=136 transcript=.dabbler/runs/s59/driver/engine-07.log</div>
+<div class="line"><span class="at">[14:25:23]</span> <span class="muted">check-passed</span> step=person-screen argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[14:25:24]</span> <span class="muted">report-accepted</span> seq=7 step=person-screen files=[&quot;Survsys.Web/Components/Pages/PersonRecord.razor&quot;] notes=PersonRecord screen at /people/{id}: read-only demographics with person- ids, addresses, telephones and emails tables, busy, not-found (told by the 404 the ask names) and error states, and a Cases table from the case search narrowed to the person with record numbers linking to /event/edit/{id}, rows person-case-row-{id}, and a no-cases line; Survsys.Web builds clean</div>
+<div class="line"><span class="at">[14:25:24]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=links-back-to-a-case</div>
+<div class="line"><span class="at">[14:25:24]</span> <span class="muted">engine-invoked</span> seq=8 invocation=8/24 first=false output=stream</div>
+<div class="line"><span class="at">[14:27:12]</span> <span class="muted">engine-returned</span> seq=8 exit=<span class="good">0</span> seconds=108 transcript=.dabbler/runs/s59/driver/engine-08.log</div>
+<div class="line"><span class="at">[14:27:15]</span> <span class="muted">check-passed</span> step=links-back-to-a-case argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[14:27:37]</span> <span class="muted">check-passed</span> step=links-back-to-a-case argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~FindAPersonTests|FullyQualifiedName~AssignAndAcceptACaseTests|FullyQualifiedName~WorkATaskListTests&quot;]</div>
+<div class="line"><span class="at">[14:27:37]</span> <span class="muted">report-accepted</span> seq=8 step=links-back-to-a-case files=[&quot;Survsys.Web/Components/WorkQueuePanel.razor&quot;,&quot;Survsys.Web/Components/TasksPanel.razor&quot;,&quot;Survsys.Web/Components/PersonSearchPanel.razor&quot;] notes=Record numbers on the work queue and the task list report column now anchor to /event/edit/{id} (the dash kept for a task with no case), and the name on every People results row anchors to /people/{id}; every id, heading and visible text unchanged; Survsys.Web builds clean and FindAPerson, AssignAndAcceptACase and WorkATaskList walkthroughs pass</div>
+<div class="line"><span class="at">[14:27:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[14:27:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[14:27:38]</span> <span class="muted">job-started</span> name=verification pid=52132 log=.dabbler/runs/s59/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:28:37]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s59/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:28:37]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[14:28:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[14:28:37]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[14:28:38]</span> <span class="muted">job-started</span> name=run of record: unit pid=15864 log=.dabbler/runs/s59/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[14:28:46]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s59/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[14:28:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[14:28:51]</span> <span class="muted">landed</span> commit=64732fcb4bf6e72a002e86eb7b2a2489d6b65305</div>
+<div class="line"><span class="at">[14:28:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[14:28:51]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[14:28:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[14:28:52]</span> <span class="muted">job-started</span> name=close pid=53192 log=.dabbler/runs/s59/driver/jobs/close.log</div>
+<div class="line"><span class="at">[14:29:00]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s59/driver/jobs/close.log</div>
+<div class="line"><span class="at">[14:29:00]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>4 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The person screen does not actually list all of a person’s cases when they have more than 200.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Location:** `Survsys.Web/Components/Pages/PersonRecord.razor`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Fix:** Add paging to the person-case list or otherwise provide access to every result from `GET /api/cases?personId=...`.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Suggested case:** With a person who has 201 case morbidity reports, navigate to `/people/{id}`. The screen should expose all 201 cases, such as through a second page; today it requests only `Cases.Page(..., 1, 200)` and renders the first 200 while directing the user to an Events screen that has no person-id search control.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>1057</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
