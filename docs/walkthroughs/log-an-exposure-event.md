@@ -37,12 +37,11 @@ describes what Survsys shows rather than what EpiTrax showed:
   every source under it together. Once recorded, an exposure is listed and
   not changed: Survsys has no screen to alter or remove a recorded exposure,
   and none to set a contact's disposition afterwards.
-- **The coded fields are plain boxes holding the legacy identifiers.** The
-  place type, the contact's type and disposition, and a source's type are
-  boxes that take the number or code the legacy database holds, not a
-  dropdown over a table of names. The reference tables behind the legacy
-  dropdowns arrive with the sessions that own them. This walkthrough leaves
-  every one of them empty.
+- **The coded fields are chosen from lists.** The place type and state, the
+  contact's type and disposition, and a source's type are lists over the
+  reference code lists an administrator keeps on the **Code lists** screen,
+  seeded from the legacy lookup tables. This walkthrough chooses the place
+  type and leaves the rest empty.
 - **Nothing on an exposure is required.** Survsys records an exposure with
   whatever was entered, and refuses only a date that is not a date, a time
   range that ends before it starts, and a contact that names no person.
@@ -128,15 +127,16 @@ of every test it runs, and writes the recordings to
 8. Press **Save & Continue**.
 9. The report now exists, and the screen is its own form. In the header bar,
    **Patient name** reads **Okafor, Chidi** and **Disease** reads
-   **Giardiasis**. Under the CDC notification panel, the tab strip shows nine
-   tabs, left to right: **Demographic**, **Clinical**, **Laboratory**,
+   **Giardiasis**. Under the CDC notification panel, the tab strip shows
+   eleven tabs, left to right: **Demographic**, **Clinical**, **Laboratory**,
    **Investigation**, **Administrative**, **Forms**, **Vaccines**,
-   **Contacts** and **Notes**. Note
+   **Treatments**, **Encounters**, **Contacts** and **Notes**. Note
    the address in your browser's address bar: it ends in `/event/edit/` and a
    number, and step 14 comes back to it.
 10. Press the **Contacts** tab. The tab opens on two panels. The first,
     headed **Exposures**, is a table with the columns **Name**, **From**,
-    **To**, **Place**, **Contacts** and **Sources**, and its one row reads
+    **To**, **Place**, **Contacts**, **Sources** and **Actions**, and its one
+    row reads
     **No exposures recorded yet.** The second, headed **Record an
     exposure**, is the entry form: the exposure's own boxes, then a **Place**
     section, then a **Contacts** section with an **Add contact** button and
@@ -146,17 +146,18 @@ of every test it runs, and writes the recordings to
     the box labelled **Exposure start**, enter the date `2026-09-18`, and in
     the box labelled **Exposure end**, enter the date `2026-09-20`. Leave
     **Description** empty.
-12. Under **Place**, in the box labelled **Place name**, type `Lakeside
-    Community Pool`; in the box labelled **Street**, type `88 Lakeshore
-    Drive`; and in the box labelled **City**, type `Provo`. Leave the other
-    place boxes — **Place type**, **State**, **Zip**, **Latitude**,
-    **Longitude** and **Phone** — empty.
+12. Under **Place**, open the **Place type** list and choose **Pool**; in
+    the box labelled **Place name**, type `Lakeside Community Pool`; in the
+    box labelled **Street**, type `88 Lakeshore Drive`; and in the box
+    labelled **City**, type `Provo`. Leave the other place boxes —
+    **State**, **Zip**, **Latitude**, **Longitude** and **Phone** — empty.
 13. Press **Record exposure** at the bottom of the form. A green message
     appears at the top of the tab, reading **The exposure has been
     recorded.** The **Exposures** table now has one row, reading, left to
     right: **Lakeside Community Pool outing**, **2026-09-18**,
-    **2026-09-20**, **Lakeside Community Pool**, and a dash in each of
-    **Contacts** and **Sources**. The entry form is empty again: **Name** is
+    **2026-09-20**, **Lakeside Community Pool**, a dash in each of
+    **Contacts** and **Sources**, and the buttons **Add contact**, **Edit**
+    and **Delete** under **Actions**. The entry form is empty again: **Name** is
     blank, **Place name** is blank, and there is no contact under
     **Contacts** and no source under **Sources**.
 14. Go back to the report's address — the one you noted in step 9 — by
@@ -173,11 +174,11 @@ An exposure event on Chidi Okafor's case morbidity report, logged and read
 back:
 
 - A report on **Okafor, Chidi** for **Giardiasis**, opened in the two steps,
-  ending on its form with nine tabs, **Contacts** among them.
+  ending on its form with eleven tabs, **Contacts** among them.
 - The **Contacts** tab with no exposures yet, and an entry form that takes an
   exposure, a place under it, and contacts and sources under that.
 - After entering **Lakeside Community Pool outing**, running
-  **2026-09-18** to **2026-09-20** at **Lakeside Community Pool**, **88
+  **2026-09-18** to **2026-09-20** at the pool **Lakeside Community Pool**, **88
   Lakeshore Drive**, **Provo**, **Record exposure** answers **The exposure
   has been recorded.** and lists the exposure as the table's one row, with a
   dash under **Contacts** and under **Sources** because this walkthrough

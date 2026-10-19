@@ -28,11 +28,12 @@ describes what Survsys shows rather than what EpiTrax showed:
   on file. The screen refuses to save a facility with no agency, with the
   complaint **Choose the agency this facility sits under.**; this walkthrough
   always chooses one, so you never see it.
-- **Survsys reads an address before it stores it.** The **State** is a
-  two-letter code, stored upper-cased, so `ut` is stored as **UT**; the
-  **Zip** is five digits or a ZIP+4, stored as its five-digit zip; a blank
-  optional box is stored as nothing. A value that is not a state code or not
-  a zip code is refused rather than saved.
+- **Survsys reads an address before it stores it.** The **State** is chosen
+  from the list of states — the reference code list an administrator keeps
+  on the **Code lists** screen — and stored as its two-letter code, so
+  **Utah** is stored as `UT`; the **Zip** is five digits or a ZIP+4, stored
+  as its five-digit zip; a blank optional box is stored as nothing. A value
+  that is not a state code or not a zip code is refused rather than saved.
 - **The facilities list is one page**, in name order, with the columns
   **Name**, **Agency**, **City** and **Zip** — the agency by name, and an em
   dash (`—`) where a facility has no city or no zip on file. The legacy list
@@ -101,7 +102,7 @@ recordings to `Survsys.E2ETests/bin/<configuration>/net10.0/videos` as
    - **Agency**: choose **Davis County** from the list.
    - **Street**: `22 South State Street`
    - **City**: `Clearfield`
-   - **State**: `ut` — two letters, which Survsys stores upper-cased.
+   - **State**: choose **Utah** from the list.
    - **Zip**: `84015`
    - **Phone**: `801-525-5000`
 6. Press **Save**. The screen goes back to the **Facilities** list, under the
@@ -118,11 +119,10 @@ recordings to `Survsys.E2ETests/bin/<configuration>/net10.0/videos` as
 9. Press **Davis County Health Clinic** to open it and read back what the
    save stored.
 10. The heading reads **Edit facility**, and the form reads back what you
-    typed, with the two values Survsys normalised: **Name** *Davis County
-    Health Clinic*, **Short name** *DCHC*, **Agency** *Davis County*,
-    **Street** *22 South State Street*, **City** *Clearfield*, **State**
-    **UT** (upper-cased from the `ut` you typed), **Zip** *84015* and
-    **Phone** *801-525-5000*.
+    entered: **Name** *Davis County Health Clinic*, **Short name** *DCHC*,
+    **Agency** *Davis County*, **Street** *22 South State Street*, **City**
+    *Clearfield*, **State** *Utah*, **Zip** *84015* and **Phone**
+    *801-525-5000*.
 
 ## What you should see
 
@@ -135,7 +135,7 @@ A facility added under its agency, and read back:
   showing 1.** with the one row above: the facility's name, its agency
   **Davis County**, its city **Clearfield** and its zip **84015**.
 - Opening the facility reads the whole record back under the heading **Edit
-  facility**, with the **State** stored as **UT**.
+  facility**, with the **State** reading **Utah**.
 
 You now know how to add a facility under the agency that owns it, with its
 address. If what you saw differs from what is written above, the walkthrough

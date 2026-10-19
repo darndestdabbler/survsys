@@ -180,8 +180,11 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
 
         <MudGrid Spacing="2" Class="align-center">
             <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="statusCode" id="report-status-input"
-                              Label="Case status (C/P/S/NC)" Variant="Variant.Outlined" />
+                @* The case_status codes a report's own status may take, as the
+                   case status rules accept them; the list's others are the LHD
+                   and state case status's, on the Administrative tab. *@
+                <CodeSelect List="@CodeLists.CaseStatus" Only="@ReportCaseStatuses" @bind-Value="statusCode"
+                            id="report-status-input" Label="Case status" />
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudButton id="report-status-save" Variant="Variant.Filled" Color="Color.Primary"
@@ -337,7 +340,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <span id="report-tab-laboratory">Laboratory</span>
             </TabContent>
             <ChildContent>
-                <LaboratoryTab ReportId="@shown.Id" />
+                <LaboratoryTab ReportId="@shown.Id" ConditionId="@shown.ConditionId" />
             </ChildContent>
         </MudTabPanel>
         <MudTabPanel Text="Investigation">
@@ -594,6 +597,8 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     /// The case status code, or "Unknown" where none is set — which is how the
     /// report carries an unclassified case.
     /// </summary>
+    private static readonly IReadOnlyList<string> ReportCaseStatuses = ["C", "P", "S", "NC"];
+
     private string Status => report?.CaseStatus is { } code && !string.IsNullOrWhiteSpace(code)
         ? code
         : "Unknown";

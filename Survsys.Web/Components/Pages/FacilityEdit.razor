@@ -64,8 +64,7 @@ else
                               Variant="Variant.Outlined" MaxLength="100" />
             </MudItem>
             <MudItem xs="6" sm="1">
-                <MudTextField @bind-Value="state" id="facility-state" Label="State"
-                              Variant="Variant.Outlined" MaxLength="2" />
+                <CodeSelect List="@CodeLists.State" @bind-Value="state" id="facility-state" Label="State" />
             </MudItem>
             <MudItem xs="6" sm="2">
                 <MudTextField @bind-Value="zip" id="facility-zip" Label="Zip"

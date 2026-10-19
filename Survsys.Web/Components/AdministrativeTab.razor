@@ -84,22 +84,22 @@
         @if (Shows("lhd_case_status"))
         {
             <MudItem xs="12" sm="4">
-                <MudNumericField @bind-Value="lhdCaseStatusId" id="administrative-lhd-case-status-id"
-                                 Label="LHD case status (id)" Variant="Variant.Outlined" />
+                <CodeSelect List="@CodeLists.CaseStatus" @bind-CodeId="lhdCaseStatusId" id="administrative-lhd-case-status-id"
+                            Label="LHD case status" />
             </MudItem>
         }
         @if (Shows("state_case_status"))
         {
             <MudItem xs="12" sm="4">
-                <MudNumericField @bind-Value="stateCaseStatusId" id="administrative-state-case-status-id"
-                                 Label="State case status (id)" Variant="Variant.Outlined" />
+                <CodeSelect List="@CodeLists.CaseStatus" @bind-CodeId="stateCaseStatusId" id="administrative-state-case-status-id"
+                            Label="State case status" />
             </MudItem>
         }
         @if (Shows("outbreak_associated"))
         {
             <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="outbreakAssociated" id="administrative-outbreak-associated"
-                              Label="Outbreak associated (Yes/No/Unknown)" Variant="Variant.Outlined" />
+                <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="outbreakAssociated" id="administrative-outbreak-associated"
+                            Label="Outbreak associated" />
             </MudItem>
         }
         <MudItem xs="12" sm="4">
@@ -141,8 +141,9 @@
         @if (Shows("investigation_outcome"))
         {
             <MudItem xs="12" sm="4">
-                <MudNumericField @bind-Value="investigationOutcomeDispositionId" id="administrative-investigation-outcome-disposition-id"
-                                 Label="Investigation outcome (disposition id)" Variant="Variant.Outlined" />
+                <CodeSelect List="@CodeLists.Disposition" @bind-CodeId="investigationOutcomeDispositionId"
+                            id="administrative-investigation-outcome-disposition-id"
+                            Label="Investigation outcome" />
             </MudItem>
         }
         @if (Shows("event_name"))

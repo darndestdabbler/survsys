@@ -120,12 +120,12 @@ else
                               InputType="InputType.Date" />
             </MudItem>
             <MudItem xs="12" sm="3">
-                <MudTextField @bind-Value="manufacturer" id="vaccines-tab-manufacturer"
-                              Label="Manufacturer (code)" Variant="Variant.Outlined" MaxLength="50" />
+                <CodeSelect List="@CodeLists.VaccineManufacturer" @bind-Value="manufacturer" id="vaccines-tab-manufacturer"
+                            Label="Manufacturer" />
             </MudItem>
             <MudItem xs="12" sm="3">
-                <MudTextField @bind-Value="informationSource" id="vaccines-tab-information-source"
-                              Label="Information source (code)" Variant="Variant.Outlined" MaxLength="50" />
+                <CodeSelect List="@CodeLists.VaccineInformationSource" @bind-Value="informationSource"
+                            id="vaccines-tab-information-source" Label="Information source" />
             </MudItem>
             <MudItem xs="12">
                 <MudTextField @bind-Value="comment" id="vaccines-tab-comment" Label="Comment"

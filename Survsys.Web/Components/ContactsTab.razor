@@ -209,8 +209,8 @@
 
         <MudGrid Spacing="2" Class="mb-2">
             <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="addContactType" id="contacts-add-contact-type"
-                              Label="Contact type" Variant="Variant.Outlined" />
+                <CodeSelect List="@CodeLists.ContactType" @bind-Value="addContactType" id="contacts-add-contact-type"
+                            Label="Contact type" />
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudButton id="contacts-add-cancel" Variant="Variant.Outlined" Disabled="@adding"
@@ -325,9 +325,8 @@
                               Label="Place name" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="2">
-                <MudTextField @bind-Value="placeForm.ExposurePlaceTypeId" id="contacts-entry-place-type-id"
-                              Label="Place type" Variant="Variant.Outlined" Margin="Margin.Dense"
-                              InputType="InputType.Number" />
+                <CodeSelect List="@CodeLists.ExposurePlaceType" @bind-CodeId="placeForm.ExposurePlaceTypeId"
+                            id="contacts-entry-place-type-id" Label="Place type" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="3">
                 <MudTextField @bind-Value="placeForm.Street" id="contacts-entry-place-street"
@@ -338,8 +337,8 @@
                               Label="City" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="2">
-                <MudTextField @bind-Value="placeForm.State" id="contacts-entry-place-state"
-                              Label="State" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <CodeSelect List="@CodeLists.State" @bind-Value="placeForm.State" id="contacts-entry-place-state"
+                            Label="State" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="2">
                 <MudTextField @bind-Value="placeForm.Zip" id="contacts-entry-place-zip"
@@ -382,13 +381,14 @@
                                   InputType="InputType.Number" />
                 </MudItem>
                 <MudItem xs="12" sm="2">
-                    <MudTextField @bind-Value="contact.ContactType" id="@($"contacts-entry-contact-{contactAt}-contact-type")"
-                                  Label="Contact type" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <CodeSelect List="@CodeLists.ContactType" @bind-Value="contact.ContactType"
+                                id="@($"contacts-entry-contact-{contactAt}-contact-type")"
+                                Label="Contact type" Margin="Margin.Dense" />
                 </MudItem>
                 <MudItem xs="12" sm="2">
-                    <MudTextField @bind-Value="contact.DispositionId" id="@($"contacts-entry-contact-{contactAt}-disposition-id")"
-                                  Label="Disposition" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                  InputType="InputType.Number" />
+                    <CodeSelect List="@CodeLists.Disposition" @bind-CodeId="contact.DispositionId"
+                                id="@($"contacts-entry-contact-{contactAt}-disposition-id")"
+                                Label="Disposition" Margin="Margin.Dense" />
                 </MudItem>
                 <MudItem xs="12" sm="2">
                     <MudTextField @bind-Value="contact.DispositionDate" id="@($"contacts-entry-contact-{contactAt}-disposition-date")"
@@ -435,8 +435,9 @@
                                   Label="Source name" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 </MudItem>
                 <MudItem xs="12" sm="2">
-                    <MudTextField @bind-Value="source.SourceType" id="@($"contacts-entry-source-{sourceAt}-source-type")"
-                                  Label="Source type" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <CodeSelect List="@CodeLists.SourceType" @bind-Value="source.SourceType"
+                                id="@($"contacts-entry-source-{sourceAt}-source-type")"
+                                Label="Source type" Margin="Margin.Dense" />
                 </MudItem>
                 <MudItem xs="12" sm="2">
                     <MudTextField @bind-Value="source.PersonId" id="@($"contacts-entry-source-{sourceAt}-person-id")"

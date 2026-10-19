@@ -154,21 +154,21 @@
                               Label="City" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="2">
-                <MudTextField @bind-Value="address.State" id="@($"demographics-address-{at}-state")"
-                              Label="State" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <CodeSelect List="@CodeLists.State" @bind-Value="address.State" id="@($"demographics-address-{at}-state")"
+                            Label="State" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="2">
                 <MudTextField @bind-Value="address.PostalCode" id="@($"demographics-address-{at}-postal-code")"
                               Label="Zip code" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="2">
-                <MudTextField @bind-Value="address.County" id="@($"demographics-address-{at}-county")"
-                              Label="County" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <CodeSelect List="@CodeLists.County" @bind-Value="address.County" id="@($"demographics-address-{at}-county")"
+                            Label="County" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="2">
-                <MudTextField @bind-Value="address.ResidenceType" id="@($"demographics-address-{at}-residence-type")"
-                              Label="Residence type" Variant="Variant.Outlined" Margin="Margin.Dense"
-                              InputType="InputType.Number" />
+                <CodeSelect List="@CodeLists.ResidenceType" @bind-CodeId="address.ResidenceType"
+                            id="@($"demographics-address-{at}-residence-type")"
+                            Label="Residence type" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="2">
                 <MudTextField @bind-Value="address.Beginning" id="@($"demographics-address-{at}-beginning")"
@@ -206,8 +206,9 @@
         var telephone = telephones[at];
         <MudGrid Spacing="2" Class="mb-2" @key="telephone">
             <MudItem xs="12" sm="2">
-                <MudTextField @bind-Value="telephone.TelephoneType" id="@($"demographics-telephone-{at}-type")"
-                              Label="Telephone type" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <CodeSelect List="@CodeLists.TelephoneType" @bind-Value="telephone.TelephoneType"
+                            id="@($"demographics-telephone-{at}-type")"
+                            Label="Telephone type" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="1">
                 <MudTextField @bind-Value="telephone.CountryCode" id="@($"demographics-telephone-{at}-country-code")"
@@ -283,24 +284,24 @@
     <MudText Typo="Typo.h6" GutterBottom="true">Demographics</MudText>
     <MudGrid Spacing="2">
         <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="birthGender" id="demographics-birth-gender"
-                          Label="Birth sex" Variant="Variant.Outlined" />
+            <CodeSelect List="@CodeLists.Gender" @bind-Value="birthGender" id="demographics-birth-gender"
+                        Label="Birth sex" />
         </MudItem>
         <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="currentGender" id="demographics-current-gender"
-                          Label="Current gender" Variant="Variant.Outlined" />
+            <CodeSelect List="@CodeLists.Gender" @bind-Value="currentGender" id="demographics-current-gender"
+                        Label="Current gender" />
         </MudItem>
         <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="language" id="demographics-language"
-                          Label="Primary language" Variant="Variant.Outlined" />
+            <CodeSelect List="@CodeLists.Language" @bind-Value="language" id="demographics-language"
+                        Label="Primary language" />
         </MudItem>
         <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="ethnicity" id="demographics-ethnicity"
-                          Label="Ethnicity" Variant="Variant.Outlined" />
+            <CodeSelect List="@CodeLists.Ethnicity" @bind-Value="ethnicity" id="demographics-ethnicity"
+                        Label="Ethnicity" />
         </MudItem>
         <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="countryOfBirth" id="demographics-country-of-birth"
-                          Label="Country of birth" Variant="Variant.Outlined" />
+            <CodeSelect List="@CodeLists.Country" @bind-Value="countryOfBirth" id="demographics-country-of-birth"
+                        Label="Country of birth" />
         </MudItem>
     </MudGrid>
 
@@ -310,8 +311,8 @@
         {
             var at = n;
             <div class="d-flex gap-2 align-center mt-1" @key="races[at]">
-                <MudTextField @bind-Value="races[at].Value" id="@($"demographics-race-{at}")"
-                              Label="Race code" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <CodeSelect List="@CodeLists.Race" @bind-Value="races[at].Value" id="@($"demographics-race-{at}")"
+                            Label="Race" Margin="Margin.Dense" />
                 <MudButton id="@($"demographics-race-remove-{at}")" Variant="Variant.Text"
                            Color="Color.Error" OnClick="@(() => races.RemoveAt(at))">
                     Remove

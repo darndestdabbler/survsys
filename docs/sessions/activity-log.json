@@ -658,6 +658,29 @@
       "dateTime": "2026-10-18T20:19:09.400000-04:00",
       "task": "Give a case its treatments, its healthcare encounters, its occupation and pregnancy, the vaccine manufacturer and information source, and the report header's investigator, brief note and separate state and local case status. Survsys.Data gains PersonTreatment (person_treatments: a treatment from the catalogue given on a case, with its start and stop dates, dose and comment, cascading with the case) and Encounter (encounters: a dated healthcare encounter on a case, with its type code, facility and description, cascading with the case), and new columns -- occupation, pregnant, pregnancy_due_date, expected_delivery_facility_id and brief_note on person_conditions, manufacturer and information_source on person_vaccines -- all in one migration. Survsys.Api gains the case treatment routes beside the treatment catalogue (list, add, save, remove under /api/cases), the encounter routes likewise, the pregnancy fields on the clinical read and save, occupation on the investigation read and save, manufacturer and information source on the vaccine record, and on the report itself its brief note, LHD case status and state case status, the brief note saved through PUT /api/person-conditions/{id}/brief-note. Survsys.Web gains the client calls, a Treatments tab choosing from the condition's treatment list or, at a switch, the whole catalogue, an Encounters tab, the new fields on the Clinical, Investigation and Vaccines tabs, and the header's investigator, state and LHD case status and brief note with its Save. Survsys.UnitTests proves the pure rules and the clients; Survsys.IntegrationTests proves each new route against SQL Server.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 64,
+      "dateTime": "2026-10-19T01:31:22.185000-04:00",
+      "task": "Give every field typed as a free-text code a reference list to choose it from. Survsys.Data gains one code table, CodeValue (code_values: list name, code, description, sort order, active), and CodeValueCondition (code_value_conditions: a test type allowed for a condition), in one migration seeded from the legacy reference rows in ../nedss/legacy/nedss-jpa/src/main/resources/db/migration (V0003__init.sql and the later V0009, V0158, V0164, V0169 and V0221 scripts, the reference tables the db-snapshots point at but do not dump), plus the legacy screens' fixed lists for task priority and encounter type and the attachment categories already enforced; stored values are left exactly as they are, string fields keeping the code and the bare integer fields (specimen source, test type, test status, organism, resistance agent and result, disposition, exposure place type, residence type, task category, imported-from, LHD and state case status, investigation outcome) now holding a code_values id. Survsys.Api gains one code-list endpoint under /api/codes -- read a list (test types filtered by a condition, the whole list where the condition has none mapped), add and save a code, a code retired by marking it inactive -- gated as reference data, and the attachment category checked against its list. Survsys.Web gains a CodesClient, a Codes screen under the reference-data administration buttons to maintain the lists, a CodeSelect component, and a select in place of each free-text code on every tab (the Yes/No/Unknown answers a fixed select), a value on file but not on its list still shown as its own option so nothing is lost. Survsys.E2ETests and docs/walkthroughs: every walkthrough that types or reads a code in a box chooses it from its list instead, document and test changed together.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 64,
+      "dateTime": "2026-10-19T01:57:22.347000-04:00",
+      "what": "step 'walkthroughs-choose-codes': its files",
+      "reason": "Running the walkthroughs found two defects in the earlier select steps: CodeSelect's ToStringFunc left a chosen entry's text blank (removed), and the new task category select shared the attachment panel's Category label on the Notes tab (relabelled Task category). The create-a-case-morbidity-report pair reads the case status panel this session changed and the tab strip session 63 grew, and was the one other failing walkthrough.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 64,
+      "dateTime": "2026-10-19T01:57:24.543000-04:00",
+      "what": "step 'walkthroughs-choose-codes': its checks",
+      "reason": "The create-a-case-morbidity-report walkthrough this step now changes joins the step's E2E check.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

@@ -49,6 +49,12 @@ public class LogAnExposureEventTests(SurvsysHarness harness) : SurvsysPageTest
         "—",
     ];
 
+    /// <summary>
+    /// The exposure row's own cells but its last, which holds the Add contact,
+    /// Edit and Delete buttons rather than anything recorded.
+    /// </summary>
+    private const string ExposureCells = "#contacts-exposure-0 > td:not(:last-child)";
+
     [Fact]
     public async Task LogAnExposureEvent()
     {
@@ -97,7 +103,7 @@ public class LogAnExposureEventTests(SurvsysHarness harness) : SurvsysPageTest
             await Page.Locator("#report-save").ClickAsync());
 
         // 9. The report's form: the header names him and the disease, and the
-        //    nine tabs are there. Its address is kept for step 14.
+        //    eleven tabs are there. Its address is kept for step 14.
         var reportAddress = string.Empty;
 
         await Step(Document, 9, "read the report form's header and tab strip, and note its address", async () =>
@@ -105,7 +111,7 @@ public class LogAnExposureEventTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator("#report-header-patient")).ToHaveTextAsync("Okafor, Chidi");
             await Expect(Page.Locator("#report-header-disease")).ToHaveTextAsync("Giardiasis");
             await Expect(Page.Locator("[id^='report-tab-']")).ToHaveTextAsync(
-                ["Demographic", "Clinical", "Laboratory", "Investigation", "Administrative", "Forms", "Vaccines", "Contacts", "Notes"]);
+                ["Demographic", "Clinical", "Laboratory", "Investigation", "Administrative", "Forms", "Vaccines", "Treatments", "Encounters", "Contacts", "Notes"]);
 
             reportAddress = Page.Url;
             Assert.Contains("/event/edit/", reportAddress);
@@ -117,7 +123,7 @@ public class LogAnExposureEventTests(SurvsysHarness harness) : SurvsysPageTest
             await OpenContactsTab();
 
             await Expect(Page.Locator("#contacts-exposures thead th")).ToHaveTextAsync(
-                ["Name", "From", "To", "Place", "Contacts", "Sources"]);
+                ["Name", "From", "To", "Place", "Contacts", "Sources", "Actions"]);
             await Expect(Page.Locator("#contacts-exposures tbody tr"))
                 .ToHaveTextAsync(["No exposures recorded yet."]);
 
@@ -138,9 +144,10 @@ public class LogAnExposureEventTests(SurvsysHarness harness) : SurvsysPageTest
             await Page.Locator("#contacts-entry-exposure-end").FillAsync("2026-09-20");
         });
 
-        // 12. The place's name, street and city.
-        await Step(Document, 12, "fill the Place name, Street and City under Place", async () =>
+        // 12. The place's type from its list, and its name, street and city.
+        await Step(Document, 12, "choose Pool from Place type and fill the Place name, Street and City under Place", async () =>
         {
+            await Choose("Place type", "Pool");
             await Page.Locator("#contacts-entry-place-name").FillAsync("Lakeside Community Pool");
             await Page.Locator("#contacts-entry-place-street").FillAsync("88 Lakeshore Drive");
             await Page.Locator("#contacts-entry-place-city").FillAsync("Provo");
@@ -157,7 +164,7 @@ public class LogAnExposureEventTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator("#contacts-entry-complaint")).ToHaveCountAsync(0);
 
             await Expect(Page.Locator("#contacts-exposures tbody tr")).ToHaveCountAsync(1);
-            await Expect(Page.Locator("#contacts-exposure-0 td")).ToHaveTextAsync(ExposureRow);
+            await Expect(Page.Locator(ExposureCells)).ToHaveTextAsync(ExposureRow);
 
             await Expect(Page.Locator("#contacts-entry-name")).ToHaveValueAsync(string.Empty);
             await Expect(Page.Locator("#contacts-entry-place-name")).ToHaveValueAsync(string.Empty);
@@ -172,7 +179,7 @@ public class LogAnExposureEventTests(SurvsysHarness harness) : SurvsysPageTest
             await OpenContactsTab();
 
             await Expect(Page.Locator("#contacts-exposures tbody tr")).ToHaveCountAsync(1);
-            await Expect(Page.Locator("#contacts-exposure-0 td")).ToHaveTextAsync(ExposureRow);
+            await Expect(Page.Locator(ExposureCells)).ToHaveTextAsync(ExposureRow);
         });
     }
 

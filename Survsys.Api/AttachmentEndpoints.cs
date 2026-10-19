@@ -45,41 +45,16 @@ namespace Survsys.Api;
 /// <c>PUT /api/attachments/{id}</c> corrects the one thing about an attachment
 /// that is a filing decision rather than a fact of the stored file — the
 /// correspondence category — and leaves the filename, content type, size and
-/// bytes exactly as they were stored; it refuses a category outside the fixed
-/// vocabulary through <see cref="WhyNotACategory"/>, the category half of
-/// <see cref="WhyNotAnAttachment"/>. <c>DELETE /api/attachments/{id}</c> removes
+/// bytes exactly as they were stored. The upload and the refile alike refuse a
+/// category that is not an active code on the <c>attachment_category</c> list
+/// (<c>/api/codes</c>), through <see cref="WhyNotACategory"/>, which is handed
+/// the list as it stands. <c>DELETE /api/attachments/{id}</c> removes
 /// the attachment and the <c>attachment_files</c> row it points at together,
 /// inside one transaction, so neither the metadata nor the bytes it describes
 /// is ever left without the other.
 /// </remarks>
 public static class AttachmentEndpoints
 {
-    /// <summary>
-    /// The category a general piece of correspondence is filed under.
-    /// </summary>
-    /// <remarks>
-    /// The vocabulary is the five values the legacy upload dialog offers, as
-    /// <c>legacy/nedss/src/main/webapp/views/person_condition/pc_attachment_upload.xhtml</c>
-    /// under <c>../nedss</c> declares them, down to the codes it submits.
-    /// Consts here and not a reference table, for the reason
-    /// <see cref="NoteEndpoints.ClinicalNoteType"/> is a const: a category is
-    /// a fixed vocabulary that only this slice reads, where a case status is
-    /// read by everything that touches a report.
-    /// </remarks>
-    public const string CorrespondenceCategory = "correspondence";
-
-    /// <summary>The category laboratory results are filed under.</summary>
-    public const string LabCategory = "lab";
-
-    /// <summary>The category a letter is filed under.</summary>
-    public const string LetterCategory = "letter";
-
-    /// <summary>The category an x-ray is filed under.</summary>
-    public const string XRayCategory = "x-ray";
-
-    /// <summary>The category anything else is filed under.</summary>
-    public const string OtherCategory = "other";
-
     /// <summary>
     /// The largest file this tier stores: 30 MB, which is the limit the legacy
     /// upload dialog states and enforces.
@@ -108,7 +83,7 @@ public static class AttachmentEndpoints
     /// The content types this tier stores, matched without regard to case.
     /// </summary>
     /// <remarks>
-    /// Short, and each entry is here because one of the five categories is
+    /// Short, and each entry is here because one of the seeded categories is
     /// about it: PDF, plain text and CSV for correspondence and laboratory
     /// results, Word — the old binary format and the XML one — for letters,
     /// and PNG, JPEG, GIF and TIFF for x-rays and the scans that stand in for
@@ -132,20 +107,6 @@ public static class AttachmentEndpoints
         "image/gif",
         "image/tiff",
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>The categories this tier files an attachment under.</summary>
-    /// <remarks>
-    /// The five codes, as a set, so <see cref="WhyNotAnAttachment"/> asks once
-    /// and the sentence it gives can list them.
-    /// </remarks>
-    public static readonly FrozenSet<string> Categories = new[]
-    {
-        CorrespondenceCategory,
-        LabCategory,
-        LetterCategory,
-        XRayCategory,
-        OtherCategory,
-    }.ToFrozenSet(StringComparer.Ordinal);
 
     /// <summary>The projection from a stored attachment to its wire shape.</summary>
     /// <remarks>
@@ -182,11 +143,11 @@ public static class AttachmentEndpoints
     /// The shape <see cref="NoteEndpoints.WhyNotANote"/> has: a pure function
     /// the unit suite proves, with the endpoint turning the sentence into a 400
     /// that names the field. Whether the report exists is not here, because
-    /// that needs a query. What is here is the size limit and the content-type
-    /// check the session plan's section asks for, and the category: a file
-    /// with no name, an empty one, one over <see cref="MaxBytes"/>, one
-    /// declaring a type this tier does not store, and one filed under a
-    /// category that is not one of the five.
+    /// that needs a query, nor the category, which is asked of
+    /// <see cref="WhyNotACategory"/> once the list is read. What is here is the
+    /// size limit and the content-type check the session plan's section asks
+    /// for: a file with no name, an empty one, one over <see cref="MaxBytes"/>,
+    /// and one declaring a type this tier does not store.
     ///
     /// The declared type is read up to its first <c>;</c>, so
     /// <c>text/plain; charset=utf-8</c> is the <c>text/plain</c> the set
@@ -199,8 +160,7 @@ public static class AttachmentEndpoints
     public static string? WhyNotAnAttachment(
         string? filename,
         string? contentType,
-        long size,
-        string? category)
+        long size)
     {
         if (string.IsNullOrWhiteSpace(filename))
         {
@@ -226,32 +186,30 @@ public static class AttachmentEndpoints
                 + $"one of {string.Join(", ", StoredContentTypes)}.";
         }
 
-        if (!Categories.Contains(category ?? string.Empty))
-        {
-            return $"category '{category}' is not one an attachment is filed under. Give "
-                + $"{string.Join(", ", Categories)}.";
-        }
-
         return null;
     }
 
     /// <summary>
-    /// Why a category an attachment would be refiled under is not one this
-    /// endpoint files under, or null when it is one of the five.
+    /// Why a category an attachment would be filed or refiled under is not one
+    /// of the categories given, or null when it is one of them.
     /// </summary>
     /// <remarks>
-    /// The category half of <see cref="WhyNotAnAttachment"/>, over the one
-    /// field <c>PUT /api/attachments/{id}</c> corrects: the bytes and the rest
-    /// of the file's metadata are not a correction's to touch, so the edit asks
-    /// only whether the new category is one of the five. The same sentence the
-    /// upload gives, so a caller reads one answer to the one question whichever
-    /// route it asked. Public because the unit suite proves it.
+    /// The categories are the active codes on the <c>attachment_category</c>
+    /// list, read by <see cref="AttachmentQueries.Categories"/> and handed in,
+    /// so the question stays pure. The upload and
+    /// <c>PUT /api/attachments/{id}</c> give the same sentence, so a caller
+    /// reads one answer to the one question whichever route it asked. Public
+    /// because the unit suite proves it.
     /// </remarks>
-    public static string? WhyNotACategory(string? category) =>
-        Categories.Contains(category ?? string.Empty)
+    public static string? WhyNotACategory(string? category, IReadOnlyCollection<string> categories)
+    {
+        ArgumentNullException.ThrowIfNull(categories);
+
+        return categories.Contains(category ?? string.Empty, StringComparer.Ordinal)
             ? null
             : $"category '{category}' is not one an attachment is filed under. Give "
-                + $"{string.Join(", ", Categories)}.";
+                + $"{string.Join(", ", categories)}.";
+    }
 
     /// <summary>
     /// The media type a declared content type names, without the parameters
@@ -318,7 +276,8 @@ public static class AttachmentEndpoints
     {
         ArgumentNullException.ThrowIfNull(file);
 
-        if (WhyNotAnAttachment(file.FileName, file.ContentType, file.Length, category) is { } why)
+        if ((WhyNotAnAttachment(file.FileName, file.ContentType, file.Length)
+            ?? WhyNotACategory(category, await attachments.Categories(cancellationToken))) is { } why)
         {
             return TypedResults.Problem(
                 detail: why,
@@ -388,7 +347,7 @@ public static class AttachmentEndpoints
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (WhyNotACategory(request.Category) is { } why)
+        if (WhyNotACategory(request.Category, await attachments.Categories(cancellationToken)) is { } why)
         {
             return TypedResults.Problem(
                 detail: why,
@@ -458,6 +417,18 @@ internal sealed class AttachmentQueries(SurvsysDbContext database)
     /// </summary>
     public Task<bool> HasReport(int reportId, CancellationToken cancellationToken) =>
         database.PersonConditions.AnyAsync(report => report.Id == reportId, cancellationToken);
+
+    /// <summary>
+    /// The categories an attachment may be filed under: the active codes on
+    /// the <c>attachment_category</c> list, in the list's order.
+    /// </summary>
+    public async Task<IReadOnlyCollection<string>> Categories(CancellationToken cancellationToken) =>
+        await database.CodeValues
+            .Where(code => code.List == CodeLists.AttachmentCategory && code.Active)
+            .OrderBy(code => code.SortOrder)
+            .ThenBy(code => code.Id)
+            .Select(code => code.Code)
+            .ToListAsync(cancellationToken);
 
     /// <summary>
     /// Stores the file and the row that describes it, and answers with the

@@ -36,13 +36,16 @@ describes what Survsys shows rather than what EpiTrax showed:
   together. The legacy form took one test with one result per **Add Lab**.
   Once recorded, a specimen is listed and not edited: Survsys has no screen
   to change or remove a recorded specimen yet.
-- **The coded fields are plain boxes holding the legacy identifiers.**
-  Specimen source, lab facility, provider, diagnostic facility, reporting
-  facility, test type, test status, organism and the result code are boxes
-  that take the number or code the legacy database holds, not an
-  autocomplete over a table of names. The reference tables behind the legacy
-  dropdowns arrive with the sessions that own them. This walkthrough leaves
-  every one of them empty, and the specimens table shows a dash for each.
+- **The coded fields are chosen from lists, and the table shows what is
+  stored.** Specimen source, test type, test status, organism and the result
+  code are lists over the reference code lists an administrator keeps on the
+  **Code lists** screen, seeded from the legacy lookup tables. The test types
+  offered are the ones listed for the report's disease, or every test type
+  where none is listed for it. The specimens table shows the number a chosen
+  source has on its list — `558` for **Serum**. Lab facility, provider,
+  diagnostic facility and reporting facility are still boxes that take the
+  legacy identifier; this walkthrough leaves them empty, and the specimens
+  table shows a dash for each.
 - **Nothing on a specimen is required.** The legacy form required a
   performing lab — and in the legacy development environment that
   requirement could not be met, because its facility table was empty, which
@@ -131,29 +134,33 @@ of every test it runs, and writes the recordings to
 8. Press **Save & Continue**.
 9. The report now exists, and the screen is its own form. In the header bar,
    **Patient name** reads **Nguyen, An** and **Disease** reads **Hepatitis
-   A**. Under the CDC notification panel, the tab strip shows nine tabs, left
-   to right: **Demographic**, **Clinical**, **Laboratory**,
+   A**. Under the CDC notification panel, the tab strip shows eleven tabs,
+   left to right: **Demographic**, **Clinical**, **Laboratory**,
    **Investigation**, **Administrative**, **Forms**, **Vaccines**,
-   **Contacts** and **Notes**. Note the address in
+   **Treatments**, **Encounters**, **Contacts** and **Notes**. Note the
+   address in
    your browser's address bar: it ends in `/event/edit/` and a number, and
    step 15 comes back to it.
 10. Press the **Laboratory** tab. The tab opens on two panels. The first,
     headed **Specimens**, is a table with the columns **Accession**,
     **Collected**, **Source**, **Lab facility**, **Provider**,
-    **Diagnostic**, **Reporting** and **Sent to state**, and its one row
+    **Diagnostic**, **Reporting**, **Sent to state** and **Actions**, and
+    its one row
     reads **No specimens recorded yet.** The second, headed **Record a
     specimen**, is the entry form: the specimen's boxes, then a **Tests**
     section with an **Add test** button and nothing under it, then an
     **Antimicrobial susceptibility** section, then a **Record specimen**
     button.
 11. In the box labelled **Accession number**, type `A2026-0417`. In the box
-    labelled **Collection date**, enter the date `2026-10-03`. Leave the
-    other specimen boxes empty and **Sent to state lab** untouched.
+    labelled **Collection date**, enter the date `2026-10-03`. Open the
+    **Specimen source** list and choose **Serum**. Leave the other specimen
+    boxes empty and **Sent to state lab** untouched.
 12. Under **Tests**, press **Add test**. A test block appears above the
     button, with the boxes **Test type**, **Test status**, **LOINC code**,
     **Reference range** and **Test date**, and under them a **Results**
-    section with an **Add result** button and nothing under it. In the box
-    labelled **LOINC code**, type `20575-7`. In the box labelled **Test
+    section with an **Add result** button and nothing under it. Open the
+    **Test type** list and choose **IgM Antibody**. In the box labelled
+    **LOINC code**, type `20575-7`. In the box labelled **Test
     date**, enter the date `2026-10-04`. Leave the other test boxes empty.
 13. Under that test's **Results**, press **Add result**. A result row
     appears above the button, with the boxes **Organism**, **Value**,
@@ -163,14 +170,16 @@ of every test it runs, and writes the recordings to
 14. Press **Record specimen** at the bottom of the form. A green message
     appears at the top of the tab, reading **The specimen has been
     recorded.** The **Specimens** table now has one row, reading, left to
-    right: **A2026-0417**, **2026-10-03**, and a dash in each of the six
-    other columns. The entry form is empty again: **Accession number** is
+    right: **A2026-0417**, **2026-10-03**, **558** — the number Serum has
+    on the specimen source list — a dash in each of the five other
+    columns, and **Edit** and **Delete** buttons under **Actions**. The entry form is empty again: **Accession number** is
     blank and there is no test block under **Tests**.
 15. Go back to the report's address — the one you noted in step 9 — by
     entering it in the address bar again, so that the screen is read afresh
     from the database rather than from what you typed, and press the
     **Laboratory** tab. The **Specimens** table has the one row, reading
-    **A2026-0417**, **2026-10-03** and six dashes, exactly as in step 14.
+    **A2026-0417**, **2026-10-03**, **558** and five dashes, exactly as in
+    step 14.
     That is how you know the specimen reached the database.
 
 ## What you should see
@@ -179,11 +188,12 @@ A laboratory result on An Nguyen's case morbidity report, entered and read
 back:
 
 - A report on **Nguyen, An** for **Hepatitis A**, opened in the two steps,
-  ending on its form with nine tabs, **Laboratory** among them.
+  ending on its form with eleven tabs, **Laboratory** among them.
 - The **Laboratory** tab with no specimens yet, and an entry form that takes
   a specimen, a test under it and a result under that.
-- After entering accession number **A2026-0417**, collected **2026-10-03**,
-  with one test coded **20575-7** on **2026-10-04** and one primary result
+- After entering accession number **A2026-0417**, collected **2026-10-03**
+  from **Serum**, with one **IgM Antibody** test coded **20575-7** on
+  **2026-10-04** and one primary result
   reading **Positive**, **Record specimen** answers **The specimen has been
   recorded.** and lists the specimen as the table's one row.
 - Opening the report's address again and pressing **Laboratory** reads the

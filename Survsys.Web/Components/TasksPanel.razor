@@ -153,8 +153,12 @@
                               InputType="InputType.Date" />
             </MudItem>
             <MudItem xs="12" sm="2">
-                <MudTextField @bind-Value="taskForm.Priority" id="tasks-entry-priority"
-                              Label="Priority" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <CodeSelect List="@CodeLists.TaskPriority" @bind-Value="taskForm.Priority" id="tasks-entry-priority"
+                            Label="Priority" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <CodeSelect List="@CodeLists.TaskCategory" @bind-CodeId="taskForm.CategoryId" id="tasks-entry-category"
+                            Label="Task category" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="2">
                 <MudTextField @bind-Value="taskForm.UserId" id="tasks-entry-user-id"
@@ -412,6 +416,7 @@
                 Name: taskForm.Name.Trim(),
                 Notes: Blank(taskForm.Notes),
                 Priority: Blank(taskForm.Priority),
+                CategoryId: taskForm.CategoryId,
                 DueDate: due,
                 UserId: taskForm.UserId,
                 Status: OpenStatus,
@@ -509,6 +514,8 @@
         public string? Notes { get; set; }
 
         public string? Priority { get; set; }
+
+        public int? CategoryId { get; set; }
 
         public string? DueDate { get; set; }
 

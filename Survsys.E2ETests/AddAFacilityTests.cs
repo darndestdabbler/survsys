@@ -36,11 +36,8 @@ public class AddAFacilityTests(SurvsysHarness harness) : SurvsysPageTest
     private const string Street = "22 South State Street";
     private const string City = "Clearfield";
 
-    /// <summary>The two letters typed into State, which are stored upper-cased.</summary>
-    private const string TypedState = "ut";
-
-    /// <summary>The upper-cased state the save stores and reads back.</summary>
-    private const string SavedState = "UT";
+    /// <summary>The state chosen from the State list, which stores its code, UT.</summary>
+    private const string State = "Utah";
 
     private const string Zip = "84015";
     private const string Phone = "801-525-5000";
@@ -74,7 +71,8 @@ public class AddAFacilityTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator("#facility-heading")).ToHaveTextAsync("New facility");
         });
 
-        // 5. Fill the form in, box by box, choosing the agency from its list.
+        // 5. Fill the form in, box by box, choosing the agency and the state
+        //    from their lists.
         await Step(Document, 5, "fill the facility's form in", async () =>
         {
             await Page.Locator("#facility-name").FillAsync(Name);
@@ -82,7 +80,7 @@ public class AddAFacilityTests(SurvsysHarness harness) : SurvsysPageTest
             await Choose("Agency", Agency);
             await Page.Locator("#facility-street").FillAsync(Street);
             await Page.Locator("#facility-city").FillAsync(City);
-            await Page.Locator("#facility-state").FillAsync(TypedState);
+            await Choose("State", State);
             await Page.Locator("#facility-zip").FillAsync(Zip);
             await Page.Locator("#facility-phone").FillAsync(Phone);
         });
@@ -119,7 +117,7 @@ public class AddAFacilityTests(SurvsysHarness harness) : SurvsysPageTest
                 .GetByRole(AriaRole.Link, new() { Name = Name })
                 .ClickAsync());
 
-        // 10. The whole record read back, with the state upper-cased.
+        // 10. The whole record read back, the state by its list entry.
         await Step(Document, 10, "read the facility's record back", async () =>
         {
             await Expect(Page.Locator("#facility-heading")).ToHaveTextAsync("Edit facility");
@@ -129,7 +127,8 @@ public class AddAFacilityTests(SurvsysHarness harness) : SurvsysPageTest
                 .ToHaveTextAsync(Agency);
             await Expect(Page.Locator("#facility-street")).ToHaveValueAsync(Street);
             await Expect(Page.Locator("#facility-city")).ToHaveValueAsync(City);
-            await Expect(Page.Locator("#facility-state")).ToHaveValueAsync(SavedState);
+            await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = "State", Exact = true }))
+                .ToHaveTextAsync(State);
             await Expect(Page.Locator("#facility-zip")).ToHaveValueAsync(Zip);
             await Expect(Page.Locator("#facility-phone")).ToHaveValueAsync(Phone);
         });

@@ -33,10 +33,10 @@ describes what Survsys shows rather than what EpiTrax showed:
   investigator, brief note, action buttons and menus are not there: the case
   status is set in a **Case status** panel under the header, and the case is
   queued for the CDC from a **CDC notification** panel under that.
-- **The tab strip carries nine tabs.** Demographic, Clinical, Laboratory,
-  Investigation, Administrative, Forms, Vaccines, Contacts and Notes. The
-  case's supplemental forms and its vaccine records are each a tab of their
-  own.
+- **The tab strip carries eleven tabs.** Demographic, Clinical, Laboratory,
+  Investigation, Administrative, Forms, Vaccines, Treatments, Encounters,
+  Contacts and Notes. The case's supplemental forms, its vaccine records, its
+  treatments and its encounters are each a tab of their own.
 - **The record number is nine digits — the four-digit year, then a sequence
   of five digits counting the year's reports from `00001`** — exactly as the
   legacy system numbers them. Its value depends on how many reports this
@@ -153,10 +153,10 @@ of every test it runs, and writes the recordings to
     show. The MMWR week is the event date's, and the case status reads
     **Unknown** because none has been set.
 12. Under the header bar are two panels, headed **Case status** and **CDC
-    notification**, and under them is the tab strip. It shows nine tabs, left
-    to right: **Demographic**, **Clinical**, **Laboratory**,
+    notification**, and under them is the tab strip. It shows eleven tabs,
+    left to right: **Demographic**, **Clinical**, **Laboratory**,
     **Investigation**, **Administrative**, **Forms**, **Vaccines**,
-    **Contacts** and **Notes**.
+    **Treatments**, **Encounters**, **Contacts** and **Notes**.
 
 ## What you should see
 
@@ -171,7 +171,7 @@ its own form:
   reading **Zimmerman, Paul**, a nine-digit record number beginning with the
   current year, **Morbidity**, **Malaria**, **Salt Lake County**, today's
   date, today's MMWR week and **Unknown**.
-- Nine tabs, **Demographic** first.
+- Eleven tabs, **Demographic** first.
 
 You now have a report with a record number of its own to record the case
 against. If what you saw differs from what is written above, the walkthrough

@@ -128,9 +128,8 @@
                           InputType="InputType.Date" />
         </MudItem>
         <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="specimenForm.SpecimenSourceId" id="lab-entry-specimen-source-id"
-                          Label="Specimen source" Variant="Variant.Outlined" Margin="Margin.Dense"
-                          InputType="InputType.Number" />
+            <CodeSelect List="@CodeLists.SpecimenSource" @bind-CodeId="specimenForm.SpecimenSourceId"
+                        id="lab-entry-specimen-source-id" Label="Specimen source" Margin="Margin.Dense" />
         </MudItem>
         <MudItem xs="12" sm="3">
             <MudTextField @bind-Value="specimenForm.LabFacilityId" id="lab-entry-lab-facility-id"
@@ -169,14 +168,14 @@
             <MudPaper id="@($"lab-entry-test-{testAt}")" Outlined="true" Class="pa-3 mt-2" @key="test">
                 <MudGrid Spacing="2">
                     <MudItem xs="12" sm="3">
-                        <MudTextField @bind-Value="test.TestTypeId" id="@($"lab-entry-test-{testAt}-test-type-id")"
-                                      Label="Test type" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                      InputType="InputType.Number" />
+                        <CodeSelect List="@CodeLists.TestType" ConditionId="@ConditionId" @bind-CodeId="test.TestTypeId"
+                                    id="@($"lab-entry-test-{testAt}-test-type-id")"
+                                    Label="Test type" Margin="Margin.Dense" />
                     </MudItem>
                     <MudItem xs="12" sm="3">
-                        <MudTextField @bind-Value="test.TestStatusId" id="@($"lab-entry-test-{testAt}-test-status-id")"
-                                      Label="Test status" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                      InputType="InputType.Number" />
+                        <CodeSelect List="@CodeLists.TestStatus" @bind-CodeId="test.TestStatusId"
+                                    id="@($"lab-entry-test-{testAt}-test-status-id")"
+                                    Label="Test status" Margin="Margin.Dense" />
                     </MudItem>
                     <MudItem xs="12" sm="3">
                         <MudTextField @bind-Value="test.LoincCode" id="@($"lab-entry-test-{testAt}-loinc-code")"
@@ -202,10 +201,9 @@
                         <MudGrid Spacing="2" Class="mb-1"
                                  id="@($"lab-entry-test-{testAt}-result-{resultAt}")" @key="result">
                             <MudItem xs="12" sm="2">
-                                <MudTextField @bind-Value="result.OrganismId"
-                                              id="@($"lab-entry-test-{testAt}-result-{resultAt}-organism-id")"
-                                              Label="Organism" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                              InputType="InputType.Number" />
+                                <CodeSelect List="@CodeLists.Organism" @bind-CodeId="result.OrganismId"
+                                            id="@($"lab-entry-test-{testAt}-result-{resultAt}-organism-id")"
+                                            Label="Organism" Margin="Margin.Dense" />
                             </MudItem>
                             <MudItem xs="12" sm="2">
                                 <MudTextField @bind-Value="result.ResultValue"
@@ -213,9 +211,9 @@
                                               Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense" />
                             </MudItem>
                             <MudItem xs="12" sm="2">
-                                <MudTextField @bind-Value="result.TestResult"
-                                              id="@($"lab-entry-test-{testAt}-result-{resultAt}-test-result")"
-                                              Label="Result code" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                <CodeSelect List="@CodeLists.TestResult" @bind-Value="result.TestResult"
+                                            id="@($"lab-entry-test-{testAt}-result-{resultAt}-test-result")"
+                                            Label="Result code" Margin="Margin.Dense" />
                             </MudItem>
                             <MudItem xs="12" sm="2">
                                 <MudTextField @bind-Value="result.Units"
@@ -273,19 +271,19 @@
             var resist = resistTests[resistAt];
             <MudGrid Spacing="2" Class="mb-1" id="@($"lab-entry-resist-{resistAt}")" @key="resist">
                 <MudItem xs="12" sm="3">
-                    <MudTextField @bind-Value="resist.OrganismId" id="@($"lab-entry-resist-{resistAt}-organism-id")"
-                                  Label="Organism" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                  InputType="InputType.Number" />
+                    <CodeSelect List="@CodeLists.Organism" @bind-CodeId="resist.OrganismId"
+                                id="@($"lab-entry-resist-{resistAt}-organism-id")"
+                                Label="Organism" Margin="Margin.Dense" />
                 </MudItem>
                 <MudItem xs="12" sm="3">
-                    <MudTextField @bind-Value="resist.AgentId" id="@($"lab-entry-resist-{resistAt}-agent-id")"
-                                  Label="Agent" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                  InputType="InputType.Number" />
+                    <CodeSelect List="@CodeLists.ResistTestAgent" @bind-CodeId="resist.AgentId"
+                                id="@($"lab-entry-resist-{resistAt}-agent-id")"
+                                Label="Agent" Margin="Margin.Dense" />
                 </MudItem>
                 <MudItem xs="12" sm="3">
-                    <MudTextField @bind-Value="resist.ResultId" id="@($"lab-entry-resist-{resistAt}-result-id")"
-                                  Label="Outcome" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                  InputType="InputType.Number" />
+                    <CodeSelect List="@CodeLists.ResistTestResult" @bind-CodeId="resist.ResultId"
+                                id="@($"lab-entry-resist-{resistAt}-result-id")"
+                                Label="Outcome" Margin="Margin.Dense" />
                 </MudItem>
                 <MudItem xs="12" sm="2">
                     <MudTextField @bind-Value="resist.TestDate" id="@($"lab-entry-resist-{resistAt}-test-date")"
@@ -336,6 +334,10 @@
     /// <summary>The report whose specimens this tab lists and records against.</summary>
     [Parameter, EditorRequired]
     public int ReportId { get; set; }
+
+    /// <summary>The report's condition, whose test types the test type select offers.</summary>
+    [Parameter]
+    public int? ConditionId { get; set; }
 
     /// <summary>
     /// How this tier writes a date into a date box and reads one out: the form

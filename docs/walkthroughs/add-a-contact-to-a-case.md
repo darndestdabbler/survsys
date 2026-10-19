@@ -52,11 +52,13 @@ describes what Survsys shows rather than what EpiTrax showed:
   panel searches as you type; here you look the number up on the People
   screen and type it. A number that is nobody's is refused by the API tier
   and shown as the entry error.
-- **The coded fields are plain boxes holding the legacy values.** The
-  contact's type and disposition are boxes that take the code or the number
-  the legacy database holds — `contact_type` and `contact_disposition_type`
-  — not dropdowns over a table of names. Those reference tables arrive with
-  the sessions that own them.
+- **The coded fields are chosen from lists, and the table shows what is
+  stored.** The contact's type and disposition are lists over the reference
+  code lists an administrator keeps on the **Code lists** screen, seeded from
+  the legacy `contact_type` and `disposition` tables. The contacts table
+  shows what each stores: the type's code, such as `HOUSEHOLD`, and the
+  disposition's number on its list, such as `466` for **Preventative
+  treatment**.
 - **Nothing on a contact is required but the person.** Survsys records a
   contact with whatever else was entered, and refuses only a date that is not
   a date, a time range that ends before it starts, and a contact that names
@@ -171,9 +173,10 @@ of every test it runs, and writes the recordings to
     the button, with the boxes **Person**, **Contact type**, **Disposition**,
     **Disposition date**, **From** and **To**, and a **Remove** button beside
     them. In the box labelled **Person**, type the number you noted at step
-    3. In the box labelled **Contact type**, type `household`. In the box
-    labelled **Disposition**, type `3`. In the box labelled **Disposition
-    date**, enter the date `2026-09-22`. Leave **From** and **To** empty.
+    3. Open the **Contact type** list and choose **Household**. Open the
+    **Disposition** list and choose **Preventative treatment**. In the box
+    labelled **Disposition date**, enter the date `2026-09-22`. Leave
+    **From** and **To** empty.
 15. Press **Record exposure** at the bottom of the form. A green message
     appears at the top of the tab, reading **The exposure has been
     recorded.** The **Exposures** table now has one row: its **Name** reads
@@ -182,7 +185,7 @@ of every test it runs, and writes the recordings to
     a dash. Its **Contacts** column is no longer a dash but a table of its
     own, with the columns **Person**, **Type**, **Disposition**,
     **Disposition date**, **From** and **To**, and one row reading, left to
-    right: the number you noted at step 3, **household**, **3**,
+    right: the number you noted at step 3, **HOUSEHOLD**, **466**,
     **2026-09-22**, and a dash in each of **From** and **To**. The entry
     form is empty again: **Name** is blank and there is no contact block
     under **Contacts**.
@@ -191,7 +194,7 @@ of every test it runs, and writes the recordings to
     from the database rather than from what you typed, and press the
     **Contacts** tab. The **Exposures** table has the one row, and its
     **Contacts** table has the one contact row, reading the number you noted,
-    **household**, **3**, **2026-09-22** and two dashes, exactly as in step
+    **HOUSEHOLD**, **466**, **2026-09-22** and two dashes, exactly as in step
     15. That is how you know the contact reached the database.
 
 ## What you should see
@@ -204,7 +207,8 @@ A contact on Paul Zimmerman's case morbidity report, added and read back:
   steps, with its **Contacts** tab holding no exposures yet.
 - After entering the exposure **Family dinner, 12 Oak Street**, running
   **2026-09-10** to **2026-09-12**, with one contact naming Maria's
-  identifier as a **household** contact, disposition **3**, disposed
+  identifier as a **Household** contact, disposition **Preventative
+  treatment**, disposed
   **2026-09-22**, **Record exposure** answers **The exposure has been
   recorded.** and lists the exposure with that contact inside it.
 - Opening the report's address again and pressing **Contacts** reads the same

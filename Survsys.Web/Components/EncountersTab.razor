@@ -87,8 +87,8 @@ else
                               Variant="Variant.Outlined" InputType="InputType.Date" />
             </MudItem>
             <MudItem xs="12" sm="3">
-                <MudTextField @bind-Value="encounterType" id="encounters-tab-type" Label="Type (code)"
-                              Variant="Variant.Outlined" MaxLength="50" />
+                <CodeSelect List="@CodeLists.EncounterType" @bind-Value="encounterType" id="encounters-tab-type"
+                            Label="Type" />
             </MudItem>
             <MudItem xs="12" sm="6">
                 <MudSelect T="int?" @bind-Value="facilityId" id="encounters-tab-facility" Label="Facility"

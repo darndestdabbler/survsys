@@ -163,6 +163,10 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<WorkflowHistoryEntry> WorkflowHistory => Set<WorkflowHistoryEntry>();
 
+    public DbSet<CodeValue> CodeValues => Set<CodeValue>();
+
+    public DbSet<CodeValueCondition> CodeValueConditions => Set<CodeValueCondition>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SurvsysDbContext).Assembly);
 

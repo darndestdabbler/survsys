@@ -78,8 +78,8 @@
         @if (Shows("treatment_given"))
         {
             <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="treatmentGiven" id="clinical-treatment-given"
-                              Label="Treatment given (Yes/No/Unknown)" Variant="Variant.Outlined" />
+                <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="treatmentGiven" id="clinical-treatment-given"
+                            Label="Treatment given" />
             </MudItem>
         }
     </MudGrid>
@@ -91,8 +91,8 @@
         @if (Shows("person_died"))
         {
             <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="deathStatus" id="clinical-death-status"
-                              Label="Died? (Yes/No/Unknown)" Variant="Variant.Outlined" />
+                <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="deathStatus" id="clinical-death-status"
+                            Label="Died?" />
             </MudItem>
         }
         @if (Died && Shows("person_date_of_death"))
@@ -110,8 +110,8 @@
     <MudText Typo="Typo.h6" GutterBottom="true">Pregnancy</MudText>
     <MudGrid Spacing="2">
         <MudItem xs="12" sm="4">
-            <MudTextField @bind-Value="pregnant" id="clinical-pregnant"
-                          Label="Pregnant? (Yes/No/Unknown)" Variant="Variant.Outlined" />
+            <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="pregnant" id="clinical-pregnant"
+                        Label="Pregnant?" />
         </MudItem>
         @if (Pregnant)
         {

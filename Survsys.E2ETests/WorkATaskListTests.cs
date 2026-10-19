@@ -131,14 +131,15 @@ public class WorkATaskListTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator("#tasks-entry-record")).ToHaveTextAsync("Add task");
         });
 
-        // 10. The one-off task, added and read as the table's one row.
+        // 10. The one-off task, its priority chosen from the list, added and
+        //     read as the table's one row, which shows the code chosen.
         var interviewId = string.Empty;
 
         await Step(Document, 10, "add Interview the patient due 2026-10-17 at High and read its row", async () =>
         {
             await Page.Locator("#tasks-entry-name").FillAsync(Interview);
             await Page.Locator("#tasks-entry-due-date").FillAsync("2026-10-17");
-            await Page.Locator("#tasks-entry-priority").FillAsync("High");
+            await Choose("Priority", "High");
             await Page.Locator("#tasks-entry-record").ClickAsync();
 
             await Expect(Page.Locator("#tasks-saved")).ToHaveTextAsync("The task has been added.");
@@ -152,7 +153,7 @@ public class WorkATaskListTests(SurvsysHarness harness) : SurvsysPageTest
             interviewId = await IdentifierOf(Interview, "2026-10-17");
 
             await Expect(Page.Locator($"#tasks-row-{interviewId} td")).ToHaveTextAsync(
-                ["2026-10-17", Interview, "High", "open", "—", "Complete"]);
+                ["2026-10-17", Interview, "high", "open", "—", "Complete"]);
         });
 
         // 11. The repeating task.
@@ -160,7 +161,7 @@ public class WorkATaskListTests(SurvsysHarness harness) : SurvsysPageTest
         {
             await Page.Locator("#tasks-entry-name").FillAsync(Check);
             await Page.Locator("#tasks-entry-due-date").FillAsync("2026-10-19");
-            await Page.Locator("#tasks-entry-priority").FillAsync("Routine");
+            await Choose("Priority", "Low");
             await Choose("Repeats", "Weekly");
             await Page.Locator("#tasks-entry-until-date").FillAsync("2026-11-02");
             await Page.Locator("#tasks-entry-record").ClickAsync();
@@ -191,7 +192,7 @@ public class WorkATaskListTests(SurvsysHarness harness) : SurvsysPageTest
                 checkIds.Add(id);
 
                 await Expect(Page.Locator($"#tasks-row-{id} td")).ToHaveTextAsync(
-                    [due, Check, "Routine", "open", WeeklySchedule, "Complete"]);
+                    [due, Check, "low", "open", WeeklySchedule, "Complete"]);
             }
         });
 

@@ -86,7 +86,7 @@ public class RecordDemographicsTests(SurvsysHarness harness) : SurvsysPageTest
             await Page.Locator("#report-save").ClickAsync());
 
         // 9. The report's form: the header names her and the disease, and
-        //    the nine tabs are there, Demographic open. Its address is kept
+        //    the eleven tabs are there, Demographic open. Its address is kept
         //    for step 19.
         string reportAddress = string.Empty;
 
@@ -95,7 +95,7 @@ public class RecordDemographicsTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator("#report-header-patient")).ToHaveTextAsync("Rodriguez, Maria");
             await Expect(Page.Locator("#report-header-disease")).ToHaveTextAsync("Giardiasis");
             await Expect(Page.Locator("[id^='report-tab-']")).ToHaveTextAsync(
-                ["Demographic", "Clinical", "Laboratory", "Investigation", "Administrative", "Forms", "Vaccines", "Contacts", "Notes"]);
+                ["Demographic", "Clinical", "Laboratory", "Investigation", "Administrative", "Forms", "Vaccines", "Treatments", "Encounters", "Contacts", "Notes"]);
             await Expect(Page.Locator("#demographics-name")).ToBeVisibleAsync();
 
             reportAddress = Page.Url;
@@ -132,9 +132,9 @@ public class RecordDemographicsTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator("#demographics-address-0-street")).ToHaveValueAsync("1234 Main Street");
             await Expect(Page.Locator("#demographics-address-0-unit-number")).ToHaveValueAsync("Apt 5B");
             await Expect(Page.Locator("#demographics-address-0-city")).ToHaveValueAsync("Salt Lake City");
-            await Expect(Page.Locator("#demographics-address-0-state")).ToHaveValueAsync("UT");
+            await ExpectChosen("State", "Utah");
             await Expect(Page.Locator("#demographics-address-0-postal-code")).ToHaveValueAsync("84101");
-            await Expect(Page.Locator("#demographics-address-0-county")).ToHaveValueAsync("SL");
+            await ExpectChosen("County", "Salt Lake");
             await Expect(Page.Locator("#demographics-address-1-street")).ToHaveCountAsync(0);
         });
 
@@ -148,17 +148,21 @@ public class RecordDemographicsTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator("#demographics-email-1-address")).ToHaveCountAsync(0);
         });
 
-        // 14. The Demographics section, with the two races by code.
+        // 14. The Demographics section, each coded field by the entry its
+        //     list shows for the code on file, and the two races in order.
         await Step(Document, 14, "read the Demographics section", async () =>
         {
-            await Expect(Page.Locator("#demographics-birth-gender")).ToHaveValueAsync("F");
-            await Expect(Page.Locator("#demographics-current-gender")).ToHaveValueAsync("F");
-            await Expect(Page.Locator("#demographics-language")).ToHaveValueAsync("es");
-            await Expect(Page.Locator("#demographics-ethnicity")).ToHaveValueAsync("H");
-            await Expect(Page.Locator("#demographics-country-of-birth")).ToHaveValueAsync("MEX");
-            await Expect(Page.Locator("#demographics-race-0")).ToHaveValueAsync("AA");
-            await Expect(Page.Locator("#demographics-race-1")).ToHaveValueAsync("W");
-            await Expect(Page.Locator("#demographics-race-2")).ToHaveCountAsync(0);
+            await ExpectChosen("Birth sex", "Female");
+            await ExpectChosen("Current gender", "Female");
+            await ExpectChosen("Primary language", "Spanish");
+            await ExpectChosen("Ethnicity", "Hispanic or Latino");
+            await ExpectChosen("Country of birth", "Mexico");
+
+            var races = Page.GetByRole(AriaRole.Combobox, new() { Name = "Race", Exact = true });
+
+            await Expect(races).ToHaveCountAsync(2);
+            await Expect(races.Nth(0)).ToHaveTextAsync("American Indian");
+            await Expect(races.Nth(1)).ToHaveTextAsync("White");
         });
 
         // 15. The unit number, changed.
@@ -224,6 +228,15 @@ public class RecordDemographicsTests(SurvsysHarness harness) : SurvsysPageTest
 
         return years;
     }
+
+    /// <summary>
+    /// Reads the list labelled <paramref name="label"/>, which shows the entry
+    /// for the code on file — by its label, as <see cref="Choose"/> reaches it,
+    /// because the identifier is on a hidden input once the list holds a value.
+    /// </summary>
+    private async Task ExpectChosen(string label, string entry) =>
+        await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = label, Exact = true }))
+            .ToHaveTextAsync(entry);
 
     /// <summary>
     /// Opens the list labelled <paramref name="label"/>, chooses the item

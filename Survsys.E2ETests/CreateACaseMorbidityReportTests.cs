@@ -120,13 +120,13 @@ public class CreateACaseMorbidityReportTests(SurvsysHarness harness) : SurvsysPa
             await Expect(Page.Locator("#report-header-case-status")).ToHaveTextAsync("Unknown");
         });
 
-        // 12. The two panels, then the tab strip's nine tabs.
+        // 12. The two panels, then the tab strip's eleven tabs.
         await Step(Document, 12, "read the Case status and CDC notification panels and the tab strip", async () =>
         {
             await Expect(Page.Locator("#report-status")).ToContainTextAsync("Case status");
             await Expect(Page.Locator("#report-notify")).ToContainTextAsync("CDC notification");
             await Expect(Page.Locator("[id^='report-tab-']")).ToHaveTextAsync(
-                ["Demographic", "Clinical", "Laboratory", "Investigation", "Administrative", "Forms", "Vaccines", "Contacts", "Notes"]);
+                ["Demographic", "Clinical", "Laboratory", "Investigation", "Administrative", "Forms", "Vaccines", "Treatments", "Encounters", "Contacts", "Notes"]);
         });
     }
 

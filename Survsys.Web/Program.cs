@@ -92,6 +92,7 @@ builder.Services.AddHttpClient<FormsClient>(http => http.BaseAddress = api).AddH
 builder.Services.AddHttpClient<TreatmentsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<VaccinesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<EncountersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<CodesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 
 var app = builder.Build();
 

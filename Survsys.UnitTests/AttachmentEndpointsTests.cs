@@ -28,6 +28,10 @@ public class AttachmentEndpointsTests
 {
     private const string Pdf = "application/pdf";
 
+    private const string LabCategory = "lab";
+
+    private static readonly string[] Categories = ["correspondence", LabCategory, "other"];
+
     private static readonly DateTimeOffset Attached =
         new(2026, 3, 13, 9, 41, 2, TimeSpan.FromHours(-6));
 
@@ -39,7 +43,7 @@ public class AttachmentEndpointsTests
         Filename = "culture-result.pdf",
         ContentType = Pdf,
         Size = 184_320,
-        Category = AttachmentEndpoints.LabCategory,
+        Category = LabCategory,
         CreatedAt = Attached,
     };
 
@@ -55,7 +59,7 @@ public class AttachmentEndpointsTests
                 "culture-result.pdf",
                 Pdf,
                 184_320,
-                AttachmentEndpoints.LabCategory,
+                LabCategory,
                 Attached),
             response);
     }
@@ -137,63 +141,39 @@ public class AttachmentEndpointsTests
     public void AKindOfFileInAnyCaseIsStored() =>
         Assert.Null(WhyNot(contentType: "APPLICATION/PDF"));
 
-    [Theory]
-    [InlineData(AttachmentEndpoints.CorrespondenceCategory)]
-    [InlineData(AttachmentEndpoints.LabCategory)]
-    [InlineData(AttachmentEndpoints.LetterCategory)]
-    [InlineData(AttachmentEndpoints.XRayCategory)]
-    [InlineData(AttachmentEndpoints.OtherCategory)]
-    public void EveryCategoryTheLegacyOffersIsFiledUnder(string category) =>
-        Assert.Null(WhyNot(category: category));
-
-    [Fact]
-    public void ACategoryThatIsNotOneOfTheFiveIsRefused()
-    {
-        var why = WhyNot(category: "radiology");
-
-        Assert.NotNull(why);
-        Assert.Contains("category", why, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void AFileFiledUnderNoCategoryIsRefused()
-    {
-        var why = WhyNot(category: null);
-
-        Assert.NotNull(why);
-        Assert.Contains("category", why, StringComparison.Ordinal);
-    }
-
     /// <summary>
-    /// A refile accepts each of the five categories, the question the edit asks
-    /// of a correction being only whether the new category is one of them.
+    /// A category is accepted when it is one of the categories on the list as
+    /// read, whichever they are.
     /// </summary>
     [Theory]
-    [InlineData(AttachmentEndpoints.CorrespondenceCategory)]
-    [InlineData(AttachmentEndpoints.LabCategory)]
-    [InlineData(AttachmentEndpoints.LetterCategory)]
-    [InlineData(AttachmentEndpoints.XRayCategory)]
-    [InlineData(AttachmentEndpoints.OtherCategory)]
-    public void WhyNotACategoryAcceptsEachOfTheFive(string category) =>
-        Assert.Null(AttachmentEndpoints.WhyNotACategory(category));
+    [InlineData("correspondence")]
+    [InlineData("lab")]
+    [InlineData("other")]
+    public void WhyNotACategoryAcceptsEachCategoryOnTheList(string category) =>
+        Assert.Null(AttachmentEndpoints.WhyNotACategory(category, Categories));
+
+    [Fact]
+    public void WhyNotACategoryAcceptsACategoryAddedToTheList() =>
+        Assert.Null(AttachmentEndpoints.WhyNotACategory("photo", [.. Categories, "photo"]));
 
     /// <summary>
-    /// A refile to a category that is not one of the five, or to none, is
-    /// refused with the sentence the upload gives.
+    /// A category that is not on the list, or none, is refused with a sentence
+    /// naming the ones that are.
     /// </summary>
     [Fact]
-    public void WhyNotACategoryRefusesACategoryOutsideTheFive()
+    public void WhyNotACategoryRefusesACategoryNotOnTheList()
     {
-        var why = AttachmentEndpoints.WhyNotACategory("radiology");
+        var why = AttachmentEndpoints.WhyNotACategory("radiology", Categories);
 
         Assert.NotNull(why);
         Assert.Contains("category 'radiology' is not one", why, StringComparison.Ordinal);
+        Assert.Contains("correspondence, lab, other", why, StringComparison.Ordinal);
     }
 
     [Fact]
     public void WhyNotACategoryRefusesNoCategory()
     {
-        var why = AttachmentEndpoints.WhyNotACategory(null);
+        var why = AttachmentEndpoints.WhyNotACategory(null, Categories);
 
         Assert.NotNull(why);
         Assert.Contains("is not one an attachment is filed under", why, StringComparison.Ordinal);
@@ -206,7 +186,6 @@ public class AttachmentEndpointsTests
     private static string? WhyNot(
         string? filename = "culture-result.pdf",
         string? contentType = Pdf,
-        long size = 184_320,
-        string? category = AttachmentEndpoints.LabCategory) =>
-        AttachmentEndpoints.WhyNotAnAttachment(filename, contentType, size, category);
+        long size = 184_320) =>
+        AttachmentEndpoints.WhyNotAnAttachment(filename, contentType, size);
 }

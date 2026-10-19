@@ -67,7 +67,7 @@ public class AttachmentEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     [Fact]
-    public async Task ARefileToACategoryOutsideTheFiveIsRefused()
+    public async Task ARefileToACategoryNotOnTheListIsRefused()
     {
         var reportId = await EnsureSeededReport();
         var client = api.CreateClient();
@@ -88,6 +88,44 @@ public class AttachmentEndpointsTests(SqlServerFixture server) : IDisposable
         finally
         {
             await ClearAttachmentsOf(reportId);
+        }
+    }
+
+    [Fact]
+    public async Task AnUploadIsFiledUnderACategoryOnTheListAndRefusedUnderOneThatIsNot()
+    {
+        const string added = "itest-photo";
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            using (var created = await client.PostAsJsonAsync(
+                $"/api/codes/{CodeLists.AttachmentCategory}", new SaveCodeRequest(added, "Photo"), Json))
+            {
+                Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            }
+
+            Assert.Equal("letter", (await Upload(client, reportId, "letter")).Category);
+            Assert.Equal(added, (await Upload(client, reportId, added)).Category);
+
+            using var form = new MultipartFormDataContent();
+            var file = new ByteArrayContent([1, 2, 3]);
+            file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+            form.Add(file, "file", "scan.pdf");
+            form.Add(new StringContent("radiology"), "category");
+
+            using var refused = await client.PostAsync($"/api/person-conditions/{reportId}/attachments", form);
+            Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        }
+        finally
+        {
+            await ClearAttachmentsOf(reportId);
+
+            await using var context = server.NewContext();
+            await context.CodeValues
+                .Where(code => code.List == CodeLists.AttachmentCategory && code.Code == added)
+                .ExecuteDeleteAsync();
         }
     }
 

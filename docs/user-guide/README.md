@@ -21,9 +21,12 @@ read; each section here links the ones that perform its screens.
 | [Outbreaks, forms, treatments and audit](#outbreaks-forms-treatments-and-audit) | 7 |
 
 **Two things hold on every screen.** A coded field — a gender, a race, a
-place type, a test type, a disposition — is a plain box holding the number or
-code the legacy EpiTrax database holds, not a list of names, because the
-reference tables behind the legacy lists are not in Survsys yet. And a date is
+place type, a test type, a disposition — is a list, showing each code by its
+name, over the reference code lists kept on the **Code lists** screen and
+seeded from the legacy EpiTrax lookup tables; a value on file that is not on
+its list is still shown, as itself, so nothing on file is lost. A test type
+list offers the test types listed for the report's condition, or all of them
+where none is listed. A Yes/No/Unknown answer is a list of those three. And a date is
 typed as `yyyy-mm-dd`; anything else is refused with **Give** the field **as
 yyyy-mm-dd, or leave it empty.** Lists that run long show 50 rows a page, with
 **Previous** and **Next** under them.
@@ -52,7 +55,8 @@ The application bar shows only the buttons your privileges open, in this
 order: **Conditions**, **People**, **New CMR**, **Work queue**, **Agency
 board**, **Outbreaks**, **Staged messages**, **Notifications**, **Export
 log**, **Tasks**, **Saved views**, **Reports**, **Agencies**, **Facilities**,
-**Field visibility**, **Forms**, **Treatments**, **Users** and **Roles**. The
+**Field visibility**, **Forms**, **Treatments**, **Code lists**, **Users** and
+**Roles**. The
 API tier checks the privilege on every request, so a screen opened by its
 address without the privilege shows what it was refused rather than the data.
 
@@ -227,6 +231,13 @@ These screens need `manage_reference_data`, except saved views
   default** switch, which saves as soon as you flip it. An **override** shows
   or hides one field for a condition, an agency, or both; **Delete** removes
   it.
+- **Code lists** (`/codes`): the reference code lists every coded field is
+  chosen from. Choose a **List** to see its codes, retired ones included;
+  **Edit** on a row, or **New code**, fills the form — **Code**,
+  **Description**, **Sort order** and **Active** — and **Save** saves it. A
+  code is never deleted: clear **Active** to retire it, and it is no longer
+  offered but still names the records that hold it. On the test type list
+  the form also ticks the conditions a test type is offered for.
 - **Saved views** (`/saved-views`): a named selection of case morbidity
   reports — the **Columns** it exports, and the **Condition**, **Investigating
   agency**, **Workflow state**, **Case status** and onset dates it selects by.

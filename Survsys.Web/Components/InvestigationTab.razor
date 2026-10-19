@@ -46,29 +46,29 @@
         @if (Shows("food_handler"))
         {
             <MudItem xs="12" sm="3">
-                <MudTextField @bind-Value="foodHandler" id="investigation-food-handler"
-                              Label="Food handler (Yes/No/Unknown)" Variant="Variant.Outlined" />
+                <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="foodHandler" id="investigation-food-handler"
+                            Label="Food handler" />
             </MudItem>
         }
         @if (Shows("healthcare_worker"))
         {
             <MudItem xs="12" sm="3">
-                <MudTextField @bind-Value="healthcareWorker" id="investigation-healthcare-worker"
-                              Label="Health care worker (Yes/No/Unknown)" Variant="Variant.Outlined" />
+                <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="healthcareWorker" id="investigation-healthcare-worker"
+                            Label="Health care worker" />
             </MudItem>
         }
         @if (Shows("group_living"))
         {
             <MudItem xs="12" sm="3">
-                <MudTextField @bind-Value="groupLiving" id="investigation-group-living"
-                              Label="Group living (Yes/No/Unknown)" Variant="Variant.Outlined" />
+                <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="groupLiving" id="investigation-group-living"
+                            Label="Group living" />
             </MudItem>
         }
         @if (Shows("day_care_association"))
         {
             <MudItem xs="12" sm="3">
-                <MudTextField @bind-Value="dayCareAssociation" id="investigation-day-care-association"
-                              Label="Day care association (Yes/No/Unknown)" Variant="Variant.Outlined" />
+                <CodeSelect Fixed="@CodeSelect.YesNoUnknown" @bind-Value="dayCareAssociation" id="investigation-day-care-association"
+                            Label="Day care association" />
             </MudItem>
         }
     </MudGrid>
@@ -80,15 +80,15 @@
         @if (Shows("imported_from"))
         {
             <MudItem xs="12" sm="4">
-                <MudNumericField @bind-Value="importedFromId" id="investigation-imported-from-id"
-                                 Label="Imported from (id)" Variant="Variant.Outlined" />
+                <CodeSelect List="@CodeLists.ImportedFrom" @bind-CodeId="importedFromId" id="investigation-imported-from-id"
+                            Label="Imported from" />
             </MudItem>
         }
         @if (Shows("transmission_mode"))
         {
             <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="transmissionMode" id="investigation-transmission-mode"
-                              Label="Transmission mode (code)" Variant="Variant.Outlined" />
+                <CodeSelect List="@CodeLists.TransmissionMode" @bind-Value="transmissionMode" id="investigation-transmission-mode"
+                            Label="Transmission mode" />
             </MudItem>
         }
         @if (Shows("risk_factors"))

@@ -31,15 +31,16 @@ and then records her demographics on it.
 Three differences from the legacy tab are deliberate, and this walkthrough
 describes what Survsys shows rather than what EpiTrax showed:
 
-- **The coded fields are plain boxes holding the legacy codes.** Birth sex,
+- **The coded fields are lists, showing each code by its name.** Birth sex,
   current gender, primary language, ethnicity, country of birth, state,
-  county, residence type and telephone type are text boxes, and what they
-  hold is the code the legacy database holds — `F`, `es`, `H`, `MEX`, `UT`,
-  `SL` — not a dropdown over a list of names. The lookup tables behind the
-  legacy dropdowns arrive with the session that owns them.
-- **Race is a list of codes**, one box per race with **Add race** and
-  **Remove**, rather than the legacy multi-select; the list is shown in
-  alphabetical order by code.
+  county, residence type and telephone type are chosen from the reference
+  code lists an administrator keeps on the **Code lists** screen, seeded from
+  the legacy lookup tables. What is stored is the legacy code — `F`, `es`,
+  `H`, `MEX`, `UT`, `SL` — and what the list shows is its name: **Female**,
+  **Spanish**, **Hispanic or Latino**, **Mexico**, **Utah**, **Salt Lake**.
+- **Race is one list per race**, with **Add race** and **Remove**, rather
+  than the legacy multi-select; the races are shown in alphabetical order by
+  code.
 - **One Save & Continue saves the whole tab.** Every section is sent as one
   record and saved together; there is no save per address or per telephone,
   and no *Save as Address at Diagnosis* button or *Other Addresses* link.
@@ -128,10 +129,11 @@ of every test it runs, and writes the recordings to
 8. Press **Save & Continue**.
 9. The report now exists, and the screen is its own form. In the header bar,
    **Patient name** reads **Rodriguez, Maria** and **Disease** reads
-   **Giardiasis**. Under the CDC notification panel, the tab strip shows nine
-   tabs, left to right: **Demographic**, **Clinical**, **Laboratory**,
+   **Giardiasis**. Under the CDC notification panel, the tab strip shows
+   eleven tabs, left to right: **Demographic**, **Clinical**, **Laboratory**,
    **Investigation**, **Administrative**, **Forms**, **Vaccines**,
-   **Contacts** and **Notes**, and the **Demographic** tab is open. Note the
+   **Treatments**, **Encounters**, **Contacts** and **Notes**, and the
+   **Demographic** tab is open. Note the
    address in your browser's
    address bar: it ends in `/event/edit/` and a number, and step 19 comes
    back to it.
@@ -146,16 +148,18 @@ of every test it runs, and writes the recordings to
     event date is the day it was opened.)
 12. Read the **Addresses** section. It has one address: **Street** reads
     **1234 Main Street**, **Unit number** reads **Apt 5B**, **City** reads
-    **Salt Lake City**, **State** reads **UT**, **Zip code** reads **84101**
-    and **County** reads **SL**.
+    **Salt Lake City**, **State** reads **Utah**, **Zip code** reads
+    **84101** and **County** reads **Salt Lake**.
 13. Read the **Telephones** section and the **Email Addresses** section. There
     is one telephone, whose **Area** reads **801** and whose **Phone** reads
     **5551234**, and one email address, whose **Email address** reads
     **maria.rodriguez@example.com**.
-14. Read the **Demographics** section. **Birth sex** reads **F**, **Current
-    gender** reads **F**, **Primary language** reads **es**, **Ethnicity**
-    reads **H** and **Country of birth** reads **MEX**. Under them, **Race**
-    has two rows, in alphabetical order by code: **AA**, then **W**.
+14. Read the **Demographics** section. **Birth sex** reads **Female**,
+    **Current gender** reads **Female**, **Primary language** reads
+    **Spanish**, **Ethnicity** reads **Hispanic or Latino** and **Country of
+    birth** reads **Mexico**. Under them, **Race** has two rows, in
+    alphabetical order by code: **American Indian** (`AA`), then **White**
+    (`W`).
 15. In the **Addresses** section, change **Unit number** from `Apt 5B` to
     `Apt 7C`.
 16. In the **Telephones** section, press **Add telephone**. A second,
@@ -188,7 +192,7 @@ changed and saved:
 - The tab already holding what is on file for her: her three names, her
   guardian and her alias, her date of birth with her age counted from it,
   her address, her telephone, her email address, her five coded fields and
-  her two races, **AA** and **W**.
+  her two races, **American Indian** and **White**.
 - After changing her unit number to **Apt 7C** and adding a telephone and an
   email address, **Save & Continue** answers **The demographics have been
   saved.**

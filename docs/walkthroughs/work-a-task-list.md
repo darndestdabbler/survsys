@@ -55,10 +55,12 @@ describes what Survsys shows rather than what EpiTrax showed:
   click took. Change the filter, or open the screen again, and it is sorted
   into the status it now has.
 
-The legacy section's task categories, and assigning a task to a named user,
-are not part of this walkthrough: **Assigned to** is a box holding the legacy
-user id, as every coded field in this release is, rather than a list of the
-users on file.
+A task's **Priority** and **Task category** are chosen from lists — the
+reference code lists an administrator keeps on the **Code lists** screen —
+and the table shows the code the chosen entry stands for, so a task chosen as
+**High** reads `high`. This walkthrough leaves **Task category** empty.
+Assigning a task to a named user is not part of it: **Assigned to** is a box
+holding the legacy user id rather than a list of the users on file.
 
 ## Before you start
 
@@ -144,20 +146,21 @@ of every test it runs, and writes the recordings to
    headed **Tasks**, with a **Show** box beside the heading reading **To
    do**, and under the heading it reads **No tasks found.** Below it is the
    **Add a task** panel: the boxes **Task**, **Due**, **Priority**,
-   **Assigned to**, **Repeats** — reading **Not at all** — **Repeats
-   until** and **Notes**, and an **Add task** button.
+   **Task category**, **Assigned to**, **Repeats** — reading **Not at all**
+   — **Repeats until** and **Notes**, and an **Add task** button.
 10. In the box labelled **Task**, type `Interview the patient`. In the box
-    labelled **Due**, enter the date `2026-10-17`. In the box labelled
-    **Priority**, type `High`. Leave the rest of the panel as it is, and
+    labelled **Due**, enter the date `2026-10-17`. Open the **Priority** list
+    and choose **High**; the list closes and the **Priority** box now reads
+    **High**. Leave the rest of the panel as it is, and
     press **Add task**. A green message appears, reading **The task has been
     added.**, and the **Tasks** section is now a table with the columns
     **Due**, **Task**, **Priority**, **Status**, **Schedule** and **Action**
     and one row reading, left to right: **2026-10-17**, **Interview the
-    patient**, **High**, **open**, a dash for **Schedule**, and a
+    patient**, **high**, **open**, a dash for **Schedule**, and a
     **Complete** button.
 11. In the box labelled **Task**, type `Weekly symptom check`. In the box
-    labelled **Due**, enter the date `2026-10-19`. In the box labelled
-    **Priority**, type `Routine`. Open the **Repeats** list and choose
+    labelled **Due**, enter the date `2026-10-19`. Open the **Priority** list
+    and choose **Low**. Open the **Repeats** list and choose
     **Weekly**; the list closes and the **Repeats** box now reads
     **Weekly**. In the box labelled **Repeats until**, enter the date
     `2026-11-02`. Press **Add task**.
@@ -166,7 +169,7 @@ of every test it runs, and writes the recordings to
     November — and the **Tasks** table has four rows, soonest due first:
     **2026-10-17 Interview the patient**, then **Weekly symptom check** due
     **2026-10-19**, **2026-10-26** and **2026-11-02**. Each of the three
-    reads **Routine**, **open**, and **weekly until 2026-11-02** under
+    reads **low**, **open**, and **weekly until 2026-11-02** under
     **Schedule**, and each offers a **Complete** button.
 13. In the application bar, press **Tasks**. The screen that opens is headed
     **Tasks**, and under the heading a line explains that it holds the tasks

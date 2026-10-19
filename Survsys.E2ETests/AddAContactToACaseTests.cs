@@ -42,6 +42,12 @@ public class AddAContactToACaseTests(SurvsysHarness harness) : SurvsysPageTest
     /// <summary>The exposure this walkthrough records, as the reader types it.</summary>
     private const string ExposureName = "Family dinner, 12 Oak Street";
 
+    /// <summary>
+    /// The number Preventative treatment has on the disposition list, which is
+    /// what the contact stores and the contacts table shows: the seed fixes it.
+    /// </summary>
+    private const string PreventativeTreatment = "466";
+
     [Fact]
     public async Task AddAContactToACase()
     {
@@ -171,8 +177,8 @@ public class AddAContactToACaseTests(SurvsysHarness harness) : SurvsysPageTest
             await Page.Locator("#contacts-entry-exposure-end").FillAsync("2026-09-12");
         });
 
-        // 14. Add contact, then Maria's identifier, her contact type and her
-        //     disposition.
+        // 14. Add contact, then Maria's identifier, and her contact type and
+        //     disposition chosen from their lists.
         await Step(Document, 14, "press Add contact and fill the contact's Person, Contact type, Disposition and Disposition date", async () =>
         {
             await Page.Locator("#contacts-entry-contact-add").ClickAsync();
@@ -181,8 +187,8 @@ public class AddAContactToACaseTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator("#contacts-entry-contact-remove-0")).ToHaveTextAsync("Remove");
 
             await Page.Locator("#contacts-entry-contact-0-person-id").FillAsync(contactPersonId);
-            await Page.Locator("#contacts-entry-contact-0-contact-type").FillAsync("household");
-            await Page.Locator("#contacts-entry-contact-0-disposition-id").FillAsync("3");
+            await Choose("Contact type", "Household");
+            await Choose("Disposition", "Preventative treatment");
             await Page.Locator("#contacts-entry-contact-0-disposition-date").FillAsync("2026-09-22");
         });
 
@@ -246,7 +252,7 @@ public class AddAContactToACaseTests(SurvsysHarness harness) : SurvsysPageTest
             ["Person", "Type", "Disposition", "Disposition date", "From", "To"]);
         await Expect(Page.Locator("#contacts-exposure-0-contacts tbody tr")).ToHaveCountAsync(1);
         await Expect(Page.Locator("#contacts-exposure-0-contact-0 td")).ToHaveTextAsync(
-            [contactPersonId, "household", "3", "2026-09-22", "—", "—"]);
+            [contactPersonId, "HOUSEHOLD", PreventativeTreatment, "2026-09-22", "—", "—"]);
     }
 
     /// <summary>
