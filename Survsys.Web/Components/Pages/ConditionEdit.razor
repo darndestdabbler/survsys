@@ -1,10 +1,13 @@
 @* A condition's administration screen: every column the API puts on the wire,
    the three lead-in paragraphs included. One screen for both a new condition
    and an existing one; which it is, is whether the address carries an id.
-   A save goes back to the conditions list. *@
+   A save goes back to the conditions list. An existing condition also carries
+   its ELR intake rules — the message filter and the case-management rules —
+   edited here and saved on their own, whole. *@
 @page "/conditions/new"
 @page "/conditions/{Id:int}/edit"
 @inject ConditionsClient Conditions
+@inject VocabularyClient Vocabulary
 @inject NavigationManager Navigation
 
 <PageTitle>@Heading — Survsys</PageTitle>
@@ -64,6 +67,125 @@ else
             </MudButton>
         </div>
     </MudPaper>
+
+    @if (Id is not null)
+    {
+        <MudPaper id="condition-rules" Elevation="1" Class="pa-4 mt-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">ELR intake rules</MudText>
+            <MudText Typo="Typo.body2" Class="mb-4">
+                A message for this condition is acted on when any message filter rule matches it, and
+                exactly one case-management rule must match it to say whether it may open or update a
+                case. A rule with no conditions matches every message. A condition reads a field of the
+                message's result: Loinc, TestResult (its interpretation), ResultValue, Organism,
+                Specimen or DaysSinceCollection.
+            </MudText>
+
+            @if (rulesFailure is { } rulesWhyNot)
+            {
+                <MudAlert id="condition-rules-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                    @rulesWhyNot
+                </MudAlert>
+            }
+
+            @if (rulesSaved)
+            {
+                <MudAlert id="condition-rules-saved" Severity="Severity.Success" Class="mb-4">
+                    The rules have been saved.
+                </MudAlert>
+            }
+
+            @foreach (var (rule, at) in rules.Select((rule, at) => (rule, at)))
+            {
+                <MudPaper id="@($"condition-rule-{at}")" Elevation="0" Outlined="true" Class="pa-3 mb-3">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="4">
+                            <MudSelect T="string" id="@($"condition-rule-{at}-kind")" Label="Kind"
+                                       Variant="Variant.Outlined" @bind-Value="rule.Kind">
+                                <MudSelectItem T="string" Value="@MessageFilter">Message filter</MudSelectItem>
+                                <MudSelectItem T="string" Value="@CaseManagement">Case management</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="2">
+                            <MudNumericField @bind-Value="rule.ExecutionOrder" id="@($"condition-rule-{at}-order")"
+                                             Label="Order" Variant="Variant.Outlined" />
+                        </MudItem>
+                        @if (rule.Kind == CaseManagement)
+                        {
+                            <MudItem xs="12" sm="6" Class="d-flex gap-2">
+                                <MudCheckBox @bind-Value="rule.AllowNewCase" id="@($"condition-rule-{at}-new")"
+                                             Label="Opens a case" />
+                                <MudCheckBox @bind-Value="rule.AllowUpdateCase" id="@($"condition-rule-{at}-update")"
+                                             Label="Updates a case" />
+                                <MudCheckBox @bind-Value="rule.IsSurveillance"
+                                             id="@($"condition-rule-{at}-surveillance")" Label="Surveillance" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+
+                    @foreach (var (condition, place) in rule.Conditions.Select((condition, place) => (condition, place)))
+                    {
+                        <div class="d-flex gap-2 mt-2 align-center" id="@($"condition-rule-{at}-condition-{place}")">
+                            @if (place > 0)
+                            {
+                                <MudSelect T="string" id="@($"condition-rule-{at}-condition-{place}-and-or")"
+                                           Label="Join" Variant="Variant.Outlined" @bind-Value="condition.AndOr">
+                                    <MudSelectItem T="string" Value="@And">AND</MudSelectItem>
+                                    <MudSelectItem T="string" Value="@Or">OR</MudSelectItem>
+                                </MudSelect>
+                            }
+                            <MudSelect T="string" id="@($"condition-rule-{at}-condition-{place}-field")"
+                                       Label="Field" Variant="Variant.Outlined" @bind-Value="condition.Field">
+                                @foreach (var field in Fields)
+                                {
+                                    <MudSelectItem T="string" Value="@field">@field</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudSelect T="string" id="@($"condition-rule-{at}-condition-{place}-operator")"
+                                       Label="Operator" Variant="Variant.Outlined" @bind-Value="condition.Operator">
+                                @foreach (var comparison in Operators)
+                                {
+                                    <MudSelectItem T="string" Value="@comparison">@comparison</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudTextField @bind-Value="condition.Value"
+                                          id="@($"condition-rule-{at}-condition-{place}-value")" Label="Value"
+                                          Variant="Variant.Outlined" MaxLength="200" />
+                            <MudButton id="@($"condition-rule-{at}-condition-{place}-remove")" Variant="Variant.Text"
+                                       Color="Color.Error" OnClick="@(() => rule.Conditions.Remove(condition))">
+                                Remove
+                            </MudButton>
+                        </div>
+                    }
+
+                    <div class="d-flex gap-2 mt-2">
+                        <MudButton id="@($"condition-rule-{at}-add-condition")" Variant="Variant.Text"
+                                   OnClick="@(() => rule.Conditions.Add(new ConditionForm()))">
+                            Add condition
+                        </MudButton>
+                        <MudButton id="@($"condition-rule-{at}-remove")" Variant="Variant.Text" Color="Color.Error"
+                                   OnClick="@(() => rules.Remove(rule))">
+                            Remove rule
+                        </MudButton>
+                    </div>
+                </MudPaper>
+            }
+
+            <div class="d-flex gap-2 mt-2">
+                <MudButton id="condition-rules-add-filter" Variant="Variant.Outlined"
+                           OnClick="@(() => AddRule(MessageFilter))">
+                    Add message filter rule
+                </MudButton>
+                <MudButton id="condition-rules-add-case-management" Variant="Variant.Outlined"
+                           OnClick="@(() => AddRule(CaseManagement))">
+                    Add case-management rule
+                </MudButton>
+                <MudButton id="condition-rules-save" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@savingRules" OnClick="@SaveRules">
+                    Save rules
+                </MudButton>
+            </div>
+        </MudPaper>
+    }
 }
 
 @code {
@@ -89,6 +211,27 @@ else
 
     private string? failure;
 
+    private const string MessageFilter = "message_filter";
+
+    private const string CaseManagement = "case_management";
+
+    private const string And = "AND";
+
+    private const string Or = "OR";
+
+    private static readonly string[] Fields =
+        ["Loinc", "TestResult", "ResultValue", "Organism", "Specimen", "DaysSinceCollection"];
+
+    private static readonly string[] Operators = ["=", "<>", ">", "<", ">=", "<="];
+
+    private List<RuleForm> rules = [];
+
+    private bool savingRules;
+
+    private bool rulesSaved;
+
+    private string? rulesFailure;
+
     private string Heading => Id is null ? "New condition" : "Edit condition";
 
     protected override async Task OnInitializedAsync()
@@ -108,9 +251,112 @@ else
             }
 
             failure = found.Failure;
+
+            var loadedRules = await Vocabulary.Rules(id);
+            rules = (loadedRules.Value ?? []).Select(rule => new RuleForm(rule)).ToList();
+            rulesFailure = loadedRules.Failure;
         }
 
         loading = false;
+    }
+
+    private void AddRule(string kind)
+    {
+        rules.Add(new RuleForm { Kind = kind, ExecutionOrder = rules.Count + 1 });
+        rulesSaved = false;
+    }
+
+    private async Task SaveRules()
+    {
+        savingRules = true;
+        rulesSaved = false;
+        rulesFailure = null;
+
+        var saved = await Vocabulary.SaveRules(Id!.Value, rules.Select(rule => rule.ToRow()).ToList());
+
+        savingRules = false;
+
+        if (saved.Value is { } savedRules)
+        {
+            rules = savedRules.Select(rule => new RuleForm(rule)).ToList();
+            rulesSaved = true;
+
+            return;
+        }
+
+        rulesFailure = saved.Failure;
+    }
+
+    /// <summary>One intake rule as the screen edits it.</summary>
+    private sealed class RuleForm
+    {
+        public RuleForm()
+        {
+        }
+
+        public RuleForm(VocabRuleRow row)
+        {
+            Kind = row.Kind;
+            ExecutionOrder = row.ExecutionOrder;
+            AllowNewCase = row.AllowNewCase;
+            AllowUpdateCase = row.AllowUpdateCase;
+            IsSurveillance = row.IsSurveillance;
+            Conditions = row.Conditions
+                .Select(condition => new ConditionForm
+                {
+                    Field = condition.Field,
+                    Operator = condition.Operator,
+                    Value = condition.Value,
+                    AndOr = condition.AndOr ?? And,
+                })
+                .ToList();
+        }
+
+        public string Kind { get; set; } = MessageFilter;
+
+        public int ExecutionOrder { get; set; }
+
+        public bool AllowNewCase { get; set; }
+
+        public bool AllowUpdateCase { get; set; }
+
+        public bool IsSurveillance { get; set; }
+
+        public List<ConditionForm> Conditions { get; set; } = [];
+
+        /// <summary>
+        /// The rule as the API takes it. The flags mean something only on a
+        /// case-management rule, so a filter rule sends them cleared, and the
+        /// first condition joins nothing.
+        /// </summary>
+        public VocabRuleRow ToRow()
+        {
+            var managed = Kind == CaseManagement;
+
+            return new VocabRuleRow(
+                0,
+                Kind,
+                ExecutionOrder,
+                managed && AllowNewCase,
+                managed && AllowUpdateCase,
+                managed && IsSurveillance,
+                Conditions
+                    .Select((condition, place) => new VocabRuleConditionRow(
+                        condition.Field, condition.Operator, condition.Value, place == 0 ? null : condition.AndOr))
+                    .ToList());
+        }
+    }
+
+    /// <summary>One condition of a rule as the screen edits it.</summary>
+    private sealed class ConditionForm
+    {
+        public string Field { get; set; } = "TestResult";
+
+        public string Operator { get; set; } = "=";
+
+        public string? Value { get; set; }
+
+        public string? AndOr { get; set; } = And;
     }
 
     private async Task Save()

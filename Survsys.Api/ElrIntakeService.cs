@@ -52,9 +52,12 @@ public sealed class ElrIntakeOptions
 /// <remarks>
 /// A parseable message from a sending facility on file is queued in the
 /// <see cref="MessageReviewStatus.Entry"/> state for a reviewer, one staged
-/// message per order; a message that cannot be parsed, or comes from a sender
-/// not on file, is held in the <see cref="MessageReviewStatus.Exception"/>
-/// state with the reason, rather than dropped. This stages a message and no more: it writes no
+/// message per order, once <see cref="IntakeTranslator"/> has translated it
+/// through the vocabulary and its condition's rules; a message that cannot be
+/// parsed, comes from a sender not on file, or that the vocabulary or rules
+/// decide nothing for, is held in the <see cref="MessageReviewStatus.Exception"/>
+/// state with the reason, rather than dropped, and one its condition's filter
+/// refuses is <see cref="MessageReviewStatus.Filtered"/>. This stages a message and no more: it writes no
 /// person, no lab and no case, because promoting a queued message to a case is
 /// a later session's work and needs a reviewer.
 ///
@@ -197,7 +200,9 @@ public sealed class ElrIntakeService(
     /// <summary>
     /// Receives one raw message from any transport — the file drop or MLLP:
     /// stages it against the sending facilities on file, a facility being on
-    /// file when its short name is the message's MSH-4.1, and saves what it
+    /// file when its short name is the message's MSH-4.1, translates each
+    /// message it queued through <see cref="IntakeTranslator"/> against that
+    /// facility's vocabulary and its condition's rules, and saves what it
     /// staged.
     /// </summary>
     public static async Task<IReadOnlyList<StagedMessage>> Receive(
@@ -207,16 +212,113 @@ public sealed class ElrIntakeService(
         string? source,
         CancellationToken cancellationToken)
     {
-        var shortNames = await database.Facilities
-            .Where(facility => facility.ShortName != null)
-            .Select(facility => facility.ShortName!)
-            .ToListAsync(cancellationToken);
+        // Two facilities sharing a short name are one sender to a message, so
+        // the first on file is the one its vocabulary is read for.
+        var facilities = (await database.Facilities
+                .Where(facility => facility.ShortName != null)
+                .OrderBy(facility => facility.Id)
+                .Select(facility => new { facility.Id, ShortName = facility.ShortName! })
+                .ToListAsync(cancellationToken))
+            .DistinctBy(facility => facility.ShortName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(facility => facility.ShortName, facility => facility.Id, StringComparer.OrdinalIgnoreCase);
 
-        var staged = Stage(parser, raw, source, shortNames.ToHashSet(StringComparer.OrdinalIgnoreCase));
+        var staged = Stage(parser, raw, source, facilities.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase));
+
+        if (staged.Any(message => message.ReviewStatus == MessageReviewStatusRules.EntryCode))
+        {
+            var zips = staged
+                .Select(message => ZipAgencyRules.Normalize(message.PatientZip))
+                .OfType<string>()
+                .Distinct()
+                .ToList();
+            var reference = await LoadReference(database, zips, cancellationToken);
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+            foreach (var message in staged)
+            {
+                if (message.SendingFacility is { } sender && facilities.TryGetValue(sender, out var labId))
+                {
+                    IntakeTranslator.Translate(message, labId, reference, today);
+                }
+            }
+        }
+
         database.StagedMessages.AddRange(staged);
         await database.SaveChangesAsync(cancellationToken);
 
         return staged;
+    }
+
+    /// <summary>
+    /// Reads what <see cref="IntakeTranslator"/> translates against: the
+    /// vocabulary, with archived child LOINCs left out because they no longer
+    /// resolve; each condition's rules in execution order, their conditions in
+    /// the order they were written; and the zip-to-agency rows for the
+    /// <paramref name="zips"/> the messages carry.
+    /// </summary>
+    private static async Task<IntakeReference> LoadReference(
+        SurvsysDbContext database, IReadOnlyList<string> zips, CancellationToken cancellationToken)
+    {
+        var masterLoincs = await database.VocabMasterLoincs.AsNoTracking()
+            .Select(master => new MasterLoincEntry(
+                master.Loinc, master.ConditionId, master.OrganismId, master.OrganismFromResult))
+            .ToListAsync(cancellationToken);
+        var childLoincs = await database.VocabChildLoincs.AsNoTracking()
+            .Where(child => !child.Archived)
+            .Join(
+                database.VocabMasterLoincs,
+                child => child.MasterLoincId,
+                master => master.Id,
+                (child, master) => new ChildLoincEntry(child.ChildLoinc, child.LabId, master.Loinc))
+            .ToListAsync(cancellationToken);
+        var organisms = await database.VocabMasterOrganisms.AsNoTracking()
+            .Select(organism => new MasterOrganismEntry(
+                organism.Snomed, organism.Id, organism.ConditionId, organism.SnomedAlt, organism.OrganismName))
+            .ToListAsync(cancellationToken);
+        var masterValues = await database.VocabMasterValues.AsNoTracking()
+            .Select(master => new MasterValueEntry(master.Id, master.Category, master.Concept, master.AppValue))
+            .ToListAsync(cancellationToken);
+        var childValues = await database.VocabChildValues.AsNoTracking()
+            .Select(child => new ChildValueEntry(child.LabId, child.Category, child.ChildCode, child.MasterId))
+            .ToListAsync(cancellationToken);
+
+        var rules = await database.VocabRules.AsNoTracking()
+            .OrderBy(rule => rule.ExecutionOrder)
+            .ThenBy(rule => rule.Id)
+            .ToListAsync(cancellationToken);
+        var conditions = (await database.VocabRuleConditions.AsNoTracking()
+                .OrderBy(condition => condition.Id)
+                .ToListAsync(cancellationToken))
+            .ToLookup(condition => condition.VocabRuleId);
+
+        ConditionExpression When(VocabRule rule) => new(
+            Value: null,
+            OtherSpecified: null,
+            rule.ExecutionOrder,
+            conditions[rule.Id]
+                .Select(condition => new ExpressionCondition(
+                    condition.Field, condition.Operator, condition.Value, condition.AndOr, ValueIsField: false))
+                .ToList());
+
+        var rulesByCondition = rules
+            .GroupBy(rule => rule.ConditionId)
+            .ToDictionary(
+                group => group.Key,
+                group => new IntakeConditionRules(
+                    group.Where(rule => rule.Kind == VocabRule.MessageFilterKind).Select(When).ToList(),
+                    group.Where(rule => rule.Kind == VocabRule.CaseManagementKind)
+                        .Select(rule => new CaseManagementRule(
+                            When(rule), rule.AllowNewCase, rule.AllowUpdateCase, rule.IsSurveillance))
+                        .ToList()));
+
+        var zipMapping = await database.ZipCodeAgencies.AsNoTracking()
+            .Where(row => zips.Contains(row.ZipCode))
+            .ToListAsync(cancellationToken);
+
+        return new IntakeReference(
+            new VocabularyMatcher(new Vocabulary(masterLoincs, childLoincs, organisms, masterValues, childValues)),
+            rulesByCondition,
+            zipMapping);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

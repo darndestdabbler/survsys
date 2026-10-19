@@ -16,7 +16,8 @@ namespace Survsys.Api;
 /// The rule, in the order it is asked:
 /// users, roles, the privilege catalogue and the access audit need
 /// <see cref="Privileges.ManageUsers"/>; the reference data — conditions,
-/// agencies, facilities, core elements and the code lists — is readable by anyone signed in,
+/// agencies, facilities, core elements, the code lists and the ELR vocabulary
+/// — is readable by anyone signed in,
 /// because every case screen reads it, and changed with
 /// <see cref="Privileges.ManageReferenceData"/>; who the caller is
 /// (<c>/api/me</c>) needs nothing beyond being signed in; a saved view and its
@@ -41,7 +42,7 @@ public static class PrivilegeRules
         ["/api/users", "/api/roles", "/api/privileges", "/api/access-audit"];
 
     private static readonly string[] ReferenceData =
-        ["/api/conditions", "/api/agencies", "/api/facilities", "/api/core-elements", "/api/codes"];
+        ["/api/conditions", "/api/agencies", "/api/facilities", "/api/core-elements", "/api/codes", "/api/vocabulary"];
 
     private static readonly string[] AnySignedIn = ["/api/me"];
 

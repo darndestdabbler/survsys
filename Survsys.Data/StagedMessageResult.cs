@@ -37,4 +37,23 @@ public class StagedMessageResult
 
     /// <summary>The result status (OBX-11).</summary>
     public string? ResultStatus { get; set; }
+
+    /// <summary>
+    /// The master LOINC the observation code resolved to, through the lab's
+    /// child LOINC where it has one, or null where it resolved to none.
+    /// </summary>
+    public string? MasterLoinc { get; set; }
+
+    /// <summary>The condition the result resolved to, as a bare id into <c>conditions</c>.</summary>
+    public int? ConditionId { get; set; }
+
+    /// <summary>The organism the result resolved to, as a bare id into <c>vocab_master_organism</c>.</summary>
+    public int? OrganismId { get; set; }
+
+    /// <summary>
+    /// The result's interpretation (for example <c>Positive</c>): the
+    /// application value its result code translates to, or null where it
+    /// translates to none.
+    /// </summary>
+    public string? Interpretation { get; set; }
 }

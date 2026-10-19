@@ -100,6 +100,14 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<VocabChildLoinc> VocabChildLoincs => Set<VocabChildLoinc>();
 
+    public DbSet<VocabMasterValue> VocabMasterValues => Set<VocabMasterValue>();
+
+    public DbSet<VocabChildValue> VocabChildValues => Set<VocabChildValue>();
+
+    public DbSet<VocabRule> VocabRules => Set<VocabRule>();
+
+    public DbSet<VocabRuleCondition> VocabRuleConditions => Set<VocabRuleCondition>();
+
     public DbSet<GraylistSpoolEntry> GraylistSpool => Set<GraylistSpoolEntry>();
 
     public DbSet<StagedMessage> StagedMessages => Set<StagedMessage>();

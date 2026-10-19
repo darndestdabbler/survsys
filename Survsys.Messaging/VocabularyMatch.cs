@@ -10,7 +10,14 @@ namespace Survsys.Messaging;
 /// <param name="Matched">Whether the code resolved to a vocabulary entry.</param>
 /// <param name="ConditionId">The resolved condition, where the entry names one.</param>
 /// <param name="OrganismId">The resolved organism, where the entry names one.</param>
-public sealed record VocabularyMatch(bool Matched, int? ConditionId, int? OrganismId)
+/// <param name="MasterLoinc">The master LOINC a LOINC resolved through, where it was one.</param>
+/// <param name="OrganismName">The resolved organism's name, where known.</param>
+public sealed record VocabularyMatch(
+    bool Matched,
+    int? ConditionId,
+    int? OrganismId,
+    string? MasterLoinc = null,
+    string? OrganismName = null)
 {
     /// <summary>The result for a code the vocabulary does not carry.</summary>
     public static VocabularyMatch Unmatched { get; } = new(false, null, null);

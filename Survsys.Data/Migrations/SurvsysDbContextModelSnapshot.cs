@@ -13043,13 +13043,33 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("accession_no");
 
+                    b.Property<int?>("AgencyId")
+                        .HasColumnType("int")
+                        .HasColumnName("agency_id");
+
+                    b.Property<bool?>("AllowNewCase")
+                        .HasColumnType("bit")
+                        .HasColumnName("allow_new_cmr");
+
+                    b.Property<bool?>("AllowUpdateCase")
+                        .HasColumnType("bit")
+                        .HasColumnName("allow_update_cmr");
+
                     b.Property<DateOnly?>("CollectedOn")
                         .HasColumnType("date")
                         .HasColumnName("collected_on");
 
+                    b.Property<int?>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
                     b.Property<string>("ExceptionDetail")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("exception_detail");
+
+                    b.Property<bool?>("IsSurveillance")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_surveillance");
 
                     b.Property<string>("MessageFormat")
                         .IsRequired()
@@ -13189,6 +13209,20 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("coded_result");
 
+                    b.Property<int?>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<string>("Interpretation")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("interpretation");
+
+                    b.Property<string>("MasterLoinc")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("master_loinc");
+
                     b.Property<string>("ObservationCode")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
@@ -13198,6 +13232,10 @@ namespace Survsys.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("observation_name");
+
+                    b.Property<int?>("OrganismId")
+                        .HasColumnType("int")
+                        .HasColumnName("organism_id");
 
                     b.Property<string>("ReferenceRange")
                         .HasMaxLength(50)
@@ -13571,6 +13609,43 @@ namespace Survsys.Data.Migrations
                     b.ToTable("vocab_child_loinc", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.VocabChildValue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("ChildCode")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("child_code");
+
+                    b.Property<int>("LabId")
+                        .HasColumnType("int")
+                        .HasColumnName("lab_id");
+
+                    b.Property<int>("MasterId")
+                        .HasColumnType("int")
+                        .HasColumnName("master_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LabId", "Category", "ChildCode")
+                        .IsUnique();
+
+                    b.ToTable("vocab_child_vocab", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.VocabMasterLoinc", b =>
                 {
                     b.Property<int>("Id")
@@ -13647,6 +13722,124 @@ namespace Survsys.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("vocab_master_organism", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.VocabMasterValue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AppValue")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("app_value");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("Concept")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("concept");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category", "Concept")
+                        .IsUnique();
+
+                    b.ToTable("vocab_master_vocab", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.VocabRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("AllowNewCase")
+                        .HasColumnType("bit")
+                        .HasColumnName("allow_new_cmr");
+
+                    b.Property<bool>("AllowUpdateCase")
+                        .HasColumnType("bit")
+                        .HasColumnName("allow_update_cmr");
+
+                    b.Property<int>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<int>("ExecutionOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("execution_order");
+
+                    b.Property<bool>("IsSurveillance")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_surveillance");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("kind");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConditionId", "Kind");
+
+                    b.ToTable("vocab_rules", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.VocabRuleCondition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AndOr")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)")
+                        .HasColumnName("and_or");
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("field");
+
+                    b.Property<string>("Operator")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)")
+                        .HasColumnName("operator");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("value");
+
+                    b.Property<int>("VocabRuleId")
+                        .HasColumnType("int")
+                        .HasColumnName("vocab_rule_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VocabRuleId");
+
+                    b.ToTable("vocab_rule_conditions", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.WorkflowHistoryEntry", b =>

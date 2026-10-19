@@ -93,6 +93,7 @@ builder.Services.AddHttpClient<TreatmentsClient>(http => http.BaseAddress = api)
 builder.Services.AddHttpClient<VaccinesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<EncountersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<CodesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<VocabularyClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 
 var app = builder.Build();
 
@@ -166,6 +167,13 @@ app.MapPost("/account/sign-out", async (HttpContext http) =>
 app.MapGet("/saved-views/{id:int}/export", async (int id, SavedViewsClient views, CancellationToken cancellationToken) =>
     await views.Export(id, cancellationToken) is var exported && exported.Value is { } csv
         ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"saved-view-{id}.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// A vocabulary table's CSV export, handed to the browser as a file the same
+// way, from a plain link the Vocabulary screen offers.
+app.MapGet("/vocabulary/{table}/export", async (string table, VocabularyClient vocabulary, CancellationToken cancellationToken) =>
+    await vocabulary.Export(table, cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"vocabulary-{table}.csv")
         : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();

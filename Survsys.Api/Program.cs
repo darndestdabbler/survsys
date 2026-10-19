@@ -97,6 +97,7 @@ builder.Services.AddTreatments();
 builder.Services.AddVaccines();
 builder.Services.AddEncounters();
 builder.Services.AddCodes();
+builder.Services.AddVocabulary();
 builder.Services.AddIbis();
 builder.Services.AddReports();
 
@@ -176,6 +177,7 @@ app.MapUsers();
 app.MapRoles();
 app.MapAccessAudit();
 app.MapConditions();
+app.MapVocabulary();
 app.MapPersons();
 app.MapPersonMatches();
 app.MapPersonMerges();

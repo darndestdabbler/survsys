@@ -128,6 +128,37 @@ public class StagedMessage
     /// <summary>The collection date (SPM-17, else OBR-7).</summary>
     public DateOnly? CollectedOn { get; set; }
 
+    /// <summary>
+    /// The condition intake's vocabulary resolved the order to — its first
+    /// result's that resolved to one — as a bare id into <c>conditions</c>, or
+    /// null where none did or the message was not translated.
+    /// </summary>
+    public int? ConditionId { get; set; }
+
+    /// <summary>
+    /// The investigating agency the patient's zip resolves to, as a bare id
+    /// into <c>agencies</c>, or null where the zip names no single agency.
+    /// </summary>
+    public int? AgencyId { get; set; }
+
+    /// <summary>
+    /// Whether the condition's case-management rule lets this message open a
+    /// new case, or null where no single rule decided.
+    /// </summary>
+    public bool? AllowNewCase { get; set; }
+
+    /// <summary>
+    /// Whether the condition's case-management rule lets this message update
+    /// an existing case, or null where no single rule decided.
+    /// </summary>
+    public bool? AllowUpdateCase { get; set; }
+
+    /// <summary>
+    /// Whether the case this message opens is a surveillance case, by the
+    /// condition's case-management rule, or null where no single rule decided.
+    /// </summary>
+    public bool? IsSurveillance { get; set; }
+
     /// <summary>The order's results (its OBX segments), in message order.</summary>
     public List<StagedMessageResult> Results { get; set; } = [];
 }

@@ -50,5 +50,13 @@ internal sealed class StagedMessageResultConfiguration : IEntityTypeConfiguratio
         builder.Property(result => result.ResultStatus)
             .HasColumnName("result_status")
             .HasMaxLength(10);
+        builder.Property(result => result.MasterLoinc)
+            .HasColumnName("master_loinc")
+            .HasMaxLength(CodeLength);
+        builder.Property(result => result.ConditionId).HasColumnName("condition_id");
+        builder.Property(result => result.OrganismId).HasColumnName("organism_id");
+        builder.Property(result => result.Interpretation)
+            .HasColumnName("interpretation")
+            .HasMaxLength(TextLength);
     }
 }

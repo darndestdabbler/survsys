@@ -101,6 +101,11 @@ internal sealed class StagedMessageConfiguration : IEntityTypeConfiguration<Stag
             .HasColumnName("specimen_source_text")
             .HasMaxLength(SourceLength);
         builder.Property(message => message.CollectedOn).HasColumnName("collected_on");
+        builder.Property(message => message.ConditionId).HasColumnName("condition_id");
+        builder.Property(message => message.AgencyId).HasColumnName("agency_id");
+        builder.Property(message => message.AllowNewCase).HasColumnName("allow_new_cmr");
+        builder.Property(message => message.AllowUpdateCase).HasColumnName("allow_update_cmr");
+        builder.Property(message => message.IsSurveillance).HasColumnName("is_surveillance");
 
         builder.HasMany(message => message.Results)
             .WithOne()

@@ -14,9 +14,10 @@ namespace Survsys.Data;
 /// <c>43304-5</c> for the ARUP lab resolves to the canonical master LOINC.
 ///
 /// <see cref="MasterLoincId"/> is a bare id into <c>vocab_master_loinc</c> and
-/// <see cref="LabId"/> a bare id into <c>labs</c>, each a plain int and not a
-/// navigation, as the existing reference entities are. There is no behaviour
-/// here and no navigation out.
+/// <see cref="LabId"/> the sending facility's id, a bare id into
+/// <c>facilities</c> — the facility whose short name is a message's MSH-4.1 —
+/// each a plain int and not a navigation, as the existing reference entities
+/// are. There is no behaviour here and no navigation out.
 /// </remarks>
 public class VocabChildLoinc
 {
@@ -28,7 +29,7 @@ public class VocabChildLoinc
     /// <summary>The master LOINC this resolves to, as a bare id into <c>vocab_master_loinc</c>.</summary>
     public int MasterLoincId { get; set; }
 
-    /// <summary>The reporting lab, as a bare id into <c>labs</c>.</summary>
+    /// <summary>The sending facility that reports the code, as a bare id into <c>facilities</c>.</summary>
     public int LabId { get; set; }
 
     /// <summary>The lab's own concept name for the code, where it has one.</summary>

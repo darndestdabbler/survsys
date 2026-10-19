@@ -9,8 +9,9 @@ namespace Survsys.IntegrationTests;
 /// <summary>
 /// The inbound ELR intake end to end, against the real host and database: a
 /// message from a sending facility on file carried from a dropped file to
-/// queued-for-review with its parsed fields, and a message that cannot be
-/// parsed or comes from a sender not on file held as an exception.
+/// queued-for-review with its parsed fields and their translation through the
+/// vocabulary, and a message that cannot be parsed or comes from a sender not
+/// on file held as an exception.
 /// </summary>
 /// <remarks>
 /// The host is the real <c>Program.cs</c> started as Production, with its
@@ -45,6 +46,7 @@ public class ElrIntakeTests(SqlServerFixture server)
         // The fixture's sender, MSH-4.1 TEST_LAB, put on file as a facility's
         // short name, so its message is queued rather than held.
         var senderId = await EnsureSendingFacility("TEST_LAB");
+        var vocabulary = await IntakeVocabulary.SeedAccepting(server, "TEST_LAB");
 
         try
         {
@@ -78,6 +80,16 @@ public class ElrIntakeTests(SqlServerFixture server)
             var result = Assert.Single(queued.Results);
             Assert.Equal("260373001", result.ResultValue);
             Assert.Equal("Detected", result.CodedResult);
+
+            // And translated: the result through the vocabulary, the message
+            // through its condition's rules.
+            Assert.Equal(IntakeVocabulary.Loinc, result.MasterLoinc);
+            Assert.Equal(vocabulary.ConditionId, result.ConditionId);
+            Assert.Equal("Positive", result.Interpretation);
+            Assert.Equal(vocabulary.ConditionId, queued.ConditionId);
+            Assert.True(queued.AllowNewCase);
+            Assert.True(queued.AllowUpdateCase);
+            Assert.False(queued.IsSurveillance);
 
             // The same message read back through the wire: the detail endpoint
             // carries the raw text and the Entry state, which is the stack end
@@ -116,6 +128,7 @@ public class ElrIntakeTests(SqlServerFixture server)
         }
         finally
         {
+            await vocabulary.DisposeAsync();
             await RemoveSendingFacility(senderId);
             Environment.SetEnvironmentVariable("ElrIntake__DropDirectory", null);
             Environment.SetEnvironmentVariable("ElrIntake__PollIntervalSeconds", null);

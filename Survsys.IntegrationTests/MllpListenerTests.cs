@@ -33,6 +33,10 @@ public class MllpListenerTests(SqlServerFixture server)
 
         var senderId = await EnsureSendingFacility("TEST_LAB");
 
+        // The vocabulary and rules that translate the fixture message, so a
+        // known sender's message stays queued for review.
+        var vocabulary = await IntakeVocabulary.SeedAccepting(server, "TEST_LAB");
+
         try
         {
             using var api = new SurvsysApi(server.ConnectionString);
@@ -68,6 +72,7 @@ public class MllpListenerTests(SqlServerFixture server)
         finally
         {
             Environment.SetEnvironmentVariable("ElrIntake__MllpPort", null);
+            await vocabulary.DisposeAsync();
             await RemoveSendingFacility(senderId);
         }
     }
