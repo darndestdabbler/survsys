@@ -2,8 +2,10 @@
    codes of its jurisdiction. The zip codes are one box, one or more per line
    or separated by commas or spaces, because a jurisdiction is a list someone
    pastes rather than types a row at a time; the API tier reads each one, cuts
-   a ZIP+4 to its zip, and refuses a value that is not a zip code. A save goes
-   back to the agencies list. *@
+   a ZIP+4 to its zip, and refuses a value that is not a zip code. The
+   notification addresses are the agency's batch e-mail of assigned laboratory
+   messages, refused where one is not an address. A save goes back to the
+   agencies list. *@
 @page "/agencies/new"
 @page "/agencies/{Id:int}"
 @inject AgenciesClient Agencies
@@ -43,6 +45,11 @@ else
                               Label="Jurisdiction zip codes" Variant="Variant.Outlined" Lines="6"
                               HelperText="Separate zip codes with commas, spaces or new lines." />
             </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="notificationEmails" id="agency-notification-emails"
+                              Label="Notification e-mail addresses" Variant="Variant.Outlined" MaxLength="1000"
+                              HelperText="Sent a batch e-mail of the laboratory messages assigned to the agency's cases. Separate addresses with semicolons." />
+            </MudItem>
         </MudGrid>
 
         <div class="d-flex gap-2 mt-4">
@@ -71,6 +78,8 @@ else
 
     private string? zipCodes;
 
+    private string? notificationEmails;
+
     private bool loading = true;
 
     private bool saving;
@@ -90,6 +99,7 @@ else
                 name = agency.Name;
                 shortName = agency.ShortName;
                 zipCodes = string.Join(Environment.NewLine, agency.ZipCodes);
+                notificationEmails = agency.NotificationEmails;
             }
 
             failure = found.Failure;
@@ -106,7 +116,8 @@ else
         var request = new SaveAgencyRequest(
             name ?? "",
             shortName,
-            (zipCodes ?? "").Split(Separators, StringSplitOptions.RemoveEmptyEntries));
+            (zipCodes ?? "").Split(Separators, StringSplitOptions.RemoveEmptyEntries),
+            notificationEmails);
 
         var saved = Id is { } id
             ? await Agencies.Update(id, request)

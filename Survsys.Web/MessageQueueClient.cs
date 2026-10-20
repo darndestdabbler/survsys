@@ -66,6 +66,25 @@ public sealed class MessageQueueClient(HttpClient http)
 
     private static readonly ApiAsk Retrying = new(RetryFailurePrefix, "how many messages were retried");
 
+    /// <summary>How a failure to load the intake statistics starts.</summary>
+    public const string StatisticsFailurePrefix = "The intake statistics could not be loaded";
+
+    private static readonly ApiAsk Counting = new(StatisticsFailurePrefix, "the intake statistics");
+
+    /// <summary>
+    /// How many messages were received from <paramref name="from"/> through
+    /// <paramref name="to"/>, by sending facility, review state and day, or
+    /// why there are no counts.
+    /// </summary>
+    public Task<Asked<IReadOnlyList<MessageStatisticsRowResponse>>> Statistics(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default) =>
+        Counting.Get<IReadOnlyList<MessageStatisticsRowResponse>>(
+            http,
+            $"api/staged-messages/statistics?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken);
+
     /// <summary>
     /// One page of the intake queue, oldest first, narrowed to one review state
     /// when a status code is given and the whole queue when it is not, or why

@@ -42,6 +42,7 @@ public class ElrIntakeServiceTests
         Assert.Equal(MessageReviewStatusRules.EntryCode, staged.ReviewStatus);
         Assert.Equal(MessageReviewStatus.Entry, MessageReviewStatusRules.Read(staged.ReviewStatus));
         Assert.Null(staged.ExceptionDetail);
+        Assert.Null(staged.ExceptionCategory);
         Assert.False(staged.QaFlagged);
         Assert.Equal("oru-r01-chlamydia.hl7", staged.Source);
     }
@@ -151,6 +152,7 @@ public class ElrIntakeServiceTests
             Assert.Equal(MessageReviewStatusRules.ExceptionCode, message.ReviewStatus);
             Assert.Contains("TEST_LAB", message.ExceptionDetail);
             Assert.Contains("MSH-4", message.ExceptionDetail);
+            Assert.Equal(MessageExceptionRules.UnknownSenderCode, message.ExceptionCategory);
         });
     }
 
@@ -164,6 +166,7 @@ public class ElrIntakeServiceTests
         Assert.Equal(MessageReviewStatusRules.ExceptionCode, staged.ReviewStatus);
         Assert.Equal(MessageReviewStatus.Exception, MessageReviewStatusRules.Read(staged.ReviewStatus));
         Assert.False(string.IsNullOrWhiteSpace(staged.ExceptionDetail));
+        Assert.Equal(MessageExceptionRules.UnparseableCode, staged.ExceptionCategory);
         Assert.Null(staged.OrderIndex);
     }
 

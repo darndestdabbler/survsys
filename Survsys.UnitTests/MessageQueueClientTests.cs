@@ -59,9 +59,25 @@ public class MessageQueueClientTests
             "receivedAt": "2026-10-17T03:30:00Z",
             "reviewStatus": "entry",
             "qaFlagged": false,
-            "exceptionDetail": null
+            "exceptionDetail": null,
+            "exceptionCategory": null,
+            "retryable": false
           },
-          "rawMessage": "MSH|^~\\&|LAB|..."
+          "rawMessage": "MSH|^~\\&|LAB|...",
+          "history": [
+            {
+              "reviewStatus": "exception",
+              "exceptionCategory": "loinc-not-mapped",
+              "exceptionDetail": "No result resolves to a condition.",
+              "occurredAt": "2026-10-17T03:30:00Z"
+            },
+            {
+              "reviewStatus": "entry",
+              "exceptionCategory": null,
+              "exceptionDetail": null,
+              "occurredAt": "2026-10-17T04:00:00Z"
+            }
+          ]
         }
         """;
 
@@ -147,6 +163,8 @@ public class MessageQueueClientTests
         Assert.Equal(11, detail.Value?.Message.Id);
         Assert.Equal("entry", detail.Value?.Message.ReviewStatus);
         Assert.StartsWith("MSH|", detail.Value?.RawMessage);
+        Assert.Equal(["exception", "entry"], detail.Value?.History?.Select(state => state.ReviewStatus));
+        Assert.Equal("loinc-not-mapped", detail.Value?.History?[0].ExceptionCategory);
     }
 
     private const string Promoted =
@@ -407,6 +425,49 @@ public class MessageQueueClientTests
         Assert.StartsWith(MessageQueueClient.RetryFailurePrefix, retried.Failure);
         Assert.Contains("409", deleted.Failure);
         Assert.DoesNotContain("become a case", deleted.Failure, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task StatisticsAsksForTheRangeAndReadsTheCounts()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new MessageQueueClient(Transport(request =>
+        {
+            sent = request;
+
+            return Answer(
+                HttpStatusCode.OK,
+                """
+                [
+                  { "sendingFacility": "ARUP", "reviewStatus": "assigned", "day": "2026-10-19", "count": 4 },
+                  { "sendingFacility": null, "reviewStatus": "exception", "day": "2026-10-18", "count": 1 }
+                ]
+                """);
+        }));
+
+        var counted = await client.Statistics(new DateOnly(2026, 9, 20), new DateOnly(2026, 10, 19));
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal(
+            "http://api.example.test/api/staged-messages/statistics?from=2026-09-20&to=2026-10-19",
+            sent?.RequestUri?.ToString());
+        Assert.Equal(
+            [
+                new MessageStatisticsRowResponse("ARUP", "assigned", new DateOnly(2026, 10, 19), 4),
+                new MessageStatisticsRowResponse(null, "exception", new DateOnly(2026, 10, 18), 1),
+            ],
+            counted.Value);
+    }
+
+    [Fact]
+    public async Task StatisticsThatFailedCarryTheStatisticsPrefix()
+    {
+        var client = new MessageQueueClient(Transport(_ => Answer(HttpStatusCode.BadRequest, "{}")));
+
+        var counted = await client.Statistics(new DateOnly(2026, 10, 19), new DateOnly(2026, 10, 1));
+
+        Assert.StartsWith(MessageQueueClient.StatisticsFailurePrefix, counted.Failure);
     }
 
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>

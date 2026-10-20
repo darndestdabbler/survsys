@@ -63,6 +63,7 @@ public class MessageQueueEndpointsTests
             ReviewStatus = MessageReviewStatusRules.ExceptionCode,
             QaFlagged = true,
             ExceptionDetail = "The message could not be parsed as HL7 v2.",
+            ExceptionCategory = MessageExceptionRules.UnparseableCode,
         };
 
         var response = MessageQueueEndpoints.MessageToResponse.Compile().Invoke(exceptioned);
@@ -74,8 +75,36 @@ public class MessageQueueEndpointsTests
                 new DateTime(2026, 3, 13, 9, 0, 0, DateTimeKind.Utc),
                 MessageReviewStatusRules.ExceptionCode,
                 true,
-                "The message could not be parsed as HL7 v2."),
+                "The message could not be parsed as HL7 v2.",
+                MessageExceptionRules.UnparseableCode,
+                Retryable: false),
             response);
+    }
+
+    /// <summary>
+    /// A message held for a category that may be retried says so, so a
+    /// reviewer sees which held messages a retry can help.
+    /// </summary>
+    [Fact]
+    public void MessageToResponseCarriesARetryableCategory()
+    {
+        var held = Message();
+        held.ReviewStatus = MessageReviewStatusRules.ExceptionCode;
+        held.ExceptionDetail = "No result resolves to a condition.";
+        held.ExceptionCategory = MessageExceptionRules.LoincNotMappedCode;
+
+        var response = MessageQueueEndpoints.MessageToResponse.Compile().Invoke(held);
+
+        Assert.Equal(MessageExceptionRules.LoincNotMappedCode, response.ExceptionCategory);
+        Assert.True(response.Retryable);
+    }
+
+    [Fact]
+    public void RetryableCategoriesAreTheCategoriesMarkedRetryable()
+    {
+        Assert.Equal(
+            MessageExceptionRules.Categories.Where(category => category.Retryable).Select(category => category.Code),
+            MessageQueueEndpoints.RetryableCategories);
     }
 
     /// <summary>
@@ -258,5 +287,41 @@ public class MessageQueueEndpointsTests
 
         Assert.NotNull(why);
         Assert.Contains("never parsed", why, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(MessageExceptionRules.LoincNotMappedCode)]
+    [InlineData(MessageExceptionRules.FailedToAddOrUpdateCode)]
+    public void WhyNotRetryablePassesARetryableCategoryOrNone(string? category)
+    {
+        Assert.Null(MessageQueueEndpoints.WhyNotRetryable(MessageReviewStatusRules.ExceptionCode, parsed: true, category));
+    }
+
+    [Theory]
+    [InlineData(MessageExceptionRules.EntryQueueExceptionCode)]
+    [InlineData(MessageExceptionRules.WhitelistRuleExceptionCode)]
+    [InlineData(MessageExceptionRules.UnparseableCode)]
+    public void WhyNotRetryableRefusesACategoryAPersonResolves(string category)
+    {
+        var why = MessageQueueEndpoints.WhyNotRetryable(MessageReviewStatusRules.ExceptionCode, parsed: true, category);
+
+        Assert.NotNull(why);
+        Assert.Contains(category, why, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(MessageReviewStatusRules.ExceptionCode, true)]
+    [InlineData(MessageReviewStatusRules.UnprocessedCode, true)]
+    [InlineData(MessageReviewStatusRules.LockedCode, true)]
+    [InlineData(MessageReviewStatusRules.GrayExceptionCode, true)]
+    [InlineData(MessageReviewStatusRules.PendingCode, true)]
+    [InlineData(MessageReviewStatusRules.EntryCode, false)]
+    [InlineData(MessageReviewStatusRules.SemiAutoCode, false)]
+    [InlineData(MessageReviewStatusRules.QaCode, false)]
+    [InlineData(MessageReviewStatusRules.GrayCode, false)]
+    public void KeepsWhyKeepsTheReasonOnlyForAHeldOrPendingState(string status, bool keeps)
+    {
+        Assert.Equal(keeps, MessageQueueEndpoints.KeepsWhy(status));
     }
 }

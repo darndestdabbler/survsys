@@ -75,10 +75,10 @@ public class AgenciesClientTests
     }
 
     private const string SaltLake =
-        """{ "id": 5, "name": "Salt Lake County", "shortName": "SLCo", "zipCodes": ["84101", "84108"] }""";
+        """{ "id": 5, "name": "Salt Lake County", "shortName": "SLCo", "zipCodes": ["84101", "84108"], "notificationEmails": "epi@example.org" }""";
 
     private static readonly AgencyDetailResponse SaltLakeDetail =
-        new(5, "Salt Lake County", "SLCo", ["84101", "84108"]);
+        new(5, "Salt Lake County", "SLCo", ["84101", "84108"], "epi@example.org");
 
     [Fact]
     public async Task FindAsksForTheAgencyAndReturnsItWithItsZipCodes()
@@ -96,6 +96,7 @@ public class AgenciesClientTests
         Assert.Equal("http://api.example.test/api/agencies/5", sent?.RequestUri?.ToString());
         Assert.Equal(SaltLakeDetail.ZipCodes, asked.Value!.ZipCodes);
         Assert.Equal(SaltLakeDetail.Name, asked.Value.Name);
+        Assert.Equal(SaltLakeDetail.NotificationEmails, asked.Value.NotificationEmails);
     }
 
     [Fact]
@@ -108,9 +109,11 @@ public class AgenciesClientTests
             return Answer(HttpStatusCode.Created, SaltLake);
         }));
 
-        var asked = await client.Create(new SaveAgencyRequest("Salt Lake County", "SLCo", ["84101", "84108"]));
+        var asked = await client.Create(
+            new SaveAgencyRequest("Salt Lake County", "SLCo", ["84101", "84108"], "epi@example.org"));
 
         Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Contains("\"notificationEmails\":\"epi@example.org\"", await sent!.Content!.ReadAsStringAsync());
         Assert.Equal("http://api.example.test/api/agencies", sent?.RequestUri?.ToString());
         Assert.Equal(5, asked.Value!.Id);
     }

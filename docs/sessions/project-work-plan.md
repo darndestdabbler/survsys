@@ -90,7 +90,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 76 | Vocabulary and rules at intake | no | 2026-10-19 |
 | 77 | The graylist, automatic assignment and the full queue | no | 2026-10-19 |
 | 78 | Labs from messages, and updating an existing case | no | 2026-10-20 |
-| 79 | Exceptions, reprocessing, notifications and statistics | — | not declared |
+| 79 | Exceptions, reprocessing, notifications and statistics | no | 2026-10-20 |
 | 80 | Connecticut ELR conformance | — | not declared |
 | 81 | Connecticut planning regions as county equivalents | — | not declared |
 | 82 | Phase 10 walkthroughs | — | not declared |
@@ -704,3 +704,14 @@ Make a message's laboratory data land on the case, atomically, and let a message
 **Amended after acceptance:**
 
 - 2026-10-20 — step 'atomic-promotion': its files: Promotion and assignment now write a lab linked to the case, so the two integration suites' cleanup must delete labs before cases or it is refused by the person_condition_labs foreign key. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 79 — Exceptions, reprocessing, notifications and statistics
+
+**Releasable: no.**
+
+Type the reasons a message is held, let the retryable ones be reprocessed, keep a trail of every state a message passes through, and tell agencies what was assigned to them. Survsys.Data gains MessageExceptionRules, a pure static vocabulary in the shape of MessageReviewStatusRules: the legacy system_exceptions categories this tier can raise, each with its legacy id, its name and whether it may be retried (unparseable message, sending facility not on file, LOINC not mapped, missing required field, no case-management rule, no case-management rule evaluated true, failed to add or update, zip code not mapped, entry queue exception and whitelist rule exception -- the last two not retryable, as in the legacy). StagedMessage gains ExceptionCategory (a code from that vocabulary, set beside ExceptionDetail wherever a message is held as an exception or sent to pending, and cleared with it), RetryCount and NotifiedAt; a new StagedMessageAudit row records each state a message enters -- its state, category, detail and when -- written by SurvsysDbContext for every tracked insert of a message or change of its review state, and explicitly by the three bulk updates that bypass tracking (the conditional assignment, the graylist prune and a hand move); Agency gains NotificationEmails; one migration adds them. Survsys.Api: intake, translation, automatic assignment and the case writer record a category with each hold; a message whose assignment throws is held as a failed-to-add-or-update exception instead of aborting the pass; the existing hand retry refuses a message whose category is not retryable and counts each retry; MessageProcessingService gains a Reprocess pass, run on its own configured interval (off when unset), that retries every held message with a retryable category and fewer than the configured maximum retries; the message detail carries its audit trail and the summary its category. Then notification and statistics: MessageNotificationService, a hosted service off unless configured, sends each agency with notification addresses one e-mail per pass listing the messages newly assigned to its cases, over SMTP configured under MessageNotification (host, port, TLS, sender, credentials from configuration), and stamps NotifiedAt; the agency screen edits the addresses; a statistics endpoint counts messages by sending facility, review state and received day over a date range, and a Web screen shows it. An integration test takes a message whose assignment fails through its exception, a reprocess and its assignment, and reads the audit trail it left.
+
+**Amended after acceptance:**
+
+- 2026-10-20 — step 'integration': its files: Prove the statistics query's grouping by received day translates and counts against SQL Server, which the unit suite cannot (claude-code (anthropic, claude-opus-5-5))
+- 2026-10-20 — step 'integration': its checks: Run the statistics integration test with the step's other checks (claude-code (anthropic, claude-opus-5-5))

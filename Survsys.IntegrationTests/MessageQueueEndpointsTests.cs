@@ -12,7 +12,8 @@ namespace Survsys.IntegrationTests;
 /// The queue's move, delete and retry against the real host and database:
 /// each acts on every message named, a delete takes the message's results with
 /// it, a retry translates a held message again, and an action naming an
-/// assigned message is refused and changes nothing.
+/// assigned message is refused and changes nothing. Each leaves its states on
+/// the message's audit trail.
 /// </summary>
 [Collection(SqlServerCollection.Name)]
 public class MessageQueueEndpointsTests(SqlServerFixture server) : IAsyncLifetime
@@ -89,6 +90,93 @@ public class MessageQueueEndpointsTests(SqlServerFixture server) : IAsyncLifetim
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
     }
 
+    /// <summary>
+    /// Each state a hand move, a retry and its translation put a message in is
+    /// on its trail, which the detail returns; the retry is counted; and a
+    /// message held for a reason a person resolves is refused a retry.
+    /// </summary>
+    [Fact]
+    public async Task ActionsLeaveTheTrailAndARetryOfAPersonsExceptionIsRefused()
+    {
+        var client = api.CreateClient();
+        var moving = await Stage(MessageReviewStatusRules.EntryCode);
+        var held = await Stage(MessageReviewStatusRules.ExceptionCode, sender: "NO_SUCH_LAB");
+        var personal = await Stage(
+            MessageReviewStatusRules.ExceptionCode, category: MessageExceptionRules.WhitelistRuleExceptionCode);
+
+        await Act(client, "move", new StagedMessageActionRequest([moving], "semi-auto"));
+        await Act(client, "move", new StagedMessageActionRequest([moving], "semi-auto"));
+        await Act(client, "retry", new StagedMessageActionRequest([held]));
+
+        using (var refused = await client.PostAsJsonAsync(
+            "/api/staged-messages/retry", new StagedMessageActionRequest([personal]), Json))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        }
+
+        // A second move into the state the message is already in adds nothing.
+        Assert.Equal(
+            [MessageReviewStatusRules.EntryCode, MessageReviewStatusRules.SemiAutoCode],
+            (await History(client, moving)).Select(state => state.ReviewStatus));
+
+        var trail = await History(client, held);
+        Assert.Equal(
+            [MessageReviewStatusRules.ExceptionCode, MessageReviewStatusRules.EntryCode, MessageReviewStatusRules.ExceptionCode],
+            trail.Select(state => state.ReviewStatus));
+        Assert.Equal(MessageExceptionRules.UnknownSenderCode, trail[2].ExceptionCategory);
+
+        await using var context = server.NewContext();
+        var retried = await context.StagedMessages.SingleAsync(message => message.Id == held);
+        Assert.Equal(1, retried.RetryCount);
+        Assert.Equal(MessageExceptionRules.UnknownSenderCode, retried.ExceptionCategory);
+        Assert.Equal(
+            MessageReviewStatusRules.ExceptionCode,
+            (await context.StagedMessages.SingleAsync(message => message.Id == personal)).ReviewStatus);
+    }
+
+    /// <summary>
+    /// A message moved by hand to pending keeps why it is held; moved on to a
+    /// state that holds it for nothing, it keeps no exception detail or
+    /// category, and its trail says so.
+    /// </summary>
+    [Fact]
+    public async Task AMoveKeepsWhyAMessageIsHeldOnlyWhileItIsHeld()
+    {
+        var client = api.CreateClient();
+        var held = await Stage(
+            MessageReviewStatusRules.ExceptionCode, category: MessageExceptionRules.WhitelistRuleExceptionCode);
+
+        await Act(client, "move", new StagedMessageActionRequest([held], "pending"));
+        await using (var context = server.NewContext())
+        {
+            var pending = await context.StagedMessages.SingleAsync(message => message.Id == held);
+            Assert.Equal(MessageExceptionRules.WhitelistRuleExceptionCode, pending.ExceptionCategory);
+            Assert.Equal("Held for the queue tests.", pending.ExceptionDetail);
+        }
+
+        await Act(client, "move", new StagedMessageActionRequest([held], "semi-auto"));
+        await using (var context = server.NewContext())
+        {
+            var moved = await context.StagedMessages.SingleAsync(message => message.Id == held);
+            Assert.Null(moved.ExceptionCategory);
+            Assert.Null(moved.ExceptionDetail);
+        }
+
+        var trail = await History(client, held);
+        Assert.Equal(
+            [MessageReviewStatusRules.ExceptionCode, MessageReviewStatusRules.PendingCode, MessageReviewStatusRules.SemiAutoCode],
+            trail.Select(state => state.ReviewStatus));
+        Assert.Equal(MessageExceptionRules.WhitelistRuleExceptionCode, trail[1].ExceptionCategory);
+        Assert.Null(trail[2].ExceptionCategory);
+    }
+
+    private static async Task<IReadOnlyList<StagedMessageAuditResponse>> History(HttpClient client, int id)
+    {
+        var detail = await client.GetFromJsonAsync<StagedMessageDetailResponse>($"/api/staged-messages/{id}", Json);
+
+        return detail!.History!;
+    }
+
     private static async Task<StagedMessageActionResponse> Act(
         HttpClient client, string action, StagedMessageActionRequest request)
     {
@@ -99,7 +187,7 @@ public class MessageQueueEndpointsTests(SqlServerFixture server) : IAsyncLifetim
     }
 
     /// <summary>A parsed message with one result, in the state given.</summary>
-    private async Task<int> Stage(string status, string sender = "QUEUE_LAB")
+    private async Task<int> Stage(string status, string sender = "QUEUE_LAB", string? category = null)
     {
         await using var context = server.NewContext();
 
@@ -109,6 +197,8 @@ public class MessageQueueEndpointsTests(SqlServerFixture server) : IAsyncLifetim
             Source = "queue-actions.hl7",
             ReceivedAt = DateTime.UtcNow,
             ReviewStatus = status,
+            ExceptionCategory = category,
+            ExceptionDetail = category is null ? null : "Held for the queue tests.",
             MessageType = "ORU^R01",
             SendingFacility = sender,
             Results = [new StagedMessageResult { Sequence = 0, ObservationCode = "11585-7" }],

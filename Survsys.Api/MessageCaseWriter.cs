@@ -244,14 +244,15 @@ public static class MessageCaseWriter
 
         if (match.Exception is { } exception)
         {
-            return await Pend(database, staged, personConditionId, exception, cancellationToken);
+            return await Pend(database, staged, personConditionId, exception, cancellationToken, MessageExceptionRules.WhitelistRuleExceptionCode);
         }
 
         if (match.Matched.Count > 1)
         {
             return await Pend(database, staged, null,
                 $"{match.Matched.Count} of person {personId}'s cases match this message by the whitelist rule.",
-                cancellationToken);
+                cancellationToken,
+                MessageExceptionRules.WhitelistRuleExceptionCode);
         }
 
         if (match.Matched.Count == 0 || (match.Matched[0].NotACase && !rule.IgnoreCaseStatus))
@@ -376,19 +377,37 @@ public static class MessageCaseWriter
         staged.ReviewStatus = MessageReviewStatusRules.AssignedCode;
         staged.PersonConditionId = personConditionId;
         staged.ExceptionDetail = null;
+        staged.ExceptionCategory = null;
+
+        // Claim moved the message to assigned past the change tracker. Where the
+        // message was loaded after that, the save sees no change of state to
+        // record, so the trail is written here; where it was already tracked in
+        // its earlier state, the save records the move itself.
+        if (database.Entry(staged).Property(message => message.ReviewStatus).OriginalValue
+            == MessageReviewStatusRules.AssignedCode)
+        {
+            staged.Audits.Add(StagedMessageAudit.Of(staged, DateTime.UtcNow));
+        }
+
         await database.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Sends the message to pending with why, held as an entry-queue exception
+    /// unless <paramref name="category"/> names another.
+    /// </summary>
     private static async Task<CaseUpdate> Pend(
         SurvsysDbContext database,
         StagedMessage staged,
         int? personConditionId,
         string reason,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string category = MessageExceptionRules.EntryQueueExceptionCode)
     {
         staged.ReviewStatus = MessageReviewStatusRules.PendingCode;
         staged.PersonConditionId = personConditionId;
         staged.ExceptionDetail = reason;
+        staged.ExceptionCategory = category;
         await database.SaveChangesAsync(cancellationToken);
 
         return new CaseUpdate(MessageReviewStatusRules.PendingCode, personConditionId, reason);

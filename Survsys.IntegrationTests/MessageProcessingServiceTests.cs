@@ -91,6 +91,124 @@ public class MessageProcessingServiceTests(SqlServerFixture server) : IAsyncLife
         }
     }
 
+    /// <summary>
+    /// A message whose assignment fails — a result value its lab column cannot
+    /// hold — is held as a retryable exception rather than stopping the pass;
+    /// once the value fits, reprocessing retries it, it is assigned, and its
+    /// audit trail reads every state it passed through. A message held for a
+    /// reason a person resolves is left alone.
+    /// </summary>
+    [Fact]
+    public async Task AFailedAssignmentIsHeldRetriedAndAssignedWithItsTrail()
+    {
+        var facilityId = await EnsureSendingFacility();
+        var zipAdded = await EnsureZipAgency();
+        await using var vocabulary = await IntakeVocabulary.SeedAccepting(server, Sender);
+
+        try
+        {
+            var lastName = Unique("RETRY");
+            var raw = (await File.ReadAllTextAsync(
+                    Path.Combine(AppContext.BaseDirectory, "Fixtures", "Hl7", "oru-r01-chlamydia.hl7")))
+                .Replace("DOE^JOHN^A", $"{lastName}^RITA^A", StringComparison.Ordinal)
+                .Replace("19800115|M", "19720304|F", StringComparison.Ordinal)
+                .Replace("123 Main St", "77 Retry Rd", StringComparison.Ordinal);
+            var options = new MessageProcessingOptions();
+            string? received;
+            int resultId;
+
+            int messageId;
+            await using (var context = server.NewContext())
+            {
+                var staged = Assert.Single(
+                    await ElrIntakeService.Receive(Parser, context, raw, "retry.hl7", CancellationToken.None));
+                messageId = staged.Id;
+                received = staged.Results[0].ResultValue;
+                resultId = staged.Results[0].Id;
+
+                // Over the lab result's 200 characters, which the message's 2000 hold.
+                await context.Set<StagedMessageResult>()
+                    .Where(result => result.Id == resultId)
+                    .ExecuteUpdateAsync(set => set.SetProperty(result => result.ResultValue, new string('X', 500)));
+
+                context.StagedMessages.Add(new StagedMessage
+                {
+                    RawMessage = "MSH|^~\\&|",
+                    Source = "person.hl7",
+                    ReceivedAt = DateTime.UtcNow,
+                    ReviewStatus = MessageReviewStatusRules.ExceptionCode,
+                    ExceptionCategory = MessageExceptionRules.EntryQueueExceptionCode,
+                    ExceptionDetail = "A person decides where this message goes.",
+                    MessageType = "ORU^R01",
+                });
+                await context.SaveChangesAsync();
+            }
+
+            await using (var context = server.NewContext())
+            {
+                Assert.Equal(1, await MessageProcessingService.Assign(
+                    context, Parser, Thresholds, options, DateTimeOffset.Now, CancellationToken.None));
+            }
+
+            await using (var check = server.NewContext())
+            {
+                var held = await check.StagedMessages.SingleAsync(message => message.Id == messageId);
+                Assert.Equal(MessageReviewStatusRules.ExceptionCode, held.ReviewStatus);
+                Assert.Equal(MessageExceptionRules.FailedToAddOrUpdateCode, held.ExceptionCategory);
+                Assert.True(MessageExceptionRules.Read(held.ExceptionCategory).Retryable);
+                Assert.Null(held.PersonConditionId);
+                Assert.False(await check.Persons.AnyAsync(person => person.LastName == lastName));
+
+                await check.Set<StagedMessageResult>()
+                    .Where(result => result.Id == resultId)
+                    .ExecuteUpdateAsync(set => set.SetProperty(result => result.ResultValue, received));
+            }
+
+            await using (var context = server.NewContext())
+            {
+                Assert.Equal(1, await MessageProcessingService.Reprocess(context, options, CancellationToken.None));
+                Assert.Equal(1, await MessageProcessingService.Assign(
+                    context, Parser, Thresholds, options, DateTimeOffset.Now, CancellationToken.None));
+            }
+
+            await using var final = server.NewContext();
+            var assigned = await final.StagedMessages.SingleAsync(message => message.Id == messageId);
+            Assert.Equal(MessageReviewStatusRules.AssignedCode, assigned.ReviewStatus);
+            Assert.Null(assigned.ExceptionCategory);
+            Assert.Equal(1, assigned.RetryCount);
+            Assert.NotNull(assigned.PersonConditionId);
+
+            var trail = await final.StagedMessageAudits
+                .Where(audit => audit.StagedMessageId == messageId)
+                .OrderBy(audit => audit.OccurredAt)
+                .ThenBy(audit => audit.Id)
+                .ToListAsync();
+            Assert.Equal(
+                [
+                    MessageReviewStatusRules.EntryCode,
+                    MessageReviewStatusRules.ExceptionCode,
+                    MessageReviewStatusRules.EntryCode,
+                    MessageReviewStatusRules.AssignedCode,
+                ],
+                trail.Select(audit => audit.ReviewStatus));
+            Assert.Equal(MessageExceptionRules.FailedToAddOrUpdateCode, trail[1].ExceptionCategory);
+            Assert.Contains("failed", trail[1].ExceptionDetail, StringComparison.Ordinal);
+
+            var untouched = await final.StagedMessages.SingleAsync(message => message.Source == "person.hl7");
+            Assert.Equal(MessageReviewStatusRules.ExceptionCode, untouched.ReviewStatus);
+            Assert.Equal(0, untouched.RetryCount);
+        }
+        finally
+        {
+            await using var context = server.NewContext();
+            if (zipAdded)
+            {
+                await context.ZipCodeAgencies.Where(row => row.ZipCode == FixtureZip).ExecuteDeleteAsync();
+            }
+            await context.Facilities.Where(facility => facility.Id == facilityId).ExecuteDeleteAsync();
+        }
+    }
+
     [Fact]
     public async Task AGraylistedMessageIsReleasedWhenACaseAppearsForItsPatient()
     {
@@ -134,6 +252,7 @@ public class MessageProcessingServiceTests(SqlServerFixture server) : IAsyncLife
         Assert.Equal(MessageReviewStatusRules.PendingCode, released.ReviewStatus);
         Assert.Equal(report.Id, released.PersonConditionId);
         Assert.Contains("2026GRAY01", released.ExceptionDetail, StringComparison.Ordinal);
+        Assert.Equal(MessageExceptionRules.EntryQueueExceptionCode, released.ExceptionCategory);
 
         var unmatched = await check.StagedMessages.SingleAsync(message => message.Id == stranger.Id);
         Assert.Equal(MessageReviewStatusRules.GrayCode, unmatched.ReviewStatus);

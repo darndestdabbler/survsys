@@ -112,6 +112,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<StagedMessage> StagedMessages => Set<StagedMessage>();
 
+    public DbSet<StagedMessageAudit> StagedMessageAudits => Set<StagedMessageAudit>();
+
     public DbSet<NotificationQueueEntry> NotificationQueue => Set<NotificationQueueEntry>();
 
     public DbSet<CdcExportLogEntry> CdcExportLog => Set<CdcExportLogEntry>();
@@ -189,4 +191,43 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
     // the legacy PostgreSQL row triggers; see AuditInterceptor.
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
         optionsBuilder.AddInterceptors(new AuditInterceptor());
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        RecordMessageStates();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        RecordMessageStates();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>
+    /// Adds a <see cref="StagedMessageAudit"/> to the save for each staged
+    /// message it inserts or moves to another review state, so the trail is
+    /// written with the change or not at all. The bulk updates that bypass the
+    /// change tracker write their own.
+    /// </summary>
+    private void RecordMessageStates()
+    {
+        ChangeTracker.DetectChanges();
+
+        var now = DateTime.UtcNow;
+        var entered = ChangeTracker.Entries<StagedMessage>()
+            .Where(entry => entry.State == EntityState.Added
+                || (entry.State == EntityState.Modified
+                    && entry.Property(message => message.ReviewStatus).IsModified
+                    && !Equals(
+                        entry.Property(message => message.ReviewStatus).OriginalValue,
+                        entry.Property(message => message.ReviewStatus).CurrentValue)))
+            .Select(entry => entry.Entity)
+            .ToList();
+
+        foreach (var message in entered)
+        {
+            message.Audits.Add(StagedMessageAudit.Of(message, now));
+        }
+    }
 }

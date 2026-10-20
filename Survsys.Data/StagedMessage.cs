@@ -61,12 +61,35 @@ public class StagedMessage
     public bool QaFlagged { get; set; }
 
     /// <summary>
-    /// The detail of the exception that stopped this message, or null where
-    /// none did. Set when the review state is
-    /// <see cref="MessageReviewStatus.Exception"/> — for a message that failed
-    /// to parse, the parser's account of why — and null otherwise.
+    /// Why this message is where it is, or null where nothing stopped it. Set
+    /// with <see cref="ExceptionCategory"/> when the message is held as an
+    /// exception — for a message that failed to parse, the parser's account of
+    /// why — or sent to pending for a reviewer, as a graylist release does; set
+    /// alone when processing graylists it, finds it out of state or prunes it;
+    /// and cleared when it is assigned, retried or moved by hand to a state
+    /// that holds it for nothing.
     /// </summary>
     public string? ExceptionDetail { get; set; }
+
+    /// <summary>
+    /// The kind of reason this message is held, as a code read against
+    /// <see cref="MessageExceptionRules"/>, or null where it is neither held
+    /// (exception, unprocessed, locked, graylist exception) nor pending, or was
+    /// held before categories were recorded. Set wherever a message is held or
+    /// sent to pending with why, and cleared with <see cref="ExceptionDetail"/>
+    /// when it leaves for a state that holds it for nothing; whether the
+    /// message may be retried is its category's.
+    /// </summary>
+    public string? ExceptionCategory { get; set; }
+
+    /// <summary>How many times this message has been retried, by hand or by reprocessing.</summary>
+    public int RetryCount { get; set; }
+
+    /// <summary>
+    /// When the agency this message was assigned for was sent the batch
+    /// notification naming it, in UTC, or null where it has not been.
+    /// </summary>
+    public DateTime? NotifiedAt { get; set; }
 
     /// <summary>
     /// The format the message was read as, such as <c>HL7v2</c>; a message
@@ -169,4 +192,7 @@ public class StagedMessage
 
     /// <summary>The order's results (its OBX segments), in message order.</summary>
     public List<StagedMessageResult> Results { get; set; } = [];
+
+    /// <summary>Every state this message has entered, oldest first once ordered by when.</summary>
+    public List<StagedMessageAudit> Audits { get; set; } = [];
 }

@@ -73,6 +73,44 @@ public class AgencyEndpointsTests
     }
 
     [Fact]
+    public void WhyNotAnAgencyAcceptsNotificationAddresses()
+    {
+        Assert.Null(AgencyEndpoints.WhyNotAnAgency(
+            new SaveAgencyRequest("Utah State", NotificationEmails: "epi@example.org; lab@example.org, ")));
+    }
+
+    [Theory]
+    [InlineData("not-an-address")]
+    [InlineData("Epi Team <epi@example.org>")]
+    public void WhyNotAnAgencyRefusesANotificationAddressThatIsNotOne(string address)
+    {
+        Assert.Contains($"notificationEmails holds '{address}'",
+            AgencyEndpoints.WhyNotAnAgency(
+                new SaveAgencyRequest("Utah State", NotificationEmails: $"epi@example.org; {address}")),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotAnAgencyRefusesNotificationAddressesLongerThanTheColumn()
+    {
+        var addresses = string.Join("; ", Enumerable.Range(0, 60).Select(index => $"person{index}@example.org"));
+
+        Assert.Contains("notificationEmails is longer",
+            AgencyEndpoints.WhyNotAnAgency(new SaveAgencyRequest("Utah State", NotificationEmails: addresses)),
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("epi@example.org,lab@example.org", "epi@example.org; lab@example.org")]
+    [InlineData(" epi@example.org ;; ", "epi@example.org")]
+    [InlineData("  ", null)]
+    [InlineData(null, null)]
+    public void NotificationEmailsStoresTheAddressesSeparatedBySemicolons(string? requested, string? stored)
+    {
+        Assert.Equal(stored, AgencyEndpoints.NotificationEmails(requested));
+    }
+
+    [Fact]
     public void ZipCodesOfNormalizesDeduplicatesAndOrders()
     {
         Assert.Equal(

@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Net.Mail;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -27,6 +28,8 @@ public static class AgencyEndpoints
     private const int NameLength = 200;
 
     private const int ShortNameLength = 50;
+
+    private const int NotificationEmailsLength = 1000;
 
     /// <summary>
     /// The projection from the stored agency to the wire shape a dropdown
@@ -72,8 +75,30 @@ public static class AgencyEndpoints
             }
         }
 
+        if (NotificationEmails(request.NotificationEmails)?.Length > NotificationEmailsLength)
+        {
+            return $"notificationEmails is longer than {NotificationEmailsLength} characters.";
+        }
+
+        foreach (var address in MessageNotificationService.Addresses(request.NotificationEmails))
+        {
+            if (!MailAddress.TryCreate(address, out var parsed) || parsed.Address != address)
+            {
+                return $"notificationEmails holds '{address}', which is not an e-mail address.";
+            }
+        }
+
         return null;
     }
+
+    /// <summary>
+    /// The notification addresses a save request names, as the agency stores
+    /// them: separated by "; ", or null where it names none.
+    /// </summary>
+    public static string? NotificationEmails(string? requested) =>
+        MessageNotificationService.Addresses(requested) is { Count: > 0 } addresses
+            ? string.Join("; ", addresses)
+            : null;
 
     /// <summary>
     /// The zip codes a save request names, as the mapping stores them: five
@@ -289,7 +314,7 @@ internal sealed class AgencyQueries(SurvsysDbContext database)
             .Select(mapping => mapping.ZipCode)
             .ToListAsync(cancellationToken);
 
-        return new AgencyDetailResponse(agency.Id, agency.Name, agency.ShortName, zipCodes);
+        return new AgencyDetailResponse(agency.Id, agency.Name, agency.ShortName, zipCodes, agency.NotificationEmails);
     }
 
     /// <summary>
@@ -311,7 +336,7 @@ internal sealed class AgencyQueries(SurvsysDbContext database)
         await database.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        return new AgencyDetailResponse(agency.Id, agency.Name, agency.ShortName, zipCodes);
+        return new AgencyDetailResponse(agency.Id, agency.Name, agency.ShortName, zipCodes, agency.NotificationEmails);
     }
 
     /// <summary>
@@ -347,7 +372,7 @@ internal sealed class AgencyQueries(SurvsysDbContext database)
             .Select(zip => new ZipCodeAgency { ZipCode = zip, AgencyId = id }));
         await database.SaveChangesAsync(cancellationToken);
 
-        return new AgencyDetailResponse(agency.Id, agency.Name, agency.ShortName, zipCodes);
+        return new AgencyDetailResponse(agency.Id, agency.Name, agency.ShortName, zipCodes, agency.NotificationEmails);
     }
 
     /// <summary>
@@ -375,5 +400,6 @@ internal sealed class AgencyQueries(SurvsysDbContext database)
     {
         agency.Name = request.Name.Trim();
         agency.ShortName = string.IsNullOrWhiteSpace(request.ShortName) ? null : request.ShortName.Trim();
+        agency.NotificationEmails = AgencyEndpoints.NotificationEmails(request.NotificationEmails);
     }
 }

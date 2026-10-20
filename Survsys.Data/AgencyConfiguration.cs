@@ -32,6 +32,9 @@ internal sealed class AgencyConfiguration : IEntityTypeConfiguration<Agency>
         builder.Property(agency => agency.ShortName)
             .HasColumnName("short_name")
             .HasMaxLength(50);
+        builder.Property(agency => agency.NotificationEmails)
+            .HasColumnName("notification_emails")
+            .HasMaxLength(1000);
 
         builder.HasData(
             new Agency { Id = 1, Name = "Bear River" },

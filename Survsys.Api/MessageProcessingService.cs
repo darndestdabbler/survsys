@@ -16,9 +16,9 @@ public sealed class MessageProcessingOptions
     public const string SectionName = "MessageProcessing";
 
     /// <summary>
-    /// Seconds between passes over the queue. Null or empty leaves processing
-    /// off, so a deployment that has not turned it on keeps every message for
-    /// a reviewer, as it did before.
+    /// Seconds between assignment passes over the queue. Null or empty leaves
+    /// assignment, release and pruning off, so a deployment that has not turned
+    /// it on keeps every message for a reviewer, as it did before.
     /// </summary>
     public int? PollIntervalSeconds { get; set; }
 
@@ -34,6 +34,20 @@ public sealed class MessageProcessingOptions
     /// legacy pruner's 18 months.
     /// </summary>
     public int GraylistRetentionDays { get; set; } = 548;
+
+    /// <summary>
+    /// Minutes between reprocessing passes, which retry the messages held for
+    /// a retryable reason. Null leaves reprocessing off, so a held message
+    /// waits for a reviewer's retry. Runs whether or not assignment is on, so a
+    /// deployment may retry held messages and still assign each one by hand.
+    /// </summary>
+    public int? ReprocessIntervalMinutes { get; set; }
+
+    /// <summary>
+    /// How many retries reprocessing gives a held message before it is left to
+    /// a reviewer, counting a reviewer's own.
+    /// </summary>
+    public int MaxRetries { get; set; } = 3;
 
     /// <summary>
     /// The whitelist rule choosing the case a message updates, for a condition
@@ -61,9 +75,12 @@ public sealed record AssignmentCandidate(int PersonId, PersonMatchKind Kind, boo
 /// person the case is opened for, or null where a new person is created from
 /// the message's patient. <paramref name="UpdatesCase"/> where the person
 /// already has an open case on the condition, which the message updates
-/// rather than opening another.
+/// rather than opening another. <paramref name="Category"/> is the
+/// <see cref="MessageExceptionRules"/> code a message sent to pending is held
+/// under, and null for any other state.
 /// </summary>
-public sealed record AssignmentDecision(string Status, int? PersonId, string? Reason, bool UpdatesCase = false);
+public sealed record AssignmentDecision(
+    string Status, int? PersonId, string? Reason, bool UpdatesCase = false, string? Category = null);
 
 /// <summary>
 /// The automated half of the legacy EMSA assignment, and the graylist: a
@@ -133,7 +150,9 @@ public sealed class MessageProcessingService(
 
         if (message.AgencyId is null)
         {
-            return Pending($"The patient's zip '{message.PatientZip}' names no single investigating agency.");
+            return Pending(
+                $"The patient's zip '{message.PatientZip}' names no single investigating agency.",
+                MessageExceptionRules.ZipCodeNotMappedCode);
         }
 
         var exact = candidates.Where(candidate => candidate.Kind == PersonMatchKind.Exact).ToList();
@@ -170,7 +189,10 @@ public sealed class MessageProcessingService(
     /// before it assigned. A message assigned is written by
     /// <see cref="MessageCaseWriter.Open"/>, in one transaction with the new
     /// person it is assigned to, so a failure leaves neither; one a reviewer
-    /// promoted in the meantime is left as they left it.
+    /// promoted in the meantime is left as they left it. A message whose
+    /// assignment throws is held as a failed-to-add-or-update exception with
+    /// the failure's account, which may be retried, and the pass goes on to
+    /// the next.
     /// </remarks>
     public static async Task<int> Assign(
         SurvsysDbContext database,
@@ -183,79 +205,163 @@ public sealed class MessageProcessingService(
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(options);
 
-        var matches = new PersonMatchQueries(database, thresholds, parser);
-        var persons = new PersonQueries(database);
-
         var waiting = await database.StagedMessages
             .Where(message => message.ReviewStatus == MessageReviewStatusRules.EntryCode)
             .OrderBy(message => message.Id)
+            .Select(message => message.Id)
             .ToListAsync(cancellationToken);
 
-        foreach (var message in waiting)
+        foreach (var id in waiting)
         {
-            var candidates = new List<AssignmentCandidate>();
-            var request = MatchRequest(message);
-
-            if (PersonMatchEndpoints.WhyNotAMatchRequest(request) is null)
+            try
             {
-                foreach (var found in await matches.Match(request, cancellationToken))
-                {
-                    var kind = Kind(found.Verdict);
-                    if (kind == PersonMatchKind.None)
-                    {
-                        continue;
-                    }
-
-                    var hasOpenCase = await database.PersonConditions.AnyAsync(
-                        report => report.PersonId == found.Person.Id
-                            && report.ConditionId == message.ConditionId
-                            && report.DeletedAt == null
-                            && report.WorkflowState != WorkflowRules.ClosedCode,
-                        cancellationToken);
-                    candidates.Add(new AssignmentCandidate(found.Person.Id, kind, hasOpenCase));
-                }
+                await AssignOne(database, parser, thresholds, options, id, now, cancellationToken);
             }
-
-            var decision = Decide(message, candidates, options.HomeState);
-
-            if (decision.UpdatesCase)
+            catch (Exception failure) when (failure is not OperationCanceledException)
             {
-                await MessageCaseWriter.Update(
-                    database, parser, thresholds, options, message.Id, decision.PersonId!.Value, null, now, cancellationToken);
-                continue;
+                await HoldFailed(database, id, failure, cancellationToken);
             }
-
-            if (decision.Status == MessageReviewStatusRules.AssignedCode)
-            {
-                await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
-
-                var personId = decision.PersonId
-                    ?? (await persons.Add(Patient(message), cancellationToken)).Id;
-                var created = await MessageCaseWriter.Open(
-                    database,
-                    message.Id,
-                    new CreatePersonConditionRequest(
-                        personId,
-                        message.ConditionId!.Value,
-                        message.AgencyId,
-                        DateOnly.FromDateTime(message.ReceivedAt)),
-                    now,
-                    cancellationToken);
-
-                if (created is not null)
-                {
-                    await transaction.CommitAsync(cancellationToken);
-                }
-
-                continue;
-            }
-
-            message.ReviewStatus = decision.Status;
-            message.ExceptionDetail = decision.Reason;
-            await database.SaveChangesAsync(cancellationToken);
         }
 
         return waiting.Count;
+    }
+
+    /// <summary>
+    /// Retries every message held for a retryable category that has been
+    /// retried fewer than <see cref="MessageProcessingOptions.MaxRetries"/>
+    /// times, as a reviewer's retry does. Answers how many it retried.
+    /// </summary>
+    /// <remarks>
+    /// The legacy Bulk Retry Processor and Reprocess Locked ELR channels, as a
+    /// pass the worker runs every
+    /// <see cref="MessageProcessingOptions.ReprocessIntervalMinutes"/>. A
+    /// message held before categories were recorded has none, and is left to a
+    /// reviewer's retry.
+    /// </remarks>
+    public static async Task<int> Reprocess(
+        SurvsysDbContext database, MessageProcessingOptions options, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        ArgumentNullException.ThrowIfNull(options);
+
+        var retryable = MessageQueueEndpoints.RetryableCategories;
+        var held = await database.StagedMessages
+            .Where(message => MessageQueueEndpoints.HeldCodes.Contains(message.ReviewStatus)
+                && message.MessageType != null
+                && message.ExceptionCategory != null
+                && retryable.Contains(message.ExceptionCategory)
+                && message.RetryCount < options.MaxRetries)
+            .OrderBy(message => message.Id)
+            .Select(message => message.Id)
+            .ToListAsync(cancellationToken);
+
+        return held.Count == 0 ? 0 : await MessageQueueQueries.RetryHeld(database, held, cancellationToken);
+    }
+
+    private static async Task AssignOne(
+        SurvsysDbContext database,
+        IMessageParser parser,
+        PersonMatchThresholds thresholds,
+        MessageProcessingOptions options,
+        int id,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var message = await database.StagedMessages.SingleOrDefaultAsync(
+            message => message.Id == id && message.ReviewStatus == MessageReviewStatusRules.EntryCode,
+            cancellationToken);
+        if (message is null)
+        {
+            return;
+        }
+
+        var candidates = new List<AssignmentCandidate>();
+        var request = MatchRequest(message);
+
+        if (PersonMatchEndpoints.WhyNotAMatchRequest(request) is null)
+        {
+            foreach (var found in await new PersonMatchQueries(database, thresholds, parser)
+                .Match(request, cancellationToken))
+            {
+                var kind = Kind(found.Verdict);
+                if (kind == PersonMatchKind.None)
+                {
+                    continue;
+                }
+
+                var hasOpenCase = await database.PersonConditions.AnyAsync(
+                    report => report.PersonId == found.Person.Id
+                        && report.ConditionId == message.ConditionId
+                        && report.DeletedAt == null
+                        && report.WorkflowState != WorkflowRules.ClosedCode,
+                    cancellationToken);
+                candidates.Add(new AssignmentCandidate(found.Person.Id, kind, hasOpenCase));
+            }
+        }
+
+        var decision = Decide(message, candidates, options.HomeState);
+
+        if (decision.UpdatesCase)
+        {
+            await MessageCaseWriter.Update(
+                database, parser, thresholds, options, message.Id, decision.PersonId!.Value, null, now, cancellationToken);
+            return;
+        }
+
+        if (decision.Status == MessageReviewStatusRules.AssignedCode)
+        {
+            await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+
+            var personId = decision.PersonId
+                ?? (await new PersonQueries(database).Add(Patient(message), cancellationToken)).Id;
+            var created = await MessageCaseWriter.Open(
+                database,
+                message.Id,
+                new CreatePersonConditionRequest(
+                    personId,
+                    message.ConditionId!.Value,
+                    message.AgencyId,
+                    DateOnly.FromDateTime(message.ReceivedAt)),
+                now,
+                cancellationToken);
+
+            if (created is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
+            return;
+        }
+
+        message.ReviewStatus = decision.Status;
+        message.ExceptionDetail = decision.Reason;
+        message.ExceptionCategory = decision.Category;
+        await database.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Holds a message whose assignment threw as a failed-to-add-or-update
+    /// exception with the failure's account. What the failed attempt left
+    /// tracked is discarded first — its transaction rolled back what it wrote
+    /// — and a message no longer queued is left as it is.
+    /// </summary>
+    private static async Task HoldFailed(
+        SurvsysDbContext database, int id, Exception failure, CancellationToken cancellationToken)
+    {
+        database.ChangeTracker.Clear();
+
+        var message = await database.StagedMessages.SingleOrDefaultAsync(
+            message => message.Id == id && message.ReviewStatus == MessageReviewStatusRules.EntryCode,
+            cancellationToken);
+        if (message is null)
+        {
+            return;
+        }
+
+        message.ReviewStatus = MessageReviewStatusRules.ExceptionCode;
+        message.ExceptionCategory = MessageExceptionRules.FailedToAddOrUpdateCode;
+        message.ExceptionDetail = $"Assigning this message failed: {failure.GetBaseException().Message}";
+        await database.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
@@ -329,6 +435,7 @@ public sealed class MessageProcessingService(
             message.PersonConditionId = found.Id;
             message.ExceptionDetail =
                 $"Released from the graylist: case {found.RecordNumber} has appeared for this patient.";
+            message.ExceptionCategory = MessageExceptionRules.EntryQueueExceptionCode;
             await database.SaveChangesAsync(cancellationToken);
             released++;
         }
@@ -343,7 +450,11 @@ public sealed class MessageProcessingService(
     /// its window. The legacy pruner deleted it; this keeps what was received.
     /// Answers how many it pruned.
     /// </summary>
-    public static Task<int> Prune(
+    /// <remarks>
+    /// The messages are loaded and saved rather than moved in one statement,
+    /// so the save records each one's move on its audit trail.
+    /// </remarks>
+    public static async Task<int> Prune(
         SurvsysDbContext database,
         MessageProcessingOptions options,
         DateTimeOffset now,
@@ -354,30 +465,57 @@ public sealed class MessageProcessingService(
 
         var cutoff = now.UtcDateTime.AddDays(-options.GraylistRetentionDays);
 
-        return database.StagedMessages
+        var expired = await database.StagedMessages
             .Where(message => message.ReviewStatus == MessageReviewStatusRules.GrayCode && message.ReceivedAt < cutoff)
-            .ExecuteUpdateAsync(
-                set => set
-                    .SetProperty(message => message.ReviewStatus, MessageReviewStatusRules.GrayUnprocessableCode)
-                    .SetProperty(
-                        message => message.ExceptionDetail,
-                        $"No case appeared for this graylisted message within {options.GraylistRetentionDays} days."),
-                cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        foreach (var message in expired)
+        {
+            message.ReviewStatus = MessageReviewStatusRules.GrayUnprocessableCode;
+            message.ExceptionDetail =
+                $"No case appeared for this graylisted message within {options.GraylistRetentionDays} days.";
+        }
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return expired.Count;
+    }
+
+    /// <summary>
+    /// How often the worker wakes: the assignment poll or the reprocessing
+    /// interval, whichever is shorter, each at least a second; null where
+    /// neither is configured and the worker does nothing. Reprocessing runs on
+    /// its own interval whether or not assignment is on. Public because the
+    /// unit suite proves it.
+    /// </summary>
+    public static TimeSpan? PassInterval(MessageProcessingOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        TimeSpan?[] intervals =
+        [
+            options.PollIntervalSeconds is { } seconds ? TimeSpan.FromSeconds(Math.Max(1, seconds)) : null,
+            options.ReprocessIntervalMinutes is { } minutes ? TimeSpan.FromMinutes(Math.Max(1, minutes)) : null,
+        ];
+
+        return intervals.OfType<TimeSpan>().Cast<TimeSpan?>().Min();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (options.Value.PollIntervalSeconds is not { } seconds)
+        if (PassInterval(options.Value) is not { } interval)
         {
             logger.LogInformation(
-                "Message processing is off: no {Section}:{Key} is configured, so every message waits "
-                + "for a reviewer.",
+                "Message processing is off: neither {Section}:{Poll} nor {Section}:{Reprocess} is configured, "
+                + "so every message waits for a reviewer.",
                 MessageProcessingOptions.SectionName,
-                nameof(MessageProcessingOptions.PollIntervalSeconds));
+                nameof(MessageProcessingOptions.PollIntervalSeconds),
+                MessageProcessingOptions.SectionName,
+                nameof(MessageProcessingOptions.ReprocessIntervalMinutes));
             return;
         }
 
-        var interval = TimeSpan.FromSeconds(Math.Max(1, seconds));
+        DateTimeOffset? reprocessedAt = null;
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -386,18 +524,21 @@ public sealed class MessageProcessingService(
                 using var scope = scopeFactory.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<SurvsysDbContext>();
 
-                var assigned = await Assign(database, parser, thresholds, options.Value, DateTimeOffset.Now, stoppingToken);
-                var released = await Release(database, parser, thresholds, stoppingToken);
-                var pruned = await Prune(database, options.Value, DateTimeOffset.UtcNow, stoppingToken);
-
-                if (assigned + released + pruned > 0)
+                if (options.Value.ReprocessIntervalMinutes is { } minutes
+                    && (reprocessedAt is null
+                        || DateTimeOffset.UtcNow - reprocessedAt >= TimeSpan.FromMinutes(Math.Max(1, minutes))))
                 {
-                    logger.LogInformation(
-                        "Message processing moved {Assigned} queued, released {Released} and pruned {Pruned} "
-                        + "graylisted message(s).",
-                        assigned,
-                        released,
-                        pruned);
+                    reprocessedAt = DateTimeOffset.UtcNow;
+                    var retried = await Reprocess(database, options.Value, stoppingToken);
+                    if (retried > 0)
+                    {
+                        logger.LogInformation("Message processing retried {Retried} held message(s).", retried);
+                    }
+                }
+
+                if (options.Value.PollIntervalSeconds is not null)
+                {
+                    await AssignReleaseAndPrune(database, stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -420,8 +561,26 @@ public sealed class MessageProcessingService(
         }
     }
 
-    private static AssignmentDecision Pending(string reason) =>
-        new(MessageReviewStatusRules.PendingCode, null, reason);
+    private async Task AssignReleaseAndPrune(SurvsysDbContext database, CancellationToken stoppingToken)
+    {
+        var assigned = await Assign(database, parser, thresholds, options.Value, DateTimeOffset.Now, stoppingToken);
+        var released = await Release(database, parser, thresholds, stoppingToken);
+        var pruned = await Prune(database, options.Value, DateTimeOffset.UtcNow, stoppingToken);
+
+        if (assigned + released + pruned > 0)
+        {
+            logger.LogInformation(
+                "Message processing moved {Assigned} queued, released {Released} and pruned {Pruned} "
+                + "graylisted message(s).",
+                assigned,
+                released,
+                pruned);
+        }
+    }
+
+    private static AssignmentDecision Pending(
+        string reason, string category = MessageExceptionRules.EntryQueueExceptionCode) =>
+        new(MessageReviewStatusRules.PendingCode, null, reason, Category: category);
 
     /// <summary>The person a message's patient would be created as.</summary>
     private static CreatePersonRequest Patient(StagedMessage message) => new(

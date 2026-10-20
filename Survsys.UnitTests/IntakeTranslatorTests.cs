@@ -96,6 +96,7 @@ public class IntakeTranslatorTests
 
         Assert.Equal(MessageReviewStatusRules.EntryCode, message.ReviewStatus);
         Assert.Null(message.ExceptionDetail);
+        Assert.Null(message.ExceptionCategory);
         Assert.Equal(Chlamydia, message.ConditionId);
         Assert.True(message.AllowNewCase);
         Assert.True(message.AllowUpdateCase);
@@ -161,6 +162,7 @@ public class IntakeTranslatorTests
 
         Assert.Equal(MessageReviewStatusRules.ExceptionCode, message.ReviewStatus);
         Assert.Contains("vocabulary", message.ExceptionDetail);
+        Assert.Equal(MessageExceptionRules.LoincNotMappedCode, message.ExceptionCategory);
         Assert.Null(message.ConditionId);
     }
 
@@ -199,6 +201,7 @@ public class IntakeTranslatorTests
 
         Assert.Equal(MessageReviewStatusRules.ExceptionCode, message.ReviewStatus);
         Assert.Contains("collection date", message.ExceptionDetail);
+        Assert.Equal(MessageExceptionRules.MissingRequiredFieldCode, message.ExceptionCategory);
     }
 
     [Fact]
@@ -210,6 +213,7 @@ public class IntakeTranslatorTests
 
         Assert.Equal(MessageReviewStatusRules.ExceptionCode, message.ReviewStatus);
         Assert.Contains("message filter", message.ExceptionDetail);
+        Assert.Equal(MessageExceptionRules.NoCaseManagementRulesCode, message.ExceptionCategory);
     }
 
     [Fact]
@@ -234,6 +238,7 @@ public class IntakeTranslatorTests
 
         Assert.Equal(MessageReviewStatusRules.ExceptionCode, message.ReviewStatus);
         Assert.Contains("No case-management rule", message.ExceptionDetail);
+        Assert.Equal(MessageExceptionRules.NoCaseManagementRuleTrueCode, message.ExceptionCategory);
         Assert.Null(message.AllowNewCase);
     }
 
@@ -246,6 +251,7 @@ public class IntakeTranslatorTests
 
         Assert.Equal(MessageReviewStatusRules.ExceptionCode, message.ReviewStatus);
         Assert.Contains("has no case-management rule", message.ExceptionDetail);
+        Assert.Equal(MessageExceptionRules.NoCaseManagementRulesCode, message.ExceptionCategory);
     }
 
     [Fact]
@@ -258,6 +264,7 @@ public class IntakeTranslatorTests
 
         Assert.Equal(MessageReviewStatusRules.ExceptionCode, message.ReviewStatus);
         Assert.Contains("More than one", message.ExceptionDetail);
+        Assert.Equal(MessageExceptionRules.NoCaseManagementRuleTrueCode, message.ExceptionCategory);
     }
 
     [Theory]

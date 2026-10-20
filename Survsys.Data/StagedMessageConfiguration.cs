@@ -46,6 +46,11 @@ internal sealed class StagedMessageConfiguration : IEntityTypeConfiguration<Stag
             .IsRequired();
         builder.Property(message => message.QaFlagged).HasColumnName("qa_flag");
         builder.Property(message => message.ExceptionDetail).HasColumnName("exception_detail");
+        builder.Property(message => message.ExceptionCategory)
+            .HasColumnName("exception_category")
+            .HasMaxLength(40);
+        builder.Property(message => message.RetryCount).HasColumnName("retry_count");
+        builder.Property(message => message.NotifiedAt).HasColumnName("notified_at");
 
         builder.Property(message => message.MessageFormat)
             .HasColumnName("message_format")
@@ -111,6 +116,12 @@ internal sealed class StagedMessageConfiguration : IEntityTypeConfiguration<Stag
         builder.HasMany(message => message.Results)
             .WithOne()
             .HasForeignKey(result => result.StagedMessageId)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(message => message.Audits)
+            .WithOne()
+            .HasForeignKey(audit => audit.StagedMessageId)
             .IsRequired()
             .OnDelete(DeleteBehavior.Cascade);
     }

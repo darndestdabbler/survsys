@@ -27,4 +27,10 @@ public class Agency
 
     /// <summary>The agency's abbreviation, where it has one.</summary>
     public string? ShortName { get; set; }
+
+    /// <summary>
+    /// The addresses the agency's batch notification of assigned messages is
+    /// sent to, separated by semicolons, or null where it is sent none.
+    /// </summary>
+    public string? NotificationEmails { get; set; }
 }

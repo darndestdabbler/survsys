@@ -31,10 +31,19 @@ namespace Survsys.Contracts;
 /// The detail of the exception that stopped the message, or null where none
 /// did.
 /// </param>
+/// <param name="ExceptionCategory">
+/// The kind of reason the message is held, as the stored category code, or
+/// null where it is not held or none was recorded.
+/// </param>
+/// <param name="Retryable">
+/// Whether the message's category lets it be retried; false where it has none.
+/// </param>
 public record StagedMessageResponse(
     int Id,
     string? Source,
     DateTime ReceivedAt,
     string ReviewStatus,
     bool QaFlagged,
-    string? ExceptionDetail);
+    string? ExceptionDetail,
+    string? ExceptionCategory = null,
+    bool Retryable = false);

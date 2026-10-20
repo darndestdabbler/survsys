@@ -117,6 +117,7 @@ public static class IntakeTranslator
         {
             Hold(
                 message,
+                MessageExceptionRules.LoincNotMappedCode,
                 $"No result of this message resolves to a condition in the vocabulary for sending facility "
                 + $"'{message.SendingFacility}': add its LOINC, or the lab's child LOINC, to the vocabulary.");
             return;
@@ -143,11 +144,11 @@ public static class IntakeTranslator
         switch (IntakeRules.Filter(rules.Filter, record))
         {
             case FilterOutcome.NoRules:
-                Hold(message, $"Condition {conditionId} has no message filter rule, so whether to act on "
+                Hold(message, MessageExceptionRules.NoCaseManagementRulesCode, $"Condition {conditionId} has no message filter rule, so whether to act on "
                     + "this message is a person's to decide.");
                 return;
             case FilterOutcome.MissingField:
-                Hold(message, $"A message filter rule of condition {conditionId} reads a field this message "
+                Hold(message, MessageExceptionRules.MissingRequiredFieldCode, $"A message filter rule of condition {conditionId} reads a field this message "
                     + "does not carry, such as its collection date.");
                 return;
             case FilterOutcome.Filtered:
@@ -164,22 +165,23 @@ public static class IntakeTranslator
                 message.IsSurveillance = decision.Rule.IsSurveillance;
                 return;
             case CaseManagementOutcome.NoRules:
-                Hold(message, $"Condition {conditionId} has no case-management rule.");
+                Hold(message, MessageExceptionRules.NoCaseManagementRulesCode, $"Condition {conditionId} has no case-management rule.");
                 return;
             case CaseManagementOutcome.NoneMatched:
-                Hold(message, $"No case-management rule of condition {conditionId} matches this message's "
+                Hold(message, MessageExceptionRules.NoCaseManagementRuleTrueCode, $"No case-management rule of condition {conditionId} matches this message's "
                     + $"result (interpretation '{decisive.Interpretation}').");
                 return;
             default:
-                Hold(message, $"More than one case-management rule of condition {conditionId} matches this "
+                Hold(message, MessageExceptionRules.NoCaseManagementRuleTrueCode, $"More than one case-management rule of condition {conditionId} matches this "
                     + $"message's result (interpretation '{decisive.Interpretation}'); exactly one must.");
                 return;
         }
     }
 
-    private static void Hold(StagedMessage message, string reason)
+    private static void Hold(StagedMessage message, string category, string reason)
     {
         message.ReviewStatus = MessageReviewStatusRules.ExceptionCode;
         message.ExceptionDetail = reason;
+        message.ExceptionCategory = category;
     }
 }

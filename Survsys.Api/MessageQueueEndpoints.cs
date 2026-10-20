@@ -44,7 +44,35 @@ public static class MessageQueueEndpoints
             message.ReceivedAt,
             message.ReviewStatus,
             message.QaFlagged,
-            message.ExceptionDetail);
+            message.ExceptionDetail,
+            message.ExceptionCategory,
+            message.ExceptionCategory != null && RetryableCategories.Contains(message.ExceptionCategory));
+
+    /// <summary>The exception categories a held message may be retried for.</summary>
+    public static readonly IReadOnlyList<string> RetryableCategories = MessageExceptionRules.Categories
+        .Where(category => category.Retryable)
+        .Select(category => category.Code)
+        .ToList();
+
+    /// <summary>
+    /// The review states a message is held in, waiting on a retry: exception,
+    /// unprocessed, locked and graylist exception.
+    /// </summary>
+    public static readonly IReadOnlyList<string> HeldCodes =
+    [
+        MessageReviewStatusRules.ExceptionCode,
+        MessageReviewStatusRules.UnprocessedCode,
+        MessageReviewStatusRules.LockedCode,
+        MessageReviewStatusRules.GrayExceptionCode,
+    ];
+
+    /// <summary>
+    /// Whether a message moved by hand to this state keeps its exception
+    /// detail and category: a held state or pending does, any other state is
+    /// held for nothing and does not. Public because the unit suite proves it.
+    /// </summary>
+    public static bool KeepsWhy(string status) =>
+        HeldCodes.Contains(status) || status == MessageReviewStatusRules.PendingCode;
 
     /// <summary>
     /// Registers what the message-queue endpoints need of the container. Kept
@@ -163,31 +191,34 @@ public static class MessageQueueEndpoints
     /// <summary>
     /// Why a message may not be retried, or null when it may: one held as an
     /// exception, unprocessed, locked or as a graylist exception, which parsed
-    /// when it was received.
+    /// when it was received, and whose exception category, where it has one,
+    /// may be retried.
     /// </summary>
     /// <remarks>
     /// A retry translates the message again against the vocabulary and rules
     /// on file now, which is what such a message waits on; it does not parse
     /// the raw text again, so one that never parsed has nothing to translate.
-    /// Public because the unit suite proves it.
+    /// A message held before categories were recorded has none, and may be
+    /// retried by hand as it could before. Public because the unit suite
+    /// proves it.
     /// </remarks>
-    public static string? WhyNotRetryable(string reviewStatus, bool parsed)
+    public static string? WhyNotRetryable(string reviewStatus, bool parsed, string? category = null)
     {
         ArgumentNullException.ThrowIfNull(reviewStatus);
 
-        var retryable = reviewStatus.Trim() is MessageReviewStatusRules.ExceptionCode
-            or MessageReviewStatusRules.UnprocessedCode
-            or MessageReviewStatusRules.LockedCode
-            or MessageReviewStatusRules.GrayExceptionCode;
-
-        if (!retryable)
+        if (!HeldCodes.Contains(reviewStatus.Trim()))
         {
             return $"A message in '{reviewStatus}' is not held, so there is nothing to retry.";
         }
 
-        return parsed
+        if (!parsed)
+        {
+            return "This message never parsed, so there is nothing to translate again.";
+        }
+
+        return category is null || RetryableCategories.Contains(category.Trim())
             ? null
-            : "This message never parsed, so there is nothing to translate again.";
+            : $"This message is held as '{category}', which a person resolves rather than a retry.";
     }
 
     /// <summary>
@@ -429,7 +460,7 @@ public static class MessageQueueEndpoints
         Act(
             messages,
             request,
-            state => WhyNotRetryable(state.Status, state.Parsed),
+            state => WhyNotRetryable(state.Status, state.Parsed, state.Category),
             ids => messages.Retry(ids, cancellationToken),
             cancellationToken);
 
@@ -576,7 +607,15 @@ internal sealed class MessageQueueQueries(
             .Select(message => message.RawMessage)
             .SingleAsync(cancellationToken);
 
-        return new StagedMessageDetailResponse(summary, raw);
+        var history = await database.StagedMessageAudits
+            .Where(audit => audit.StagedMessageId == id)
+            .OrderBy(audit => audit.OccurredAt)
+            .ThenBy(audit => audit.Id)
+            .Select(audit => new StagedMessageAuditResponse(
+                audit.ReviewStatus, audit.ExceptionCategory, audit.ExceptionDetail, audit.OccurredAt))
+            .ToListAsync(cancellationToken);
+
+        return new StagedMessageDetailResponse(summary, raw, history);
     }
 
     /// <summary>
@@ -678,7 +717,7 @@ internal sealed class MessageQueueQueries(
             .Where(message => ids.Contains(message.Id))
             .ToDictionaryAsync(
                 message => message.Id,
-                message => new MessageState(message.ReviewStatus, message.MessageType != null),
+                message => new MessageState(message.ReviewStatus, message.MessageType != null, message.ExceptionCategory),
                 cancellationToken);
 
     /// <summary>
@@ -688,13 +727,55 @@ internal sealed class MessageQueueQueries(
     /// The endpoint judged each message's state before this, and message
     /// processing may assign one in between; so the update itself leaves an
     /// assigned message where it is, in the one statement that moves the rest,
-    /// and the count says how many moved.
+    /// and the count says how many moved. The statement bypasses the change
+    /// tracker, so the audit trail of each message it moved into a state it
+    /// was not already in is written beside it, in the same transaction. A
+    /// message moved to a held state or pending keeps why it is held — its
+    /// exception detail and category — and one moved to any other state is
+    /// held for nothing, so both are cleared.
     /// </remarks>
-    public Task<int> Move(IReadOnlyList<int> ids, string status, CancellationToken cancellationToken) =>
-        database.StagedMessages
+    public async Task<int> Move(IReadOnlyList<int> ids, string status, CancellationToken cancellationToken)
+    {
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+
+        var entering = await database.StagedMessages
             .Where(message => ids.Contains(message.Id)
+                && message.ReviewStatus != status
                 && message.ReviewStatus != MessageReviewStatusRules.AssignedCode)
-            .ExecuteUpdateAsync(set => set.SetProperty(message => message.ReviewStatus, status), cancellationToken);
+            .Select(message => message.Id)
+            .ToListAsync(cancellationToken);
+
+        var moving = database.StagedMessages
+            .Where(message => ids.Contains(message.Id)
+                && message.ReviewStatus != MessageReviewStatusRules.AssignedCode);
+        var moved = MessageQueueEndpoints.KeepsWhy(status)
+            ? await moving.ExecuteUpdateAsync(
+                set => set.SetProperty(message => message.ReviewStatus, status), cancellationToken)
+            : await moving.ExecuteUpdateAsync(
+                set => set
+                    .SetProperty(message => message.ReviewStatus, status)
+                    .SetProperty(message => message.ExceptionDetail, (string?)null)
+                    .SetProperty(message => message.ExceptionCategory, (string?)null),
+                cancellationToken);
+
+        var now = DateTime.UtcNow;
+        database.StagedMessageAudits.AddRange(await database.StagedMessages
+            .AsNoTracking()
+            .Where(message => entering.Contains(message.Id) && message.ReviewStatus == status)
+            .Select(message => new StagedMessageAudit
+            {
+                StagedMessageId = message.Id,
+                ReviewStatus = message.ReviewStatus,
+                ExceptionCategory = message.ExceptionCategory,
+                ExceptionDetail = message.ExceptionDetail,
+                OccurredAt = now,
+            })
+            .ToListAsync(cancellationToken));
+        await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return moved;
+    }
 
     /// <summary>
     /// Deletes the messages, their results with them by the cascade, and
@@ -715,30 +796,47 @@ internal sealed class MessageQueueQueries(
     /// Translates the messages again, as intake did when they arrived:
     /// clears what the last translation wrote, queues each for review and
     /// hands them to <see cref="ElrIntakeService.Translate"/>, which leaves
-    /// each queued or holds it again with why. Answers how many it retried.
+    /// each queued or holds it again with why. Counts the retry on each, and
+    /// answers how many it retried.
     /// </summary>
     /// <remarks>
-    /// Only a message still held and parsed is read, so one that left its held
-    /// state since the endpoint judged it is left as it is. A held message is
-    /// not one promotion or message processing assigns, so none read here
-    /// becomes assigned before it is saved.
+    /// Only a message still held, parsed and of a retryable category or none
+    /// is read, so one that left its held state since the endpoint judged it
+    /// is left as it is. A held message is not one promotion or message
+    /// processing assigns, so none read here becomes assigned before it is
+    /// saved. The move back to entry is saved before the translation, in one
+    /// transaction with it, so a message held again has both states on its
+    /// trail.
     /// </remarks>
-    public async Task<int> Retry(IReadOnlyList<int> ids, CancellationToken cancellationToken)
+    public Task<int> Retry(IReadOnlyList<int> ids, CancellationToken cancellationToken) =>
+        RetryHeld(database, ids, cancellationToken);
+
+    /// <summary>
+    /// <see cref="Retry"/> over a context of the caller's, for message
+    /// processing's reprocessing pass, which has no queries of its own.
+    /// </summary>
+    public static async Task<int> RetryHeld(
+        SurvsysDbContext database, IReadOnlyList<int> ids, CancellationToken cancellationToken)
     {
+        var retryable = MessageQueueEndpoints.RetryableCategories;
         var messages = await database.StagedMessages
             .Where(message => ids.Contains(message.Id)
                 && message.MessageType != null
-                && (message.ReviewStatus == MessageReviewStatusRules.ExceptionCode
-                    || message.ReviewStatus == MessageReviewStatusRules.UnprocessedCode
-                    || message.ReviewStatus == MessageReviewStatusRules.LockedCode
-                    || message.ReviewStatus == MessageReviewStatusRules.GrayExceptionCode))
+                && MessageQueueEndpoints.HeldCodes.Contains(message.ReviewStatus)
+                && (message.ExceptionCategory == null || retryable.Contains(message.ExceptionCategory)))
             .Include(message => message.Results)
             .ToListAsync(cancellationToken);
+
+        await using var owned = database.Database.CurrentTransaction is null
+            ? await database.Database.BeginTransactionAsync(cancellationToken)
+            : null;
 
         foreach (var message in messages)
         {
             message.ReviewStatus = MessageReviewStatusRules.EntryCode;
+            message.RetryCount++;
             message.ExceptionDetail = null;
+            message.ExceptionCategory = null;
             message.ConditionId = null;
             message.AgencyId = null;
             message.AllowNewCase = null;
@@ -754,8 +852,14 @@ internal sealed class MessageQueueQueries(
             }
         }
 
+        await database.SaveChangesAsync(cancellationToken);
         await ElrIntakeService.Translate(database, messages, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
+
+        if (owned is not null)
+        {
+            await owned.CommitAsync(cancellationToken);
+        }
 
         return messages.Count;
     }
@@ -765,4 +869,4 @@ internal sealed class MessageQueueQueries(
 /// A staged message's review-state code, and whether it parsed: what an action
 /// on the queue judges a message by.
 /// </summary>
-internal sealed record MessageState(string Status, bool Parsed);
+internal sealed record MessageState(string Status, bool Parsed, string? Category = null);

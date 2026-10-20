@@ -89,6 +89,7 @@ builder.Services.AddWorkQueue();
 builder.Services.AddCaseSearch();
 builder.Services.AddSavedViews();
 builder.Services.AddMessageQueue();
+builder.Services.AddMessageStatistics();
 builder.Services.AddNotificationQueue();
 builder.Services.AddExportLog();
 builder.Services.AddOutbreaks();
@@ -117,6 +118,13 @@ builder.Services.AddHostedService<MllpListener>();
 builder.Services.Configure<MessageProcessingOptions>(
     builder.Configuration.GetSection(MessageProcessingOptions.SectionName));
 builder.Services.AddHostedService<MessageProcessingService>();
+
+// The batch notification e-mail of assigned messages to each agency's
+// notification addresses, over SMTP. Off unless an interval, host and sender
+// are configured.
+builder.Services.Configure<MessageNotificationOptions>(
+    builder.Configuration.GetSection(MessageNotificationOptions.SectionName));
+builder.Services.AddHostedService<MessageNotificationService>();
 
 // Direct transmission of a generated notification to CDC, in place of the
 // legacy Mirth export queue. A typed HttpClient so the transport is injected
@@ -207,6 +215,7 @@ app.MapWorkQueue();
 app.MapCaseSearch();
 app.MapSavedViews();
 app.MapMessageQueue();
+app.MapMessageStatistics();
 app.MapNotificationQueue();
 app.MapExportLog();
 app.MapOutbreaks();

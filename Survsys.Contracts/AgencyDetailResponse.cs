@@ -11,8 +11,13 @@ namespace Survsys.Contracts;
 /// The five-digit zip codes mapped to the agency, in order. A zip code another
 /// agency also claims is listed under both.
 /// </param>
+/// <param name="NotificationEmails">
+/// The addresses the agency's batch notification is sent to, separated by
+/// semicolons, or null where it is sent none.
+/// </param>
 public record AgencyDetailResponse(
     int Id,
     string Name,
     string? ShortName,
-    IReadOnlyList<string> ZipCodes);
+    IReadOnlyList<string> ZipCodes,
+    string? NotificationEmails = null);

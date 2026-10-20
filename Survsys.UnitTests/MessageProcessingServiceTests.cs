@@ -119,6 +119,7 @@ public class MessageProcessingServiceTests
 
         Assert.Equal(MessageReviewStatusRules.PendingCode, decision.Status);
         Assert.Null(decision.PersonId);
+        Assert.Equal(MessageExceptionRules.EntryQueueExceptionCode, decision.Category);
     }
 
     [Fact]
@@ -161,6 +162,7 @@ public class MessageProcessingServiceTests
         var decision = MessageProcessingService.Decide(Message(allowNewCase: false, state: "NY", agencyId: null), [], "CT");
 
         Assert.Equal(MessageReviewStatusRules.GrayCode, decision.Status);
+        Assert.Null(decision.Category);
     }
 
     [Theory]
@@ -199,5 +201,26 @@ public class MessageProcessingServiceTests
 
         Assert.Equal(MessageReviewStatusRules.PendingCode, decision.Status);
         Assert.Contains("agency", decision.Reason, StringComparison.Ordinal);
+        Assert.Equal(MessageExceptionRules.ZipCodeNotMappedCode, decision.Category);
+    }
+
+    /// <summary>
+    /// The worker wakes for whichever of assignment and reprocessing is
+    /// configured, at the shorter interval, and not at all for neither — so
+    /// reprocessing runs with assignment off.
+    /// </summary>
+    [Theory]
+    [InlineData(null, null, null)]
+    [InlineData(30, null, 30)]
+    [InlineData(null, 10, 600)]
+    [InlineData(30, 10, 30)]
+    [InlineData(900, 10, 600)]
+    [InlineData(0, null, 1)]
+    public void PassIntervalIsTheShorterOfTheConfiguredIntervals(int? pollSeconds, int? reprocessMinutes, int? expectedSeconds)
+    {
+        var interval = MessageProcessingService.PassInterval(
+            new MessageProcessingOptions { PollIntervalSeconds = pollSeconds, ReprocessIntervalMinutes = reprocessMinutes });
+
+        Assert.Equal(expectedSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null, interval);
     }
 }

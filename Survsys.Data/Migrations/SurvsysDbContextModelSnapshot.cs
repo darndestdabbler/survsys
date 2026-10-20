@@ -67,6 +67,11 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("name");
 
+                    b.Property<string>("NotificationEmails")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("notification_emails");
+
                     b.Property<string>("ShortName")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
@@ -13063,6 +13068,11 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("condition_id");
 
+                    b.Property<string>("ExceptionCategory")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("exception_category");
+
                     b.Property<string>("ExceptionDetail")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("exception_detail");
@@ -13083,6 +13093,10 @@ namespace Survsys.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("message_type");
+
+                    b.Property<DateTime?>("NotifiedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("notified_at");
 
                     b.Property<DateOnly?>("ObservedOn")
                         .HasColumnType("date")
@@ -13153,6 +13167,10 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("received_at");
 
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int")
+                        .HasColumnName("retry_count");
+
                     b.Property<string>("ReviewStatus")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -13192,6 +13210,45 @@ namespace Survsys.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("system_messages", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.StagedMessageAudit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ExceptionCategory")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("exception_category");
+
+                    b.Property<string>("ExceptionDetail")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("exception_detail");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("ReviewStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("final_status");
+
+                    b.Property<int>("StagedMessageId")
+                        .HasColumnType("int")
+                        .HasColumnName("system_message_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StagedMessageId");
+
+                    b.ToTable("system_messages_audits", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.StagedMessageResult", b =>
@@ -14433,6 +14490,15 @@ namespace Survsys.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Survsys.Data.StagedMessageAudit", b =>
+                {
+                    b.HasOne("Survsys.Data.StagedMessage", null)
+                        .WithMany("Audits")
+                        .HasForeignKey("StagedMessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Survsys.Data.StagedMessageResult", b =>
                 {
                     b.HasOne("Survsys.Data.StagedMessage", null)
@@ -14502,6 +14568,8 @@ namespace Survsys.Data.Migrations
 
             modelBuilder.Entity("Survsys.Data.StagedMessage", b =>
                 {
+                    b.Navigation("Audits");
+
                     b.Navigation("Results");
                 });
 #pragma warning restore 612, 618

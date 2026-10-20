@@ -13,7 +13,12 @@ namespace Survsys.Contracts;
 /// <param name="Name">The agency's name. Required.</param>
 /// <param name="ShortName">The agency's abbreviation, or null for none.</param>
 /// <param name="ZipCodes">The zip codes of the agency's jurisdiction, or null for none.</param>
+/// <param name="NotificationEmails">
+/// The addresses the agency's batch notification of assigned messages is sent
+/// to, separated by semicolons or commas, or null for none.
+/// </param>
 public record SaveAgencyRequest(
     string Name,
     string? ShortName = null,
-    IReadOnlyList<string>? ZipCodes = null);
+    IReadOnlyList<string>? ZipCodes = null,
+    string? NotificationEmails = null);

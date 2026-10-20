@@ -14,6 +14,11 @@ namespace Survsys.Contracts;
 /// </remarks>
 /// <param name="Message">The message's queue summary.</param>
 /// <param name="RawMessage">The message exactly as it arrived, the ER7 text a lab sent.</param>
+/// <param name="History">
+/// Every review state the message has entered, oldest first: its audit trail.
+/// Null where the trail was not read.
+/// </param>
 public record StagedMessageDetailResponse(
     StagedMessageResponse Message,
-    string RawMessage);
+    string RawMessage,
+    IReadOnlyList<StagedMessageAuditResponse>? History = null);

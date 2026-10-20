@@ -123,12 +123,14 @@ public sealed class ElrIntakeService(
             var excepted = NewMessage();
             excepted.ReviewStatus = MessageReviewStatusRules.ExceptionCode;
             excepted.ExceptionDetail = unparseable.Message;
+            excepted.ExceptionCategory = MessageExceptionRules.UnparseableCode;
             return [excepted];
         }
 
         string? unknownSender = parsed.SendingFacility is { } sender && knownSendingFacilities.Contains(sender)
             ? null
             : UnknownSender(parsed.SendingFacility);
+        var unknownSenderCategory = unknownSender is null ? null : MessageExceptionRules.UnknownSenderCode;
 
         // A message that reports no patient at all is still staged, once, so it
         // is not lost.
@@ -142,6 +144,7 @@ public sealed class ElrIntakeService(
                 ? MessageReviewStatusRules.EntryCode
                 : MessageReviewStatusRules.ExceptionCode;
             empty.ExceptionDetail = unknownSender;
+            empty.ExceptionCategory = unknownSenderCategory;
             return [empty];
         }
 
@@ -166,6 +169,7 @@ public sealed class ElrIntakeService(
                     ? MessageReviewStatusRules.EntryCode
                     : MessageReviewStatusRules.ExceptionCode;
                 message.ExceptionDetail = unknownSender;
+                message.ExceptionCategory = unknownSenderCategory;
 
                 if (order is not null)
                 {
@@ -271,6 +275,7 @@ public sealed class ElrIntakeService(
             {
                 message.ReviewStatus = MessageReviewStatusRules.ExceptionCode;
                 message.ExceptionDetail = UnknownSender(message.SendingFacility);
+                message.ExceptionCategory = MessageExceptionRules.UnknownSenderCode;
             }
         }
     }
