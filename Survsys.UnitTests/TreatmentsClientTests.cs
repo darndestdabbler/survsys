@@ -301,6 +301,55 @@ public class TreatmentsClientTests
         Assert.StartsWith(TreatmentsClient.RecordSaveFailurePrefix, added.Failure);
     }
 
+    [Fact]
+    public async Task ExportAsksForTheTreatmentsAsCsv()
+    {
+        Uri? asked = null;
+        var client = new TreatmentsClient(Transport(request =>
+        {
+            asked = request.RequestUri;
+            return Answer(HttpStatusCode.OK, "id,name\r\n3,Doxycycline\r\n", "text/csv");
+        }));
+
+        var exported = await client.Export();
+
+        Assert.Equal("http://api.example.test/api/treatments/csv", asked?.ToString());
+        Assert.Equal("id,name\r\n3,Doxycycline\r\n", exported.Value);
+    }
+
+    [Theory]
+    [InlineData(false, "http://api.example.test/api/treatments/csv")]
+    [InlineData(true, "http://api.example.test/api/treatments/csv?confirm=true")]
+    public async Task ImportPostsTheFileAndConfirmsOnlyWhenAsked(bool confirm, string expected)
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+        var client = new TreatmentsClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+            return Answer(
+                HttpStatusCode.OK,
+                """{ "applied": false, "added": [{ "line": 2, "key": "Doxycycline" }], "changed": [], "refused": [] }""");
+        }));
+
+        var imported = await client.Import("id,name\r\n,Doxycycline\r\n", confirm);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal(expected, sent?.RequestUri?.ToString());
+        Assert.Equal("id,name\r\n,Doxycycline\r\n", body);
+        Assert.Equal("Doxycycline", Assert.Single(imported.Value!.Added).Key);
+    }
+
+    [Fact]
+    public async Task AnExportOrImportThatFailedCarriesItsPrefix()
+    {
+        var client = new TreatmentsClient(Transport(_ => Answer(HttpStatusCode.InternalServerError, "{}")));
+
+        Assert.StartsWith(TreatmentsClient.ExportFailurePrefix, (await client.Export()).Failure);
+        Assert.StartsWith(TreatmentsClient.ImportFailurePrefix, (await client.Import("id\r\n", true)).Failure);
+    }
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 

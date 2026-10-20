@@ -1,7 +1,8 @@
 @* The Vaccines tab of a case morbidity report: the vaccines administered to the
    case's person. The records are listed; a form below adds a record or edits
    one, choosing a vaccine from the catalogue and entering the dose, dates, lot
-   number and comment. The dose, date and reference rules stay the API tier's;
+   number and comment. Only an active vaccine is offered, and a record being
+   edited keeps the retired vaccine it already names. The dose, date and reference rules stay the API tier's;
    a record it refuses is shown as the client's message rather than re-checked
    here.
 
@@ -95,7 +96,7 @@ else
             <MudItem xs="12" sm="6">
                 <MudSelect T="int?" @bind-Value="vaccineId" id="vaccines-tab-vaccine" Label="Vaccine"
                            Variant="Variant.Outlined" Clearable="true">
-                    @foreach (var vaccine in catalogue)
+                    @foreach (var vaccine in catalogue.Where(vaccine => vaccine.Active || vaccine.Id == vaccineId))
                     {
                         <MudSelectItem T="int?" Value="@vaccine.Id">@Describe(vaccine)</MudSelectItem>
                     }

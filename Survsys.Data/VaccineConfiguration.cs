@@ -41,6 +41,7 @@ internal sealed class VaccineConfiguration : IEntityTypeConfiguration<Vaccine>
             .HasColumnName("description")
             .HasMaxLength(DescriptionLength);
         builder.Property(vaccine => vaccine.SortOrder).HasColumnName("sort_order");
+        builder.Property(vaccine => vaccine.Active).HasColumnName("active");
 
         builder.HasIndex(vaccine => vaccine.Code).IsUnique();
 

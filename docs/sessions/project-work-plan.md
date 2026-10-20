@@ -95,7 +95,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 81 | Connecticut planning regions as county equivalents | no | 2026-10-20 |
 | 82 | Repair ELR promotion's address and result value | no | 2026-10-20 |
 | 83 | Reference data administration — code lists and addresses | no | 2026-10-20 |
-| 84 | Reference data administration — facilities, conditions, treatments and vaccines | — | not declared |
+| 84 | Reference data administration — facilities, conditions, treatments and vaccines | no | 2026-10-20 |
 | 85 | Editor settings ignored, and the integration sign-in flake | — | not declared |
 | 86 | Phase 10 walkthroughs | — | not declared |
 | 87 | Release 0.11.0 (release: 0.11.0) | — | not declared |
@@ -754,3 +754,13 @@ Make every reference table an administrator keeps current viewable, editable and
 - 2026-10-20 — step 'towns-from-database': its files: ElrIntakeService gains a public TownNames read from ct_towns for both intake transports; it reads the database, so its test is an integration test named after the source file (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-20 — step 'county-names': its files: The Places screen shows its counties by name with a local lookup until CountyName exists; it moves onto CountyName here so the lookup is written once (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-20 — step 'e2e-town-upload': its files: The full e2e run shows record-a-persons-address-history step 12 reading the county by name (Salt Lake, not SL) and the planning region column session 81 added; its test and document are updated to what the person screen now shows (claude-code (anthropic, claude-opus-5-5))
+
+### Session 84 — Reference data administration — facilities, conditions, treatments and vaccines
+
+**Releasable: no.**
+
+Make facilities (sending facilities among them), conditions, treatments and vaccines exportable and importable as CSV through session 83's ReferenceImport, previewed before it is confirmed, and give vaccines an administration screen. Survsys.Api: FacilityEndpoints, ConditionEndpoints and TreatmentEndpoints each gain a ReferenceTable and GET and POST /api/facilities/csv, /api/conditions/csv and /api/treatments/csv (POST taking ?confirm). These tables have no unique natural key, so a row is matched by its id column: a row whose id is blank is added, a row whose id is on file is saved over it, and a row naming an id not on file is refused; each row is refused for what the table's existing WhyNot refuses, a facility for an agency not on file, and a treatment for a condition not on file, its condition_ids (semicolon-separated) replacing the conditions it is offered for. Vaccines gain an Active column (true for every seeded row, by a migration); a vaccine is retired by clearing Active and never deleted, and a case's vaccine record still shows a retired vaccine. /api/vaccines lists every vaccine with its sort order and active flag, and gains POST, PUT /api/vaccines/{id} and GET and POST /api/vaccines/csv keyed by the vaccine's CDC code; /api/vaccines joins the reference-data paths in PrivilegeRules, so writes need the privilege /codes needs. Survsys.Web: the existing Facilities, Conditions and Treatments screens each offer an export link and session 83's ImportPreview; a new /vaccines screen lists, adds, edits, imports and exports vaccines behind the reference-data privilege in the nav, and the case's Vaccines tab offers only active vaccines for a new record while keeping a record's own retired vaccine. Unit, integration (SQL Server) and one Playwright test prove it.
+
+**Amended after acceptance:**
+
+- 2026-10-20 — step 'conditions-csv': its files: A condition lead-in holds line breaks; ReferenceCsv writes them quoted but reads a row as one line, so an exported condition would not import back. Read must keep a line break inside quotes. (claude-code (anthropic, claude-opus-5-5))

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -11,7 +12,9 @@ namespace Survsys.IntegrationTests;
 /// The vaccine endpoints, against the real database: that the seeded catalogue
 /// is read, that a record is added to a case and listed, edited and removed,
 /// that a dose below one and a vaccine that does not exist are refused, and that
-/// an unknown case has no records.
+/// an unknown case has no records; and that the catalogue is added to, edited,
+/// retired — a record naming a retired vaccine still showing it — imported
+/// from CSV after a preview, and exported.
 /// </summary>
 /// <remarks>
 /// Driven through the endpoints. Each test opens its own case and deletes it in
@@ -169,6 +172,107 @@ public class VaccineEndpointsTests(SqlServerFixture server) : IDisposable
     {
         using var response = await api.CreateClient().GetAsync("/api/cases/987654321/vaccines");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AVaccineIsAddedEditedAndRetiredAndARecordStillShowsIt()
+    {
+        int caseId = 0;
+        var client = api.CreateClient();
+        await ClearCatalogueRows();
+
+        try
+        {
+            using var created = await client.PostAsJsonAsync(
+                "/api/vaccines", new SaveVaccineRequest("ITEST1", "Itest vaccine", 90), Json);
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            var vaccine = (await created.Content.ReadFromJsonAsync<VaccineResponse>(Json))!;
+            Assert.True(vaccine.Active);
+
+            using (var taken = await client.PutAsJsonAsync(
+                $"/api/vaccines/{vaccine.Id}", new SaveVaccineRequest("03", "Itest vaccine", 90), Json))
+            {
+                Assert.Equal(HttpStatusCode.Conflict, taken.StatusCode);
+            }
+
+            caseId = await CreateCase("Rodriguez, Maria", "Malaria");
+            await Add(caseId, new SaveVaccineRecordRequest(vaccine.Id, DoseNumber: 1));
+
+            using (var retired = await client.PutAsJsonAsync(
+                $"/api/vaccines/{vaccine.Id}", new SaveVaccineRequest("ITEST1", "Itest vaccine, retired", 90, Active: false), Json))
+            {
+                Assert.Equal(HttpStatusCode.OK, retired.StatusCode);
+            }
+
+            var catalogue = (await client.GetFromJsonAsync<List<VaccineResponse>>("/api/vaccines", Json))!;
+            Assert.Contains(new VaccineResponse(vaccine.Id, "ITEST1", "Itest vaccine, retired", 90, false), catalogue);
+
+            var records = (await client.GetFromJsonAsync<List<VaccineRecordResponse>>(
+                $"/api/cases/{caseId}/vaccines", Json))!;
+            Assert.Equal("Itest vaccine, retired", Assert.Single(records).VaccineDescription);
+        }
+        finally
+        {
+            await DeleteCase(caseId);
+            await ClearCatalogueRows();
+        }
+    }
+
+    [Fact]
+    public async Task AVaccineFileIsPreviewedThenImportedAndExported()
+    {
+        var client = api.CreateClient();
+        await ClearCatalogueRows();
+
+        try
+        {
+            var csv = "code,description,sort_order,active\r\n"
+                + "ITEST2,Itest two,91,yes\r\n"
+                + "03,MMR,15,yes\r\n"
+                + ",Nameless,1,yes\r\n";
+
+            var preview = await Import(client, csv, confirm: false);
+
+            Assert.Equal([new ReferenceImportRow(2, "ITEST2")], preview.Added);
+            Assert.Empty(preview.Changed);
+            var refused = Assert.Single(preview.Refused);
+            Assert.Equal(4, refused.Line);
+            Assert.Contains("code is required", refused.Reason);
+            Assert.DoesNotContain(
+                (await client.GetFromJsonAsync<List<VaccineResponse>>("/api/vaccines", Json))!,
+                row => row.Code == "ITEST2");
+
+            await Import(client, csv, confirm: true);
+
+            var exported = await client.GetStringAsync("/api/vaccines/csv");
+            Assert.StartsWith("code,description,sort_order,active\r\n", exported);
+            Assert.Contains("ITEST2,Itest two,91,yes\r\n", exported);
+            Assert.Contains("03,MMR,15,yes\r\n", exported);
+
+            var again = await Import(client, exported, confirm: false);
+            Assert.Empty(again.Added);
+            Assert.Empty(again.Changed);
+            Assert.Empty(again.Refused);
+        }
+        finally
+        {
+            await ClearCatalogueRows();
+        }
+    }
+
+    private static async Task<ReferenceImportResponse> Import(HttpClient client, string csv, bool confirm)
+    {
+        using var posted = await client.PostAsync(
+            $"/api/vaccines/csv{(confirm ? "?confirm=true" : "")}", new StringContent(csv, Encoding.UTF8, "text/csv"));
+        Assert.Equal(HttpStatusCode.OK, posted.StatusCode);
+        return (await posted.Content.ReadFromJsonAsync<ReferenceImportResponse>(Json))!;
+    }
+
+    /// <summary>Deletes the vaccines these tests add, all of whose codes begin ITEST.</summary>
+    private async Task ClearCatalogueRows()
+    {
+        await using var context = server.NewContext();
+        await context.Vaccines.Where(vaccine => vaccine.Code.StartsWith("ITEST")).ExecuteDeleteAsync();
     }
 
     private async Task<VaccineRecordResponse> Add(int personConditionId, SaveVaccineRecordRequest request)

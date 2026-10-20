@@ -1,3 +1,4 @@
+using System.Text;
 using Survsys.Contracts;
 
 namespace Survsys.Web;
@@ -36,7 +37,33 @@ public sealed class ConditionsClient(HttpClient http)
 
     private static readonly ApiAsk Finding = new(FindFailurePrefix, "the condition's record");
 
+    /// <summary>How a failure to import a CSV file starts.</summary>
+    public const string ImportFailurePrefix = "The CSV file could not be imported";
+
+    /// <summary>How a failure to export the conditions starts.</summary>
+    public const string ExportFailurePrefix = "The conditions could not be exported";
+
     private static readonly ApiAsk Saving = new(SaveFailurePrefix, "the condition as saved");
+
+    private static readonly ApiAsk Importing = new(ImportFailurePrefix, "what the import did");
+
+    private static readonly ApiAsk Exporting = new(ExportFailurePrefix, "the conditions as CSV");
+
+    /// <summary>Every condition as CSV, or why there is none.</summary>
+    public Task<Asked<string>> Export(CancellationToken cancellationToken = default) =>
+        Exporting.GetText(http, "api/conditions/csv", cancellationToken);
+
+    /// <summary>
+    /// What importing a CSV file of conditions would do, saved only where
+    /// <paramref name="confirm"/> is true, or why it did nothing.
+    /// </summary>
+    public async Task<Asked<ReferenceImportResponse>> Import(
+        string csv, bool confirm, CancellationToken cancellationToken = default)
+    {
+        using var content = new StringContent(csv, Encoding.UTF8, "text/csv");
+        return await Importing.PostContent<ReferenceImportResponse>(
+            http, $"api/conditions/csv{(confirm ? "?confirm=true" : "")}", content, cancellationToken);
+    }
 
     /// <summary>One condition with its lead-in prose, or why there is none.</summary>
     public Task<Asked<ConditionDetailResponse>> Find(

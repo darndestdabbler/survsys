@@ -1,6 +1,9 @@
 @* The facilities, for their administration: one page of them in name order,
    with the agency each sits under by name, each name the way into its edit
-   screen, and New facility for an empty one. *@
+   screen, and New facility for an empty one. Every facility, sending
+   facilities among them, exports as CSV and imports from it, previewed before
+   it is saved: a row with a blank id is added and one with an id saves over
+   that facility. *@
 @page "/facilities"
 @inject FacilitiesClient Client
 @inject AgenciesClient Agencies
@@ -11,10 +14,18 @@
     Facilities
 </MudText>
 
-<MudButton id="facilities-new" Variant="Variant.Filled" Color="Color.Primary" Class="mb-4"
-           Href="/facilities/new">
-    New facility
-</MudButton>
+<div class="d-flex gap-4 align-start mb-4">
+    <MudButton id="facilities-new" Variant="Variant.Filled" Color="Color.Primary" Href="/facilities/new">
+        New facility
+    </MudButton>
+    <MudButton id="facilities-export" Variant="Variant.Outlined" Href="/facilities/export" Target="_blank">
+        Export facilities CSV
+    </MudButton>
+    <div>
+        <ImportPreview Prefix="facilities-import" Label="Import facilities CSV"
+                       Import="@((csv, confirm) => Client.Import(csv, confirm))" Imported="@Load" />
+    </div>
+</div>
 
 @if (asked is null)
 {
@@ -69,7 +80,9 @@ else
     /// <summary>How many facilities one page of this screen holds.</summary>
     private const int PageSize = 50;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load()
     {
         var agencies = await Agencies.All();
         asked = await Client.Page(1, PageSize);

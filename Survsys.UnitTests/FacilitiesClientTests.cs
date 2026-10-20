@@ -92,6 +92,44 @@ public class FacilitiesClientTests
             (await client.Create(new SaveFacilityRequest("ARUP", 5))).Failure);
         Assert.StartsWith(FacilitiesClient.SaveFailurePrefix,
             (await client.Update(11, new SaveFacilityRequest("ARUP", 5))).Failure);
+        Assert.StartsWith(FacilitiesClient.ExportFailurePrefix, (await client.Export()).Failure);
+        Assert.StartsWith(FacilitiesClient.ImportFailurePrefix, (await client.Import("id\r\n", false)).Failure);
+    }
+
+    [Fact]
+    public async Task ExportAsksForTheFacilitiesAsCsv()
+    {
+        HttpRequestMessage? sent = null;
+        var client = Recording(request => sent = request, HttpStatusCode.OK, "id,name\r\n11,ARUP\r\n");
+
+        var exported = await client.Export();
+
+        Assert.Equal("http://api.example.test/api/facilities/csv", sent?.RequestUri?.ToString());
+        Assert.Equal("id,name\r\n11,ARUP\r\n", exported.Value);
+    }
+
+    [Theory]
+    [InlineData(false, "http://api.example.test/api/facilities/csv")]
+    [InlineData(true, "http://api.example.test/api/facilities/csv?confirm=true")]
+    public async Task ImportPostsTheFileAndConfirmsOnlyWhenAsked(bool confirm, string expected)
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+        var client = Recording(
+            request =>
+            {
+                sent = request;
+                body = request.Content!.ReadAsStringAsync().Result;
+            },
+            HttpStatusCode.OK,
+            """{ "applied": false, "added": [{ "line": 2, "key": "ARUP" }], "changed": [], "refused": [] }""");
+
+        var imported = await client.Import("name,agency_id\r\nARUP,5\r\n", confirm);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal(expected, sent?.RequestUri?.ToString());
+        Assert.Equal("name,agency_id\r\nARUP,5\r\n", body);
+        Assert.Equal("ARUP", Assert.Single(imported.Value!.Added).Key);
     }
 
     private static FacilitiesClient Recording(

@@ -121,7 +121,78 @@ public static class ConditionEndpoints
             .WithName("UpdateCondition")
             .WithSummary("Saves over a condition.");
 
+        routes.MapGet("/api/conditions/csv", async (ConditionQueries conditions, CancellationToken cancellationToken) =>
+                TypedResults.Text(await conditions.Export(cancellationToken), "text/csv; charset=utf-8"))
+            .WithName("ExportConditions")
+            .WithSummary("Every condition, with its lead-in prose, as CSV.");
+
+        routes.MapPost("/api/conditions/csv", async (
+                ConditionQueries conditions,
+                HttpRequest request,
+                CancellationToken cancellationToken,
+                bool confirm = false) =>
+            {
+                using var reader = new StreamReader(request.Body);
+                var csv = await reader.ReadToEndAsync(cancellationToken);
+                return TypedResults.Ok(await conditions.Import(csv, confirm, cancellationToken));
+            })
+            .WithName("ImportConditions")
+            .WithSummary("Previews, or with confirm=true saves, each condition of a CSV file, added where its id "
+                + "is blank and saved over by its id otherwise.");
+
         return routes;
+    }
+
+    /// <summary>The conditions' CSV columns, in the order an export writes them.</summary>
+    public static readonly IReadOnlyList<string> CsvColumns =
+        ["id", "name", "active", "cdc_code", "contact_lead_in", "place_lead_in", "treatment_lead_in"];
+
+    /// <summary>A condition as its CSV fields, in <see cref="CsvColumns"/> order; an id of 0 is blank.</summary>
+    public static IReadOnlyList<string?> CsvFields(ConditionDetailResponse row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return
+        [
+            ReferenceCsv.Number(row.Id == 0 ? null : row.Id), row.Name, ReferenceCsv.YesNo(row.Active), row.CdcCode,
+            row.ContactLeadIn, row.PlaceLeadIn, row.TreatmentLeadIn,
+        ];
+    }
+
+    /// <summary>
+    /// A condition read from its CSV row, a blank id read as 0 — a condition
+    /// to add — or why it cannot be read.
+    /// </summary>
+    public static (ConditionDetailResponse? Row, string? Why) FromCsv(CsvRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        if (ReferenceCsv.Optional(row, "id", out var id) is { } badId)
+        {
+            return (null, badId);
+        }
+
+        if (ReferenceCsv.Flag(row, "active", out var active) is { } badActive)
+        {
+            return (null, badActive);
+        }
+
+        return (new ConditionDetailResponse(
+            id ?? 0,
+            row.Value("name") ?? "",
+            row.Value("cdc_code"),
+            active,
+            row.Value("contact_lead_in"),
+            row.Value("place_lead_in"),
+            row.Value("treatment_lead_in")), null);
+    }
+
+    /// <summary>A condition row as the request that saves it.</summary>
+    public static SaveConditionRequest Request(ConditionDetailResponse row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return new(row.Name, row.Active, row.CdcCode, row.ContactLeadIn, row.PlaceLeadIn, row.TreatmentLeadIn);
     }
 
     private static async Task<Results<Ok<ConditionDetailResponse>, ProblemHttpResult>> GetCondition(
@@ -248,6 +319,15 @@ internal sealed class ConditionQueries(SurvsysDbContext database)
             .Select(ConditionEndpoints.ToDetail)
             .SingleOrDefaultAsync(cancellationToken);
 
+    public static readonly ReferenceTable<Condition, ConditionDetailResponse> Table = new ConditionTable();
+
+    public Task<string> Export(CancellationToken cancellationToken) =>
+        ReferenceImport.Export(database, Table, cancellationToken);
+
+    /// <summary>What importing a CSV file would do, written only where <paramref name="confirm"/> is true.</summary>
+    public Task<ReferenceImportResponse> Import(string? csv, bool confirm, CancellationToken cancellationToken) =>
+        ReferenceImport.Import(database, Table, csv, confirm, cancellationToken);
+
     public async Task<ConditionDetailResponse> Add(SaveConditionRequest request, CancellationToken cancellationToken)
     {
         var condition = new Condition { Name = request.Name };
@@ -286,7 +366,7 @@ internal sealed class ConditionQueries(SurvsysDbContext database)
     /// a blank optional value stored as null. The lead-in prose is kept as
     /// written, since its line breaks are the investigator's.
     /// </summary>
-    private static void Apply(Condition condition, SaveConditionRequest request)
+    internal static void Apply(Condition condition, SaveConditionRequest request)
     {
         condition.Name = request.Name.Trim();
         condition.Active = request.Active;
@@ -294,5 +374,58 @@ internal sealed class ConditionQueries(SurvsysDbContext database)
         condition.ContactLeadIn = string.IsNullOrWhiteSpace(request.ContactLeadIn) ? null : request.ContactLeadIn;
         condition.PlaceLeadIn = string.IsNullOrWhiteSpace(request.PlaceLeadIn) ? null : request.PlaceLeadIn;
         condition.TreatmentLeadIn = string.IsNullOrWhiteSpace(request.TreatmentLeadIn) ? null : request.TreatmentLeadIn;
+    }
+}
+
+/// <summary>
+/// The conditions, keyed by id: a row whose id is blank is a condition to add,
+/// and a row naming an id not on file is refused. A condition has no other
+/// key — names are not unique in the legacy data. The group is not carried,
+/// and is left as it is.
+/// </summary>
+internal sealed class ConditionTable : ReferenceTable<Condition, ConditionDetailResponse>
+{
+    public override IReadOnlyList<string> Columns => ConditionEndpoints.CsvColumns;
+
+    public override Task<List<ConditionDetailResponse>> List(
+        SurvsysDbContext database, CancellationToken cancellationToken) =>
+        database.Conditions
+            .OrderBy(condition => condition.Name)
+            .ThenBy(condition => condition.Id)
+            .Select(ConditionEndpoints.ToDetail)
+            .ToListAsync(cancellationToken);
+
+    public override IReadOnlyList<string?> Fields(ConditionDetailResponse row) => ConditionEndpoints.CsvFields(row);
+
+    public override (ConditionDetailResponse? Row, string? Why) Parse(CsvRow row) => ConditionEndpoints.FromCsv(row);
+
+    public override string? WhyNot(ConditionDetailResponse row) =>
+        ConditionEndpoints.WhyNotACondition(ConditionEndpoints.Request(row));
+
+    public override string KeyOf(ConditionDetailResponse row) => row.Id == 0 ? row.Name.Trim() : $"{row.Id}";
+
+    public override async Task<Condition?> ByKey(
+        SurvsysDbContext database, ConditionDetailResponse row, CancellationToken cancellationToken) =>
+        row.Id == 0
+            ? null
+            : await database.Conditions.SingleOrDefaultAsync(condition => condition.Id == row.Id, cancellationToken);
+
+    public override Task<ConditionDetailResponse> RowOf(
+        SurvsysDbContext database, Condition entity, CancellationToken cancellationToken) =>
+        Task.FromResult(ConditionEndpoints.Detail(entity));
+
+    public override Condition New(ConditionDetailResponse row) => new() { Name = row.Name.Trim() };
+
+    public override Task<string?> Apply(
+        SurvsysDbContext database, Condition entity, ConditionDetailResponse row, CancellationToken cancellationToken)
+    {
+        if (row.Id != entity.Id)
+        {
+            return Task.FromResult<string?>(
+                $"id {row.Id} is not a condition on file; leave id blank to add a condition.");
+        }
+
+        ConditionQueries.Apply(entity, ConditionEndpoints.Request(row));
+        return Task.FromResult<string?>(null);
     }
 }

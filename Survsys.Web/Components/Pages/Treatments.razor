@@ -1,7 +1,10 @@
 @* The treatments, for their management: every treatment ordered by name, each
    name the way into its editor, and New treatment for an empty one. The active
    and default flags and the count of conditions a treatment is listed for are
-   shown beside it. *@
+   shown beside it. Every treatment, with the ids of the conditions it is
+   listed for, exports as CSV and imports from it, previewed before it is
+   saved: a row with a blank id is added and one with an id saves over that
+   treatment, its conditions replaced. *@
 @page "/treatments"
 @inject TreatmentsClient Client
 
@@ -11,10 +14,18 @@
     Treatments
 </MudText>
 
-<MudButton id="treatments-new" Variant="Variant.Filled" Color="Color.Primary" Class="mb-4"
-           Href="/treatments/new">
-    New treatment
-</MudButton>
+<div class="d-flex gap-4 align-start mb-4">
+    <MudButton id="treatments-new" Variant="Variant.Filled" Color="Color.Primary" Href="/treatments/new">
+        New treatment
+    </MudButton>
+    <MudButton id="treatments-export" Variant="Variant.Outlined" Href="/treatments/export" Target="_blank">
+        Export treatments CSV
+    </MudButton>
+    <div>
+        <ImportPreview Prefix="treatments-import" Label="Import treatments CSV"
+                       Import="@((csv, confirm) => Client.Import(csv, confirm))" Imported="@Load" />
+    </div>
+</div>
 
 @if (asked is null)
 {
@@ -64,8 +75,8 @@ else
 @code {
     private Asked<PagedResult<TreatmentResponse>>? asked;
 
-    protected override async Task OnInitializedAsync()
-    {
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load() =>
         asked = await Client.All();
-    }
 }

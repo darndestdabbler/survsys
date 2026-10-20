@@ -1,10 +1,11 @@
+using System.Text;
 using Survsys.Contracts;
 
 namespace Survsys.Web;
 
 /// <summary>
 /// The application tier's reader and writer of <c>/api/vaccines</c>: the vaccine
-/// catalogue and a case's vaccine records.
+/// catalogue and its administration, and a case's vaccine records.
 /// </summary>
 /// <remarks>
 /// It is the only thing in this tier that speaks HTTP about vaccines, and the
@@ -23,16 +24,60 @@ public sealed class VaccinesClient(HttpClient http)
     /// <summary>How a failure to add or save a record starts.</summary>
     public const string SaveFailurePrefix = "The vaccine record could not be saved";
 
+    /// <summary>How a failure to add or save a vaccine in the catalogue starts.</summary>
+    public const string VaccineSaveFailurePrefix = "The vaccine could not be saved";
+
+    /// <summary>How a failure to import a CSV file starts.</summary>
+    public const string ImportFailurePrefix = "The CSV file could not be imported";
+
+    /// <summary>How a failure to export the catalogue starts.</summary>
+    public const string ExportFailurePrefix = "The vaccine catalogue could not be exported";
+
     private static readonly ApiAsk AskingCatalogue = new(CatalogueFailurePrefix, "the vaccine catalogue");
+
+    private static readonly ApiAsk SavingVaccine = new(VaccineSaveFailurePrefix, "the vaccine as saved");
+
+    private static readonly ApiAsk Importing = new(ImportFailurePrefix, "what the import did");
+
+    private static readonly ApiAsk Exporting = new(ExportFailurePrefix, "the vaccine catalogue as CSV");
 
     private static readonly ApiAsk AskingRecords = new(RecordsFailurePrefix, "the case's vaccine records");
 
     private static readonly ApiAsk Saving = new(SaveFailurePrefix, "the record as saved");
 
-    /// <summary>The vaccine catalogue, in sort order, or why there is none.</summary>
+    /// <summary>The vaccine catalogue, retired vaccines included, in sort order, or why there is none.</summary>
     public Task<Asked<List<VaccineResponse>>> Catalogue(
         CancellationToken cancellationToken = default) =>
         AskingCatalogue.Get<List<VaccineResponse>>(http, "api/vaccines", cancellationToken);
+
+    /// <summary>Adds a vaccine to the catalogue, answering with it or why it was not.</summary>
+    public Task<Asked<VaccineResponse>> AddVaccine(
+        SaveVaccineRequest request,
+        CancellationToken cancellationToken = default) =>
+        SavingVaccine.Post<SaveVaccineRequest, VaccineResponse>(http, "api/vaccines", request, cancellationToken);
+
+    /// <summary>Saves over a vaccine in the catalogue, answering with it or why it was not.</summary>
+    public Task<Asked<VaccineResponse>> SaveVaccine(
+        int id,
+        SaveVaccineRequest request,
+        CancellationToken cancellationToken = default) =>
+        SavingVaccine.Put<SaveVaccineRequest, VaccineResponse>(http, $"api/vaccines/{id}", request, cancellationToken);
+
+    /// <summary>The vaccine catalogue as CSV, or why there is none.</summary>
+    public Task<Asked<string>> Export(CancellationToken cancellationToken = default) =>
+        Exporting.GetText(http, "api/vaccines/csv", cancellationToken);
+
+    /// <summary>
+    /// What importing a CSV file into the catalogue would do, saved only where
+    /// <paramref name="confirm"/> is true, or why it did nothing.
+    /// </summary>
+    public async Task<Asked<ReferenceImportResponse>> Import(
+        string csv, bool confirm, CancellationToken cancellationToken = default)
+    {
+        using var content = new StringContent(csv, Encoding.UTF8, "text/csv");
+        return await Importing.PostContent<ReferenceImportResponse>(
+            http, $"api/vaccines/csv{(confirm ? "?confirm=true" : "")}", content, cancellationToken);
+    }
 
     /// <summary>A case's vaccine records, newest administered first, or why there is none.</summary>
     public Task<Asked<List<VaccineRecordResponse>>> Records(

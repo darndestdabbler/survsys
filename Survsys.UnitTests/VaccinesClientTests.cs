@@ -23,9 +23,14 @@ public class VaccinesClientTests
     private const string Catalogue =
         """
         [
-          { "id": 15, "code": "03", "description": "MMR" },
-          { "id": 23, "code": "115", "description": "Tdap" }
+          { "id": 15, "code": "03", "description": "MMR", "sortOrder": 15, "active": true },
+          { "id": 23, "code": "115", "description": "Tdap", "sortOrder": 23, "active": false }
         ]
+        """;
+
+    private const string OneVaccine =
+        """
+        { "id": 15, "code": "03", "description": "MMR", "sortOrder": 15, "active": true }
         """;
 
     private const string TwoRecords =
@@ -60,6 +65,101 @@ public class VaccinesClientTests
         Assert.Equal("http://api.example.test/api/vaccines", asked?.ToString());
         Assert.Equal([15, 23], catalogue.Value!.Select(vaccine => vaccine.Id));
         Assert.Equal("MMR", catalogue.Value[0].Description);
+        Assert.False(catalogue.Value[1].Active);
+    }
+
+    [Fact]
+    public async Task AddVaccinePostsToTheCatalogue()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new VaccinesClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.Created, OneVaccine);
+        }));
+
+        var added = await client.AddVaccine(new SaveVaccineRequest("03", "MMR", 15));
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/vaccines", sent?.RequestUri?.ToString());
+        Assert.Equal(15, added.Value!.Id);
+    }
+
+    [Fact]
+    public async Task SaveVaccinePutsToTheVaccine()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new VaccinesClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, OneVaccine);
+        }));
+
+        var saved = await client.SaveVaccine(15, new SaveVaccineRequest("03", "MMR", 15, Active: false));
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/vaccines/15", sent?.RequestUri?.ToString());
+        Assert.True(saved.Succeeded);
+    }
+
+    [Fact]
+    public async Task AVaccineSaveThatFailedCarriesTheVaccineSavePrefix()
+    {
+        var client = new VaccinesClient(Transport(_ => Answer(HttpStatusCode.Conflict, "{}")));
+
+        var added = await client.AddVaccine(new SaveVaccineRequest("03"));
+
+        Assert.StartsWith(VaccinesClient.VaccineSaveFailurePrefix, added.Failure);
+    }
+
+    [Fact]
+    public async Task ExportAsksForTheCatalogueAsCsv()
+    {
+        Uri? asked = null;
+        var client = new VaccinesClient(Transport(request =>
+        {
+            asked = request.RequestUri;
+            return Answer(HttpStatusCode.OK, "code,description,sort_order,active\r\n", "text/csv");
+        }));
+
+        var exported = await client.Export();
+
+        Assert.Equal("http://api.example.test/api/vaccines/csv", asked?.ToString());
+        Assert.StartsWith("code,description", exported.Value);
+    }
+
+    [Theory]
+    [InlineData(false, "http://api.example.test/api/vaccines/csv")]
+    [InlineData(true, "http://api.example.test/api/vaccines/csv?confirm=true")]
+    public async Task ImportPostsTheFileAndConfirmsOnlyWhenAsked(bool confirm, string expected)
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+        var client = new VaccinesClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+            return Answer(
+                HttpStatusCode.OK,
+                """{ "applied": false, "added": [{ "line": 2, "key": "03" }], "changed": [], "refused": [] }""");
+        }));
+
+        var imported = await client.Import("code\r\n03\r\n", confirm);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal(expected, sent?.RequestUri?.ToString());
+        Assert.Equal("code\r\n03\r\n", body);
+        Assert.Equal("03", Assert.Single(imported.Value!.Added).Key);
+    }
+
+    [Fact]
+    public async Task AnImportThatFailedCarriesTheImportPrefix()
+    {
+        var client = new VaccinesClient(Transport(_ => Answer(HttpStatusCode.InternalServerError, "{}")));
+
+        var imported = await client.Import("code\r\n03\r\n", confirm: false);
+
+        Assert.StartsWith(VaccinesClient.ImportFailurePrefix, imported.Failure);
     }
 
     [Fact]

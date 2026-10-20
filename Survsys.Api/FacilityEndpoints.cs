@@ -109,7 +109,80 @@ public static class FacilityEndpoints
             .WithName("UpdateFacility")
             .WithSummary("Saves over a facility.");
 
+        routes.MapGet("/api/facilities/csv", async (FacilityQueries facilities, CancellationToken cancellationToken) =>
+                TypedResults.Text(await facilities.Export(cancellationToken), "text/csv; charset=utf-8"))
+            .WithName("ExportFacilities")
+            .WithSummary("Every facility, as CSV.");
+
+        routes.MapPost("/api/facilities/csv", async (
+                FacilityQueries facilities,
+                HttpRequest request,
+                CancellationToken cancellationToken,
+                bool confirm = false) =>
+            {
+                using var reader = new StreamReader(request.Body);
+                var csv = await reader.ReadToEndAsync(cancellationToken);
+                return TypedResults.Ok(await facilities.Import(csv, confirm, cancellationToken));
+            })
+            .WithName("ImportFacilities")
+            .WithSummary("Previews, or with confirm=true saves, each facility of a CSV file, added where its id "
+                + "is blank and saved over by its id otherwise.");
+
         return routes;
+    }
+
+    /// <summary>The facilities' CSV columns, in the order an export writes them.</summary>
+    public static readonly IReadOnlyList<string> CsvColumns =
+        ["id", "name", "short_name", "agency_id", "street", "city", "state", "zip", "phone"];
+
+    /// <summary>A facility as its CSV fields, in <see cref="CsvColumns"/> order; an id of 0 is blank.</summary>
+    public static IReadOnlyList<string?> CsvFields(FacilityResponse row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return
+        [
+            ReferenceCsv.Number(row.Id == 0 ? null : row.Id), row.Name, row.ShortName,
+            ReferenceCsv.Number(row.AgencyId), row.Street, row.City, row.State, row.Zip, row.Phone,
+        ];
+    }
+
+    /// <summary>
+    /// A facility read from its CSV row, a blank id read as 0 — a facility to
+    /// add — or why it cannot be read.
+    /// </summary>
+    public static (FacilityResponse? Row, string? Why) FromCsv(CsvRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        if (ReferenceCsv.Optional(row, "id", out var id) is { } badId)
+        {
+            return (null, badId);
+        }
+
+        if (ReferenceCsv.Required(row, "agency_id", out var agencyId) is { } badAgency)
+        {
+            return (null, badAgency);
+        }
+
+        return (new FacilityResponse(
+            id ?? 0,
+            row.Value("name") ?? "",
+            row.Value("short_name"),
+            agencyId,
+            row.Value("street"),
+            row.Value("city"),
+            row.Value("state"),
+            row.Value("zip"),
+            row.Value("phone")), null);
+    }
+
+    /// <summary>A facility row as the request that saves it.</summary>
+    public static SaveFacilityRequest Request(FacilityResponse row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return new(row.Name, row.AgencyId, row.ShortName, row.Street, row.City, row.State, row.Zip, row.Phone);
     }
 
     private static async Task<Results<Ok<PagedResult<FacilityResponse>>, ProblemHttpResult>> GetFacilities(
@@ -281,11 +354,20 @@ internal sealed class FacilityQueries(SurvsysDbContext database)
         return FacilityEndpoints.Respond(facility);
     }
 
+    public static readonly ReferenceTable<Facility, FacilityResponse> Table = new FacilityTable();
+
+    public Task<string> Export(CancellationToken cancellationToken) =>
+        ReferenceImport.Export(database, Table, cancellationToken);
+
+    /// <summary>What importing a CSV file would do, written only where <paramref name="confirm"/> is true.</summary>
+    public Task<ReferenceImportResponse> Import(string? csv, bool confirm, CancellationToken cancellationToken) =>
+        ReferenceImport.Import(database, Table, csv, confirm, cancellationToken);
+
     /// <summary>
     /// The request's values onto the facility: trimmed, blank optional values
     /// stored as null, the state upper-cased and the zip as its five digits.
     /// </summary>
-    private static void Apply(Facility facility, SaveFacilityRequest request)
+    internal static void Apply(Facility facility, SaveFacilityRequest request)
     {
         facility.Name = request.Name.Trim();
         facility.AgencyId = request.AgencyId;
@@ -299,4 +381,59 @@ internal sealed class FacilityQueries(SurvsysDbContext database)
 
     private static string? Blank(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+}
+
+/// <summary>
+/// The facilities, sending facilities among them, keyed by id: a row whose id
+/// is blank is a facility to add, and a row naming an id not on file is
+/// refused. A facility has no other key — two may share a name.
+/// </summary>
+internal sealed class FacilityTable : ReferenceTable<Facility, FacilityResponse>
+{
+    public override IReadOnlyList<string> Columns => FacilityEndpoints.CsvColumns;
+
+    public override Task<List<FacilityResponse>> List(SurvsysDbContext database, CancellationToken cancellationToken) =>
+        database.Facilities
+            .OrderBy(facility => facility.Name)
+            .ThenBy(facility => facility.Id)
+            .Select(FacilityEndpoints.ToResponse)
+            .ToListAsync(cancellationToken);
+
+    public override IReadOnlyList<string?> Fields(FacilityResponse row) => FacilityEndpoints.CsvFields(row);
+
+    public override (FacilityResponse? Row, string? Why) Parse(CsvRow row) => FacilityEndpoints.FromCsv(row);
+
+    public override string? WhyNot(FacilityResponse row) =>
+        FacilityEndpoints.WhyNotAFacility(FacilityEndpoints.Request(row));
+
+    public override string KeyOf(FacilityResponse row) => row.Id == 0 ? row.Name.Trim() : $"{row.Id}";
+
+    public override async Task<Facility?> ByKey(
+        SurvsysDbContext database, FacilityResponse row, CancellationToken cancellationToken) =>
+        row.Id == 0
+            ? null
+            : await database.Facilities.SingleOrDefaultAsync(facility => facility.Id == row.Id, cancellationToken);
+
+    public override Task<FacilityResponse> RowOf(
+        SurvsysDbContext database, Facility entity, CancellationToken cancellationToken) =>
+        Task.FromResult(FacilityEndpoints.Respond(entity));
+
+    public override Facility New(FacilityResponse row) => new() { Name = row.Name.Trim() };
+
+    public override async Task<string?> Apply(
+        SurvsysDbContext database, Facility entity, FacilityResponse row, CancellationToken cancellationToken)
+    {
+        if (row.Id != entity.Id)
+        {
+            return $"id {row.Id} is not a facility on file; leave id blank to add a facility.";
+        }
+
+        if (!await database.Agencies.AnyAsync(agency => agency.Id == row.AgencyId, cancellationToken))
+        {
+            return AgencyEndpoints.NotAnAgency(row.AgencyId);
+        }
+
+        FacilityQueries.Apply(entity, FacilityEndpoints.Request(row));
+        return null;
+    }
 }

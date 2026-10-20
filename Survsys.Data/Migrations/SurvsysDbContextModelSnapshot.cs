@@ -14763,6 +14763,10 @@ namespace Survsys.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit")
+                        .HasColumnName("active");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -14789,6 +14793,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 1,
+                            Active = true,
                             Code = "20",
                             Description = "DTaP",
                             SortOrder = 1
@@ -14796,6 +14801,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 2,
+                            Active = true,
                             Code = "106",
                             Description = "DTaP, 5 pertussis antigens",
                             SortOrder = 2
@@ -14803,6 +14809,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 3,
+                            Active = true,
                             Code = "107",
                             Description = "DTaP, unspecified formulation",
                             SortOrder = 3
@@ -14810,6 +14817,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 4,
+                            Active = true,
                             Code = "146",
                             Description = "DTaP-IPV-Hib-Hep B",
                             SortOrder = 4
@@ -14817,6 +14825,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 5,
+                            Active = true,
                             Code = "110",
                             Description = "DTaP-Hep B-IPV",
                             SortOrder = 5
@@ -14824,6 +14833,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 6,
+                            Active = true,
                             Code = "50",
                             Description = "DTaP-Hib",
                             SortOrder = 6
@@ -14831,6 +14841,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 7,
+                            Active = true,
                             Code = "120",
                             Description = "DTaP-Hib-IPV",
                             SortOrder = 7
@@ -14838,6 +14849,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 8,
+                            Active = true,
                             Code = "130",
                             Description = "DTaP-IPV",
                             SortOrder = 8
@@ -14845,6 +14857,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 9,
+                            Active = true,
                             Code = "132",
                             Description = "DTaP-IPV-Hib-Hep B, historical",
                             SortOrder = 9
@@ -14852,6 +14865,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 10,
+                            Active = true,
                             Code = "01",
                             Description = "DTP",
                             SortOrder = 10
@@ -14859,6 +14873,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 11,
+                            Active = true,
                             Code = "22",
                             Description = "DTP-Hib",
                             SortOrder = 11
@@ -14866,6 +14881,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 12,
+                            Active = true,
                             Code = "102",
                             Description = "DTP-Hib-Hep B",
                             SortOrder = 12
@@ -14873,6 +14889,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 13,
+                            Active = true,
                             Code = "04",
                             Description = "M/R (Measles-Rubella)",
                             SortOrder = 13
@@ -14880,6 +14897,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 14,
+                            Active = true,
                             Code = "05",
                             Description = "Measles ONLY",
                             SortOrder = 14
@@ -14887,6 +14905,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 15,
+                            Active = true,
                             Code = "03",
                             Description = "MMR",
                             SortOrder = 15
@@ -14894,6 +14913,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 16,
+                            Active = true,
                             Code = "94",
                             Description = "MMRV",
                             SortOrder = 16
@@ -14901,6 +14921,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 17,
+                            Active = true,
                             Code = "07",
                             Description = "Mumps ONLY",
                             SortOrder = 17
@@ -14908,6 +14929,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 18,
+                            Active = true,
                             Code = "998",
                             Description = "No Vaccine Administered",
                             SortOrder = 18
@@ -14915,6 +14937,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 19,
+                            Active = true,
                             Code = "OTH",
                             Description = "Other",
                             SortOrder = 19
@@ -14922,6 +14945,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 20,
+                            Active = true,
                             Code = "11",
                             Description = "Pertussis ONLY",
                             SortOrder = 20
@@ -14929,6 +14953,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 21,
+                            Active = true,
                             Code = "06",
                             Description = "Rubella ONLY",
                             SortOrder = 21
@@ -14936,6 +14961,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 22,
+                            Active = true,
                             Code = "38",
                             Description = "R/M (Rubella-Mumps)",
                             SortOrder = 22
@@ -14943,6 +14969,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 23,
+                            Active = true,
                             Code = "115",
                             Description = "Tdap",
                             SortOrder = 23
@@ -14950,6 +14977,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 24,
+                            Active = true,
                             Code = "999",
                             Description = "Unknown",
                             SortOrder = 24
@@ -14957,6 +14985,7 @@ namespace Survsys.Data.Migrations
                         new
                         {
                             Id = 25,
+                            Active = true,
                             Code = "21",
                             Description = "Varicella",
                             SortOrder = 25

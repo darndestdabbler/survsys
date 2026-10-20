@@ -22,8 +22,9 @@ public sealed record CsvRow(int Line, IReadOnlyDictionary<string, string?> Field
 /// <remarks>
 /// Writing is <see cref="CaseExport.Csv"/>'s, guard against spreadsheet
 /// formulas and all; reading undoes that guard, so a code that begins with
-/// <c>-</c> survives the round trip. A field is quoted where it holds a comma
-/// or a quote, and a row is one line. Pure and static, so the unit suite
+/// <c>-</c> survives the round trip. A field is quoted where it holds a comma,
+/// a quote or a line break, and a row is one line but for the line breaks
+/// inside its quoted fields. Pure and static, so the unit suite
 /// proves it. Each table's columns and rows are its own, as
 /// <see cref="VocabularyCsv"/>'s are.
 /// </remarks>
@@ -44,8 +45,8 @@ public static class ReferenceCsv
     {
         ArgumentNullException.ThrowIfNull(columns);
 
-        var lines = (csv ?? string.Empty).Split(["\r\n", "\n"], StringSplitOptions.None);
-        var headerAt = Array.FindIndex(lines, line => !string.IsNullOrWhiteSpace(line));
+        var lines = Records(csv ?? string.Empty);
+        var headerAt = lines.FindIndex(line => !string.IsNullOrWhiteSpace(line.Text));
 
         if (headerAt < 0)
         {
@@ -53,11 +54,11 @@ public static class ReferenceCsv
                 + $"{string.Join(",", columns)}.")]);
         }
 
-        var header = Fields(lines[headerAt]).Select(name => (name ?? string.Empty).ToLowerInvariant()).ToList();
+        var header = Fields(lines[headerAt].Text).Select(name => (name ?? string.Empty).ToLowerInvariant()).ToList();
 
         if (header.GroupBy(name => name).FirstOrDefault(names => names.Count() > 1) is { } repeated)
         {
-            return ([], [new ContactImportProblem(headerAt + 1, $"the header row names "
+            return ([], [new ContactImportProblem(lines[headerAt].Line, $"the header row names "
                 + $"'{repeated.Key}' more than once: each column is named once.")]);
         }
 
@@ -65,35 +66,78 @@ public static class ReferenceCsv
 
         if (missing.Count > 0)
         {
-            return ([], [new ContactImportProblem(headerAt + 1, $"the header row does not name "
+            return ([], [new ContactImportProblem(lines[headerAt].Line, $"the header row does not name "
                 + $"{string.Join(", ", missing)}: it must name {string.Join(",", columns)}.")]);
         }
 
         var rows = new List<CsvRow>();
         var refused = new List<ContactImportProblem>();
 
-        for (var at = headerAt + 1; at < lines.Length; at++)
+        foreach (var (line, text) in lines.Skip(headerAt + 1))
         {
-            if (string.IsNullOrWhiteSpace(lines[at]))
+            if (string.IsNullOrWhiteSpace(text))
             {
                 continue;
             }
 
-            var fields = Fields(lines[at]);
+            var fields = Fields(text);
 
             if (fields.Count != header.Count)
             {
-                refused.Add(new ContactImportProblem(at + 1, $"the row has {fields.Count} field(s) where the header "
+                refused.Add(new ContactImportProblem(line, $"the row has {fields.Count} field(s) where the header "
                     + $"names {header.Count}: a field holding a comma is quoted."));
                 continue;
             }
 
             rows.Add(new CsvRow(
-                at + 1,
+                line,
                 header.Zip(fields).ToDictionary(pair => pair.First, pair => pair.Second, StringComparer.Ordinal)));
         }
 
         return (rows, refused);
+    }
+
+    /// <summary>
+    /// The file's records, each with the line it starts on: split at line
+    /// breaks outside quotes, so a quoted field keeps the line breaks
+    /// <see cref="Write"/> wrote into it.
+    /// </summary>
+    private static List<(int Line, string Text)> Records(string csv)
+    {
+        var records = new List<(int Line, string Text)>();
+        var record = new StringBuilder();
+        var quoted = false;
+        var line = 1;
+        var startsOn = 1;
+
+        for (var at = 0; at < csv.Length; at++)
+        {
+            var character = csv[at];
+
+            if (character == '"')
+            {
+                quoted = !quoted;
+            }
+
+            if (!quoted && (character == '\n' || (character == '\r' && at + 1 < csv.Length && csv[at + 1] == '\n')))
+            {
+                records.Add((startsOn, record.ToString()));
+                record.Clear();
+                at += character == '\r' ? 1 : 0;
+                startsOn = ++line;
+                continue;
+            }
+
+            if (character == '\n')
+            {
+                line++;
+            }
+
+            record.Append(character);
+        }
+
+        records.Add((startsOn, record.ToString()));
+        return records;
     }
 
     /// <summary>

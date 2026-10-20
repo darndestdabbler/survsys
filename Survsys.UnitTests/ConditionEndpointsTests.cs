@@ -141,4 +141,51 @@ public class ConditionEndpointsTests
             ConditionEndpoints.WhyNotACondition(new SaveConditionRequest("Hepatitis A", true, new string('1', 21))),
             StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void AConditionReadsBackFromItsCsvRowLeadInLineBreaksAndAll()
+    {
+        var condition = HepatitisADetail with { ContactLeadIn = "Name every contact.\r\nThen call each." };
+
+        var (rows, refused) = ReferenceCsv.Read(
+            ReferenceCsv.Write(ConditionEndpoints.CsvColumns, [ConditionEndpoints.CsvFields(condition)]),
+            ConditionEndpoints.CsvColumns);
+
+        Assert.Empty(refused);
+        Assert.Equal((condition, null), ConditionEndpoints.FromCsv(Assert.Single(rows)));
+    }
+
+    [Fact]
+    public void FromCsvReadsABlankIdAsAConditionToAdd()
+    {
+        var (rows, _) = ReferenceCsv.Read("id,name,active\r\n,Mpox,yes\r\n", ["id", "name", "active"]);
+
+        Assert.Equal(
+            (new ConditionDetailResponse(0, "Mpox", null, true, null, null, null), null),
+            ConditionEndpoints.FromCsv(Assert.Single(rows)));
+    }
+
+    [Theory]
+    [InlineData("x,Mpox,yes", "id 'x' is not a whole number.")]
+    [InlineData("74,Mpox,perhaps", "active 'perhaps' is not yes or no.")]
+    public void FromCsvRefusesAnIdOrActiveItCannotRead(string line, string expected)
+    {
+        var (rows, _) = ReferenceCsv.Read($"id,name,active\r\n{line}\r\n", ["id", "name", "active"]);
+
+        Assert.Equal((null, expected), ConditionEndpoints.FromCsv(Assert.Single(rows)));
+    }
+
+    [Fact]
+    public void RequestCarriesTheRowsValues()
+    {
+        Assert.Equal(
+            new SaveConditionRequest(
+                "Hepatitis A",
+                true,
+                "10110",
+                "Obtain information for all contacts.",
+                "Identify every place the case ate or worked.",
+                "Immune globulin within two weeks of exposure."),
+            ConditionEndpoints.Request(HepatitisADetail));
+    }
 }

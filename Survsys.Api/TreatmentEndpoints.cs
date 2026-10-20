@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -142,6 +143,72 @@ public static class TreatmentEndpoints
         $"conditionId {conditionId} is not a condition this tier knows. The conditions are the "
             + "ones GET /api/conditions lists.";
 
+    /// <summary>The treatments' CSV columns, in the order an export writes them.</summary>
+    public static readonly IReadOnlyList<string> CsvColumns =
+        ["id", "name", "active", "default_treatment", "condition_ids"];
+
+    /// <summary>
+    /// A treatment as its CSV fields, in <see cref="CsvColumns"/> order: an id
+    /// of 0 blank, and the conditions as ids in order joined by <c>;</c>.
+    /// </summary>
+    public static IReadOnlyList<string?> CsvFields(TreatmentCsvRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return
+        [
+            ReferenceCsv.Number(row.Id == 0 ? null : row.Id), row.Name, ReferenceCsv.YesNo(row.Active),
+            ReferenceCsv.YesNo(row.DefaultTreatment), string.Join(";", row.ConditionIds.Order()),
+        ];
+    }
+
+    /// <summary>
+    /// A treatment read from its CSV row, a blank id read as 0 — a treatment
+    /// to add — or why it cannot be read.
+    /// </summary>
+    public static (TreatmentCsvRow? Row, string? Why) FromCsv(CsvRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        if (ReferenceCsv.Optional(row, "id", out var id) is { } badId)
+        {
+            return (null, badId);
+        }
+
+        if (ReferenceCsv.Flag(row, "active", out var active) is { } badActive)
+        {
+            return (null, badActive);
+        }
+
+        if (ReferenceCsv.Flag(row, "default_treatment", out var defaultTreatment) is { } badDefault)
+        {
+            return (null, badDefault);
+        }
+
+        var conditionIds = new List<int>();
+
+        foreach (var text in (row.Value("condition_ids") ?? "")
+            .Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var conditionId))
+            {
+                return (null, $"condition_ids '{text}' is not a whole number.");
+            }
+
+            conditionIds.Add(conditionId);
+        }
+
+        return (new TreatmentCsvRow(id ?? 0, row.Value("name") ?? "", active, defaultTreatment, conditionIds), null);
+    }
+
+    /// <summary>A treatment row as the request that saves it.</summary>
+    public static SaveTreatmentRequest Request(TreatmentCsvRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return new(row.Name, row.Active, row.DefaultTreatment, row.ConditionIds);
+    }
+
     /// <summary>Registers what the treatment endpoints need of the container.</summary>
     public static IServiceCollection AddTreatments(this IServiceCollection services) =>
         services.AddScoped<TreatmentQueries>();
@@ -163,6 +230,25 @@ public static class TreatmentEndpoints
         routes.MapPut("/api/treatments/{id:int}", UpdateTreatment)
             .WithName("UpdateTreatment")
             .WithSummary("Saves over a treatment and the conditions it is listed for.");
+
+        routes.MapGet("/api/treatments/csv", async (TreatmentQueries treatments, CancellationToken cancellationToken) =>
+                TypedResults.Text(await treatments.Export(cancellationToken), "text/csv; charset=utf-8"))
+            .WithName("ExportTreatments")
+            .WithSummary("Every treatment, with the conditions it is listed for, as CSV.");
+
+        routes.MapPost("/api/treatments/csv", async (
+                TreatmentQueries treatments,
+                HttpRequest request,
+                CancellationToken cancellationToken,
+                bool confirm = false) =>
+            {
+                using var reader = new StreamReader(request.Body);
+                var csv = await reader.ReadToEndAsync(cancellationToken);
+                return TypedResults.Ok(await treatments.Import(csv, confirm, cancellationToken));
+            })
+            .WithName("ImportTreatments")
+            .WithSummary("Previews, or with confirm=true saves, each treatment of a CSV file, added where its id "
+                + "is blank and saved over by its id otherwise, its conditions replaced.");
 
         routes.MapGet("/api/conditions/{conditionId:int}/treatments", GetConditionTreatments)
             .WithName("GetConditionTreatments")
@@ -729,4 +815,107 @@ internal sealed class TreatmentQueries(SurvsysDbContext database)
 
     /// <summary>A treatment and the count of conditions it is listed for, carried out of a query.</summary>
     private sealed record TreatmentWithCount(Treatment Treatment, int ConditionCount);
+
+    public static readonly ReferenceTable<Treatment, TreatmentCsvRow> Table = new TreatmentTable();
+
+    public Task<string> Export(CancellationToken cancellationToken) =>
+        ReferenceImport.Export(database, Table, cancellationToken);
+
+    /// <summary>What importing a CSV file would do, written only where <paramref name="confirm"/> is true.</summary>
+    public Task<ReferenceImportResponse> Import(string? csv, bool confirm, CancellationToken cancellationToken) =>
+        ReferenceImport.Import(database, Table, csv, confirm, cancellationToken);
+}
+
+/// <summary>
+/// One row of the treatments' CSV file: a treatment and the ids of the
+/// conditions it is listed for. An id of 0 is a treatment to add.
+/// </summary>
+public sealed record TreatmentCsvRow(
+    int Id, string Name, bool Active, bool DefaultTreatment, IReadOnlyList<int> ConditionIds);
+
+/// <summary>
+/// The treatments, keyed by id: a row whose id is blank is a treatment to add,
+/// and a row naming an id not on file is refused. A treatment has no other key
+/// — two may share a name. A row's conditions replace the ones the treatment
+/// is listed for.
+/// </summary>
+internal sealed class TreatmentTable : ReferenceTable<Treatment, TreatmentCsvRow>
+{
+    public override IReadOnlyList<string> Columns => TreatmentEndpoints.CsvColumns;
+
+    public override async Task<List<TreatmentCsvRow>> List(SurvsysDbContext database, CancellationToken cancellationToken)
+    {
+        var treatments = await database.Treatments
+            .OrderBy(treatment => treatment.Name)
+            .ThenBy(treatment => treatment.Id)
+            .ToListAsync(cancellationToken);
+        var links = (await database.ConditionTreatments.ToListAsync(cancellationToken))
+            .ToLookup(link => link.TreatmentId, link => link.ConditionId);
+
+        return treatments.Select(treatment => Row(treatment, links[treatment.Id].ToList())).ToList();
+    }
+
+    public override IReadOnlyList<string?> Fields(TreatmentCsvRow row) => TreatmentEndpoints.CsvFields(row);
+
+    public override (TreatmentCsvRow? Row, string? Why) Parse(CsvRow row) => TreatmentEndpoints.FromCsv(row);
+
+    public override string? WhyNot(TreatmentCsvRow row) =>
+        TreatmentEndpoints.WhyNotATreatment(TreatmentEndpoints.Request(row));
+
+    public override string KeyOf(TreatmentCsvRow row) => row.Id == 0 ? row.Name.Trim() : $"{row.Id}";
+
+    public override async Task<Treatment?> ByKey(
+        SurvsysDbContext database, TreatmentCsvRow row, CancellationToken cancellationToken) =>
+        row.Id == 0
+            ? null
+            : await database.Treatments.SingleOrDefaultAsync(treatment => treatment.Id == row.Id, cancellationToken);
+
+    public override async Task<TreatmentCsvRow> RowOf(
+        SurvsysDbContext database, Treatment entity, CancellationToken cancellationToken) =>
+        Row(entity, await database.ConditionTreatments
+            .Where(link => link.TreatmentId == entity.Id)
+            .Select(link => link.ConditionId)
+            .ToListAsync(cancellationToken));
+
+    public override Treatment New(TreatmentCsvRow row) =>
+        new() { Name = row.Name.Trim(), CreatedAt = DateTimeOffset.UtcNow };
+
+    public override async Task<string?> Apply(
+        SurvsysDbContext database, Treatment entity, TreatmentCsvRow row, CancellationToken cancellationToken)
+    {
+        if (row.Id != entity.Id)
+        {
+            return $"id {row.Id} is not a treatment on file; leave id blank to add a treatment.";
+        }
+
+        var conditionIds = row.ConditionIds.ToList();
+        var found = await database.Conditions
+            .Where(condition => conditionIds.Contains(condition.Id))
+            .Select(condition => condition.Id)
+            .ToListAsync(cancellationToken);
+
+        if (conditionIds.Except(found).Select(id => (int?)id).FirstOrDefault() is { } missing)
+        {
+            return TreatmentEndpoints.NotACondition(missing);
+        }
+
+        entity.Name = row.Name.Trim();
+        entity.Active = row.Active;
+        entity.DefaultTreatment = row.DefaultTreatment;
+        return null;
+    }
+
+    public override async Task Saved(
+        SurvsysDbContext database, Treatment entity, TreatmentCsvRow row, CancellationToken cancellationToken)
+    {
+        await database.ConditionTreatments
+            .Where(link => link.TreatmentId == entity.Id)
+            .ExecuteDeleteAsync(cancellationToken);
+        database.ConditionTreatments.AddRange(row.ConditionIds.Distinct().Select(conditionId =>
+            new ConditionTreatment { ConditionId = conditionId, TreatmentId = entity.Id }));
+        await database.SaveChangesAsync(cancellationToken);
+    }
+
+    private static TreatmentCsvRow Row(Treatment treatment, IReadOnlyList<int> conditionIds) =>
+        new(treatment.Id, treatment.Name, treatment.Active, treatment.DefaultTreatment, conditionIds);
 }

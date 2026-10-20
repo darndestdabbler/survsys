@@ -1,3 +1,4 @@
+using System.Text;
 using Survsys.Contracts;
 
 namespace Survsys.Web;
@@ -24,7 +25,17 @@ public sealed class FacilitiesClient(HttpClient http)
 
     private static readonly ApiAsk Finding = new(FindFailurePrefix, "the facility's record");
 
+    /// <summary>How a failure to import a CSV file starts.</summary>
+    public const string ImportFailurePrefix = "The CSV file could not be imported";
+
+    /// <summary>How a failure to export the facilities starts.</summary>
+    public const string ExportFailurePrefix = "The facilities could not be exported";
+
     private static readonly ApiAsk Saving = new(SaveFailurePrefix, "the facility as saved");
+
+    private static readonly ApiAsk Importing = new(ImportFailurePrefix, "what the import did");
+
+    private static readonly ApiAsk Exporting = new(ExportFailurePrefix, "the facilities as CSV");
 
     /// <summary>One page of facilities, or why there is none.</summary>
     public Task<Asked<PagedResult<FacilityResponse>>> Page(
@@ -52,4 +63,20 @@ public sealed class FacilitiesClient(HttpClient http)
         SaveFacilityRequest request,
         CancellationToken cancellationToken = default) =>
         Saving.Put<SaveFacilityRequest, FacilityResponse>(http, $"api/facilities/{id}", request, cancellationToken);
+
+    /// <summary>Every facility as CSV, or why there is none.</summary>
+    public Task<Asked<string>> Export(CancellationToken cancellationToken = default) =>
+        Exporting.GetText(http, "api/facilities/csv", cancellationToken);
+
+    /// <summary>
+    /// What importing a CSV file of facilities would do, saved only where
+    /// <paramref name="confirm"/> is true, or why it did nothing.
+    /// </summary>
+    public async Task<Asked<ReferenceImportResponse>> Import(
+        string csv, bool confirm, CancellationToken cancellationToken = default)
+    {
+        using var content = new StringContent(csv, Encoding.UTF8, "text/csv");
+        return await Importing.PostContent<ReferenceImportResponse>(
+            http, $"api/facilities/csv{(confirm ? "?confirm=true" : "")}", content, cancellationToken);
+    }
 }

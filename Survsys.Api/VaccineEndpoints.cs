@@ -18,9 +18,12 @@ namespace Survsys.Api;
 /// type into an endpoint signature, as <see cref="OutbreakEndpoints"/> is handed
 /// <c>OutbreakQueries</c>.
 ///
-/// The catalogue is read-only here: a vaccine is seeded reference data an
-/// operator chooses from, not one they maintain. The records are a case's, so
-/// they are reached under the case the way the other case-scoped slices are.
+/// The catalogue is reference data an administrator keeps current: listed,
+/// added to, saved over, exported as CSV and imported from it, keyed by the
+/// vaccine's CDC code. A vaccine is retired by clearing its active flag, never
+/// deleted, so a record that names it still shows it. The records are a
+/// case's, so they are reached under the case the way the other case-scoped
+/// slices are.
 /// </remarks>
 public static class VaccineEndpoints
 {
@@ -41,7 +44,78 @@ public static class VaccineEndpoints
     /// Public because the unit suite proves it; nothing else calls it.
     /// </summary>
     public static readonly Expression<Func<Vaccine, VaccineResponse>> ToResponse =
-        vaccine => new VaccineResponse(vaccine.Id, vaccine.Code, vaccine.Description);
+        vaccine => new VaccineResponse(
+            vaccine.Id, vaccine.Code, vaccine.Description, vaccine.SortOrder, vaccine.Active);
+
+    /// <summary>
+    /// <see cref="ToResponse"/> compiled, for a vaccine just saved and so in
+    /// hand rather than in a query.
+    /// </summary>
+    public static readonly Func<Vaccine, VaccineResponse> Respond = ToResponse.Compile();
+
+    /// <summary>The catalogue's CSV columns, in the order an export writes them.</summary>
+    public static readonly IReadOnlyList<string> CsvColumns = ["code", "description", "sort_order", "active"];
+
+    private const int VaccineCodeLength = 20;
+
+    private const int DescriptionLength = 200;
+
+    /// <summary>
+    /// Why this is not a vaccine this tier will save, as far as can be said
+    /// without the database, or null when it is one.
+    /// </summary>
+    /// <remarks>
+    /// Pure: the code is required, and the code and description are within
+    /// their columns, and the sort order is not negative. Whether another
+    /// vaccine holds the code is the database's to answer.
+    /// </remarks>
+    public static string? WhyNotAVaccine(SaveVaccineRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (string.IsNullOrWhiteSpace(request.Code))
+        {
+            return "code is required: a vaccine is named by its CDC code.";
+        }
+
+        if (request.Code.Trim().Length > VaccineCodeLength)
+        {
+            return $"code is longer than {VaccineCodeLength} characters.";
+        }
+
+        if (request.Description?.Trim().Length > DescriptionLength)
+        {
+            return $"description is longer than {DescriptionLength} characters.";
+        }
+
+        return request.SortOrder < 0 ? $"sortOrder {request.SortOrder} is negative." : null;
+    }
+
+    /// <summary>A vaccine as its CSV fields, in <see cref="CsvColumns"/> order.</summary>
+    public static IReadOnlyList<string?> CsvFields(SaveVaccineRequest row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return [row.Code, row.Description, ReferenceCsv.Number(row.SortOrder), ReferenceCsv.YesNo(row.Active)];
+    }
+
+    /// <summary>A vaccine read from its CSV row, or why it cannot be read; a blank sort order is zero.</summary>
+    public static (SaveVaccineRequest? Row, string? Why) FromCsv(CsvRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        if (ReferenceCsv.Optional(row, "sort_order", out var sortOrder) is { } notANumber)
+        {
+            return (null, notANumber);
+        }
+
+        if (ReferenceCsv.Flag(row, "active", out var active) is { } notAFlag)
+        {
+            return (null, notAFlag);
+        }
+
+        return (new SaveVaccineRequest(row.Value("code") ?? "", row.Value("description"), sortOrder ?? 0, active), null);
+    }
 
     /// <summary>
     /// The projection from a stored record and its vaccine's description to the
@@ -142,7 +216,33 @@ public static class VaccineEndpoints
     {
         routes.MapGet("/api/vaccines", GetVaccines)
             .WithName("GetVaccines")
-            .WithSummary("The vaccine catalogue, in sort order, for the record picker.");
+            .WithSummary("The vaccine catalogue, retired vaccines included, in sort order.");
+
+        routes.MapPost("/api/vaccines", CreateVaccine)
+            .WithName("CreateVaccine")
+            .WithSummary("Adds a vaccine to the catalogue.");
+
+        routes.MapPut("/api/vaccines/{id:int}", UpdateVaccine)
+            .WithName("UpdateVaccine")
+            .WithSummary("Saves over a vaccine in the catalogue.");
+
+        routes.MapGet("/api/vaccines/csv", async (VaccineQueries vaccines, CancellationToken cancellationToken) =>
+                TypedResults.Text(await vaccines.Export(cancellationToken), "text/csv; charset=utf-8"))
+            .WithName("ExportVaccines")
+            .WithSummary("The vaccine catalogue, as CSV.");
+
+        routes.MapPost("/api/vaccines/csv", async (
+                VaccineQueries vaccines,
+                HttpRequest request,
+                CancellationToken cancellationToken,
+                bool confirm = false) =>
+            {
+                using var reader = new StreamReader(request.Body);
+                var csv = await reader.ReadToEndAsync(cancellationToken);
+                return TypedResults.Ok(await vaccines.Import(csv, confirm, cancellationToken));
+            })
+            .WithName("ImportVaccines")
+            .WithSummary("Previews, or with confirm=true saves, each vaccine of a CSV file, added or saved over by its code.");
 
         routes.MapGet("/api/cases/{personConditionId:int}/vaccines", GetCaseVaccines)
             .WithName("GetCaseVaccines")
@@ -167,6 +267,47 @@ public static class VaccineEndpoints
         VaccineQueries vaccines,
         CancellationToken cancellationToken = default) =>
         TypedResults.Ok(await vaccines.Catalogue(cancellationToken));
+
+    private static async Task<Results<Created<VaccineResponse>, ProblemHttpResult>> CreateVaccine(
+        VaccineQueries vaccines,
+        SaveVaccineRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotAVaccine(request) is { } why)
+        {
+            return RefusedVaccine(why);
+        }
+
+        if (await vaccines.CodeHolder(request.Code, cancellationToken) is not null)
+        {
+            return CodeTaken(request.Code);
+        }
+
+        var created = await vaccines.SaveVaccine(null, request, cancellationToken);
+
+        return TypedResults.Created($"/api/vaccines/{created!.Id}", created);
+    }
+
+    private static async Task<Results<Ok<VaccineResponse>, ProblemHttpResult>> UpdateVaccine(
+        VaccineQueries vaccines,
+        int id,
+        SaveVaccineRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (WhyNotAVaccine(request) is { } why)
+        {
+            return RefusedVaccine(why);
+        }
+
+        if (await vaccines.CodeHolder(request.Code, cancellationToken) is { } holder && holder != id)
+        {
+            return CodeTaken(request.Code);
+        }
+
+        return await vaccines.SaveVaccine(id, request, cancellationToken) is { } saved
+            ? TypedResults.Ok(saved)
+            : NoSuchVaccine(id);
+    }
 
     private static async Task<Results<Ok<IReadOnlyList<VaccineRecordResponse>>, ProblemHttpResult>>
         GetCaseVaccines(
@@ -259,6 +400,18 @@ public static class VaccineEndpoints
             statusCode: StatusCodes.Status404NotFound,
             title: "There is no such vaccine record.");
 
+    private static ProblemHttpResult CodeTaken(string code) =>
+        TypedResults.Problem(
+            detail: $"Another vaccine already has code {code.Trim()}; save over that one instead.",
+            statusCode: StatusCodes.Status409Conflict,
+            title: "The vaccine code is already on file.");
+
+    private static ProblemHttpResult RefusedVaccine(string why) =>
+        TypedResults.Problem(
+            detail: why,
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "The vaccine asked for is not one this endpoint can save.");
+
     private static ProblemHttpResult Refused(string why) =>
         TypedResults.Problem(
             detail: why,
@@ -285,6 +438,53 @@ internal sealed class VaccineQueries(SurvsysDbContext database)
             .ThenBy(vaccine => vaccine.Id)
             .Select(VaccineEndpoints.ToResponse)
             .ToListAsync(cancellationToken);
+
+    public static readonly ReferenceTable<Vaccine, SaveVaccineRequest> Table = new VaccineTable();
+
+    /// <summary>The id of the vaccine that holds the code, or null where none does.</summary>
+    public async Task<int?> CodeHolder(string code, CancellationToken cancellationToken) =>
+        await database.Vaccines
+            .Where(vaccine => vaccine.Code == code.Trim())
+            .Select(vaccine => (int?)vaccine.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+
+    /// <summary>
+    /// Saves the vaccine over the one with the id, or as a new one where the id
+    /// is null, and answers it; null where no vaccine has the id. The caller
+    /// has proven no other vaccine holds the code.
+    /// </summary>
+    public async Task<VaccineResponse?> SaveVaccine(
+        int? id,
+        SaveVaccineRequest request,
+        CancellationToken cancellationToken)
+    {
+        var vaccine = id is null
+            ? Table.New(request)
+            : await database.Vaccines.SingleOrDefaultAsync(vaccine => vaccine.Id == id, cancellationToken);
+
+        if (vaccine is null)
+        {
+            return null;
+        }
+
+        await Table.Apply(database, vaccine, request, cancellationToken);
+
+        if (id is null)
+        {
+            database.Vaccines.Add(vaccine);
+        }
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return VaccineEndpoints.Respond(vaccine);
+    }
+
+    public Task<string> Export(CancellationToken cancellationToken) =>
+        ReferenceImport.Export(database, Table, cancellationToken);
+
+    /// <summary>What importing a CSV file would do, written only where <paramref name="confirm"/> is true.</summary>
+    public Task<ReferenceImportResponse> Import(string? csv, bool confirm, CancellationToken cancellationToken) =>
+        ReferenceImport.Import(database, Table, csv, confirm, cancellationToken);
 
     /// <summary>
     /// A case's vaccine records, newest administered first and then by id; null
@@ -401,4 +601,46 @@ internal sealed class VaccineQueries(SurvsysDbContext database)
 
     /// <summary>A record and its vaccine's description, carried out of a query.</summary>
     private sealed record RecordWithVaccine(PersonVaccine Record, string? VaccineDescription);
+}
+
+/// <summary>The vaccine catalogue, keyed by the vaccine's CDC code.</summary>
+internal sealed class VaccineTable : ReferenceTable<Vaccine, SaveVaccineRequest>
+{
+    public override IReadOnlyList<string> Columns => VaccineEndpoints.CsvColumns;
+
+    public override async Task<List<SaveVaccineRequest>> List(
+        SurvsysDbContext database, CancellationToken cancellationToken) =>
+        await database.Vaccines
+            .OrderBy(vaccine => vaccine.SortOrder)
+            .ThenBy(vaccine => vaccine.Id)
+            .Select(vaccine => new SaveVaccineRequest(vaccine.Code, vaccine.Description, vaccine.SortOrder, vaccine.Active))
+            .ToListAsync(cancellationToken);
+
+    public override IReadOnlyList<string?> Fields(SaveVaccineRequest row) => VaccineEndpoints.CsvFields(row);
+
+    public override (SaveVaccineRequest? Row, string? Why) Parse(CsvRow row) => VaccineEndpoints.FromCsv(row);
+
+    public override string? WhyNot(SaveVaccineRequest row) => VaccineEndpoints.WhyNotAVaccine(row);
+
+    public override string KeyOf(SaveVaccineRequest row) => row.Code.Trim();
+
+    public override Task<Vaccine?> ByKey(
+        SurvsysDbContext database, SaveVaccineRequest row, CancellationToken cancellationToken) =>
+        database.Vaccines.SingleOrDefaultAsync(vaccine => vaccine.Code == row.Code.Trim(), cancellationToken);
+
+    public override Task<SaveVaccineRequest> RowOf(
+        SurvsysDbContext database, Vaccine entity, CancellationToken cancellationToken) =>
+        Task.FromResult(new SaveVaccineRequest(entity.Code, entity.Description, entity.SortOrder, entity.Active));
+
+    public override Vaccine New(SaveVaccineRequest row) => new() { Code = row.Code.Trim() };
+
+    public override Task<string?> Apply(
+        SurvsysDbContext database, Vaccine entity, SaveVaccineRequest row, CancellationToken cancellationToken)
+    {
+        entity.Code = row.Code.Trim();
+        entity.Description = Blank(row.Description);
+        entity.SortOrder = row.SortOrder;
+        entity.Active = row.Active;
+        return Task.FromResult<string?>(null);
+    }
 }

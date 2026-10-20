@@ -136,4 +136,60 @@ public class TreatmentEndpointsTests
     {
         Assert.Contains("conditionId 42", TreatmentEndpoints.NotACondition(42), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void CsvFieldsWriteTheConditionsAsIdsInOrderJoinedBySemicolons()
+    {
+        Assert.Equal(
+            ["3", "Doxycycline", "yes", "no", "4;12;74"],
+            TreatmentEndpoints.CsvFields(new TreatmentCsvRow(3, "Doxycycline", true, false, [74, 4, 12])));
+    }
+
+    [Fact]
+    public void ATreatmentReadsBackFromItsCsvRow()
+    {
+        var treatment = new TreatmentCsvRow(3, "Doxycycline", true, true, [4, 74]);
+
+        var (rows, refused) = ReferenceCsv.Read(
+            ReferenceCsv.Write(TreatmentEndpoints.CsvColumns, [TreatmentEndpoints.CsvFields(treatment)]),
+            TreatmentEndpoints.CsvColumns);
+
+        Assert.Empty(refused);
+        var (row, why) = TreatmentEndpoints.FromCsv(Assert.Single(rows));
+        Assert.Null(why);
+        Assert.Equal(TreatmentEndpoints.CsvFields(treatment), TreatmentEndpoints.CsvFields(row!));
+    }
+
+    [Fact]
+    public void FromCsvReadsABlankIdAndNoConditionsAsATreatmentToAddForNone()
+    {
+        var (rows, _) = ReferenceCsv.Read(
+            "id,name,active,default_treatment,condition_ids\r\n,Rest,yes,,\r\n", TreatmentEndpoints.CsvColumns);
+
+        var (row, why) = TreatmentEndpoints.FromCsv(Assert.Single(rows));
+
+        Assert.Null(why);
+        Assert.Equal((0, "Rest", true, false), (row!.Id, row.Name, row.Active, row.DefaultTreatment));
+        Assert.Empty(row.ConditionIds);
+    }
+
+    [Theory]
+    [InlineData("x,Rest,yes,no,", "id 'x' is not a whole number.")]
+    [InlineData("3,Rest,yes,sometimes,", "default_treatment 'sometimes' is not yes or no.")]
+    [InlineData("3,Rest,yes,no,4;flu", "condition_ids 'flu' is not a whole number.")]
+    public void FromCsvRefusesAFieldItCannotRead(string line, string expected)
+    {
+        var (rows, _) = ReferenceCsv.Read(
+            $"id,name,active,default_treatment,condition_ids\r\n{line}\r\n", TreatmentEndpoints.CsvColumns);
+
+        Assert.Equal((null, expected), TreatmentEndpoints.FromCsv(Assert.Single(rows)));
+    }
+
+    [Fact]
+    public void ARowNamingAConditionTwiceIsRefusedAsARequestIs()
+    {
+        var request = TreatmentEndpoints.Request(new TreatmentCsvRow(3, "Rest", true, false, [4, 4]));
+
+        Assert.Contains("names the same condition twice", TreatmentEndpoints.WhyNotATreatment(request));
+    }
 }

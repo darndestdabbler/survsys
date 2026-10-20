@@ -17,11 +17,73 @@ public class VaccineEndpointsTests
     [Fact]
     public void ToResponseCarriesTheVaccinesCatalogueColumns()
     {
-        var vaccine = new Vaccine { Id = 15, Code = "03", Description = "MMR", SortOrder = 15 };
+        var vaccine = new Vaccine { Id = 15, Code = "03", Description = "MMR", SortOrder = 15, Active = false };
 
         Assert.Equal(
-            new VaccineResponse(15, "03", "MMR"),
+            new VaccineResponse(15, "03", "MMR", 15, false),
             VaccineEndpoints.ToResponse.Compile().Invoke(vaccine));
+    }
+
+    [Fact]
+    public void WhyNotAVaccineAcceptsACodeAlone()
+    {
+        Assert.Null(VaccineEndpoints.WhyNotAVaccine(new SaveVaccineRequest("03")));
+    }
+
+    [Theory]
+    [InlineData(" ", null, 0, "code is required")]
+    [InlineData("123456789012345678901", null, 0, "code is longer than 20")]
+    [InlineData("03", null, -1, "sortOrder -1 is negative")]
+    public void WhyNotAVaccineRefusesABadCodeOrSortOrder(
+        string code, string? description, int sortOrder, string expected)
+    {
+        Assert.Contains(
+            expected,
+            VaccineEndpoints.WhyNotAVaccine(new SaveVaccineRequest(code, description, sortOrder)));
+    }
+
+    [Fact]
+    public void WhyNotAVaccineRefusesADescriptionOverTwoHundredCharacters()
+    {
+        Assert.Contains(
+            "description is longer than 200",
+            VaccineEndpoints.WhyNotAVaccine(new SaveVaccineRequest("03", new string('x', 201))));
+    }
+
+    [Fact]
+    public void AVaccineReadsBackFromItsCsvRow()
+    {
+        var vaccine = new SaveVaccineRequest("03", "MMR", 15, false);
+
+        var (rows, refused) = ReferenceCsv.Read(
+            ReferenceCsv.Write(VaccineEndpoints.CsvColumns, [VaccineEndpoints.CsvFields(vaccine)]),
+            VaccineEndpoints.CsvColumns);
+
+        Assert.Empty(refused);
+        Assert.Equal((vaccine, null), VaccineEndpoints.FromCsv(Assert.Single(rows)));
+    }
+
+    [Fact]
+    public void FromCsvReadsABlankSortOrderAsZero()
+    {
+        var (rows, _) = ReferenceCsv.Read("code,description,sort_order,active\r\n03,MMR,,yes\r\n", VaccineEndpoints.CsvColumns);
+
+        Assert.Equal(
+            (new SaveVaccineRequest("03", "MMR", 0, true), null),
+            VaccineEndpoints.FromCsv(Assert.Single(rows)));
+    }
+
+    [Theory]
+    [InlineData("03,MMR,first,yes", "sort_order 'first' is not a whole number")]
+    [InlineData("03,MMR,1,maybe", "active 'maybe' is not yes or no")]
+    public void FromCsvRefusesASortOrderOrActiveItCannotRead(string line, string expected)
+    {
+        var (rows, _) = ReferenceCsv.Read($"code,description,sort_order,active\r\n{line}\r\n", VaccineEndpoints.CsvColumns);
+
+        var (row, why) = VaccineEndpoints.FromCsv(Assert.Single(rows));
+
+        Assert.Null(row);
+        Assert.Equal($"{expected}.", why);
     }
 
     [Fact]

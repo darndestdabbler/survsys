@@ -8,8 +8,9 @@ namespace Survsys.Data;
 /// The columns are EpiTrax's own <c>vaccine</c> table, as declared in
 /// <c>legacy/nedss-jpa/src/main/resources/db/migration/V0169__create_vaccine_tables.sql</c>
 /// under <c>../nedss</c>: a CDC code, a description and a sort order. The
-/// catalogue is seeded from the CDC vaccine codes that file inserts, so it is
-/// reference data an operator chooses from rather than one they maintain.
+/// catalogue is seeded from the CDC vaccine codes that file inserts, and an
+/// administrator keeps it current from there; <see cref="Active"/> is this
+/// tier's own, so a vaccine is retired rather than deleted.
 ///
 /// <see cref="Code"/> is required and unique where the legacy column is
 /// <c>text NOT NULL UNIQUE</c> — a record names a vaccine by its code. There is
@@ -34,4 +35,11 @@ public class Vaccine
     /// <c>sort_order</c>.
     /// </summary>
     public int SortOrder { get; set; }
+
+    /// <summary>
+    /// Whether the vaccine may be chosen for a new record; true by default. A
+    /// vaccine is retired by clearing this, never deleted, so a record that
+    /// names it still shows it.
+    /// </summary>
+    public bool Active { get; set; } = true;
 }

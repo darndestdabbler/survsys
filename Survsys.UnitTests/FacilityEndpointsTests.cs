@@ -101,4 +101,46 @@ public class FacilityEndpointsTests
             FacilityEndpoints.WhyNotAFacility(Valid() with { Zip = zip }),
             StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void AFacilityReadsBackFromItsCsvRow()
+    {
+        var (rows, refused) = ReferenceCsv.Read(
+            ReferenceCsv.Write(FacilityEndpoints.CsvColumns, [FacilityEndpoints.CsvFields(Expected)]),
+            FacilityEndpoints.CsvColumns);
+
+        Assert.Empty(refused);
+        Assert.Equal((Expected, null), FacilityEndpoints.FromCsv(Assert.Single(rows)));
+    }
+
+    [Fact]
+    public void FromCsvReadsABlankIdAsAFacilityToAdd()
+    {
+        var (rows, _) = ReferenceCsv.Read("id,name,agency_id\r\n,New Lab,5\r\n", ["id", "name", "agency_id"]);
+
+        var (row, why) = FacilityEndpoints.FromCsv(Assert.Single(rows));
+
+        Assert.Null(why);
+        Assert.Equal(0, row!.Id);
+        Assert.Equal("New Lab", row.Name);
+        Assert.Empty(FacilityEndpoints.CsvFields(row)[0] ?? "");
+    }
+
+    [Theory]
+    [InlineData("x,ARUP,5", "id 'x' is not a whole number.")]
+    [InlineData("11,ARUP,", "agency_id is required.")]
+    public void FromCsvRefusesAnIdOrAgencyItCannotRead(string line, string expected)
+    {
+        var (rows, _) = ReferenceCsv.Read($"id,name,agency_id\r\n{line}\r\n", ["id", "name", "agency_id"]);
+
+        Assert.Equal((null, expected), FacilityEndpoints.FromCsv(Assert.Single(rows)));
+    }
+
+    [Fact]
+    public void RequestCarriesTheRowsValues()
+    {
+        Assert.Equal(
+            Valid() with { Zip = "84108" },
+            FacilityEndpoints.Request(Expected));
+    }
 }

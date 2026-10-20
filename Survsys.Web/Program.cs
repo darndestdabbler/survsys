@@ -195,6 +195,30 @@ app.MapGet("/agencies/{id:int}/zip-codes/export", async (int id, AgenciesClient 
         ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"agency-{id}-zip-codes.csv")
         : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
 
+// The facilities as CSV, handed over the same way from the Facilities screen.
+app.MapGet("/facilities/export", async (FacilitiesClient facilities, CancellationToken cancellationToken) =>
+    await facilities.Export(cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "facilities.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// The conditions as CSV, handed over the same way from the Conditions screen.
+app.MapGet("/conditions/export", async (ConditionsClient conditions, CancellationToken cancellationToken) =>
+    await conditions.Export(cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "conditions.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// The treatments as CSV, handed over the same way from the Treatments screen.
+app.MapGet("/treatments/export", async (TreatmentsClient treatments, CancellationToken cancellationToken) =>
+    await treatments.Export(cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "treatments.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// The vaccine catalogue as CSV, handed over the same way from the Vaccines screen.
+app.MapGet("/vaccines/export", async (VaccinesClient vaccines, CancellationToken cancellationToken) =>
+    await vaccines.Export(cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "vaccines.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.Run();

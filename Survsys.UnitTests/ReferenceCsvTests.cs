@@ -71,6 +71,19 @@ public class ReferenceCsvTests
     }
 
     [Fact]
+    public void ReadKeepsALineBreakInsideAQuotedFieldAndCountsLinesPastIt()
+    {
+        var (rows, refused) = ReferenceCsv.Read(
+            ReferenceCsv.Write(Columns, [["note", "First line.\r\nSecond line.", "x"], ["specimen", "Blood", "y"]]),
+            Columns);
+
+        Assert.Empty(refused);
+        Assert.Equal([2, 4], rows.Select(row => row.Line));
+        Assert.Equal("First line.\r\nSecond line.", rows[0].Value("concept"));
+        Assert.Equal("Blood", rows[1].Value("concept"));
+    }
+
+    [Fact]
     public void ReadTakesOffTheFormulaGuardWriteAdds()
     {
         var (rows, _) = ReferenceCsv.Read(ReferenceCsv.Write(Columns, [["-NEG", "=1", "+x"]]), Columns);

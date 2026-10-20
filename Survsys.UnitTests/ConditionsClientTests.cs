@@ -167,6 +167,51 @@ public class ConditionsClientTests
         Assert.StartsWith(ConditionsClient.FindFailurePrefix, asked.Failure);
     }
 
+    [Fact]
+    public async Task ExportAsksForTheConditionsAsCsv()
+    {
+        HttpRequestMessage? sent = null;
+        var client = Recording(request => sent = request, HttpStatusCode.OK, "id,name\r\n74,Hepatitis A\r\n");
+
+        var exported = await client.Export();
+
+        Assert.Equal("http://api.example.test/api/conditions/csv", sent?.RequestUri?.ToString());
+        Assert.Equal("id,name\r\n74,Hepatitis A\r\n", exported.Value);
+    }
+
+    [Theory]
+    [InlineData(false, "http://api.example.test/api/conditions/csv")]
+    [InlineData(true, "http://api.example.test/api/conditions/csv?confirm=true")]
+    public async Task ImportPostsTheFileAndConfirmsOnlyWhenAsked(bool confirm, string expected)
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+        var client = Recording(
+            request =>
+            {
+                sent = request;
+                body = request.Content!.ReadAsStringAsync().Result;
+            },
+            HttpStatusCode.OK,
+            """{ "applied": true, "added": [], "changed": [{ "line": 2, "key": "74" }], "refused": [] }""");
+
+        var imported = await client.Import("id,name\r\n74,Hepatitis A\r\n", confirm);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal(expected, sent?.RequestUri?.ToString());
+        Assert.Equal("id,name\r\n74,Hepatitis A\r\n", body);
+        Assert.Equal("74", Assert.Single(imported.Value!.Changed).Key);
+    }
+
+    [Fact]
+    public async Task AnExportOrImportThatFailedCarriesItsPrefix()
+    {
+        var client = Answering(HttpStatusCode.InternalServerError, "{}");
+
+        Assert.StartsWith(ConditionsClient.ExportFailurePrefix, (await client.Export()).Failure);
+        Assert.StartsWith(ConditionsClient.ImportFailurePrefix, (await client.Import("id\r\n", true)).Failure);
+    }
+
     private static ConditionsClient Recording(
         Action<HttpRequestMessage> record,
         HttpStatusCode status,

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -319,6 +320,64 @@ public class TreatmentEndpointsTests(SqlServerFixture server) : IDisposable
         using var removed = await api.CreateClient().DeleteAsync("/api/cases/treatments/987654321");
         Assert.Equal(HttpStatusCode.NotFound, removed.StatusCode);
     }
+
+    [Fact]
+    public async Task ATreatmentFileIsPreviewedThenImportedReplacingItsConditionsAndExported()
+    {
+        await Clear();
+
+        try
+        {
+            var malaria = await ConditionId("Malaria");
+            var lyme = await ConditionId("Lyme disease");
+            var doxycycline = await Add(new SaveTreatmentRequest("Doxycycline", ConditionIds: [malaria]));
+            var client = api.CreateClient();
+
+            var csv = "id,name,active,default_treatment,condition_ids\r\n"
+                + $"{doxycycline.Id},Doxycycline,yes,yes,{lyme}\r\n"
+                + $",Ceftriaxone,yes,no,{malaria};{lyme}\r\n"
+                + ",Mystery,yes,no,987654321\r\n";
+
+            var preview = await Import(client, csv, confirm: false);
+
+            Assert.Equal([new ReferenceImportRow(2, $"{doxycycline.Id}")], preview.Changed);
+            Assert.Equal([new ReferenceImportRow(3, "Ceftriaxone")], preview.Added);
+            var refused = Assert.Single(preview.Refused);
+            Assert.Equal(4, refused.Line);
+            Assert.Contains("conditionId 987654321", refused.Reason);
+            Assert.Equal(malaria, Assert.Single((await Detail(client, doxycycline.Id)).Conditions).Id);
+
+            await Import(client, csv, confirm: true);
+
+            var saved = await Detail(client, doxycycline.Id);
+            Assert.True(saved.DefaultTreatment);
+            Assert.Equal(lyme, Assert.Single(saved.Conditions).Id);
+
+            var exported = await client.GetStringAsync("/api/treatments/csv");
+            Assert.Contains($"{doxycycline.Id},Doxycycline,yes,yes,{lyme}\r\n", exported);
+            Assert.Contains($",Ceftriaxone,yes,no,{string.Join(";", new[] { malaria, lyme }.Order())}\r\n", exported);
+
+            var again = await Import(client, exported, confirm: false);
+            Assert.Empty(again.Added);
+            Assert.Empty(again.Changed);
+            Assert.Empty(again.Refused);
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    private static async Task<ReferenceImportResponse> Import(HttpClient client, string csv, bool confirm)
+    {
+        using var posted = await client.PostAsync(
+            $"/api/treatments/csv{(confirm ? "?confirm=true" : "")}", new StringContent(csv, Encoding.UTF8, "text/csv"));
+        Assert.Equal(HttpStatusCode.OK, posted.StatusCode);
+        return (await posted.Content.ReadFromJsonAsync<ReferenceImportResponse>(Json))!;
+    }
+
+    private static async Task<TreatmentDetailResponse> Detail(HttpClient client, int id) =>
+        (await client.GetFromJsonAsync<TreatmentDetailResponse>($"/api/treatments/{id}", Json))!;
 
     private async Task<TreatmentDetailResponse> Add(SaveTreatmentRequest request)
     {

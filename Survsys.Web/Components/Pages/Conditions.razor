@@ -11,7 +11,8 @@
    One page of rows, with no sorting, filtering or paging control: what the
    screen promises is exactly what the first walkthrough performs. A
    condition's name opens its edit screen, and New condition opens an empty
-   one. *@
+   one. A holder of the reference-data privilege also exports every condition
+   as CSV and imports from it, previewed before it is saved. *@
 @page "/"
 @page "/conditions"
 @inject ConditionsClient Client
@@ -22,10 +23,21 @@
     Conditions
 </MudText>
 
-<MudButton id="conditions-new" Variant="Variant.Filled" Color="Color.Primary" Class="mb-4"
-           Href="/conditions/new">
-    New condition
-</MudButton>
+<div class="d-flex gap-4 align-start mb-4">
+    <MudButton id="conditions-new" Variant="Variant.Filled" Color="Color.Primary" Href="/conditions/new">
+        New condition
+    </MudButton>
+    @if (managesReferenceData)
+    {
+        <MudButton id="conditions-export" Variant="Variant.Outlined" Href="/conditions/export" Target="_blank">
+            Export conditions CSV
+        </MudButton>
+        <div>
+            <ImportPreview Prefix="conditions-import" Label="Import conditions CSV"
+                           Import="@((csv, confirm) => Client.Import(csv, confirm))" Imported="@Load" />
+        </div>
+    }
+</div>
 
 @if (asked is null)
 {
@@ -80,9 +92,22 @@ else
 }
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
     private Asked<PagedResult<ConditionResponse>>? asked;
 
-    protected override async Task OnInitializedAsync() =>
+    private bool managesReferenceData;
+
+    protected override async Task OnInitializedAsync()
+    {
+        managesReferenceData = AuthenticationState is { } state
+            && (await state).User.HasClaim(AccountClient.PrivilegeClaim, Privileges.ManageReferenceData);
+
+        await Load();
+    }
+
+    private async Task Load() =>
         asked = await Client.Page(1, PageSize);
 
     /// <summary>

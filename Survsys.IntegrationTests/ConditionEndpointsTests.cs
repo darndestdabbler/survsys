@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
 using Xunit;
 
@@ -147,6 +149,75 @@ public class ConditionEndpointsTests(SqlServerFixture server) : IDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    /// <summary>
+    /// A condition file previewed writes nothing; confirmed, it adds the row
+    /// with a blank id, lead-in line breaks and all, saves over the row with an
+    /// id, and refuses a nameless row and an id not on file; and the export
+    /// imported back changes nothing. The conditions it adds are deleted after.
+    /// </summary>
+    [Fact]
+    public async Task AConditionFileIsPreviewedThenImportedAndExported()
+    {
+        var client = api.CreateClient();
+        await ClearImported();
+
+        try
+        {
+            using var created = await client.PostAsJsonAsync(
+                "/api/conditions", new SaveConditionRequest("Itest condition A", true), Json);
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            var a = (await created.Content.ReadFromJsonAsync<ConditionDetailResponse>(Json))!;
+
+            var csv = "id,name,active,cdc_code,contact_lead_in,place_lead_in,treatment_lead_in\r\n"
+                + $"{a.Id},Itest condition A,no,99999,,,\r\n"
+                + ",Itest condition B,yes,,\"Name every contact.\r\nThen call each.\",,\r\n"
+                + ",,yes,,,,\r\n"
+                + "987654321,Itest condition C,yes,,,,\r\n";
+
+            var preview = await Import(client, csv, confirm: false);
+
+            Assert.Equal([new ReferenceImportRow(2, $"{a.Id}")], preview.Changed);
+            Assert.Equal([new ReferenceImportRow(3, "Itest condition B")], preview.Added);
+            Assert.Equal([5, 6], preview.Refused.Select(problem => problem.Line));
+            Assert.Contains("name is required", preview.Refused[0].Reason);
+            Assert.Contains("is not a condition on file", preview.Refused[1].Reason);
+            Assert.True((await Detail(client, a.Id)).Active);
+
+            await Import(client, csv, confirm: true);
+
+            Assert.Equal((false, "99999"), ((await Detail(client, a.Id)).Active, (await Detail(client, a.Id)).CdcCode));
+
+            var exported = await client.GetStringAsync("/api/conditions/csv");
+            Assert.Contains("Itest condition B,yes,,\"Name every contact.\r\nThen call each.\",,\r\n", exported);
+
+            var again = await Import(client, exported, confirm: false);
+            Assert.Empty(again.Added);
+            Assert.Empty(again.Changed);
+            Assert.Empty(again.Refused);
+        }
+        finally
+        {
+            await ClearImported();
+        }
+    }
+
+    private static async Task<ReferenceImportResponse> Import(HttpClient client, string csv, bool confirm)
+    {
+        using var posted = await client.PostAsync(
+            $"/api/conditions/csv{(confirm ? "?confirm=true" : "")}", new StringContent(csv, Encoding.UTF8, "text/csv"));
+        Assert.Equal(HttpStatusCode.OK, posted.StatusCode);
+        return (await posted.Content.ReadFromJsonAsync<ReferenceImportResponse>(Json))!;
+    }
+
+    private static async Task<ConditionDetailResponse> Detail(HttpClient client, int id) =>
+        (await client.GetFromJsonAsync<ConditionDetailResponse>($"/api/conditions/{id}", Json))!;
+
+    private async Task ClearImported()
+    {
+        await using var context = server.NewContext();
+        await context.Conditions.Where(condition => condition.Name.StartsWith("Itest condition")).ExecuteDeleteAsync();
     }
 
     private async Task<PagedResult<ConditionResponse>> Conditions(string url)

@@ -21,6 +21,7 @@ public class PrivilegeRulesTests
     [InlineData("GET", "/api/conditions/3/rules")]
     [InlineData("GET", "/api/ct-towns")]
     [InlineData("GET", "/api/zip-codes/csv")]
+    [InlineData("GET", "/api/vaccines")]
     [InlineData("GET", "/api/me")]
     public void RequiredForAReferenceDataReadOrWhoAmIIsNothingBeyondSigningIn(string method, string path)
     {
@@ -43,6 +44,9 @@ public class PrivilegeRulesTests
     [InlineData("POST", "/api/ct-towns/csv")]
     [InlineData("PUT", "/api/zip-codes/06101")]
     [InlineData("POST", "/api/zip-codes/csv")]
+    [InlineData("POST", "/api/vaccines")]
+    [InlineData("PUT", "/api/vaccines/3")]
+    [InlineData("POST", "/api/vaccines/csv")]
     public void RequiredForAReferenceDataWriteIsManageReferenceData(string method, string path)
     {
         Assert.Equal(Privileges.ManageReferenceData, PrivilegeRules.RequiredFor(method, path));
