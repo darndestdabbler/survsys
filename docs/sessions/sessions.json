@@ -1762,9 +1762,9 @@
     {
       "number": 85,
       "title": "Editor settings ignored, and the integration sign-in flake",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-20T18:31:10.149000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-20T18:36:38.713000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
