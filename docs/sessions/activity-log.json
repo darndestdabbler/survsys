@@ -880,6 +880,13 @@
       "what": "step 'codes-and-search': its files",
       "reason": "CodeEndpoints' projection reads the database, so the county list's state, FIPS and kind on the wire are proven in the integration CodeEndpointsTests; the unit CodeEndpointsTests cover only validation and need no change",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 82,
+      "dateTime": "2026-10-20T08:13:23.297000-04:00",
+      "task": "Repair the two faults that make a real laboratory message fail promotion. MessageCaseWriter.AddAddress, when it adds the message's patient address (still only where the person has no address with that street and zip), loads the person's addresses, adds the message's address begun today, and closes the rest by AddressRules.CloseHistoric as a person save does, saving the closing before the insert so the one-current-address index never sees two open addresses; the message's address becomes the one current address. lab_test_results.result_value is widened from 200 to 2000 characters, matching staged_message_results.result_value, with its migration. The integration suite proves both against SQL Server: a promotion for a person with a different current address closes the old address and leaves the message's current; a 2000-character result is promoted whole; the two tests that relied on the 200-character gap to fail part-way (MessageCaseWriterTests.APromotionThatFailsPartWayLeavesNothing and MessageProcessingServiceTests.AFailedAssignmentIsHeldRetriedAndAssignedWithItsTrail) fail instead on an interpretation longer than lab_test_results.test_result's 100 characters; and session 81's county test no longer deletes the seeded address.",
+      "releasable": false
     }
   ]
 }

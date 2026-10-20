@@ -12823,8 +12823,8 @@ namespace Survsys.Data.Migrations
                         .HasColumnName("primary_lab_result");
 
                     b.Property<string>("ResultValue")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
                         .HasColumnName("result_value");
 
                     b.Property<string>("TestResult")

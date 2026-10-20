@@ -92,9 +92,9 @@ public class MessageProcessingServiceTests(SqlServerFixture server) : IAsyncLife
     }
 
     /// <summary>
-    /// A message whose assignment fails — a result value its lab column cannot
+    /// A message whose assignment fails — an interpretation its lab column cannot
     /// hold — is held as a retryable exception rather than stopping the pass;
-    /// once the value fits, reprocessing retries it, it is assigned, and its
+    /// once it fits, reprocessing retries it, it is assigned, and its
     /// audit trail reads every state it passed through. A message held for a
     /// reason a person resolves is left alone.
     /// </summary>
@@ -123,13 +123,13 @@ public class MessageProcessingServiceTests(SqlServerFixture server) : IAsyncLife
                 var staged = Assert.Single(
                     await ElrIntakeService.Receive(Parser, context, raw, "retry.hl7", CancellationToken.None));
                 messageId = staged.Id;
-                received = staged.Results[0].ResultValue;
+                received = staged.Results[0].Interpretation;
                 resultId = staged.Results[0].Id;
 
-                // Over the lab result's 200 characters, which the message's 2000 hold.
+                // Over the lab result's 100 characters of test result, which the message's 200 hold.
                 await context.Set<StagedMessageResult>()
                     .Where(result => result.Id == resultId)
-                    .ExecuteUpdateAsync(set => set.SetProperty(result => result.ResultValue, new string('X', 500)));
+                    .ExecuteUpdateAsync(set => set.SetProperty(result => result.Interpretation, new string('X', 150)));
 
                 context.StagedMessages.Add(new StagedMessage
                 {
@@ -161,7 +161,7 @@ public class MessageProcessingServiceTests(SqlServerFixture server) : IAsyncLife
 
                 await check.Set<StagedMessageResult>()
                     .Where(result => result.Id == resultId)
-                    .ExecuteUpdateAsync(set => set.SetProperty(result => result.ResultValue, received));
+                    .ExecuteUpdateAsync(set => set.SetProperty(result => result.Interpretation, received));
             }
 
             await using (var context = server.NewContext())

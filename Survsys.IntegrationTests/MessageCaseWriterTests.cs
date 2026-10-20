@@ -12,7 +12,8 @@ namespace Survsys.IntegrationTests;
 /// comparing its lab with the lab an open case already holds, when
 /// <see cref="MessageCaseWriter.Update"/> updates that case; a patient who is
 /// not the case's person sent to pending; a promotion that fails part-way
-/// leaving nothing behind; and a second promotion writing nothing.
+/// leaving nothing behind; a second promotion writing nothing; and a
+/// message's address and long result value written onto the person and lab.
 /// </summary>
 /// <remarks>
 /// Each test seeds a person new to it, with an open case on the first
@@ -211,18 +212,16 @@ public class MessageCaseWriterTests(SqlServerFixture server) : IAsyncLifetime
     }
 
     /// <summary>
-    /// A result value the message holds but the lab's column does not — 500
-    /// characters, where a message keeps 2000 and a lab result 200 — fails the
-    /// write after the case is opened: the transaction leaves no new case, no
-    /// new lab and the message waiting where it was.
+    /// An interpretation the message holds but the lab's column does not — 150
+    /// characters, where a message keeps 200 and a lab result's test result
+    /// 100 — fails the write after the case is opened: the transaction leaves
+    /// no new case, no new lab and the message waiting where it was.
     /// </summary>
     [Fact]
     public async Task APromotionThatFailsPartWayLeavesNothing()
     {
         var seeded = await Seed();
-        var tooLong = Result("625-4", "Positive", "F");
-        tooLong.ResultValue = new string('X', 500);
-        var message = await Stage(seeded.LastName, "ACC-9", tooLong);
+        var message = await Stage(seeded.LastName, "ACC-9", Result("625-4", new string('X', 150), "F"));
 
         await using (var context = server.NewContext())
         {
@@ -273,10 +272,6 @@ public class MessageCaseWriterTests(SqlServerFixture server) : IAsyncLifetime
 
         await using (var context = server.NewContext())
         {
-            // The seeded person's own current address goes, so the message's
-            // Hartford address is added as the one current address.
-            await context.PersonAddresses.Where(address => address.PersonId == seeded.PersonId).ExecuteDeleteAsync();
-
             var staged = await context.StagedMessages.SingleAsync(row => row.Id == message);
             staged.PatientStreet = "410 Capitol Avenue";
             staged.PatientCity = "HARTFORD";
@@ -291,9 +286,63 @@ public class MessageCaseWriterTests(SqlServerFixture server) : IAsyncLifetime
         }
 
         await using var check = server.NewContext();
-        var added = await check.PersonAddresses.SingleAsync(address => address.PersonId == seeded.PersonId);
+        var added = await check.PersonAddresses.SingleAsync(
+            address => address.PersonId == seeded.PersonId && address.Street == "410 Capitol Avenue");
         Assert.Equal(county, added.County);
         Assert.Equal(countyEquivalent, added.CountyEquivalent);
+    }
+
+    /// <summary>
+    /// A message whose address the person does not have, for a person with a
+    /// current address of their own: the old address is ended and the
+    /// message's is the one current address.
+    /// </summary>
+    [Fact]
+    public async Task AMessagesNewAddressBecomesCurrentAndEndsTheOldOne()
+    {
+        var seeded = await Seed();
+        var message = await Stage(seeded.LastName, "ACC-5", Result("625-4", "Positive", "F"));
+
+        await using (var context = server.NewContext())
+        {
+            var staged = await context.StagedMessages.SingleAsync(row => row.Id == message);
+            staged.PatientStreet = "12 Oak Ave";
+            await context.SaveChangesAsync();
+
+            Assert.NotNull(await MessageCaseWriter.Open(
+                context, message, Creation(seeded), DateTimeOffset.Now, CancellationToken.None));
+        }
+
+        await using var check = server.NewContext();
+        var addresses = await check.PersonAddresses.Where(address => address.PersonId == seeded.PersonId).ToListAsync();
+        Assert.Equal(2, addresses.Count);
+        Assert.NotNull(addresses.Single(address => address.Street == "9 Elm St").Ending);
+        Assert.Equal("12 Oak Ave", addresses.Single(address => address.Ending is null).Street);
+    }
+
+    [Fact]
+    public async Task AResultOf2000CharactersIsPromotedWhole()
+    {
+        var seeded = await Seed();
+        var result = Result("625-4", "Positive", "F");
+        result.ResultValue = new string('X', 2000);
+        var message = await Stage(seeded.LastName, "ACC-6", result);
+
+        await using (var context = server.NewContext())
+        {
+            Assert.NotNull(await MessageCaseWriter.Open(
+                context, message, Creation(seeded), DateTimeOffset.Now, CancellationToken.None));
+        }
+
+        await using var check = server.NewContext();
+        var stored = await (
+                from lab in check.Labs
+                join test in check.LabTests on lab.Id equals test.LabId
+                join labResult in check.LabTestResults on test.Id equals labResult.LabTestId
+                where lab.PersonId == seeded.PersonId && lab.AccessionNo == "ACC-6"
+                select labResult.ResultValue)
+            .SingleAsync();
+        Assert.Equal(result.ResultValue, stored);
     }
 
     private sealed record Seeded(string LastName, int PersonId, int ConditionId, int CaseId, int LabId);

@@ -29,7 +29,7 @@ internal sealed class LabTestResultConfiguration : IEntityTypeConfiguration<LabT
         builder.Property(result => result.OrganismId).HasColumnName("organism_id");
         builder.Property(result => result.ResultValue)
             .HasColumnName("result_value")
-            .HasMaxLength(200);
+            .HasMaxLength(2000);
         builder.Property(result => result.TestResult)
             .HasColumnName("test_result")
             .HasMaxLength(100);

@@ -93,29 +93,33 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 79 | Exceptions, reprocessing, notifications and statistics | no | 2026-10-20 |
 | 80 | Connecticut ELR conformance | no | 2026-10-20 |
 | 81 | Connecticut planning regions as county equivalents | no | 2026-10-20 |
-| 82 | Phase 10 walkthroughs | — | not declared |
-| 83 | Release 0.11.0 (release: 0.11.0) | — | not declared |
-| 84 | The notification queue worker and the export log | — | not declared |
-| 85 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
-| 86 | Guide, rule set and value set administration | — | not declared |
-| 87 | Transport to CDC | — | not declared |
-| 88 | Phase 11 walkthroughs | — | not declared |
-| 89 | Release 0.12.0 (release: 0.12.0) | — | not declared |
-| 90 | Audit with its user and values, and its screens | — | not declared |
-| 91 | Jurisdiction-scoped access and sign-in protection | — | not declared |
-| 92 | Classification rules on save | — | not declared |
-| 93 | IBIS, ad-hoc reporting and system configuration | — | not declared |
-| 94 | Phase 12 walkthroughs | — | not declared |
-| 95 | Release 0.13.0 (release: 0.13.0) | — | not declared |
-| 96 | eICR and RR parsing and document intake | — | not declared |
-| 97 | eCR validation and the eICR viewer | — | not declared |
-| 98 | Reportability and condition mapping | — | not declared |
-| 99 | Cases from eCR | — | not declared |
-| 100 | eCR senders and data quality | — | not declared |
-| 101 | Phase 13 walkthroughs | — | not declared |
-| 102 | Release 0.14.0 (release: 0.14.0) | — | not declared |
-| 103 | The parity check and the documentation for 1.0.0 | — | not declared |
-| 104 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 82 | Repair ELR promotion's address and result value | no | 2026-10-20 |
+| 83 | Reference data administration — code lists and addresses | — | not declared |
+| 84 | Reference data administration — facilities, conditions, treatments and vaccines | — | not declared |
+| 85 | Editor settings ignored, and the integration sign-in flake | — | not declared |
+| 86 | Phase 10 walkthroughs | — | not declared |
+| 87 | Release 0.11.0 (release: 0.11.0) | — | not declared |
+| 88 | The notification queue worker and the export log | — | not declared |
+| 89 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
+| 90 | Guide, rule set and value set administration | — | not declared |
+| 91 | Transport to CDC | — | not declared |
+| 92 | Phase 11 walkthroughs | — | not declared |
+| 93 | Release 0.12.0 (release: 0.12.0) | — | not declared |
+| 94 | Audit with its user and values, and its screens | — | not declared |
+| 95 | Jurisdiction-scoped access and sign-in protection | — | not declared |
+| 96 | Classification rules on save | — | not declared |
+| 97 | IBIS, ad-hoc reporting and system configuration | — | not declared |
+| 98 | Phase 12 walkthroughs | — | not declared |
+| 99 | Release 0.13.0 (release: 0.13.0) | — | not declared |
+| 100 | eICR and RR parsing and document intake | — | not declared |
+| 101 | eCR validation and the eICR viewer | — | not declared |
+| 102 | Reportability and condition mapping | — | not declared |
+| 103 | Cases from eCR | — | not declared |
+| 104 | eCR senders and data quality | — | not declared |
+| 105 | Phase 13 walkthroughs | — | not declared |
+| 106 | Release 0.14.0 (release: 0.14.0) | — | not declared |
+| 107 | The parity check and the documentation for 1.0.0 | — | not declared |
+| 108 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -731,3 +735,9 @@ Give a Connecticut address both of its county values. Survsys.Data: CodeValue ga
 **Amended after acceptance:**
 
 - 2026-10-20 — step 'codes-and-search': its files: CodeEndpoints' projection reads the database, so the county list's state, FIPS and kind on the wire are proven in the integration CodeEndpointsTests; the unit CodeEndpointsTests cover only validation and need no change (claude-code (anthropic, claude-opus-5-5))
+
+### Session 82 — Repair ELR promotion's address and result value
+
+**Releasable: no.**
+
+Repair the two faults that make a real laboratory message fail promotion. MessageCaseWriter.AddAddress, when it adds the message's patient address (still only where the person has no address with that street and zip), loads the person's addresses, adds the message's address begun today, and closes the rest by AddressRules.CloseHistoric as a person save does, saving the closing before the insert so the one-current-address index never sees two open addresses; the message's address becomes the one current address. lab_test_results.result_value is widened from 200 to 2000 characters, matching staged_message_results.result_value, with its migration. The integration suite proves both against SQL Server: a promotion for a person with a different current address closes the old address and leaves the message's current; a 2000-character result is promoted whole; the two tests that relied on the 200-character gap to fail part-way (MessageCaseWriterTests.APromotionThatFailsPartWayLeavesNothing and MessageProcessingServiceTests.AFailedAssignmentIsHeldRetriedAndAssignedWithItsTrail) fail instead on an interpretation longer than lab_test_results.test_result's 100 characters; and session 81's county test no longer deletes the seeded address.

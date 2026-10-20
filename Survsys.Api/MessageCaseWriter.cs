@@ -313,7 +313,7 @@ public static class MessageCaseWriter
             }
         }
 
-        await AddAddress(database, personId, staged, counties, cancellationToken);
+        await AddAddress(database, personId, staged, now, counties, cancellationToken);
         await Assign(database, staged, target, cancellationToken);
 
         return new CaseUpdate(MessageReviewStatusRules.AssignedCode, target, null);
@@ -335,7 +335,7 @@ public static class MessageCaseWriter
             await new LabQueries(database).Add(created.Id, lab, cancellationToken);
         }
 
-        await AddAddress(database, created.PersonId, staged, counties, cancellationToken);
+        await AddAddress(database, created.PersonId, staged, now, counties, cancellationToken);
         await Assign(database, staged, created.Id, cancellationToken);
 
         return created;
@@ -567,11 +567,16 @@ public static class MessageCaseWriter
     /// <c>elr</c> setting of <paramref name="counties"/> names. The other, and
     /// a county still blank, are filled as a save fills them, by
     /// <see cref="AddressRules.FillConnecticutCounties"/>.
+    ///
+    /// The message's address begins the day of <paramref name="now"/> and
+    /// becomes the person's current address: the address current before it is
+    /// closed as a save closes it, by <see cref="AddressRules.CloseHistoric"/>.
     /// </remarks>
     private static async Task AddAddress(
         SurvsysDbContext database,
         int personId,
         StagedMessage message,
+        DateTimeOffset now,
         CountyPrograms counties,
         CancellationToken cancellationToken)
     {
@@ -585,7 +590,6 @@ public static class MessageCaseWriter
 
         var addresses = await database.PersonAddresses
             .Where(address => address.PersonId == personId)
-            .Select(address => new { address.Street, address.PostalCode })
             .ToListAsync(cancellationToken);
 
         if (addresses.Any(address =>
@@ -595,6 +599,7 @@ public static class MessageCaseWriter
             return;
         }
 
+        var today = DateOnly.FromDateTime(now.Date);
         var address = new PersonAddress
         {
             PersonId = personId,
@@ -602,6 +607,7 @@ public static class MessageCaseWriter
             City = message.PatientCity?.Trim(),
             State = message.PatientState?.Trim(),
             PostalCode = zip,
+            Beginning = today,
         };
 
         if (AddressRules.Text(message.PatientCounty) is { } carried)
@@ -628,6 +634,11 @@ public static class MessageCaseWriter
                 .ToDictionaryAsync(row => row.Code, row => row.County!, cancellationToken)
             : null;
         AddressRules.FillConnecticutCounties(address, countiesByZip);
+
+        // The closing is saved before the insert, so the one-current-address
+        // index never sees two addresses with no ending.
+        AddressRules.CloseHistoric([.. addresses, address], today);
+        await database.SaveChangesAsync(cancellationToken);
 
         database.PersonAddresses.Add(address);
         await database.SaveChangesAsync(cancellationToken);
