@@ -1652,9 +1652,9 @@
     {
       "number": 80,
       "title": "Connecticut ELR conformance",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-20T03:20:34.543000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-20T03:34:28.226000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
