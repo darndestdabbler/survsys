@@ -1608,9 +1608,9 @@
     {
       "number": 78,
       "title": "Labs from messages, and updating an existing case",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-20T00:17:32.097000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-20T00:39:37.156000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
