@@ -36,6 +36,7 @@ public class OruR01ParserTests
         Assert.Equal("Salt Lake City", patient.City);
         Assert.Equal("UT", patient.State);
         Assert.Equal("84101", patient.Zip);
+        Assert.Null(patient.County);
 
         var order = Assert.Single(patient.Orders);
         Assert.Equal("OBR001", order.AccessionNo);
@@ -53,6 +54,15 @@ public class OruR01ParserTests
         Assert.Equal("Detected", labResult.CodedResult);
         Assert.Equal("A", labResult.AbnormalFlag);
         Assert.Equal("F", labResult.ResultStatus);
+    }
+
+    [Fact]
+    public void ReadsThePatientsCountyFromPid11Component9()
+    {
+        var raw = ReadFixture("oru-r01-chlamydia.hl7")
+            .Replace("^Salt Lake City^UT^84101", "^Salt Lake City^UT^84101^USA^H^^SL");
+
+        Assert.Equal("SL", Assert.Single(new OruR01Parser().Parse(raw).Patients).County);
     }
 
     [Fact]

@@ -125,7 +125,8 @@ public sealed class OruR01Parser : IMessageParser
             City: NullIfEmpty(address.City.Value),
             State: NullIfEmpty(address.StateOrProvince.Value),
             Zip: NullIfEmpty(address.ZipOrPostalCode.Value),
-            Orders: ReadOrders(patientResult));
+            Orders: ReadOrders(patientResult),
+            County: NullIfEmpty(address.CountyParishCode.Value));
     }
 
     private static CreatePersonRequest ReadPerson(PID pid)

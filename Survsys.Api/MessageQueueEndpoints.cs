@@ -541,7 +541,8 @@ internal sealed class MessageQueueQueries(
     SurvsysDbContext database,
     IMessageParser parser,
     PersonMatchThresholds thresholds,
-    IOptions<MessageProcessingOptions> options)
+    IOptions<MessageProcessingOptions> options,
+    IOptions<CountyPrograms> countyPrograms)
 {
     /// <summary>
     /// One page of the queue, oldest first by id — a total order, so a message
@@ -645,7 +646,7 @@ internal sealed class MessageQueueQueries(
         CreatePersonConditionRequest creation,
         DateTimeOffset now,
         CancellationToken cancellationToken) =>
-        MessageCaseWriter.Open(database, id, creation, now, cancellationToken);
+        MessageCaseWriter.Open(database, id, creation, now, cancellationToken, countyPrograms.Value);
 
     /// <summary>
     /// Why a case a reviewer names is not one a message may update, or null
@@ -685,7 +686,8 @@ internal sealed class MessageQueueQueries(
         DateTimeOffset now,
         CancellationToken cancellationToken) =>
         MessageCaseWriter.Update(
-            database, parser, thresholds, options.Value, id, personId, personConditionId, now, cancellationToken);
+            database, parser, thresholds, options.Value, id, personId, personConditionId, now, cancellationToken,
+            countyPrograms.Value);
 
     /// <summary>
     /// The batch notification a promotion raises: a line naming the record

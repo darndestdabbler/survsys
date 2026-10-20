@@ -65,6 +65,34 @@ public class OruR01GeneratorTests
         Assert.Equal("N^Not Hispanic or Latino^2.16.840.1.114222.4.5.1", fields[22]); // DEM155 -> PID-22
     }
 
+    /// <summary>The PID-11.9 a notification carrying this county (DEM165) is generated with.</summary>
+    internal static string CountyInPid(string? county, IReadOnlyDictionary<string, string>? countyFips)
+    {
+        var notification = BuildChlamydiaNotification();
+        var input = notification with
+        {
+            Values = [.. notification.Values, new("DEM165", "County", "ST", county, null, null, null, 0)],
+            CountyFips = countyFips,
+        };
+        var pid = Assert.Single(
+            Segments(new OruR01Generator().Generate(input)), segment => segment.StartsWith("PID", StringComparison.Ordinal));
+
+        return pid.Split('|')[11].Split('^')[8];
+    }
+
+    [Fact]
+    public void WritesTheCountyAsItsFipsCode()
+    {
+        Assert.Equal("49035", CountyInPid("SL", new Dictionary<string, string> { ["SL"] = "49035" }));
+    }
+
+    [Fact]
+    public void WritesACountyWithNoFipsCodeAsGiven()
+    {
+        Assert.Equal("SL", CountyInPid("SL", new Dictionary<string, string> { ["WB"] = "49057" }));
+        Assert.Equal("SL", CountyInPid("SL", null));
+    }
+
     [Fact]
     public void WritesExactlyOneObrCarryingTheEpidemiologicInformationService()
     {

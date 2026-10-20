@@ -193,6 +193,31 @@ public class CaseSearchEndpointsTests(SqlServerFixture server) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ARowCarriesThePatientsCurrentCountyAndCountyEquivalent()
+    {
+        await using (var context = server.NewContext())
+        {
+            context.PersonAddresses.Add(new PersonAddress
+            {
+                PersonId = amos, City = "Old Lyme", State = "CT", County = "09011", CountyEquivalent = "09130",
+            });
+            context.PersonAddresses.Add(new PersonAddress
+            {
+                PersonId = amos, City = "Ogden", State = "UT", County = "WB", Ending = new DateOnly(2025, 1, 1),
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var row = Assert.Single((await Cases($"?personId={amos}")).Items);
+        Assert.Equal("09011", row.County);
+        Assert.Equal("09130", row.CountyEquivalent);
+
+        var noAddress = Assert.Single((await Cases($"?personId={bea}")).Items);
+        Assert.Null(noAddress.County);
+        Assert.Null(noAddress.CountyEquivalent);
+    }
+
+    [Fact]
     public async Task ARecordNumberPrefixNarrowsToTheCasesThatBeginWithIt()
     {
         var whole = await Cases($"?recordNumber={beaOther.RecordNumber}");

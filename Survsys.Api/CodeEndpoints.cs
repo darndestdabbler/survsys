@@ -233,7 +233,10 @@ internal sealed class CodeQueries(SurvsysDbContext database)
                 database.CodeValueConditions
                     .Where(link => link.CodeValueId == code.Id)
                     .Select(link => link.ConditionId)
-                    .ToList()))
+                    .ToList(),
+                code.State,
+                code.Fips,
+                code.Kind))
             .ToListAsync(cancellationToken);
     }
 
@@ -299,7 +302,8 @@ internal sealed class CodeQueries(SurvsysDbContext database)
         await database.SaveChangesAsync(cancellationToken);
 
         return new CodeResponse(
-            code.Id, code.List, code.Code, code.Description, code.SortOrder, code.Active, conditionIds);
+            code.Id, code.List, code.Code, code.Description, code.SortOrder, code.Active, conditionIds,
+            code.State, code.Fips, code.Kind);
     }
 
     /// <summary>

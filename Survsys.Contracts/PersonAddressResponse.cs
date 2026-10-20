@@ -23,6 +23,10 @@ namespace Survsys.Contracts;
 /// <param name="Ending">The date the person moved out, and null while the address is still theirs.</param>
 /// <param name="Note">Whatever the investigator wrote about this address.</param>
 /// <param name="ResidenceTypeId">The legacy residence type, as its bare identifier.</param>
+/// <param name="CountyEquivalent">
+/// The county equivalent, as a county code of that kind: a Connecticut
+/// address's planning region, beside its historical county.
+/// </param>
 public record PersonAddressResponse(
     int Id,
     string? Street,
@@ -34,4 +38,5 @@ public record PersonAddressResponse(
     DateOnly? Beginning,
     DateOnly? Ending,
     string? Note,
-    int? ResidenceTypeId);
+    int? ResidenceTypeId,
+    string? CountyEquivalent = null);

@@ -68,7 +68,7 @@ public sealed class OruR01Generator
         var ethnicIndex = 0;
         foreach (var value in input.Values)
         {
-            if (PlaceInNamedField(pid, orderObservation.OBR, value, ref raceIndex, ref ethnicIndex))
+            if (PlaceInNamedField(pid, orderObservation.OBR, value, input.CountyFips, ref raceIndex, ref ethnicIndex))
             {
                 continue;
             }
@@ -120,10 +120,16 @@ public sealed class OruR01Generator
     /// <summary>
     /// Places <paramref name="value"/> into its named PID or OBR field when the
     /// mapping names one, returning whether it did. A named value is consumed
-    /// here and not emitted as an OBX.
+    /// here and not emitted as an OBX. The county is written as its FIPS code
+    /// where <paramref name="countyFips"/> has one, and as given otherwise.
     /// </summary>
     private static bool PlaceInNamedField(
-        PID pid, OBR obr, NotificationValue value, ref int raceIndex, ref int ethnicIndex)
+        PID pid,
+        OBR obr,
+        NotificationValue value,
+        IReadOnlyDictionary<string, string>? countyFips,
+        ref int raceIndex,
+        ref int ethnicIndex)
     {
         switch (value.PhinVar)
         {
@@ -149,7 +155,8 @@ public sealed class OruR01Generator
                 pid.GetPatientAddress(0).ZipOrPostalCode.Value = value.Value;
                 return true;
             case "DEM165":
-                pid.GetPatientAddress(0).CountyParishCode.Value = value.Value;
+                pid.GetPatientAddress(0).CountyParishCode.Value =
+                    value.Value is { } county && countyFips?.GetValueOrDefault(county) is { } fips ? fips : value.Value;
                 return true;
             case "DEM155":
                 WriteCoded(pid.GetEthnicGroup(ethnicIndex++), value);

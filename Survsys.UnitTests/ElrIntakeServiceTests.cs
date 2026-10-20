@@ -247,6 +247,16 @@ public class ElrIntakeServiceTests
     }
 
     [Fact]
+    public void StageKeepsThePatientsCounty()
+    {
+        var staged = Assert.Single(ElrIntakeService.Stage(
+            Parser, CtMessage().Replace("^06106^USA^H", "^06106^USA^H^^09003"), null, CtSenders,
+            CtOptions().ProfilesBySender()));
+
+        Assert.Equal("09003", staged.PatientCounty);
+    }
+
+    [Fact]
     public void StageHoldsAMessageThatFailsARequiredCheckOfItsSendersProfile()
     {
         var staged = Assert.Single(ElrIntakeService.Stage(

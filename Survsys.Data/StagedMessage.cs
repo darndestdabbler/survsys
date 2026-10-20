@@ -130,6 +130,9 @@ public class StagedMessage
 
     public string? PatientZip { get; set; }
 
+    /// <summary>The patient's county code as the message carries it (PID-11.9).</summary>
+    public string? PatientCounty { get; set; }
+
     /// <summary>
     /// Which row of its message this is, counting from zero across every
     /// patient's orders in message order — one row per order, and one for a

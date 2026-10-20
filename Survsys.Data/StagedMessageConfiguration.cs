@@ -91,6 +91,9 @@ internal sealed class StagedMessageConfiguration : IEntityTypeConfiguration<Stag
         builder.Property(message => message.PatientZip)
             .HasColumnName("patient_zip")
             .HasMaxLength(CodeLength);
+        builder.Property(message => message.PatientCounty)
+            .HasColumnName("patient_county")
+            .HasMaxLength(CodeLength);
         builder.Property(message => message.OrderIndex).HasColumnName("order_index");
         builder.Property(message => message.AccessionNo)
             .HasColumnName("accession_no")

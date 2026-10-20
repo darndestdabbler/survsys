@@ -44,6 +44,19 @@ public class CodeEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     [Fact]
+    public async Task TheCountyListCarriesEachCountysStateFipsAndKind()
+    {
+        var counties = await List($"/api/codes/{CodeLists.County}");
+
+        var capitol = Assert.Single(counties, code => code.Code == "09110");
+        Assert.Equal(("CT", "09110", "county-equivalent"), (capitol.State, capitol.Fips, capitol.Kind));
+        var hartford = Assert.Single(counties, code => code.Code == "09003");
+        Assert.Equal(("CT", "09003", "county"), (hartford.State, hartford.Fips, hartford.Kind));
+        var saltLake = Assert.Single(counties, code => code.Code == "SL");
+        Assert.Equal(("UT", null, "county"), (saltLake.State, saltLake.Fips, saltLake.Kind));
+    }
+
+    [Fact]
     public async Task ACodeIsAddedSavedOverAndRetired()
     {
         await Clear();

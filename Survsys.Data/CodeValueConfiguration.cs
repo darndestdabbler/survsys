@@ -39,6 +39,15 @@ internal sealed class CodeValueConfiguration : IEntityTypeConfiguration<CodeValu
             .HasMaxLength(DescriptionLength);
         builder.Property(code => code.SortOrder).HasColumnName("sort_order");
         builder.Property(code => code.Active).HasColumnName("active");
+        builder.Property(code => code.State)
+            .HasColumnName("state")
+            .HasMaxLength(2);
+        builder.Property(code => code.Fips)
+            .HasColumnName("fips")
+            .HasMaxLength(5);
+        builder.Property(code => code.Kind)
+            .HasColumnName("kind")
+            .HasMaxLength(20);
 
         builder.HasIndex(code => new { code.List, code.Code }).IsUnique();
 

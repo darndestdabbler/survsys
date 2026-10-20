@@ -54,6 +54,14 @@ public class PersonAddress
     public string? County { get; set; }
 
     /// <summary>
+    /// The county equivalent, as a county code of that kind: for a Connecticut
+    /// address, its planning region, beside the historical county
+    /// <see cref="County"/> holds. Each program is configured to report one
+    /// or the other.
+    /// </summary>
+    public string? CountyEquivalent { get; set; }
+
+    /// <summary>
     /// The earliest date this is known to have been the person's address.
     /// </summary>
     public DateOnly? Beginning { get; set; }

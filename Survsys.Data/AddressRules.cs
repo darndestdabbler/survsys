@@ -23,6 +23,9 @@ public static partial class AddressRules
         .DistinctBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
         .ToDictionary(pair => pair.Key, pair => pair.Code, StringComparer.OrdinalIgnoreCase);
 
+    private static readonly Dictionary<string, CtTown> ConnecticutTowns = CtTownSeed.Rows
+        .ToDictionary(row => row.Town, StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// A value trimmed, with every run of whitespace inside it made one space,
     /// or null where nothing was said.
@@ -77,7 +80,7 @@ public static partial class AddressRules
     /// <summary>
     /// Makes an address's text regular: the street, unit and city in title
     /// case, the state its code, the zip in full and the county code in upper
-    /// case, each tidied of its whitespace.
+    /// case, each tidied of its whitespace, as is the county equivalent's.
     /// </summary>
     public static void Normalize(PersonAddress address)
     {
@@ -89,7 +92,41 @@ public static partial class AddressRules
         address.State = StateCode(address.State);
         address.PostalCode = PostalCode(address.PostalCode);
         address.County = Text(address.County)?.ToUpperInvariant();
+        address.CountyEquivalent = Text(address.CountyEquivalent)?.ToUpperInvariant();
         address.Note = Text(address.Note);
+    }
+
+    /// <summary>
+    /// Fills an address's county values where it was saved without them: for
+    /// a Connecticut address, the county and the county equivalent (its
+    /// planning region) from its town, and for any address a county still
+    /// blank from its zip by <paramref name="countiesByZip"/> — five-digit
+    /// zips to county codes.
+    /// </summary>
+    /// <remarks>
+    /// The town comes first because a Connecticut zip can cross a planning
+    /// region's boundary and a town cannot, so the zip is the fallback for an
+    /// unknown town and never fills a planning region. A value given is kept.
+    /// Called after <see cref="Normalize"/>, so a blank value is null.
+    /// </remarks>
+    public static void FillConnecticutCounties(
+        PersonAddress address, IReadOnlyDictionary<string, string>? countiesByZip)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+
+        if (address.State == "CT" && address.City is { } city
+            && ConnecticutTowns.GetValueOrDefault(city) is { } town)
+        {
+            address.County ??= town.County;
+            address.CountyEquivalent ??= town.PlanningRegion;
+        }
+
+        if (address.County is null
+            && ZipAgencyRules.Normalize(address.PostalCode) is { } zip
+            && countiesByZip?.GetValueOrDefault(zip) is { } county)
+        {
+            address.County = county;
+        }
     }
 
     /// <summary>

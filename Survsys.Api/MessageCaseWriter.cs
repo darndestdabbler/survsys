@@ -60,7 +60,8 @@ public static class MessageCaseWriter
         int messageId,
         CreatePersonConditionRequest creation,
         DateTimeOffset now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CountyPrograms? counties = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(creation);
@@ -72,7 +73,7 @@ public static class MessageCaseWriter
             return null;
         }
 
-        var created = await OpenClaimed(database, staged, creation, now, cancellationToken);
+        var created = await OpenClaimed(database, staged, creation, now, counties ?? new(), cancellationToken);
         await Commit(owned, cancellationToken);
 
         return created;
@@ -108,7 +109,8 @@ public static class MessageCaseWriter
         int personId,
         int? personConditionId,
         DateTimeOffset now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CountyPrograms? counties = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(options);
@@ -121,7 +123,8 @@ public static class MessageCaseWriter
         }
 
         var outcome = await UpdateClaimed(
-            database, parser, thresholds, options, staged, personId, personConditionId, now, cancellationToken);
+            database, parser, thresholds, options, staged, personId, personConditionId, now, counties ?? new(),
+            cancellationToken);
         await Commit(owned, cancellationToken);
 
         return outcome;
@@ -201,6 +204,7 @@ public static class MessageCaseWriter
         int personId,
         int? personConditionId,
         DateTimeOffset now,
+        CountyPrograms counties,
         CancellationToken cancellationToken)
     {
         if (staged.AllowUpdateCase != true)
@@ -270,6 +274,7 @@ public static class MessageCaseWriter
                 new CreatePersonConditionRequest(
                     personId, conditionId.Value, staged.AgencyId, DateOnly.FromDateTime(staged.ReceivedAt)),
                 now,
+                counties,
                 cancellationToken);
 
             return new CaseUpdate(MessageReviewStatusRules.AssignedCode, created.Id, null);
@@ -308,7 +313,7 @@ public static class MessageCaseWriter
             }
         }
 
-        await AddAddress(database, personId, staged, cancellationToken);
+        await AddAddress(database, personId, staged, counties, cancellationToken);
         await Assign(database, staged, target, cancellationToken);
 
         return new CaseUpdate(MessageReviewStatusRules.AssignedCode, target, null);
@@ -319,6 +324,7 @@ public static class MessageCaseWriter
         StagedMessage staged,
         CreatePersonConditionRequest creation,
         DateTimeOffset now,
+        CountyPrograms counties,
         CancellationToken cancellationToken)
     {
         var created = await new PersonConditionQueries(database, new CaseNotificationQueue(database))
@@ -329,7 +335,7 @@ public static class MessageCaseWriter
             await new LabQueries(database).Add(created.Id, lab, cancellationToken);
         }
 
-        await AddAddress(database, created.PersonId, staged, cancellationToken);
+        await AddAddress(database, created.PersonId, staged, counties, cancellationToken);
         await Assign(database, staged, created.Id, cancellationToken);
 
         return created;
@@ -554,8 +560,20 @@ public static class MessageCaseWriter
     /// Adds the message's patient address to the person, where it names a
     /// street or zip and the person has no address with that street and zip.
     /// </summary>
+    /// <remarks>
+    /// The county the message carries (PID-11.9) is found on the county list
+    /// by its code or its FIPS code and stored as that code, or as given where
+    /// the list has neither, in the county or the county equivalent as the
+    /// <c>elr</c> setting of <paramref name="counties"/> names. The other, and
+    /// a county still blank, are filled as a save fills them, by
+    /// <see cref="AddressRules.FillConnecticutCounties"/>.
+    /// </remarks>
     private static async Task AddAddress(
-        SurvsysDbContext database, int personId, StagedMessage message, CancellationToken cancellationToken)
+        SurvsysDbContext database,
+        int personId,
+        StagedMessage message,
+        CountyPrograms counties,
+        CancellationToken cancellationToken)
     {
         var street = message.PatientStreet?.Trim();
         var zip = message.PatientZip?.Trim();
@@ -577,14 +595,41 @@ public static class MessageCaseWriter
             return;
         }
 
-        database.PersonAddresses.Add(new PersonAddress
+        var address = new PersonAddress
         {
             PersonId = personId,
             Street = street,
             City = message.PatientCity?.Trim(),
             State = message.PatientState?.Trim(),
             PostalCode = zip,
-        });
+        };
+
+        if (AddressRules.Text(message.PatientCounty) is { } carried)
+        {
+            var county = await database.CodeValues
+                .Where(value => value.List == CodeLists.County && (value.Code == carried || value.Fips == carried))
+                .OrderBy(value => value.Id)
+                .Select(value => value.Code)
+                .FirstOrDefaultAsync(cancellationToken) ?? carried;
+
+            if (counties.UsesCountyEquivalent(CountyPrograms.ElrProgram))
+            {
+                address.CountyEquivalent = county;
+            }
+            else
+            {
+                address.County = county;
+            }
+        }
+
+        var countiesByZip = address.County is null && ZipAgencyRules.Normalize(zip) is { } zipCode
+            ? await database.ZipCodes
+                .Where(row => row.Code == zipCode && row.County != null)
+                .ToDictionaryAsync(row => row.Code, row => row.County!, cancellationToken)
+            : null;
+        AddressRules.FillConnecticutCounties(address, countiesByZip);
+
+        database.PersonAddresses.Add(address);
         await database.SaveChangesAsync(cancellationToken);
     }
 }

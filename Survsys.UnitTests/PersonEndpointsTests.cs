@@ -145,7 +145,10 @@ public class PersonEndpointsTests
     [Fact]
     public void ToDetailCarriesTheRowsThatHangOffThePerson()
     {
-        var detail = PersonEndpoints.ToDetail.Compile().Invoke(Seeded());
+        var person = Seeded();
+        person.Addresses.Single().CountyEquivalent = "09110";
+
+        var detail = PersonEndpoints.ToDetail.Compile().Invoke(person);
 
         Assert.Equal(["W"], detail.Races);
         Assert.Equal(["Maria Elena Garcia"], detail.Aliases);
@@ -154,7 +157,7 @@ public class PersonEndpointsTests
         var address = Assert.Single(detail.Addresses);
         Assert.Equal(
             new(11, "1234 Main Street", "Apt 5B", "Salt Lake City", "UT", "84101", "SL",
-                null, null, null, null),
+                null, null, null, null, "09110"),
             address);
 
         var telephone = Assert.Single(detail.Telephones);
@@ -661,6 +664,29 @@ public class PersonEndpointsTests
         Assert.Equal("84401-1234", first.PostalCode);
         Assert.Equal("WB", first.County);
         Assert.Equal("UT", person.Addresses.Last().County);
+    }
+
+    [Fact]
+    public void ApplyFillsAConnecticutAddressFromItsTownAndKeepsItsCountyEquivalent()
+    {
+        var person = Seeded();
+
+        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez")
+        {
+            Addresses =
+            [
+                new PersonAddressRequest(City: "new haven", State: "ct", PostalCode: "06510"),
+                new PersonAddressRequest(
+                    City: "Danbury", State: "CT", CountyEquivalent: "09190", Ending: Today),
+            ],
+        }, Today, new Dictionary<string, string> { ["06510"] = "09001" });
+
+        var first = person.Addresses.First();
+        Assert.Equal("09009", first.County);
+        Assert.Equal("09170", first.CountyEquivalent);
+        var last = person.Addresses.Last();
+        Assert.Equal("09001", last.County);
+        Assert.Equal("09190", last.CountyEquivalent);
     }
 
     [Fact]

@@ -24,6 +24,7 @@
 @page "/people/{PersonId:int}"
 @inject PersonsClient Persons
 @inject CasesClient Cases
+@inject IConfiguration Configuration
 
 <PageTitle>@Title</PageTitle>
 
@@ -136,6 +137,7 @@ else if (person is { } shown)
                         <th>State</th>
                         <th>Zip code</th>
                         <th>County</th>
+                        <th>@AddressLabels.CountyEquivalent(Configuration)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -148,6 +150,7 @@ else if (person is { } shown)
                             <td>@Shown(address.State)</td>
                             <td>@Shown(address.PostalCode)</td>
                             <td>@Shown(address.County)</td>
+                            <td>@Shown(address.CountyEquivalent)</td>
                         </tr>
                     }
                 </tbody>

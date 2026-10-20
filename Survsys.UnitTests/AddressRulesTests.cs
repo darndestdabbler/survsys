@@ -71,6 +71,7 @@ public class AddressRulesTests
             State = "utah",
             PostalCode = "844011234",
             County = " wb ",
+            CountyEquivalent = " x9 ",
             Note = "  side   door ",
         };
 
@@ -82,7 +83,61 @@ public class AddressRulesTests
         Assert.Equal("UT", address.State);
         Assert.Equal("84401-1234", address.PostalCode);
         Assert.Equal("WB", address.County);
+        Assert.Equal("X9", address.CountyEquivalent);
         Assert.Equal("side door", address.Note);
+    }
+
+    private static readonly Dictionary<string, string> CountiesByZip = new()
+    {
+        ["06103"] = "09009",
+        ["84401"] = "WB",
+    };
+
+    [Fact]
+    public void FillConnecticutCountiesTakesBothFromTheTown()
+    {
+        var address = new PersonAddress { City = "Windsor Locks", State = "CT", PostalCode = "06103" };
+
+        AddressRules.FillConnecticutCounties(address, CountiesByZip);
+
+        Assert.Equal("09003", address.County);
+        Assert.Equal("09110", address.CountyEquivalent);
+    }
+
+    [Fact]
+    public void FillConnecticutCountiesTakesTheCountyFromTheZipWhenTheTownIsUnknown()
+    {
+        var address = new PersonAddress { City = "Nowhere", State = "CT", PostalCode = "06103" };
+
+        AddressRules.FillConnecticutCounties(address, CountiesByZip);
+
+        Assert.Equal("09009", address.County);
+        Assert.Null(address.CountyEquivalent);
+    }
+
+    [Fact]
+    public void FillConnecticutCountiesKeepsAGivenValue()
+    {
+        var address = new PersonAddress
+        {
+            City = "Hartford", State = "CT", County = "09001", PostalCode = "06103",
+        };
+
+        AddressRules.FillConnecticutCounties(address, CountiesByZip);
+
+        Assert.Equal("09001", address.County);
+        Assert.Equal("09110", address.CountyEquivalent);
+    }
+
+    [Fact]
+    public void FillConnecticutCountiesFillsOnlyTheCountyFromTheZipOutsideConnecticut()
+    {
+        var address = new PersonAddress { City = "Hartford", State = "UT", PostalCode = "84401" };
+
+        AddressRules.FillConnecticutCounties(address, CountiesByZip);
+
+        Assert.Equal("WB", address.County);
+        Assert.Null(address.CountyEquivalent);
     }
 
     [Fact]

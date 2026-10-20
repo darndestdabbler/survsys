@@ -24,10 +24,14 @@ namespace Survsys.Data;
 /// fixed options the legacy task and encounter screens offer, and the
 /// attachment categories are the ones the legacy upload dialog offers.
 ///
+/// The county list is Utah's legacy codes and, after them, Connecticut's
+/// historical counties and planning regions, which no legacy table holds; each
+/// county row carries its state, its FIPS code where it has one, and its kind.
+///
 /// Each row's <see cref="CodeValue.Id"/> is fixed here, in this order, so a
 /// coded field that holds an id names the same code in every environment.
 /// </remarks>
-internal static class CodeValueSeed
+public static class CodeValueSeed
 {
     public static readonly CodeValue[] Rows =
     [
@@ -424,36 +428,36 @@ internal static class CodeValueSeed
         new() { Id = 380, List = "state", Code = "OC", Description = "Out of Country", SortOrder = 9999 },
 
         // county
-        new() { Id = 381, List = "county", Code = "WS", Description = "Wasatch", SortOrder = 130 },
-        new() { Id = 382, List = "county", Code = "OS", Description = "Out-of-state", SortOrder = 150 },
-        new() { Id = 383, List = "county", Code = "BE", Description = "Box Elder", SortOrder = 10 },
-        new() { Id = 384, List = "county", Code = "CA", Description = "Cache", SortOrder = 15 },
-        new() { Id = 385, List = "county", Code = "RI", Description = "Rich", SortOrder = 80 },
-        new() { Id = 386, List = "county", Code = "JU", Description = "Juab", SortOrder = 55 },
-        new() { Id = 387, List = "county", Code = "MI", Description = "Millard", SortOrder = 65 },
-        new() { Id = 388, List = "county", Code = "SV", Description = "Sevier", SortOrder = 105 },
-        new() { Id = 389, List = "county", Code = "SP", Description = "Sanpete", SortOrder = 100 },
-        new() { Id = 390, List = "county", Code = "WN", Description = "Wayne", SortOrder = 140 },
-        new() { Id = 391, List = "county", Code = "BV", Description = "Beaver", SortOrder = 5 },
-        new() { Id = 392, List = "county", Code = "GA", Description = "Garfield", SortOrder = 40 },
-        new() { Id = 393, List = "county", Code = "IR", Description = "Iron", SortOrder = 50 },
-        new() { Id = 394, List = "county", Code = "KA", Description = "Kane", SortOrder = 60 },
-        new() { Id = 395, List = "county", Code = "WA", Description = "Washington", SortOrder = 135 },
-        new() { Id = 396, List = "county", Code = "DV", Description = "Davis", SortOrder = 25 },
-        new() { Id = 397, List = "county", Code = "SL", Description = "Salt Lake", SortOrder = 85 },
-        new() { Id = 398, List = "county", Code = "CR", Description = "Carbon", SortOrder = 17 },
-        new() { Id = 399, List = "county", Code = "EM", Description = "Emery", SortOrder = 35 },
-        new() { Id = 400, List = "county", Code = "GR", Description = "Grand", SortOrder = 45 },
-        new() { Id = 401, List = "county", Code = "SJ", Description = "San Juan", SortOrder = 90 },
-        new() { Id = 402, List = "county", Code = "SM", Description = "Summit", SortOrder = 110 },
-        new() { Id = 403, List = "county", Code = "TL", Description = "Tooele", SortOrder = 115 },
-        new() { Id = 404, List = "county", Code = "UI", Description = "Uintah", SortOrder = 120 },
-        new() { Id = 405, List = "county", Code = "DG", Description = "Daggett", SortOrder = 20 },
-        new() { Id = 406, List = "county", Code = "DU", Description = "Duchesne", SortOrder = 30 },
-        new() { Id = 407, List = "county", Code = "UT", Description = "Utah", SortOrder = 125 },
-        new() { Id = 408, List = "county", Code = "WB", Description = "Weber", SortOrder = 145 },
-        new() { Id = 409, List = "county", Code = "MO", Description = "Morgan", SortOrder = 70 },
-        new() { Id = 410, List = "county", Code = "PL", Description = "Piute", SortOrder = 75 },
+        new() { Id = 381, List = "county", Code = "WS", Description = "Wasatch", SortOrder = 130, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 382, List = "county", Code = "OS", Description = "Out-of-state", SortOrder = 150, Kind = CodeValue.CountyKind },
+        new() { Id = 383, List = "county", Code = "BE", Description = "Box Elder", SortOrder = 10, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 384, List = "county", Code = "CA", Description = "Cache", SortOrder = 15, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 385, List = "county", Code = "RI", Description = "Rich", SortOrder = 80, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 386, List = "county", Code = "JU", Description = "Juab", SortOrder = 55, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 387, List = "county", Code = "MI", Description = "Millard", SortOrder = 65, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 388, List = "county", Code = "SV", Description = "Sevier", SortOrder = 105, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 389, List = "county", Code = "SP", Description = "Sanpete", SortOrder = 100, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 390, List = "county", Code = "WN", Description = "Wayne", SortOrder = 140, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 391, List = "county", Code = "BV", Description = "Beaver", SortOrder = 5, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 392, List = "county", Code = "GA", Description = "Garfield", SortOrder = 40, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 393, List = "county", Code = "IR", Description = "Iron", SortOrder = 50, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 394, List = "county", Code = "KA", Description = "Kane", SortOrder = 60, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 395, List = "county", Code = "WA", Description = "Washington", SortOrder = 135, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 396, List = "county", Code = "DV", Description = "Davis", SortOrder = 25, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 397, List = "county", Code = "SL", Description = "Salt Lake", SortOrder = 85, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 398, List = "county", Code = "CR", Description = "Carbon", SortOrder = 17, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 399, List = "county", Code = "EM", Description = "Emery", SortOrder = 35, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 400, List = "county", Code = "GR", Description = "Grand", SortOrder = 45, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 401, List = "county", Code = "SJ", Description = "San Juan", SortOrder = 90, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 402, List = "county", Code = "SM", Description = "Summit", SortOrder = 110, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 403, List = "county", Code = "TL", Description = "Tooele", SortOrder = 115, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 404, List = "county", Code = "UI", Description = "Uintah", SortOrder = 120, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 405, List = "county", Code = "DG", Description = "Daggett", SortOrder = 20, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 406, List = "county", Code = "DU", Description = "Duchesne", SortOrder = 30, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 407, List = "county", Code = "UT", Description = "Utah", SortOrder = 125, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 408, List = "county", Code = "WB", Description = "Weber", SortOrder = 145, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 409, List = "county", Code = "MO", Description = "Morgan", SortOrder = 70, State = "UT", Kind = CodeValue.CountyKind },
+        new() { Id = 410, List = "county", Code = "PL", Description = "Piute", SortOrder = 75, State = "UT", Kind = CodeValue.CountyKind },
 
         // residence_type
         new() { Id = 411, List = "residence_type", Code = "A", Description = "A - Apartment", SortOrder = 1 },
@@ -1245,5 +1249,26 @@ internal static class CodeValueSeed
         new() { Id = 1155, List = "attachment_category", Code = "letter", Description = "Letter", SortOrder = 3 },
         new() { Id = 1156, List = "attachment_category", Code = "x-ray", Description = "X-ray", SortOrder = 4 },
         new() { Id = 1157, List = "attachment_category", Code = "other", Description = "Other", SortOrder = 5 },
+
+        // county: Connecticut's historical counties and the planning regions
+        // the Census Bureau has counted as its county equivalents since 2022,
+        // each coded by its FIPS code
+        new() { Id = 1158, List = "county", Code = "09001", Description = "Fairfield", SortOrder = 200, State = "CT", Fips = "09001", Kind = CodeValue.CountyKind },
+        new() { Id = 1159, List = "county", Code = "09003", Description = "Hartford", SortOrder = 205, State = "CT", Fips = "09003", Kind = CodeValue.CountyKind },
+        new() { Id = 1160, List = "county", Code = "09005", Description = "Litchfield", SortOrder = 210, State = "CT", Fips = "09005", Kind = CodeValue.CountyKind },
+        new() { Id = 1161, List = "county", Code = "09007", Description = "Middlesex", SortOrder = 215, State = "CT", Fips = "09007", Kind = CodeValue.CountyKind },
+        new() { Id = 1162, List = "county", Code = "09009", Description = "New Haven", SortOrder = 220, State = "CT", Fips = "09009", Kind = CodeValue.CountyKind },
+        new() { Id = 1163, List = "county", Code = "09011", Description = "New London", SortOrder = 225, State = "CT", Fips = "09011", Kind = CodeValue.CountyKind },
+        new() { Id = 1164, List = "county", Code = "09013", Description = "Tolland", SortOrder = 230, State = "CT", Fips = "09013", Kind = CodeValue.CountyKind },
+        new() { Id = 1165, List = "county", Code = "09015", Description = "Windham", SortOrder = 235, State = "CT", Fips = "09015", Kind = CodeValue.CountyKind },
+        new() { Id = 1166, List = "county", Code = "09110", Description = "Capitol Planning Region", SortOrder = 300, State = "CT", Fips = "09110", Kind = CodeValue.CountyEquivalentKind },
+        new() { Id = 1167, List = "county", Code = "09120", Description = "Greater Bridgeport Planning Region", SortOrder = 305, State = "CT", Fips = "09120", Kind = CodeValue.CountyEquivalentKind },
+        new() { Id = 1168, List = "county", Code = "09130", Description = "Lower Connecticut River Valley Planning Region", SortOrder = 310, State = "CT", Fips = "09130", Kind = CodeValue.CountyEquivalentKind },
+        new() { Id = 1169, List = "county", Code = "09140", Description = "Naugatuck Valley Planning Region", SortOrder = 315, State = "CT", Fips = "09140", Kind = CodeValue.CountyEquivalentKind },
+        new() { Id = 1170, List = "county", Code = "09150", Description = "Northeastern Connecticut Planning Region", SortOrder = 320, State = "CT", Fips = "09150", Kind = CodeValue.CountyEquivalentKind },
+        new() { Id = 1171, List = "county", Code = "09160", Description = "Northwest Hills Planning Region", SortOrder = 325, State = "CT", Fips = "09160", Kind = CodeValue.CountyEquivalentKind },
+        new() { Id = 1172, List = "county", Code = "09170", Description = "South Central Connecticut Planning Region", SortOrder = 330, State = "CT", Fips = "09170", Kind = CodeValue.CountyEquivalentKind },
+        new() { Id = 1173, List = "county", Code = "09180", Description = "Southeastern Connecticut Planning Region", SortOrder = 335, State = "CT", Fips = "09180", Kind = CodeValue.CountyEquivalentKind },
+        new() { Id = 1174, List = "county", Code = "09190", Description = "Western Connecticut Planning Region", SortOrder = 340, State = "CT", Fips = "09190", Kind = CodeValue.CountyEquivalentKind },
     ];
 }

@@ -151,6 +151,24 @@ public class CaseSearchEndpointsTests
         Assert.False(row.Deleted);
     }
 
+    /// <summary>
+    /// The row carries the county and county equivalent of the patient's
+    /// current address, the one with no ending, and no other address's.
+    /// </summary>
+    [Fact]
+    public void ToResponseCarriesTheCurrentAddresssCountyAndCountyEquivalent()
+    {
+        var patient = Patient();
+        patient.Addresses.Add(new PersonAddress { County = "SL", Ending = new DateOnly(2024, 1, 1) });
+        patient.Addresses.Add(new PersonAddress { County = "09003", CountyEquivalent = "09110" });
+
+        var row = Respond(Joined(Report(), patient, Malaria(), SaltLake()));
+
+        Assert.Equal("09003", row.County);
+        Assert.Equal("09110", row.CountyEquivalent);
+        Assert.Null(Respond(Joined(Report(), Patient(), Malaria(), SaltLake())).County);
+    }
+
     /// <summary>A deleted report is marked deleted on its row.</summary>
     [Fact]
     public void ToResponseMarksADeletedReport()

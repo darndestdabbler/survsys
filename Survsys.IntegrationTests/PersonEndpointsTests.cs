@@ -1195,6 +1195,65 @@ public class PersonEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     /// <summary>
+    /// A Connecticut address saved with only its town takes both its county
+    /// and its planning region from the town; one whose town is not a CT town
+    /// takes its county from the zip and no planning region; and a planning
+    /// region given is kept.
+    /// </summary>
+    [Fact]
+    public async Task APutFillsAConnecticutAddressesCountyAndPlanningRegionFromItsTown()
+    {
+        var client = api.CreateClient();
+        var id = await Created("Nutmeg");
+
+        await using (var context = server.NewContext())
+        {
+            context.ZipCodes.Add(new ZipCode { Code = "00081", County = "09009" });
+            await context.SaveChangesAsync();
+        }
+
+        try
+        {
+            var saved = await Put(client, id, new UpdatePersonRequest("Nutmeg")
+            {
+                Addresses =
+                [
+                    new PersonAddressRequest(
+                        City: "windsor locks", State: "CT", PostalCode: "00081", Ending: new DateOnly(2024, 1, 1)),
+                    new PersonAddressRequest(
+                        City: "Nowhere", State: "CT", PostalCode: "00081", Ending: new DateOnly(2025, 1, 1)),
+                    new PersonAddressRequest(City: "Danbury", State: "CT", CountyEquivalent: "09190"),
+                ],
+            });
+
+            Assert.Collection(
+                saved.Addresses,
+                town =>
+                {
+                    Assert.Equal("09003", town.County);
+                    Assert.Equal("09110", town.CountyEquivalent);
+                },
+                zip =>
+                {
+                    Assert.Equal("09009", zip.County);
+                    Assert.Null(zip.CountyEquivalent);
+                },
+                given =>
+                {
+                    Assert.Equal("09001", given.County);
+                    Assert.Equal("09190", given.CountyEquivalent);
+                });
+        }
+        finally
+        {
+            await Forget(id);
+
+            await using var context = server.NewContext();
+            await context.ZipCodes.Where(zip => zip.Code == "00081").ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>
     /// Two addresses saved open come back one current and one historic — the
     /// one that began later current, the other ending the day it began — and
     /// the database's one-current-address index accepts the save.

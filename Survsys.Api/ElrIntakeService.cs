@@ -261,6 +261,7 @@ public sealed class ElrIntakeService(
                 message.PatientCity = patient.City;
                 message.PatientState = patient.State;
                 message.PatientZip = patient.Zip;
+                message.PatientCounty = patient.County;
                 message.ReviewStatus = heldCategory is null
                     ? MessageReviewStatusRules.EntryCode
                     : MessageReviewStatusRules.ExceptionCode;

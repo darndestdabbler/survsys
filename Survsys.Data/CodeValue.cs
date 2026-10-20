@@ -37,4 +37,28 @@ public class CodeValue
 
     /// <summary>False once the code is retired: kept for the records naming it, no longer offered.</summary>
     public bool Active { get; set; } = true;
+
+    /// <summary>The <see cref="Kind"/> of a county proper.</summary>
+    public const string CountyKind = "county";
+
+    /// <summary>
+    /// The <see cref="Kind"/> of what the Census Bureau counts in a county's
+    /// place, as Connecticut's planning regions since 2022.
+    /// </summary>
+    public const string CountyEquivalentKind = "county-equivalent";
+
+    /// <summary>On the county list, the two-letter state the county is in; null elsewhere.</summary>
+    public string? State { get; set; }
+
+    /// <summary>
+    /// On the county list, the county's five-digit FIPS code; null elsewhere,
+    /// and on a legacy county code that has none here.
+    /// </summary>
+    public string? Fips { get; set; }
+
+    /// <summary>
+    /// On the county list, <see cref="CountyKind"/> or
+    /// <see cref="CountyEquivalentKind"/>; null elsewhere.
+    /// </summary>
+    public string? Kind { get; set; }
 }

@@ -43,6 +43,9 @@ internal sealed class PersonAddressConfiguration : IEntityTypeConfiguration<Pers
         builder.Property(address => address.County)
             .HasColumnName("county")
             .HasMaxLength(50);
+        builder.Property(address => address.CountyEquivalent)
+            .HasColumnName("county_equivalent")
+            .HasMaxLength(50);
         builder.Property(address => address.Beginning).HasColumnName("beginning");
         builder.Property(address => address.Ending).HasColumnName("ending");
         builder.Property(address => address.Note).HasColumnName("note");

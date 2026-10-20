@@ -426,6 +426,16 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(400)")
                         .HasColumnName("description");
 
+                    b.Property<string>("Fips")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)")
+                        .HasColumnName("fips");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("kind");
+
                     b.Property<string>("List")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -435,6 +445,11 @@ namespace Survsys.Data.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("int")
                         .HasColumnName("sort_order");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(2)
+                        .HasColumnType("nvarchar(2)")
+                        .HasColumnName("state");
 
                     b.HasKey("Id");
 
@@ -3870,8 +3885,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "WS",
                             Description = "Wasatch",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 130
+                            SortOrder = 130,
+                            State = "UT"
                         },
                         new
                         {
@@ -3879,6 +3896,7 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "OS",
                             Description = "Out-of-state",
+                            Kind = "county",
                             List = "county",
                             SortOrder = 150
                         },
@@ -3888,8 +3906,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "BE",
                             Description = "Box Elder",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 10
+                            SortOrder = 10,
+                            State = "UT"
                         },
                         new
                         {
@@ -3897,8 +3917,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "CA",
                             Description = "Cache",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 15
+                            SortOrder = 15,
+                            State = "UT"
                         },
                         new
                         {
@@ -3906,8 +3928,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "RI",
                             Description = "Rich",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 80
+                            SortOrder = 80,
+                            State = "UT"
                         },
                         new
                         {
@@ -3915,8 +3939,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "JU",
                             Description = "Juab",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 55
+                            SortOrder = 55,
+                            State = "UT"
                         },
                         new
                         {
@@ -3924,8 +3950,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "MI",
                             Description = "Millard",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 65
+                            SortOrder = 65,
+                            State = "UT"
                         },
                         new
                         {
@@ -3933,8 +3961,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "SV",
                             Description = "Sevier",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 105
+                            SortOrder = 105,
+                            State = "UT"
                         },
                         new
                         {
@@ -3942,8 +3972,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "SP",
                             Description = "Sanpete",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 100
+                            SortOrder = 100,
+                            State = "UT"
                         },
                         new
                         {
@@ -3951,8 +3983,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "WN",
                             Description = "Wayne",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 140
+                            SortOrder = 140,
+                            State = "UT"
                         },
                         new
                         {
@@ -3960,8 +3994,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "BV",
                             Description = "Beaver",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 5
+                            SortOrder = 5,
+                            State = "UT"
                         },
                         new
                         {
@@ -3969,8 +4005,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "GA",
                             Description = "Garfield",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 40
+                            SortOrder = 40,
+                            State = "UT"
                         },
                         new
                         {
@@ -3978,8 +4016,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "IR",
                             Description = "Iron",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 50
+                            SortOrder = 50,
+                            State = "UT"
                         },
                         new
                         {
@@ -3987,8 +4027,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "KA",
                             Description = "Kane",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 60
+                            SortOrder = 60,
+                            State = "UT"
                         },
                         new
                         {
@@ -3996,8 +4038,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "WA",
                             Description = "Washington",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 135
+                            SortOrder = 135,
+                            State = "UT"
                         },
                         new
                         {
@@ -4005,8 +4049,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "DV",
                             Description = "Davis",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 25
+                            SortOrder = 25,
+                            State = "UT"
                         },
                         new
                         {
@@ -4014,8 +4060,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "SL",
                             Description = "Salt Lake",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 85
+                            SortOrder = 85,
+                            State = "UT"
                         },
                         new
                         {
@@ -4023,8 +4071,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "CR",
                             Description = "Carbon",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 17
+                            SortOrder = 17,
+                            State = "UT"
                         },
                         new
                         {
@@ -4032,8 +4082,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "EM",
                             Description = "Emery",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 35
+                            SortOrder = 35,
+                            State = "UT"
                         },
                         new
                         {
@@ -4041,8 +4093,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "GR",
                             Description = "Grand",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 45
+                            SortOrder = 45,
+                            State = "UT"
                         },
                         new
                         {
@@ -4050,8 +4104,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "SJ",
                             Description = "San Juan",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 90
+                            SortOrder = 90,
+                            State = "UT"
                         },
                         new
                         {
@@ -4059,8 +4115,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "SM",
                             Description = "Summit",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 110
+                            SortOrder = 110,
+                            State = "UT"
                         },
                         new
                         {
@@ -4068,8 +4126,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "TL",
                             Description = "Tooele",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 115
+                            SortOrder = 115,
+                            State = "UT"
                         },
                         new
                         {
@@ -4077,8 +4137,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "UI",
                             Description = "Uintah",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 120
+                            SortOrder = 120,
+                            State = "UT"
                         },
                         new
                         {
@@ -4086,8 +4148,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "DG",
                             Description = "Daggett",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 20
+                            SortOrder = 20,
+                            State = "UT"
                         },
                         new
                         {
@@ -4095,8 +4159,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "DU",
                             Description = "Duchesne",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 30
+                            SortOrder = 30,
+                            State = "UT"
                         },
                         new
                         {
@@ -4104,8 +4170,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "UT",
                             Description = "Utah",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 125
+                            SortOrder = 125,
+                            State = "UT"
                         },
                         new
                         {
@@ -4113,8 +4181,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "WB",
                             Description = "Weber",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 145
+                            SortOrder = 145,
+                            State = "UT"
                         },
                         new
                         {
@@ -4122,8 +4192,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "MO",
                             Description = "Morgan",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 70
+                            SortOrder = 70,
+                            State = "UT"
                         },
                         new
                         {
@@ -4131,8 +4203,10 @@ namespace Survsys.Data.Migrations
                             Active = true,
                             Code = "PL",
                             Description = "Piute",
+                            Kind = "county",
                             List = "county",
-                            SortOrder = 75
+                            SortOrder = 75,
+                            State = "UT"
                         },
                         new
                         {
@@ -10401,6 +10475,210 @@ namespace Survsys.Data.Migrations
                             Description = "Other",
                             List = "attachment_category",
                             SortOrder = 5
+                        },
+                        new
+                        {
+                            Id = 1158,
+                            Active = true,
+                            Code = "09001",
+                            Description = "Fairfield",
+                            Fips = "09001",
+                            Kind = "county",
+                            List = "county",
+                            SortOrder = 200,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1159,
+                            Active = true,
+                            Code = "09003",
+                            Description = "Hartford",
+                            Fips = "09003",
+                            Kind = "county",
+                            List = "county",
+                            SortOrder = 205,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1160,
+                            Active = true,
+                            Code = "09005",
+                            Description = "Litchfield",
+                            Fips = "09005",
+                            Kind = "county",
+                            List = "county",
+                            SortOrder = 210,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1161,
+                            Active = true,
+                            Code = "09007",
+                            Description = "Middlesex",
+                            Fips = "09007",
+                            Kind = "county",
+                            List = "county",
+                            SortOrder = 215,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1162,
+                            Active = true,
+                            Code = "09009",
+                            Description = "New Haven",
+                            Fips = "09009",
+                            Kind = "county",
+                            List = "county",
+                            SortOrder = 220,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1163,
+                            Active = true,
+                            Code = "09011",
+                            Description = "New London",
+                            Fips = "09011",
+                            Kind = "county",
+                            List = "county",
+                            SortOrder = 225,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1164,
+                            Active = true,
+                            Code = "09013",
+                            Description = "Tolland",
+                            Fips = "09013",
+                            Kind = "county",
+                            List = "county",
+                            SortOrder = 230,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1165,
+                            Active = true,
+                            Code = "09015",
+                            Description = "Windham",
+                            Fips = "09015",
+                            Kind = "county",
+                            List = "county",
+                            SortOrder = 235,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1166,
+                            Active = true,
+                            Code = "09110",
+                            Description = "Capitol Planning Region",
+                            Fips = "09110",
+                            Kind = "county-equivalent",
+                            List = "county",
+                            SortOrder = 300,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1167,
+                            Active = true,
+                            Code = "09120",
+                            Description = "Greater Bridgeport Planning Region",
+                            Fips = "09120",
+                            Kind = "county-equivalent",
+                            List = "county",
+                            SortOrder = 305,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1168,
+                            Active = true,
+                            Code = "09130",
+                            Description = "Lower Connecticut River Valley Planning Region",
+                            Fips = "09130",
+                            Kind = "county-equivalent",
+                            List = "county",
+                            SortOrder = 310,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1169,
+                            Active = true,
+                            Code = "09140",
+                            Description = "Naugatuck Valley Planning Region",
+                            Fips = "09140",
+                            Kind = "county-equivalent",
+                            List = "county",
+                            SortOrder = 315,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1170,
+                            Active = true,
+                            Code = "09150",
+                            Description = "Northeastern Connecticut Planning Region",
+                            Fips = "09150",
+                            Kind = "county-equivalent",
+                            List = "county",
+                            SortOrder = 320,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1171,
+                            Active = true,
+                            Code = "09160",
+                            Description = "Northwest Hills Planning Region",
+                            Fips = "09160",
+                            Kind = "county-equivalent",
+                            List = "county",
+                            SortOrder = 325,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1172,
+                            Active = true,
+                            Code = "09170",
+                            Description = "South Central Connecticut Planning Region",
+                            Fips = "09170",
+                            Kind = "county-equivalent",
+                            List = "county",
+                            SortOrder = 330,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1173,
+                            Active = true,
+                            Code = "09180",
+                            Description = "Southeastern Connecticut Planning Region",
+                            Fips = "09180",
+                            Kind = "county-equivalent",
+                            List = "county",
+                            SortOrder = 335,
+                            State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1174,
+                            Active = true,
+                            Code = "09190",
+                            Description = "Western Connecticut Planning Region",
+                            Fips = "09190",
+                            Kind = "county-equivalent",
+                            List = "county",
+                            SortOrder = 340,
+                            State = "CT"
                         });
                 });
 
@@ -10768,6 +11046,1046 @@ namespace Survsys.Data.Migrations
                     b.ToTable("core_element_overrides", null, t =>
                         {
                             t.HasCheckConstraint("ck_core_element_overrides_condition_or_agency", "condition_id IS NOT NULL OR agency_id IS NOT NULL");
+                        });
+                });
+
+            modelBuilder.Entity("Survsys.Data.CtTown", b =>
+                {
+                    b.Property<string>("Town")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("town");
+
+                    b.Property<string>("County")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("county");
+
+                    b.Property<string>("PlanningRegion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("planning_region");
+
+                    b.HasKey("Town");
+
+                    b.ToTable("ct_towns", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Town = "Andover",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Ansonia",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Ashford",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Avon",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Barkhamsted",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Beacon Falls",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Berlin",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Bethany",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "Bethel",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Bethlehem",
+                            County = "09005",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Bloomfield",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Bolton",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Bozrah",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Branford",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "Bridgeport",
+                            County = "09001",
+                            PlanningRegion = "09120"
+                        },
+                        new
+                        {
+                            Town = "Bridgewater",
+                            County = "09005",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Bristol",
+                            County = "09003",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Brookfield",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Brooklyn",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Burlington",
+                            County = "09003",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Canaan",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Canterbury",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Canton",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Chaplin",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Cheshire",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Chester",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Clinton",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Colchester",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Colebrook",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Columbia",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Cornwall",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Coventry",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Cromwell",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Danbury",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Darien",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Deep River",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Derby",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Durham",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "East Granby",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "East Haddam",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "East Hampton",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "East Hartford",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "East Haven",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "East Lyme",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "East Windsor",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Eastford",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Easton",
+                            County = "09001",
+                            PlanningRegion = "09120"
+                        },
+                        new
+                        {
+                            Town = "Ellington",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Enfield",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Essex",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Fairfield",
+                            County = "09001",
+                            PlanningRegion = "09120"
+                        },
+                        new
+                        {
+                            Town = "Farmington",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Franklin",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Glastonbury",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Goshen",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Granby",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Greenwich",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Griswold",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Groton",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Guilford",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "Haddam",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Hamden",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "Hampton",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Hartford",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Hartland",
+                            County = "09003",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Harwinton",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Hebron",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Kent",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Killingly",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Killingworth",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Lebanon",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Ledyard",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Lisbon",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Litchfield",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Lyme",
+                            County = "09011",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Madison",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "Manchester",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Mansfield",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Marlborough",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Meriden",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "Middlebury",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Middlefield",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Middletown",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Milford",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "Monroe",
+                            County = "09001",
+                            PlanningRegion = "09120"
+                        },
+                        new
+                        {
+                            Town = "Montville",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Morris",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Naugatuck",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "New Britain",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "New Canaan",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "New Fairfield",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "New Hartford",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "New Haven",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "New London",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "New Milford",
+                            County = "09005",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Newington",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Newtown",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Norfolk",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "North Branford",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "North Canaan",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "North Haven",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "North Stonington",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Norwalk",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Norwich",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Old Lyme",
+                            County = "09011",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Old Saybrook",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Orange",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "Oxford",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Plainfield",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Plainville",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Plymouth",
+                            County = "09005",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Pomfret",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Portland",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Preston",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Prospect",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Putnam",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Redding",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Ridgefield",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Rocky Hill",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Roxbury",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Salem",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Salisbury",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Scotland",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Seymour",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Sharon",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Shelton",
+                            County = "09001",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Sherman",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Simsbury",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Somers",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "South Windsor",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Southbury",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Southington",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Sprague",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Stafford",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Stamford",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Sterling",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Stonington",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Stratford",
+                            County = "09001",
+                            PlanningRegion = "09120"
+                        },
+                        new
+                        {
+                            Town = "Suffield",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Thomaston",
+                            County = "09005",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Thompson",
+                            County = "09015",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Tolland",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Torrington",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Trumbull",
+                            County = "09001",
+                            PlanningRegion = "09120"
+                        },
+                        new
+                        {
+                            Town = "Union",
+                            County = "09013",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Vernon",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Voluntown",
+                            County = "09011",
+                            PlanningRegion = "09150"
+                        },
+                        new
+                        {
+                            Town = "Wallingford",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "Warren",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Washington",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Waterbury",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Waterford",
+                            County = "09011",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Watertown",
+                            County = "09005",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "West Hartford",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "West Haven",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "Westbrook",
+                            County = "09007",
+                            PlanningRegion = "09130"
+                        },
+                        new
+                        {
+                            Town = "Weston",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Westport",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Wethersfield",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Willington",
+                            County = "09013",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Wilton",
+                            County = "09001",
+                            PlanningRegion = "09190"
+                        },
+                        new
+                        {
+                            Town = "Winchester",
+                            County = "09005",
+                            PlanningRegion = "09160"
+                        },
+                        new
+                        {
+                            Town = "Windham",
+                            County = "09015",
+                            PlanningRegion = "09180"
+                        },
+                        new
+                        {
+                            Town = "Windsor",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Windsor Locks",
+                            County = "09003",
+                            PlanningRegion = "09110"
+                        },
+                        new
+                        {
+                            Town = "Wolcott",
+                            County = "09009",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Woodbridge",
+                            County = "09009",
+                            PlanningRegion = "09170"
+                        },
+                        new
+                        {
+                            Town = "Woodbury",
+                            County = "09005",
+                            PlanningRegion = "09140"
+                        },
+                        new
+                        {
+                            Town = "Woodstock",
+                            County = "09015",
+                            PlanningRegion = "09150"
                         });
                 });
 
@@ -11920,6 +13238,11 @@ namespace Survsys.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("county");
+
+                    b.Property<string>("CountyEquivalent")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("county_equivalent");
 
                     b.Property<DateOnly?>("Ending")
                         .HasColumnType("date")
@@ -13119,6 +14442,11 @@ namespace Survsys.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("patient_city");
+
+                    b.Property<string>("PatientCounty")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("patient_county");
 
                     b.Property<string>("PatientFirstName")
                         .HasMaxLength(100)

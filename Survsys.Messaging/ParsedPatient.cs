@@ -12,10 +12,12 @@ namespace Survsys.Messaging;
 /// <param name="State">The patient's state (PID-11.4).</param>
 /// <param name="Zip">The patient's zip code (PID-11.5).</param>
 /// <param name="Orders">One entry per order reported against this patient (one per OBR), in message order.</param>
+/// <param name="County">The patient's county code (PID-11.9).</param>
 public record ParsedPatient(
     CreatePersonRequest Person,
     string? Street,
     string? City,
     string? State,
     string? Zip,
-    IReadOnlyList<ParsedOrder> Orders);
+    IReadOnlyList<ParsedOrder> Orders,
+    string? County = null);

@@ -102,6 +102,7 @@ public sealed class MessageProcessingService(
     PersonMatchThresholds thresholds,
     IServiceScopeFactory scopeFactory,
     IOptions<MessageProcessingOptions> options,
+    IOptions<CountyPrograms> countyPrograms,
     ILogger<MessageProcessingService> logger) : BackgroundService
 {
     /// <summary>
@@ -200,7 +201,8 @@ public sealed class MessageProcessingService(
         PersonMatchThresholds thresholds,
         MessageProcessingOptions options,
         DateTimeOffset now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CountyPrograms? counties = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(options);
@@ -215,7 +217,7 @@ public sealed class MessageProcessingService(
         {
             try
             {
-                await AssignOne(database, parser, thresholds, options, id, now, cancellationToken);
+                await AssignOne(database, parser, thresholds, options, id, now, counties ?? new(), cancellationToken);
             }
             catch (Exception failure) when (failure is not OperationCanceledException)
             {
@@ -265,6 +267,7 @@ public sealed class MessageProcessingService(
         MessageProcessingOptions options,
         int id,
         DateTimeOffset now,
+        CountyPrograms counties,
         CancellationToken cancellationToken)
     {
         var message = await database.StagedMessages.SingleOrDefaultAsync(
@@ -304,7 +307,8 @@ public sealed class MessageProcessingService(
         if (decision.UpdatesCase)
         {
             await MessageCaseWriter.Update(
-                database, parser, thresholds, options, message.Id, decision.PersonId!.Value, null, now, cancellationToken);
+                database, parser, thresholds, options, message.Id, decision.PersonId!.Value, null, now, cancellationToken,
+                counties);
             return;
         }
 
@@ -323,7 +327,8 @@ public sealed class MessageProcessingService(
                     message.AgencyId,
                     DateOnly.FromDateTime(message.ReceivedAt)),
                 now,
-                cancellationToken);
+                cancellationToken,
+                counties);
 
             if (created is not null)
             {
@@ -563,7 +568,8 @@ public sealed class MessageProcessingService(
 
     private async Task AssignReleaseAndPrune(SurvsysDbContext database, CancellationToken stoppingToken)
     {
-        var assigned = await Assign(database, parser, thresholds, options.Value, DateTimeOffset.Now, stoppingToken);
+        var assigned = await Assign(
+            database, parser, thresholds, options.Value, DateTimeOffset.Now, stoppingToken, countyPrograms.Value);
         var released = await Release(database, parser, thresholds, stoppingToken);
         var pruned = await Prune(database, options.Value, DateTimeOffset.UtcNow, stoppingToken);
 

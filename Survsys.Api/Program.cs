@@ -112,6 +112,9 @@ builder.Services.Configure<ElrIntakeOptions>(
 // with none is not checked.
 builder.Services.Configure<ConformanceOptions>(
     builder.Configuration.GetSection(ConformanceOptions.SectionName));
+// Which of an address's county and county equivalent each program reports.
+builder.Services.Configure<CountyPrograms>(
+    builder.Configuration.GetSection(CountyPrograms.SectionName));
 builder.Services.AddSingleton<IMessageParser, OruR01Parser>();
 builder.Services.AddHostedService<ElrIntakeService>();
 builder.Services.AddHostedService<MllpListener>();

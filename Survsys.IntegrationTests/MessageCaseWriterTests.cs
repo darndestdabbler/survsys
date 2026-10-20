@@ -262,6 +262,40 @@ public class MessageCaseWriterTests(SqlServerFixture server) : IAsyncLifetime
         Assert.Equal(2, await check.Labs.CountAsync(lab => lab.PersonId == seeded.PersonId));
     }
 
+    [Theory]
+    [InlineData("county", "09001", "09001", "09110")]
+    [InlineData("county-equivalent", "09190", "09003", "09190")]
+    public async Task AMessagesCountyLandsInTheFieldTheElrSettingNamesAndTheTownFillsTheOther(
+        string setting, string carried, string county, string countyEquivalent)
+    {
+        var seeded = await Seed();
+        var message = await Stage(seeded.LastName, "ACC-4", Result("625-4", "Positive", "F"));
+
+        await using (var context = server.NewContext())
+        {
+            // The seeded person's own current address goes, so the message's
+            // Hartford address is added as the one current address.
+            await context.PersonAddresses.Where(address => address.PersonId == seeded.PersonId).ExecuteDeleteAsync();
+
+            var staged = await context.StagedMessages.SingleAsync(row => row.Id == message);
+            staged.PatientStreet = "410 Capitol Avenue";
+            staged.PatientCity = "HARTFORD";
+            staged.PatientState = "CT";
+            staged.PatientZip = "06106";
+            staged.PatientCounty = carried;
+            await context.SaveChangesAsync();
+
+            Assert.NotNull(await MessageCaseWriter.Open(
+                context, message, Creation(seeded), DateTimeOffset.Now, CancellationToken.None,
+                new CountyPrograms { Elr = setting }));
+        }
+
+        await using var check = server.NewContext();
+        var added = await check.PersonAddresses.SingleAsync(address => address.PersonId == seeded.PersonId);
+        Assert.Equal(county, added.County);
+        Assert.Equal(countyEquivalent, added.CountyEquivalent);
+    }
+
     private sealed record Seeded(string LastName, int PersonId, int ConditionId, int CaseId, int LabId);
 
     /// <summary>A person new to the test with an open case holding one preliminary positive 625-4.</summary>

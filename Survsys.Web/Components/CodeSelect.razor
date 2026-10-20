@@ -5,7 +5,8 @@
    on file that is not on the list (stored before the lists existed, or
    retired since) is still offered, as itself, so opening and saving a record
    never loses it. Fixed answers (Yes/No/Unknown) take Fixed and read no list;
-   Only narrows a list to the codes a field accepts.
+   Only narrows a list to the codes a field accepts, and Kind the county list
+   to its counties or its county equivalents.
    Any other attribute, such as id, is passed to the select. *@
 @inject CodesClient Client
 
@@ -32,6 +33,10 @@
     /// <summary>Where given, only the list's codes among these are offered.</summary>
     [Parameter]
     public IReadOnlyCollection<string>? Only { get; set; }
+
+    /// <summary>Where given, only the list's codes of this kind are offered, as <c>county</c> or <c>county-equivalent</c>.</summary>
+    [Parameter]
+    public string? Kind { get; set; }
 
     /// <summary>For the test types, the condition whose test types are offered.</summary>
     [Parameter]
@@ -83,7 +88,7 @@
         options = Fixed is not null
             ? Fixed.Select(answer => (answer, answer)).ToList()
             : codes
-                .Where(code => Only is null || Only.Contains(code.Code))
+                .Where(code => (Only is null || Only.Contains(code.Code)) && (Kind is null || code.Kind == Kind))
                 .Select(code => (ById ? IdOf(code) : code.Code, code.Description ?? code.Code))
                 .ToList();
 

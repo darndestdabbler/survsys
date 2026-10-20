@@ -25,6 +25,7 @@
    carries its position, demographics-address-0-street and so on. *@
 @using System.Globalization
 @inject PersonsClient Persons
+@inject IConfiguration Configuration
 
 @if (saved is { } stored)
 {
@@ -224,9 +225,17 @@
                               Label="Zip code" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="2">
-                <CodeSelect List="@CodeLists.County" @bind-Value="address.County" id="@($"demographics-address-{at}-county")"
-                            Label="County" Margin="Margin.Dense" />
+                <CodeSelect List="@CodeLists.County" Kind="county" @bind-Value="address.County"
+                            id="@($"demographics-address-{at}-county")" Label="County" Margin="Margin.Dense" />
             </MudItem>
+            @if (address.State == "CT")
+            {
+                <MudItem xs="12" sm="2">
+                    <CodeSelect List="@CodeLists.County" Kind="county-equivalent" @bind-Value="address.CountyEquivalent"
+                                id="@($"demographics-address-{at}-county-equivalent")"
+                                Label="@AddressLabels.CountyEquivalent(Configuration)" Margin="Margin.Dense" />
+                </MudItem>
+            }
             <MudItem xs="12" sm="2">
                 <CodeSelect List="@CodeLists.ResidenceType" @bind-CodeId="address.ResidenceType"
                             id="@($"demographics-address-{at}-residence-type")"
@@ -478,6 +487,7 @@
             State = address.State,
             PostalCode = address.PostalCode,
             County = address.County,
+            CountyEquivalent = address.CountyEquivalent,
             ResidenceType = address.ResidenceTypeId,
             Beginning = Written(address.Beginning),
             Ending = Written(address.Ending),
@@ -617,7 +627,8 @@
                 Beginning: beginning,
                 Ending: ending,
                 Note: address.Note,
-                ResidenceTypeId: address.ResidenceType));
+                ResidenceTypeId: address.ResidenceType,
+                CountyEquivalent: address.CountyEquivalent));
         }
 
         for (var n = 0; n < telephones.Count; n++)
@@ -740,6 +751,7 @@
         public string? State { get; set; }
         public string? PostalCode { get; set; }
         public string? County { get; set; }
+        public string? CountyEquivalent { get; set; }
         public int? ResidenceType { get; set; }
         public string? Beginning { get; set; }
         public string? Ending { get; set; }

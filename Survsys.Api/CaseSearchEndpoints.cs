@@ -69,7 +69,9 @@ public static class CaseSearchEndpoints
     /// query's own SELECT rather than run over every row after the fact. The
     /// patient's name is written as the People results write it, "Last,
     /// First", or the last name alone where no first name is on file; the
-    /// agency's name is null exactly where the agency is.
+    /// agency's name is null exactly where the agency is. The county and the
+    /// county equivalent are the patient's current address's, the one with no
+    /// ending.
     /// </remarks>
     public static readonly Expression<Func<JoinedCase, CaseSearchItemResponse>> ToResponse =
         joined => new CaseSearchItemResponse(
@@ -90,7 +92,15 @@ public static class CaseSearchEndpoints
             joined.Report.MmwrWeek,
             joined.Report.MmwrYear,
             joined.Report.EventOnsetDate,
-            joined.Report.DeletedAt != null);
+            joined.Report.DeletedAt != null,
+            joined.Person.Addresses
+                .Where(address => address.Ending == null)
+                .Select(address => address.County)
+                .FirstOrDefault(),
+            joined.Person.Addresses
+                .Where(address => address.Ending == null)
+                .Select(address => address.CountyEquivalent)
+                .FirstOrDefault());
 
     public static IServiceCollection AddCaseSearch(this IServiceCollection services) =>
         services.AddScoped<CaseSearchQueries>();

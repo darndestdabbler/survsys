@@ -118,7 +118,8 @@ public static class PersonEndpoints
                     address.Beginning,
                     address.Ending,
                     address.Note,
-                    address.ResidenceTypeId))
+                    address.ResidenceTypeId,
+                    address.CountyEquivalent))
                 .ToList(),
             person.Telephones
                 .OrderBy(telephone => telephone.Id)
@@ -325,9 +326,10 @@ public static class PersonEndpoints
     /// them.
     ///
     /// The addresses are made regular by <see cref="AddressRules.Normalize"/>;
-    /// one saved with no county takes the county of its zip from
-    /// <paramref name="countiesByZip"/> — five-digit zips to county codes, the
-    /// rows of <c>zip_codes</c> the caller read — and of the addresses with
+    /// <see cref="AddressRules.FillConnecticutCounties"/> fills a Connecticut
+    /// address's blank county and county equivalent from its town, and a
+    /// county still blank from its zip by <paramref name="countiesByZip"/> —
+    /// the rows of <c>zip_codes</c> the caller read — and of the addresses with
     /// no ending, <see cref="AddressRules.CloseHistoric"/> leaves one current.
     ///
     /// <see cref="UpdatePersonRequest.LastName"/> is read with a
@@ -385,6 +387,7 @@ public static class PersonEndpoints
                 State = requested.State,
                 PostalCode = requested.PostalCode,
                 County = requested.County,
+                CountyEquivalent = requested.CountyEquivalent,
                 Beginning = requested.Beginning,
                 Ending = requested.Ending,
                 Note = requested.Note,
@@ -392,12 +395,7 @@ public static class PersonEndpoints
             };
 
             AddressRules.Normalize(address);
-            if (address.County is null
-                && ZipAgencyRules.Normalize(address.PostalCode) is { } zip
-                && countiesByZip?.GetValueOrDefault(zip) is { } county)
-            {
-                address.County = county;
-            }
+            AddressRules.FillConnecticutCounties(address, countiesByZip);
 
             person.Addresses.Add(address);
         }

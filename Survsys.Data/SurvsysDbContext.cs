@@ -26,6 +26,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<ZipCode> ZipCodes => Set<ZipCode>();
 
+    public DbSet<CtTown> CtTowns => Set<CtTown>();
+
     public DbSet<Facility> Facilities => Set<Facility>();
 
     public DbSet<CoreElement> CoreElements => Set<CoreElement>();

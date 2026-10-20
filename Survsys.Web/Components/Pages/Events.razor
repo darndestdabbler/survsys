@@ -30,6 +30,7 @@
 @inject CasesClient Cases
 @inject ConditionsClient Conditions
 @inject AgenciesClient Agencies
+@inject IConfiguration Configuration
 
 <PageTitle>Events — Survsys</PageTitle>
 
@@ -175,6 +176,8 @@ else if (asked?.Value is { } cases)
                         <th>Status</th>
                         <th>MMWR week</th>
                         <th>Onset</th>
+                        <th>County</th>
+                        <th>@AddressLabels.CountyEquivalent(Configuration)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -198,6 +201,8 @@ else if (asked?.Value is { } cases)
                             <td id="@($"events-row-{row.Id}-status")">@StatusLabel(row.CaseStatus)</td>
                             <td id="@($"events-row-{row.Id}-mmwr")">@MmwrWeek(row)</td>
                             <td id="@($"events-row-{row.Id}-onset")">@(row.EventOnsetDate?.ToString("yyyy-MM-dd") ?? "—")</td>
+                            <td id="@($"events-row-{row.Id}-county")">@(row.County ?? "—")</td>
+                            <td id="@($"events-row-{row.Id}-county-equivalent")">@(row.CountyEquivalent ?? "—")</td>
                         </tr>
                     }
                 </tbody>

@@ -47,6 +47,11 @@ namespace Survsys.Contracts;
 /// Whether the report has been deleted — only ever true where the search was
 /// asked to show deleted reports.
 /// </param>
+/// <param name="County">The county of the patient's current address, as a county code, or null.</param>
+/// <param name="CountyEquivalent">
+/// The county equivalent of the patient's current address — a Connecticut
+/// address's planning region — or null.
+/// </param>
 public record CaseSearchItemResponse(
     int Id,
     string RecordNumber,
@@ -61,4 +66,6 @@ public record CaseSearchItemResponse(
     int? MmwrWeek,
     int? MmwrYear,
     DateOnly? EventOnsetDate,
-    bool Deleted = false);
+    bool Deleted = false,
+    string? County = null,
+    string? CountyEquivalent = null);

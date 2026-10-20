@@ -10,6 +10,9 @@ namespace Survsys.Contracts;
 /// <param name="SortOrder">Where the code falls in its list.</param>
 /// <param name="Active">False once the code is retired and no longer offered.</param>
 /// <param name="ConditionIds">The conditions a test type is offered for; empty on every other list.</param>
+/// <param name="State">On the county list, the two-letter state the county is in; null elsewhere.</param>
+/// <param name="Fips">On the county list, the county's FIPS code where it has one; null elsewhere.</param>
+/// <param name="Kind">On the county list, <c>county</c> or <c>county-equivalent</c>; null elsewhere.</param>
 public record CodeResponse(
     int Id,
     string List,
@@ -17,4 +20,7 @@ public record CodeResponse(
     string? Description,
     int SortOrder,
     bool Active,
-    IReadOnlyList<int> ConditionIds);
+    IReadOnlyList<int> ConditionIds,
+    string? State = null,
+    string? Fips = null,
+    string? Kind = null);

@@ -99,7 +99,12 @@ public sealed record NotificationValue(
 /// <param name="Header">The header the MSH segment is built from.</param>
 /// <param name="GuideProfile">The notification guide profile this message is generated for.</param>
 /// <param name="Values">The resolved PHIN variable values, in the order they are placed.</param>
+/// <param name="CountyFips">
+/// The FIPS code of each county code that has one, which the county (DEM165)
+/// is written as; a code with none here is written as given.
+/// </param>
 public sealed record OruR01GenerationInput(
     NotificationHeader Header,
     string GuideProfile,
-    IReadOnlyList<NotificationValue> Values);
+    IReadOnlyList<NotificationValue> Values,
+    IReadOnlyDictionary<string, string>? CountyFips = null);
