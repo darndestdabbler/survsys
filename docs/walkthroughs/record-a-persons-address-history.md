@@ -124,9 +124,11 @@ of every test to `Survsys.E2ETests/bin/<configuration>/net10.0/videos`.
     **Rodriguez, Maria**, the name on the one row.
 12. Her own screen opens. Its **Addresses** table has two rows, in the order
     they were recorded: **1234 Main Street**, **Apt 5B**, **Salt Lake City**,
-    **UT**, **84101**, **SL**; then **45 East 400 South**, **—**, **Salt Lake
-    City**, **UT**, **84111-1234**, **—** — the dash being what the screen
-    shows where nothing was given.
+    **UT**, **84101**, **Salt Lake**, **—**; then **45 East 400 South**, **—**,
+    **Salt Lake City**, **UT**, **84111-1234**, **—**, **—** — the county
+    shown by its name, and the dash being what the screen shows where nothing
+    was given, as in the **Planning region** column, which only a Connecticut
+    address fills.
 
 ## What you should see
 

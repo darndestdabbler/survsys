@@ -439,6 +439,40 @@ public class ApiAskTests
         Assert.Contains("did not answer", failure);
     }
 
+    [Fact]
+    public async Task GetTextAnswersTheBodyAsItCame()
+    {
+        HttpRequestMessage? sent = null;
+
+        var asked = await Ask.GetText(
+            Transport(request =>
+            {
+                sent = request;
+                return Answer(HttpStatusCode.OK, "code,description\r\nBD,Blood\r\n", "text/csv");
+            }),
+            "api/codes/specimen_source/csv",
+            CancellationToken.None);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal("http://api.example.test/api/codes/specimen_source/csv", sent?.RequestUri?.ToString());
+        Assert.Equal("code,description\r\nBD,Blood\r\n", asked.Value);
+    }
+
+    [Fact]
+    public async Task GetTextThatFailedBecomesAMessageLikeAnAskThatFailed()
+    {
+        var refused = await Ask.GetText(
+            Transport(_ => Answer(HttpStatusCode.NotFound, "no such list")), "api/codes/x/csv", CancellationToken.None);
+        var unanswered = await Ask.GetText(
+            Transport(_ => throw new HttpRequestException("connection refused")), "api/codes/x/csv", CancellationToken.None);
+
+        Assert.StartsWith(Prefix, refused.Failure);
+        Assert.Contains("404", refused.Failure);
+        Assert.DoesNotContain("no such list", refused.Failure, StringComparison.Ordinal);
+        Assert.StartsWith(Prefix, unanswered.Failure);
+        Assert.Contains("did not answer", unanswered.Failure);
+    }
+
     private static Task<Asked<PagedResult<ConditionResponse>>> Get(
         HttpStatusCode status,
         string body,

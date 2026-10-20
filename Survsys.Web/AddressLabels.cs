@@ -1,7 +1,10 @@
+using Survsys.Contracts;
+
 namespace Survsys.Web;
 
 /// <summary>
-/// The labels the address screens show that a deployment may name its own way.
+/// The labels the address screens show that a deployment may name its own way,
+/// and a county code shown by its name.
 /// </summary>
 /// <remarks>
 /// A Connecticut address's county equivalent is its planning region, which is
@@ -25,5 +28,20 @@ public static class AddressLabels
         return configuration[CountyEquivalentKey] is { } label && !string.IsNullOrWhiteSpace(label)
             ? label.Trim()
             : DefaultCountyEquivalent;
+    }
+
+    /// <summary>
+    /// A county or county equivalent shown by its name: the description
+    /// <paramref name="counties"/> — the county list, retired codes included —
+    /// gives the code, or the code itself where the list has no description or
+    /// no such code, or null where there is no code.
+    /// </summary>
+    public static string? CountyName(IReadOnlyList<CodeResponse> counties, string? code)
+    {
+        ArgumentNullException.ThrowIfNull(counties);
+
+        return code is null
+            ? null
+            : counties.FirstOrDefault(county => county.Code == code)?.Description ?? code;
     }
 }

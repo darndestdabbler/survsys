@@ -126,6 +126,16 @@ public class ConnecticutElrProfileTests
     }
 
     [Fact]
+    public void CreateChecksATownAgainstTheTownsItIsGivenInPlaceOfTheGuides()
+    {
+        var onFile = ConnecticutElrProfile.Create(
+            TestingApplicationOid, FacilityOid, new HashSet<string>(["Gotham"], StringComparer.OrdinalIgnoreCase));
+
+        Assert.Empty(onFile.Check(With("PID", 11, "1 Main St^^gotham^CT^06106^USA^H")));
+        Assert.Equal("PID-11", Assert.Single(onFile.Check(Conforming)).Element);
+    }
+
+    [Fact]
     public void TownsIsTheGuidesOneHundredSixtyNineTowns()
     {
         Assert.Equal(169, ConnecticutElrProfile.Towns.Count);

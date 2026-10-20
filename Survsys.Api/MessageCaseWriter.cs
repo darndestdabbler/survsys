@@ -633,7 +633,10 @@ public static class MessageCaseWriter
                 .Where(row => row.Code == zipCode && row.County != null)
                 .ToDictionaryAsync(row => row.Code, row => row.County!, cancellationToken)
             : null;
-        AddressRules.FillConnecticutCounties(address, countiesByZip);
+        var towns = address.City is { } city
+            ? await database.CtTowns.Where(town => town.Town == city).ToListAsync(cancellationToken)
+            : null;
+        AddressRules.FillConnecticutCounties(address, towns, countiesByZip);
 
         // The closing is saved before the insert, so the one-current-address
         // index never sees two addresses with no ending.

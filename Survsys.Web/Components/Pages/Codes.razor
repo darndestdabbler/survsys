@@ -2,7 +2,9 @@
    maintenance: choose a list, see every code on it including the retired
    ones, and add a code or edit one. A code is never deleted — it is retired by
    clearing Active, so the records naming it still do. A test type also carries
-   the conditions it is offered for. *@
+   the conditions it is offered for. Each list exports as CSV and imports from
+   it, previewed before it is saved; the CSV also carries the county list's
+   state, FIPS code and kind, which the form does not. *@
 @page "/codes"
 @inject CodesClient Client
 @inject ConditionsClient Conditions
@@ -20,6 +22,16 @@
         <MudSelectItem Value="@name">@Label(name)</MudSelectItem>
     }
 </MudSelect>
+
+<div class="d-flex gap-4 align-start mb-4">
+    <MudButton id="codes-export" Variant="Variant.Outlined" Href="@($"/codes/{list}/export")" Target="_blank">
+        Export @Label(list) CSV
+    </MudButton>
+    <div>
+        <ImportPreview @key="list" Prefix="codes-import" Label="@($"Import {Label(list)} CSV")"
+                       Import="@((csv, confirm) => Client.Import(list, csv, confirm))" Imported="@Load" />
+    </div>
+</div>
 
 @if (failure is { } whyNot)
 {

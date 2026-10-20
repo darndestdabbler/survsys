@@ -121,7 +121,12 @@ public sealed class MllpListener(
             using var scope = scopeFactory.CreateScope();
             var database = scope.ServiceProvider.GetRequiredService<SurvsysDbContext>();
             var staged = await ElrIntakeService.Receive(
-                parser, database, raw, Source, perMessage.Token, conformance.Value.ProfilesBySender());
+                parser,
+                database,
+                raw,
+                Source,
+                perMessage.Token,
+                conformance.Value.ProfilesBySender(await ElrIntakeService.TownNames(database, perMessage.Token)));
 
             var held = staged.FirstOrDefault(message => message.ReviewStatus != MessageReviewStatusRules.EntryCode);
             logger.LogInformation(

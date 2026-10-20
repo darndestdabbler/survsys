@@ -90,6 +90,49 @@ public class CodesClientTests
             (await client.Update(12, new SaveCodeRequest("W"))).Failure);
     }
 
+    [Fact]
+    public async Task ExportAsksForTheListsCsv()
+    {
+        HttpRequestMessage? sent = null;
+        var client = Recording(request => sent = request, HttpStatusCode.OK, "code,description\r\n");
+
+        var asked = await client.Export(CodeLists.County);
+
+        Assert.Equal("http://api.example.test/api/codes/county/csv", sent?.RequestUri?.ToString());
+        Assert.Equal("code,description\r\n", asked.Value);
+    }
+
+    [Fact]
+    public async Task ImportPostsTheCsvForAPreviewOrAConfirmation()
+    {
+        var sent = new List<HttpRequestMessage>();
+        var client = Recording(
+            sent.Add,
+            HttpStatusCode.OK,
+            """{ "applied": false, "added": [ { "line": 2, "key": "BD" } ], "changed": [], "refused": [] }""");
+
+        var preview = await client.Import(CodeLists.SpecimenSource, "code\r\nBD\r\n", confirm: false);
+        await client.Import(CodeLists.SpecimenSource, "code\r\nBD\r\n", confirm: true);
+
+        Assert.Equal(
+            ["http://api.example.test/api/codes/specimen_source/csv",
+             "http://api.example.test/api/codes/specimen_source/csv?confirm=true"],
+            sent.Select(request => request.RequestUri?.ToString()));
+        Assert.All(sent, request => Assert.Equal(HttpMethod.Post, request.Method));
+        Assert.Equal("text/csv", sent[0].Content?.Headers.ContentType?.MediaType);
+        Assert.Equal("BD", Assert.Single(preview.Value!.Added).Key);
+    }
+
+    [Fact]
+    public async Task ImportAndExportFailuresStartWithTheirOwnPhrases()
+    {
+        var client = Recording(_ => { }, HttpStatusCode.InternalServerError, "");
+
+        Assert.StartsWith(CodesClient.ExportFailurePrefix, (await client.Export(CodeLists.Race)).Failure);
+        Assert.StartsWith(
+            CodesClient.ImportFailurePrefix, (await client.Import(CodeLists.Race, "code", confirm: false)).Failure);
+    }
+
     private static CodesClient Recording(
         Action<HttpRequestMessage> record,
         HttpStatusCode status,

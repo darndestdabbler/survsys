@@ -183,9 +183,9 @@ public class RecordAPersonsAddressHistoryTests(SurvsysHarness harness) : Survsys
 
             await Expect(rows).ToHaveCountAsync(2);
             await Expect(rows.Nth(0).Locator("td")).ToHaveTextAsync(
-                ["1234 Main Street", "Apt 5B", "Salt Lake City", "UT", "84101", "SL"]);
+                ["1234 Main Street", "Apt 5B", "Salt Lake City", "UT", "84101", "Salt Lake", "—"]);
             await Expect(rows.Nth(1).Locator("td")).ToHaveTextAsync(
-                ["45 East 400 South", "—", "Salt Lake City", "UT", "84111-1234", "—"]);
+                ["45 East 400 South", "—", "Salt Lake City", "UT", "84111-1234", "—", "—"]);
         });
     }
 

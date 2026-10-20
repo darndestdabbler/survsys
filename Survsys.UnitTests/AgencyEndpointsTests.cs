@@ -130,4 +130,14 @@ public class AgencyEndpointsTests
     {
         Assert.StartsWith("agencyId 99 is not an agency", AgencyEndpoints.NotAnAgency(99), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ZipCodeColumnsReadAZipCodeFileAsItsZips()
+    {
+        var (rows, refused) = ReferenceCsv.Read(
+            "Zip_Code\r\n84108-1234\r\n84101\r\n", AgencyEndpoints.ZipCodeColumns);
+
+        Assert.Empty(refused);
+        Assert.Equal(["84108", "84101"], rows.Select(row => PlaceEndpoints.ZipCode(row).Code));
+    }
 }

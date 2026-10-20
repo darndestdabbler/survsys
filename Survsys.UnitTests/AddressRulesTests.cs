@@ -93,15 +93,46 @@ public class AddressRulesTests
         ["84401"] = "WB",
     };
 
+    private static readonly CtTown[] Towns =
+    [
+        new() { Town = "Windsor Locks", County = "09003", PlanningRegion = "09110" },
+        new() { Town = "Hartford", County = "09003", PlanningRegion = "09110" },
+    ];
+
     [Fact]
     public void FillConnecticutCountiesTakesBothFromTheTown()
     {
         var address = new PersonAddress { City = "Windsor Locks", State = "CT", PostalCode = "06103" };
 
-        AddressRules.FillConnecticutCounties(address, CountiesByZip);
+        AddressRules.FillConnecticutCounties(address, Towns, CountiesByZip);
 
         Assert.Equal("09003", address.County);
         Assert.Equal("09110", address.CountyEquivalent);
+    }
+
+    [Fact]
+    public void FillConnecticutCountiesMatchesTheTownInEitherCase()
+    {
+        var address = new PersonAddress { City = "WINDSOR LOCKS", State = "CT" };
+
+        AddressRules.FillConnecticutCounties(address, Towns, null);
+
+        Assert.Equal(("09003", "09110"), (address.County, address.CountyEquivalent));
+    }
+
+    [Fact]
+    public void FillConnecticutCountiesReadsOnlyTheTownsItIsGiven()
+    {
+        // A corrected town is the one passed in, not the seed's.
+        var corrected = new CtTown { Town = "Windsor Locks", County = "09013", PlanningRegion = "09130" };
+        var address = new PersonAddress { City = "Windsor Locks", State = "CT" };
+        var unknown = new PersonAddress { City = "Windsor Locks", State = "CT" };
+
+        AddressRules.FillConnecticutCounties(address, [corrected], null);
+        AddressRules.FillConnecticutCounties(unknown, null, null);
+
+        Assert.Equal(("09013", "09130"), (address.County, address.CountyEquivalent));
+        Assert.Equal((null, null), (unknown.County, unknown.CountyEquivalent));
     }
 
     [Fact]
@@ -109,7 +140,7 @@ public class AddressRulesTests
     {
         var address = new PersonAddress { City = "Nowhere", State = "CT", PostalCode = "06103" };
 
-        AddressRules.FillConnecticutCounties(address, CountiesByZip);
+        AddressRules.FillConnecticutCounties(address, Towns, CountiesByZip);
 
         Assert.Equal("09009", address.County);
         Assert.Null(address.CountyEquivalent);
@@ -123,7 +154,7 @@ public class AddressRulesTests
             City = "Hartford", State = "CT", County = "09001", PostalCode = "06103",
         };
 
-        AddressRules.FillConnecticutCounties(address, CountiesByZip);
+        AddressRules.FillConnecticutCounties(address, Towns, CountiesByZip);
 
         Assert.Equal("09001", address.County);
         Assert.Equal("09110", address.CountyEquivalent);
@@ -134,7 +165,7 @@ public class AddressRulesTests
     {
         var address = new PersonAddress { City = "Hartford", State = "UT", PostalCode = "84401" };
 
-        AddressRules.FillConnecticutCounties(address, CountiesByZip);
+        AddressRules.FillConnecticutCounties(address, Towns, CountiesByZip);
 
         Assert.Equal("WB", address.County);
         Assert.Null(address.CountyEquivalent);

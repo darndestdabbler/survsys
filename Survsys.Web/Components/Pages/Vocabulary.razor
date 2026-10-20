@@ -2,8 +2,9 @@
    each for master LOINC, child LOINC, organisms, specimens and results. Each
    tab lists its masters with the lab-specific child codes that resolve to them
    beside them, adds, edits and deletes entries, and exports and imports CSV.
-   An import saves over the entry with the same key and says which rows it
-   refused and why. A master a child still names is not deleted: the API says
+   An import is previewed first — the rows it would add, change and refuse —
+   and saves over the entry with the same key once it is confirmed. A master
+   a child still names is not deleted: the API says
    so, and the message shows here. *@
 @page "/vocabulary"
 @using Microsoft.AspNetCore.Components.Rendering
@@ -21,18 +22,6 @@
 {
     <MudAlert id="vocabulary-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
         @whyNot
-    </MudAlert>
-}
-
-@if (imported is { } import)
-{
-    <MudAlert id="vocabulary-imported" Severity="@(import.Refused.Count == 0 ? Severity.Success : Severity.Warning)"
-              Class="mb-4">
-        Imported @importedTable: @import.Added added, @import.Updated updated, @import.Refused.Count refused.
-        @foreach (var refused in import.Refused)
-        {
-            <div id="@($"vocabulary-refused-{refused.Line}")">Line @refused.Line: @refused.Reason</div>
-        }
     </MudAlert>
 }
 
@@ -236,9 +225,6 @@ else
 }
 
 @code {
-    /// <summary>The largest CSV file the screen reads, in bytes.</summary>
-    private const long MaxCsvBytes = 5 * 1024 * 1024;
-
     private IReadOnlyList<VocabMasterLoincRow> masterLoincs = [];
 
     private IReadOnlyList<VocabChildLoincRow> childLoincs = [];
@@ -271,10 +257,6 @@ else
         ["specimen"] = new(),
         ["test_result"] = new(),
     };
-
-    private VocabImportResponse? imported;
-
-    private string? importedTable;
 
     private bool loading = true;
 
@@ -340,7 +322,6 @@ else
     {
         saving = true;
         failure = null;
-        imported = null;
 
         var saved = id is { } existing
             ? await Client.Update(table, existing, row)
@@ -361,27 +342,12 @@ else
 
     private async Task Delete(string table, int id)
     {
-        imported = null;
         failure = await Client.Delete(table, id);
 
         if (failure is null)
         {
             await Load();
         }
-    }
-
-    private async Task Import(string table, InputFileChangeEventArgs chosen)
-    {
-        failure = null;
-        imported = null;
-
-        using var reader = new StreamReader(chosen.File.OpenReadStream(MaxCsvBytes));
-        var asked = await Client.Import(table, await reader.ReadToEndAsync());
-
-        imported = asked.Value;
-        importedTable = table;
-        failure = asked.Failure;
-        await Load();
     }
 
     private Task SaveMasterLoinc() =>
@@ -401,16 +367,18 @@ else
         Save(VocabularyClient.ChildValues, childValue[category].Id, childValue[category].ToRow(category),
             () => childValue[category] = new());
 
-    /// <summary>A table's export link and import file chooser.</summary>
+    /// <summary>A table's export link and its previewed import.</summary>
     private void Transfer(RenderTreeBuilder __builder, string table, string label)
     {
-        <div class="d-flex gap-4 align-center mb-4">
+        <div class="d-flex gap-4 align-start mb-4">
             <MudButton id="@($"{table}-export")" Variant="Variant.Outlined" Href="@($"/vocabulary/{table}/export")"
                        Target="_blank">
                 Export @label CSV
             </MudButton>
-            <label for="@($"{table}-import")">Import @label CSV</label>
-            <InputFile id="@($"{table}-import")" accept=".csv" OnChange="@(chosen => Import(table, chosen))" />
+            <div>
+                <ImportPreview Prefix="@($"{table}-import")" Label="@($"Import {label} CSV")"
+                               Import="@((csv, confirm) => Client.Import(table, csv, confirm))" Imported="@Load" />
+            </div>
         </div>
     }
 

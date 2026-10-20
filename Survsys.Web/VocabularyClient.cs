@@ -61,12 +61,16 @@ public sealed class VocabularyClient(HttpClient http)
     public Task<string?> Delete(string table, int id, CancellationToken cancellationToken = default) =>
         Saving.Delete(http, $"{Path(table)}/{id}", cancellationToken);
 
-    /// <summary>Imports a CSV file into a table, answering with what it did or why it did nothing.</summary>
-    public async Task<Asked<VocabImportResponse>> Import(
-        string table, string csv, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// What importing a CSV file into a table would do, saved only where
+    /// <paramref name="confirm"/> is true, or why it did nothing.
+    /// </summary>
+    public async Task<Asked<ReferenceImportResponse>> Import(
+        string table, string csv, bool confirm, CancellationToken cancellationToken = default)
     {
         using var content = new StringContent(csv, Encoding.UTF8, "text/csv");
-        return await Importing.PostContent<VocabImportResponse>(http, $"{Path(table)}/csv", content, cancellationToken);
+        return await Importing.PostContent<ReferenceImportResponse>(
+            http, $"{Path(table)}/csv{(confirm ? "?confirm=true" : "")}", content, cancellationToken);
     }
 
     /// <summary>A table as CSV, or why there is none.</summary>

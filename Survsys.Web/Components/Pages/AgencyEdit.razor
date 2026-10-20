@@ -5,7 +5,9 @@
    a ZIP+4 to its zip, and refuses a value that is not a zip code. The
    notification addresses are the agency's batch e-mail of assigned laboratory
    messages, refused where one is not an address. A save goes back to the
-   agencies list. *@
+   agencies list. A saved agency's zip codes also export as CSV and import
+   from it: an import, previewed before it is confirmed, adds zips and keeps
+   the ones the file leaves out, and the box shows the jurisdiction after it. *@
 @page "/agencies/new"
 @page "/agencies/{Id:int}"
 @inject AgenciesClient Agencies
@@ -45,6 +47,22 @@ else
                               Label="Jurisdiction zip codes" Variant="Variant.Outlined" Lines="6"
                               HelperText="Separate zip codes with commas, spaces or new lines." />
             </MudItem>
+            @if (Id is { } saved)
+            {
+                <MudItem xs="12">
+                    <div class="d-flex gap-4 align-start">
+                        <MudButton id="agency-zip-codes-export" Variant="Variant.Outlined"
+                                   Href="@($"/agencies/{saved}/zip-codes/export")" Target="_blank">
+                            Export zip codes CSV
+                        </MudButton>
+                        <div>
+                            <ImportPreview Prefix="agency-zip-codes-import" Label="Import zip codes CSV"
+                                           Import="@((csv, confirm) => Agencies.ImportZipCodes(saved, csv, confirm))"
+                                           Imported="@ReloadZipCodes" />
+                        </div>
+                    </div>
+                </MudItem>
+            }
             <MudItem xs="12">
                 <MudTextField @bind-Value="notificationEmails" id="agency-notification-emails"
                               Label="Notification e-mail addresses" Variant="Variant.Outlined" MaxLength="1000"
@@ -106,6 +124,19 @@ else
         }
 
         loading = false;
+    }
+
+    /// <summary>The jurisdiction box refilled from the agency on file, after an import saved to it.</summary>
+    private async Task ReloadZipCodes()
+    {
+        var found = await Agencies.Find(Id!.Value);
+
+        if (found.Value is { } agency)
+        {
+            zipCodes = string.Join(Environment.NewLine, agency.ZipCodes);
+        }
+
+        failure = found.Failure;
     }
 
     private async Task Save()

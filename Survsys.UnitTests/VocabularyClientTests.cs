@@ -85,7 +85,7 @@ public class VocabularyClientTests
     }
 
     [Fact]
-    public async Task ImportPostsTheCsvAsText()
+    public async Task ImportPostsTheCsvAsTextForAPreview()
     {
         HttpRequestMessage? sent = null;
         string? body = null;
@@ -96,15 +96,38 @@ public class VocabularyClientTests
                 body = request.Content!.ReadAsStringAsync().Result;
             },
             HttpStatusCode.OK,
-            """{ "added": 1, "updated": 2, "refused": [ { "line": 4, "reason": "no" } ] }""");
+            """
+            { "applied": false, "added": [ { "line": 2, "key": "27268008" } ],
+              "changed": [ { "line": 3, "key": "3092008" } ], "refused": [ { "line": 4, "reason": "no" } ] }
+            """);
 
-        var asked = await client.Import(VocabularyClient.Organisms, "snomed,snomed_alt,organism,condition_id\r\n");
+        var asked = await client.Import(
+            VocabularyClient.Organisms, "snomed,snomed_alt,organism,condition_id\r\n", confirm: false);
 
         Assert.Equal(HttpMethod.Post, sent?.Method);
         Assert.Equal("http://api.example.test/api/vocabulary/organisms/csv", sent?.RequestUri?.ToString());
         Assert.Equal("text/csv", sent?.Content?.Headers.ContentType?.MediaType);
         Assert.StartsWith("snomed,", body);
-        Assert.Equal((1, 2, 4), (asked.Value!.Added, asked.Value.Updated, Assert.Single(asked.Value.Refused).Line));
+        Assert.False(asked.Value!.Applied);
+        Assert.Equal("27268008", Assert.Single(asked.Value.Added).Key);
+        Assert.Equal(3, Assert.Single(asked.Value.Changed).Line);
+        Assert.Equal(4, Assert.Single(asked.Value.Refused).Line);
+    }
+
+    [Fact]
+    public async Task ImportAsksForTheConfirmation()
+    {
+        HttpRequestMessage? sent = null;
+        var client = Recording(
+            request => sent = request,
+            HttpStatusCode.OK,
+            """{ "applied": true, "added": [], "changed": [], "refused": [] }""");
+
+        var asked = await client.Import(VocabularyClient.Organisms, "snomed\r\n", confirm: true);
+
+        Assert.Equal(
+            "http://api.example.test/api/vocabulary/organisms/csv?confirm=true", sent?.RequestUri?.ToString());
+        Assert.True(asked.Value!.Applied);
     }
 
     [Fact]
@@ -162,7 +185,7 @@ public class VocabularyClientTests
         Assert.StartsWith(VocabularyClient.SaveFailurePrefix, await client.Delete(VocabularyClient.MasterValues, 1));
         Assert.StartsWith(VocabularyClient.SaveFailurePrefix, (await client.SaveRules(1, [])).Failure);
         Assert.StartsWith(VocabularyClient.ImportFailurePrefix,
-            (await client.Import(VocabularyClient.MasterValues, "x")).Failure);
+            (await client.Import(VocabularyClient.MasterValues, "x", confirm: false)).Failure);
         Assert.StartsWith(VocabularyClient.ExportFailurePrefix,
             (await client.Export(VocabularyClient.MasterValues)).Failure);
     }

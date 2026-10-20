@@ -75,9 +75,11 @@ public sealed class ConformanceOptions
     /// against, its code matched without regard to case. Throws
     /// <see cref="InvalidOperationException"/> for a profile this tier does not
     /// know, or the Connecticut profile without both its OIDs, so a
-    /// misconfiguration is refused rather than left unchecked.
+    /// misconfiguration is refused rather than left unchecked. The Connecticut
+    /// profile checks a CT patient's town against <paramref name="towns"/>,
+    /// the towns on file, where they are given.
     /// </summary>
-    public IReadOnlyDictionary<string, ConformanceProfile> ProfilesBySender()
+    public IReadOnlyDictionary<string, ConformanceProfile> ProfilesBySender(IReadOnlySet<string>? towns = null)
     {
         ConformanceProfile? connecticut = null;
         var profiles = new Dictionary<string, ConformanceProfile>(StringComparer.OrdinalIgnoreCase);
@@ -100,7 +102,7 @@ public sealed class ConformanceOptions
             }
 
             connecticut ??= ConnecticutElrProfile.Create(
-                ConnecticutReceivingApplicationOid, ConnecticutReceivingFacilityOid);
+                ConnecticutReceivingApplicationOid, ConnecticutReceivingFacilityOid, towns);
             profiles[sender] = connecticut;
         }
 
@@ -325,6 +327,20 @@ public sealed class ElrIntakeService(
         await database.SaveChangesAsync(cancellationToken);
 
         return staged;
+    }
+
+    /// <summary>
+    /// The names of the Connecticut towns on file, matched in either case: what
+    /// the Connecticut profile checks a CT patient's town against, so a town an
+    /// administrator adds is accepted from the next message on.
+    /// </summary>
+    public static async Task<IReadOnlySet<string>> TownNames(
+        SurvsysDbContext database, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+
+        return (await database.CtTowns.Select(town => town.Town).ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -558,7 +574,12 @@ public sealed class ElrIntakeService(
             using var scope = scopeFactory.CreateScope();
             var database = scope.ServiceProvider.GetRequiredService<SurvsysDbContext>();
             var staged = await Receive(
-                parser, database, raw, fileName, perMessage.Token, conformance.Value.ProfilesBySender());
+                parser,
+                database,
+                raw,
+                fileName,
+                perMessage.Token,
+                conformance.Value.ProfilesBySender(await TownNames(database, perMessage.Token)));
 
             Move(file, Path.Combine(dropDirectory, ProcessedFolder));
             logger.LogInformation(

@@ -102,6 +102,31 @@ public sealed record ApiAsk(string FailurePrefix, string Expected)
     }
 
     /// <summary>
+    /// Asks the API tier for text rather than JSON — a CSV export — and
+    /// answers with it or with why there is none.
+    /// </summary>
+    public async Task<Asked<string>> GetText(
+        HttpClient http,
+        string url,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(http);
+
+        try
+        {
+            using var response = await http.GetAsync(url, cancellationToken);
+
+            return response.IsSuccessStatusCode
+                ? Asked<string>.Of(await response.Content.ReadAsStringAsync(cancellationToken))
+                : Asked<string>.Failed(Refused(response));
+        }
+        catch (Exception failed) when (Caught(failed, cancellationToken) is { } failure)
+        {
+            return Asked<string>.Failed(failure);
+        }
+    }
+
+    /// <summary>
     /// Sends the API tier something to create, and answers with what it
     /// created or with why nothing was.
     /// </summary>

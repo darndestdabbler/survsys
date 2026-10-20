@@ -887,6 +887,45 @@
       "dateTime": "2026-10-20T08:13:23.297000-04:00",
       "task": "Repair the two faults that make a real laboratory message fail promotion. MessageCaseWriter.AddAddress, when it adds the message's patient address (still only where the person has no address with that street and zip), loads the person's addresses, adds the message's address begun today, and closes the rest by AddressRules.CloseHistoric as a person save does, saving the closing before the insert so the one-current-address index never sees two open addresses; the message's address becomes the one current address. lab_test_results.result_value is widened from 200 to 2000 characters, matching staged_message_results.result_value, with its migration. The integration suite proves both against SQL Server: a promotion for a person with a different current address closes the old address and leaves the message's current; a 2000-character result is promoted whole; the two tests that relied on the 200-character gap to fail part-way (MessageCaseWriterTests.APromotionThatFailsPartWayLeavesNothing and MessageProcessingServiceTests.AFailedAssignmentIsHeldRetriedAndAssignedWithItsTrail) fail instead on an interpretation longer than lab_test_results.test_result's 100 characters; and session 81's county test no longer deletes the seeded address.",
       "releasable": false
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 83,
+      "dateTime": "2026-10-20T09:00:57.032000-04:00",
+      "task": "Make every reference table an administrator keeps current viewable, editable and uploadable. Survsys.Api gets one CSV import and export for reference tables, built from VocabularyCsv: ReferenceCsv carries the reading and writing of a CSV file and its field parsing, and ReferenceImport holds the table shape (columns, fields, parse, validation, natural key, apply) and the import, which returns a ReferenceImportResponse of the rows it would add, the rows it would change and the rows it refuses with each one's line and reason, and writes only when called with confirm=true (a preview runs the same saves inside a transaction it rolls back). A row is matched by the table's natural key and an existing row the file leaves out is kept. The five vocabulary tables move onto it with their CSV columns unchanged, and VocabImportResponse is replaced by ReferenceImportResponse. /api/codes/{list}/csv exports and imports a code list by its code (with state, fips and kind on the county list and condition_ids on test types; retiring stays clearing Active, nothing is deleted). New /api/ct-towns and /api/zip-codes endpoints list, add, edit, export and import the Connecticut towns (town, county, planning region) and the zip-to-county table, and /api/agencies/{id}/zip-codes/csv exports and imports an agency's jurisdiction zip codes; all of them are reference-data paths in PrivilegeRules, so writes need the privilege /codes needs. AddressRules.FillConnecticutCounties takes the towns as an argument instead of reading CtTownSeed, and the person save, ELR promotion (MessageCaseWriter) and the CT conformance profile's town check read them from ct_towns, so an upload takes effect on the next save. Survsys.Web gets a shared ImportPreview component (choose a file, see the preview, confirm or cancel) used by /vocabulary, /codes, the agency edit screen and a new /places screen with a towns tab and a zip codes tab (view, add, edit, import, export), behind the reference-data privilege in the nav. The person screen and the case search show a county's and a county equivalent's description from the county list instead of its code, every element id unchanged. Unit, integration (SQL Server) and one Playwright test prove it.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 83,
+      "dateTime": "2026-10-20T09:08:26.923000-04:00",
+      "what": "step 'code-lists-csv': its files",
+      "reason": "A test type's conditions link to the code's id, so ReferenceTable gains a Saved hook run after a row is saved; and the CSV exports share one ApiAsk.GetText rather than each client copying the failure handling",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 83,
+      "dateTime": "2026-10-20T09:17:08.535000-04:00",
+      "what": "step 'towns-from-database': its files",
+      "reason": "ElrIntakeService gains a public TownNames read from ct_towns for both intake transports; it reads the database, so its test is an integration test named after the source file",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 83,
+      "dateTime": "2026-10-20T09:24:21.960000-04:00",
+      "what": "step 'county-names': its files",
+      "reason": "The Places screen shows its counties by name with a local lookup until CountyName exists; it moves onto CountyName here so the lookup is written once",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 83,
+      "dateTime": "2026-10-20T09:30:21.482000-04:00",
+      "what": "step 'e2e-town-upload': its files",
+      "reason": "The full e2e run shows record-a-persons-address-history step 12 reading the county by name (Salt Lake, not SL) and the planning region column session 81 added; its test and document are updated to what the person screen now shows",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

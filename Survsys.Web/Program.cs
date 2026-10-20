@@ -94,6 +94,7 @@ builder.Services.AddHttpClient<VaccinesClient>(http => http.BaseAddress = api).A
 builder.Services.AddHttpClient<EncountersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<CodesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<VocabularyClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<PlacesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 
 var app = builder.Build();
 
@@ -174,6 +175,24 @@ app.MapGet("/saved-views/{id:int}/export", async (int id, SavedViewsClient views
 app.MapGet("/vocabulary/{table}/export", async (string table, VocabularyClient vocabulary, CancellationToken cancellationToken) =>
     await vocabulary.Export(table, cancellationToken) is var exported && exported.Value is { } csv
         ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"vocabulary-{table}.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// A code list's CSV export, handed over the same way from the Code lists screen.
+app.MapGet("/codes/{list}/export", async (string list, CodesClient codes, CancellationToken cancellationToken) =>
+    await codes.Export(list, cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"codes-{list}.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// The Connecticut towns or the zip codes as CSV, handed over the same way from the Places screen.
+app.MapGet("/places/{table}/export", async (string table, PlacesClient places, CancellationToken cancellationToken) =>
+    await places.Export(table, cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"{table}.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// An agency's jurisdiction zip codes as CSV, handed over the same way from its edit screen.
+app.MapGet("/agencies/{id:int}/zip-codes/export", async (int id, AgenciesClient agencies, CancellationToken cancellationToken) =>
+    await agencies.ExportZipCodes(id, cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"agency-{id}-zip-codes.csv")
         : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();

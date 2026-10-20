@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -20,6 +21,10 @@ namespace Survsys.Api;
 /// whole list where that condition has none mapped, so a condition nobody has
 /// mapped yet still offers every test type.
 ///
+/// Each list is exported and imported as CSV by <see cref="ReferenceImport"/>,
+/// a row matched to a code by the code itself: the county list carries each
+/// county's state, FIPS code and kind, and the test types their conditions.
+///
 /// The handlers are handed <see cref="CodeQueries"/> and not the
 /// <c>DbContext</c>, because the architecture test lets no <c>Survsys.Data</c>
 /// type into an endpoint signature.
@@ -29,6 +34,10 @@ public static class CodeEndpoints
     private const int CodeLength = 100;
 
     private const int DescriptionLength = 400;
+
+    private const int StateLength = 2;
+
+    private const int FipsLength = 5;
 
     /// <summary>
     /// Why this is not a code this tier will save on that list, as far as can
@@ -63,6 +72,115 @@ public static class CodeEndpoints
     }
 
     /// <summary>
+    /// The CSV columns of a list: the code, its description, sort order and
+    /// whether it is active, then the county list's state, FIPS code and kind,
+    /// or the test types' conditions.
+    /// </summary>
+    public static IReadOnlyList<string> CsvColumns(string list)
+    {
+        var columns = new List<string> { "code", "description", "sort_order", "active" };
+
+        if (list == CodeLists.County)
+        {
+            columns.AddRange(["state", "fips", "kind"]);
+        }
+        else if (list == CodeLists.TestType)
+        {
+            columns.Add("condition_ids");
+        }
+
+        return columns;
+    }
+
+    /// <summary>A code's CSV fields, in <see cref="CsvColumns"/>'s order; conditions as ids joined by <c>;</c>.</summary>
+    public static IReadOnlyList<string?> CsvFields(string list, CodeResponse code)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+
+        var fields = new List<string?>
+        {
+            code.Code, code.Description, ReferenceCsv.Number(code.SortOrder), ReferenceCsv.YesNo(code.Active),
+        };
+
+        if (list == CodeLists.County)
+        {
+            fields.AddRange([code.State, code.Fips, code.Kind]);
+        }
+        else if (list == CodeLists.TestType)
+        {
+            fields.Add(string.Join(";", code.ConditionIds.Order()));
+        }
+
+        return fields;
+    }
+
+    /// <summary>
+    /// A code read from its CSV row, or why the row is not one: a blank sort
+    /// order is 0 and a blank active is yes, so a new code needs only its code.
+    /// </summary>
+    public static (CodeResponse? Code, string? Why) FromCsv(string list, CsvRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        if (ReferenceCsv.Optional(row, "sort_order", out var sortOrder) is { } notANumber)
+        {
+            return (null, notANumber);
+        }
+
+        var active = true;
+        if (row.Value("active") is not null && ReferenceCsv.Flag(row, "active", out active) is { } notAFlag)
+        {
+            return (null, notAFlag);
+        }
+
+        var conditionIds = new List<int>();
+        var conditions = list == CodeLists.TestType ? row.Value("condition_ids") ?? "" : "";
+
+        foreach (var text in conditions.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var conditionId))
+            {
+                return (null, $"condition_ids '{text}' is not a whole number.");
+            }
+
+            conditionIds.Add(conditionId);
+        }
+
+        var county = list == CodeLists.County;
+
+        return (new CodeResponse(
+            0,
+            list,
+            row.Value("code") ?? "",
+            row.Value("description"),
+            sortOrder ?? 0,
+            active,
+            conditionIds,
+            county ? row.Value("state")?.ToUpperInvariant() : null,
+            county ? row.Value("fips") : null,
+            county ? row.Value("kind")?.ToLowerInvariant() : null), null);
+    }
+
+    /// <summary>
+    /// Why a code read from CSV is not one this tier will save on that list:
+    /// what <see cref="WhyNotACode"/> refuses, and on the county list a state
+    /// or FIPS code too long for its column or a kind that is neither
+    /// <c>county</c> nor <c>county-equivalent</c>.
+    /// </summary>
+    public static string? WhyNotACsvCode(string list, CodeResponse code)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+
+        return WhyNotACode(
+                list, new SaveCodeRequest(code.Code, code.Description, code.SortOrder, code.Active, code.ConditionIds))
+            ?? TooLong("state", code.State, StateLength)
+            ?? TooLong("fips", code.Fips, FipsLength)
+            ?? (code.Kind is null or CodeValue.CountyKind or CodeValue.CountyEquivalentKind
+                ? null
+                : $"kind '{code.Kind}' is not {CodeValue.CountyKind} or {CodeValue.CountyEquivalentKind}.");
+    }
+
+    /// <summary>
     /// Registers what the code endpoints need of the container.
     /// </summary>
     public static IServiceCollection AddCodes(this IServiceCollection services) =>
@@ -82,6 +200,14 @@ public static class CodeEndpoints
             .WithName("UpdateCode")
             .WithSummary("Saves over a code.");
 
+        routes.MapGet("/api/codes/{list}/csv", ExportCodes)
+            .WithName("ExportCodes")
+            .WithSummary("One code list, retired codes included, as CSV.");
+
+        routes.MapPost("/api/codes/{list}/csv", ImportCodes)
+            .WithName("ImportCodes")
+            .WithSummary("Previews, or with confirm=true saves, a CSV file of codes, added or saved over by code.");
+
         return routes;
     }
 
@@ -94,13 +220,36 @@ public static class CodeEndpoints
     {
         if (!IsAList(list))
         {
-            return TypedResults.Problem(
-                detail: NotAList(list),
-                statusCode: StatusCodes.Status404NotFound,
-                title: "There is no such code list.");
+            return NoSuchList(list);
         }
 
         return TypedResults.Ok(await codes.List(list, conditionId, inactive, cancellationToken));
+    }
+
+    private static async Task<Results<ContentHttpResult, ProblemHttpResult>> ExportCodes(
+        CodeQueries codes,
+        string list,
+        CancellationToken cancellationToken = default) =>
+        IsAList(list)
+            ? TypedResults.Text(await codes.Export(list, cancellationToken), "text/csv; charset=utf-8")
+            : NoSuchList(list);
+
+    private static async Task<Results<Ok<ReferenceImportResponse>, ProblemHttpResult>> ImportCodes(
+        CodeQueries codes,
+        string list,
+        HttpRequest request,
+        bool confirm = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsAList(list))
+        {
+            return NoSuchList(list);
+        }
+
+        using var reader = new StreamReader(request.Body);
+        var csv = await reader.ReadToEndAsync(cancellationToken);
+
+        return TypedResults.Ok(await codes.Import(list, csv, confirm, cancellationToken));
     }
 
     private static async Task<Results<Created<CodeResponse>, ProblemHttpResult>> CreateCode(
@@ -175,6 +324,12 @@ public static class CodeEndpoints
     private static string NotAList(string list) =>
         $"'{list}' is not a code list. The lists are {string.Join(", ", CodeLists.All)}.";
 
+    private static ProblemHttpResult NoSuchList(string list) =>
+        TypedResults.Problem(
+            detail: NotAList(list),
+            statusCode: StatusCodes.Status404NotFound,
+            title: "There is no such code list.");
+
     private static string? TooLong(string field, string? value, int length) =>
         value?.Trim().Length > length ? $"{field} is longer than {length} characters." : null;
 
@@ -219,26 +374,40 @@ internal sealed class CodeQueries(SurvsysDbContext database)
             }
         }
 
-        return await codes
+        return await Responses(database, Ordered(codes)).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>Codes in a list's order: by sort order, then by what a picker shows, then by id.</summary>
+    public static IQueryable<CodeValue> Ordered(IQueryable<CodeValue> codes) =>
+        codes
             .OrderBy(code => code.SortOrder)
             .ThenBy(code => code.Description ?? code.Code)
-            .ThenBy(code => code.Id)
-            .Select(code => new CodeResponse(
-                code.Id,
-                code.List,
-                code.Code,
-                code.Description,
-                code.SortOrder,
-                code.Active,
-                database.CodeValueConditions
-                    .Where(link => link.CodeValueId == code.Id)
-                    .Select(link => link.ConditionId)
-                    .ToList(),
-                code.State,
-                code.Fips,
-                code.Kind))
-            .ToListAsync(cancellationToken);
-    }
+            .ThenBy(code => code.Id);
+
+    /// <summary>Codes as answered, each with its conditions.</summary>
+    public static IQueryable<CodeResponse> Responses(SurvsysDbContext database, IQueryable<CodeValue> codes) =>
+        codes.Select(code => new CodeResponse(
+            code.Id,
+            code.List,
+            code.Code,
+            code.Description,
+            code.SortOrder,
+            code.Active,
+            database.CodeValueConditions
+                .Where(link => link.CodeValueId == code.Id)
+                .Select(link => link.ConditionId)
+                .ToList(),
+            code.State,
+            code.Fips,
+            code.Kind));
+
+    public Task<string> Export(string list, CancellationToken cancellationToken) =>
+        ReferenceImport.Export(database, new CodeListTable(list), cancellationToken);
+
+    /// <summary>What importing a CSV file onto a list would do, written only where <paramref name="confirm"/> is true.</summary>
+    public Task<ReferenceImportResponse> Import(
+        string list, string? csv, bool confirm, CancellationToken cancellationToken) =>
+        ReferenceImport.Import(database, new CodeListTable(list), csv, confirm, cancellationToken);
 
     /// <summary>The list the code with that id is on, or null where no code has it.</summary>
     public Task<string?> ListOf(int id, CancellationToken cancellationToken) =>
@@ -316,5 +485,84 @@ internal sealed class CodeQueries(SurvsysDbContext database)
         code.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         code.SortOrder = request.SortOrder;
         code.Active = request.Active;
+    }
+}
+
+/// <summary>
+/// One code list as a reference table: keyed by the code within the list, the
+/// county list carrying state, FIPS code and kind and the test types their
+/// conditions, which are replaced whole once the code is saved.
+/// </summary>
+internal sealed class CodeListTable(string list) : ReferenceTable<CodeValue, CodeResponse>
+{
+    public override IReadOnlyList<string> Columns => CodeEndpoints.CsvColumns(list);
+
+    public override Task<List<CodeResponse>> List(SurvsysDbContext database, CancellationToken cancellationToken) =>
+        CodeQueries.Responses(database, CodeQueries.Ordered(database.CodeValues.Where(code => code.List == list)))
+            .ToListAsync(cancellationToken);
+
+    public override IReadOnlyList<string?> Fields(CodeResponse row) => CodeEndpoints.CsvFields(list, row);
+
+    public override (CodeResponse? Row, string? Why) Parse(CsvRow row) => CodeEndpoints.FromCsv(list, row);
+
+    public override string? WhyNot(CodeResponse row) => CodeEndpoints.WhyNotACsvCode(list, row);
+
+    public override string KeyOf(CodeResponse row) => row.Code.Trim();
+
+    public override Task<CodeValue?> ByKey(
+        SurvsysDbContext database, CodeResponse row, CancellationToken cancellationToken) =>
+        database.CodeValues.SingleOrDefaultAsync(
+            code => code.List == list && code.Code == row.Code.Trim(), cancellationToken);
+
+    public override Task<CodeResponse> RowOf(
+        SurvsysDbContext database, CodeValue entity, CancellationToken cancellationToken) =>
+        CodeQueries.Responses(database, database.CodeValues.Where(code => code.Id == entity.Id))
+            .SingleAsync(cancellationToken);
+
+    public override CodeValue New(CodeResponse row) => new() { List = list, Code = row.Code.Trim() };
+
+    public override async Task<string?> Apply(
+        SurvsysDbContext database, CodeValue entity, CodeResponse row, CancellationToken cancellationToken)
+    {
+        var conditionIds = row.ConditionIds.ToList();
+        var found = await database.Conditions
+            .Where(condition => conditionIds.Contains(condition.Id))
+            .Select(condition => condition.Id)
+            .ToListAsync(cancellationToken);
+
+        if (conditionIds.Except(found).Select(id => (int?)id).FirstOrDefault() is { } missing)
+        {
+            return $"condition_ids names {missing}, which is not a condition GET /api/conditions lists.";
+        }
+
+        entity.Code = row.Code.Trim();
+        entity.Description = Blank(row.Description);
+        entity.SortOrder = row.SortOrder;
+        entity.Active = row.Active;
+
+        if (list == CodeLists.County)
+        {
+            entity.State = Blank(row.State);
+            entity.Fips = Blank(row.Fips);
+            entity.Kind = Blank(row.Kind);
+        }
+
+        return null;
+    }
+
+    public override async Task Saved(
+        SurvsysDbContext database, CodeValue entity, CodeResponse row, CancellationToken cancellationToken)
+    {
+        if (list != CodeLists.TestType)
+        {
+            return;
+        }
+
+        await database.CodeValueConditions
+            .Where(link => link.CodeValueId == entity.Id)
+            .ExecuteDeleteAsync(cancellationToken);
+        database.CodeValueConditions.AddRange(row.ConditionIds.Distinct().Select(conditionId =>
+            new CodeValueCondition { CodeValueId = entity.Id, ConditionId = conditionId }));
+        await database.SaveChangesAsync(cancellationToken);
     }
 }

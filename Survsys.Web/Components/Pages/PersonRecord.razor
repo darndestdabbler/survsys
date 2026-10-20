@@ -23,6 +23,7 @@
    literals here as it is there. *@
 @page "/people/{PersonId:int}"
 @inject PersonsClient Persons
+@inject CodesClient Codes
 @inject CasesClient Cases
 @inject IConfiguration Configuration
 
@@ -149,8 +150,8 @@ else if (person is { } shown)
                             <td>@Shown(address.City)</td>
                             <td>@Shown(address.State)</td>
                             <td>@Shown(address.PostalCode)</td>
-                            <td>@Shown(address.County)</td>
-                            <td>@Shown(address.CountyEquivalent)</td>
+                            <td>@Shown(AddressLabels.CountyName(counties, address.County))</td>
+                            <td>@Shown(AddressLabels.CountyName(counties, address.CountyEquivalent))</td>
                         </tr>
                     }
                 </tbody>
@@ -280,6 +281,9 @@ else if (person is { } shown)
 
     private PersonDetailResponse? person;
 
+    /// <summary>The county list, retired codes included, that the addresses' counties are named from.</summary>
+    private IReadOnlyList<CodeResponse> counties = [];
+
     private Asked<PagedResult<CaseSearchItemResponse>>? cases;
 
     private bool loading = true;
@@ -313,6 +317,11 @@ else if (person is { } shown)
         failure = null;
         person = null;
         cases = null;
+
+        if (counties.Count == 0)
+        {
+            counties = (await Codes.List(CodeLists.County, inactive: true)).Value ?? [];
+        }
 
         var found = await Persons.Find(PersonId);
 

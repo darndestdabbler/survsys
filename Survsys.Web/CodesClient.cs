@@ -1,3 +1,4 @@
+using System.Text;
 using Survsys.Contracts;
 
 namespace Survsys.Web;
@@ -18,9 +19,19 @@ public sealed class CodesClient(HttpClient http)
     /// <summary>How a failure to add or save a code starts.</summary>
     public const string SaveFailurePrefix = "The code could not be saved";
 
+    /// <summary>How a failure to import a CSV file of codes starts.</summary>
+    public const string ImportFailurePrefix = "The CSV file of codes could not be imported";
+
+    /// <summary>How a failure to export a list starts.</summary>
+    public const string ExportFailurePrefix = "The code list could not be exported";
+
     private static readonly ApiAsk Listing = new(ListFailurePrefix, "a code list");
 
     private static readonly ApiAsk Saving = new(SaveFailurePrefix, "the code as saved");
+
+    private static readonly ApiAsk Importing = new(ImportFailurePrefix, "what the import did");
+
+    private static readonly ApiAsk Exporting = new(ExportFailurePrefix, "the code list as CSV");
 
     /// <summary>
     /// One list's codes, or why there are none: the active ones unless
@@ -65,4 +76,23 @@ public sealed class CodesClient(HttpClient http)
         SaveCodeRequest request,
         CancellationToken cancellationToken = default) =>
         Saving.Put<SaveCodeRequest, CodeResponse>(http, $"api/codes/{id}", request, cancellationToken);
+
+    /// <summary>A list, retired codes included, as CSV, or why there is none.</summary>
+    public Task<Asked<string>> Export(string list, CancellationToken cancellationToken = default) =>
+        Exporting.GetText(http, $"api/codes/{Uri.EscapeDataString(list)}/csv", cancellationToken);
+
+    /// <summary>
+    /// What importing a CSV file onto a list would do, saved only where
+    /// <paramref name="confirm"/> is true, or why it did nothing.
+    /// </summary>
+    public async Task<Asked<ReferenceImportResponse>> Import(
+        string list, string csv, bool confirm, CancellationToken cancellationToken = default)
+    {
+        using var content = new StringContent(csv, Encoding.UTF8, "text/csv");
+        return await Importing.PostContent<ReferenceImportResponse>(
+            http,
+            $"api/codes/{Uri.EscapeDataString(list)}/csv{(confirm ? "?confirm=true" : "")}",
+            content,
+            cancellationToken);
+    }
 }

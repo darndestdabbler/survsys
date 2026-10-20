@@ -30,6 +30,7 @@
 @inject CasesClient Cases
 @inject ConditionsClient Conditions
 @inject AgenciesClient Agencies
+@inject CodesClient Codes
 @inject IConfiguration Configuration
 
 <PageTitle>Events — Survsys</PageTitle>
@@ -201,8 +202,8 @@ else if (asked?.Value is { } cases)
                             <td id="@($"events-row-{row.Id}-status")">@StatusLabel(row.CaseStatus)</td>
                             <td id="@($"events-row-{row.Id}-mmwr")">@MmwrWeek(row)</td>
                             <td id="@($"events-row-{row.Id}-onset")">@(row.EventOnsetDate?.ToString("yyyy-MM-dd") ?? "—")</td>
-                            <td id="@($"events-row-{row.Id}-county")">@(row.County ?? "—")</td>
-                            <td id="@($"events-row-{row.Id}-county-equivalent")">@(row.CountyEquivalent ?? "—")</td>
+                            <td id="@($"events-row-{row.Id}-county")">@(AddressLabels.CountyName(counties, row.County) ?? "—")</td>
+                            <td id="@($"events-row-{row.Id}-county-equivalent")">@(AddressLabels.CountyName(counties, row.CountyEquivalent) ?? "—")</td>
                         </tr>
                     }
                 </tbody>
@@ -253,6 +254,9 @@ else if (asked?.Value is { } cases)
     private IReadOnlyList<ConditionResponse> conditions = [];
     private IReadOnlyList<AgencyResponse> agencies = [];
 
+    /// <summary>The county list, retired codes included, that each row's counties are named from.</summary>
+    private IReadOnlyList<CodeResponse> counties = [];
+
     private Asked<PagedResult<CaseSearchItemResponse>>? asked;
 
     /// <summary>
@@ -296,9 +300,11 @@ else if (asked?.Value is { } cases)
     {
         var catalogue = await Conditions.Page(1, Catalogue);
         var all = await Agencies.All();
+        var countyList = await Codes.List(CodeLists.County, inactive: true);
 
         conditions = catalogue.Value?.Items ?? [];
         agencies = all.Value?.Items ?? [];
+        counties = countyList.Value ?? [];
     }
 
     /// <summary>Searching with the keyboard, as the legacy form allows.</summary>

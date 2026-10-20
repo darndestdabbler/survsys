@@ -69,21 +69,27 @@ public static class ConnecticutElrProfile
 
     /// <summary>
     /// The Connecticut profile, expecting <paramref name="receivingApplicationOid"/>
-    /// in MSH-5.2 and <paramref name="receivingFacilityOid"/> in MSH-6.2.
+    /// in MSH-5.2 and <paramref name="receivingFacilityOid"/> in MSH-6.2, and a
+    /// CT patient's town among <paramref name="towns"/> — the towns an
+    /// administrator keeps on file — or among <see cref="Towns"/> where none
+    /// are given.
     /// </summary>
-    public static ConformanceProfile Create(string receivingApplicationOid, string receivingFacilityOid)
+    public static ConformanceProfile Create(
+        string receivingApplicationOid, string receivingFacilityOid, IReadOnlySet<string>? towns = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(receivingApplicationOid);
         ArgumentException.ThrowIfNullOrWhiteSpace(receivingFacilityOid);
 
         var entityIdentifier = Authority('^', 2);
+        var knownTowns = towns ?? Towns;
 
         return new ConformanceProfile(Name,
         [
             ConformanceRule.Of("MSH-5.2", Usage.R, value => value == receivingApplicationOid, receivingApplicationOid),
             ConformanceRule.Of("MSH-6.2", Usage.R, value => value == receivingFacilityOid, receivingFacilityOid),
             ConformanceRule.Of("PID-3.4", Usage.R, Authority('&', 1), AuthorityDescription),
-            ConformanceRule.Of("PID-11", Usage.O, IsConnecticutTownOrOutOfState, "in one of the 169 CT towns"),
+            ConformanceRule.Of(
+                "PID-11", Usage.O, address => IsConnecticutTownOrOutOfState(address, knownTowns), "in a CT town on file"),
             ConformanceRule.Conditional("NK1", ConditionalUsage.RequiredElseOptional, IsChildBloodLead),
             ConformanceRule.Of("ORC-2", Usage.R, entityIdentifier, AuthorityDescription),
             ConformanceRule.Of("ORC-3", Usage.R, entityIdentifier, AuthorityDescription),
@@ -112,14 +118,14 @@ public static class ConnecticutElrProfile
         return (type == "ISO" && Oid.IsMatch(id)) || (type == "CLIA" && Clia.IsMatch(id));
     };
 
-    /// <summary>An address (XAD) outside CT, or in CT with a town the guide names.</summary>
-    private static bool IsConnecticutTownOrOutOfState(string address)
+    /// <summary>An address (XAD) outside CT, or in CT with a town among <paramref name="towns"/>.</summary>
+    private static bool IsConnecticutTownOrOutOfState(string address, IReadOnlySet<string> towns)
     {
         var parts = address.Split('^');
         var state = parts.Length > 3 ? parts[3].Trim() : string.Empty;
         var city = parts.Length > 2 ? parts[2].Trim() : string.Empty;
 
-        return !string.Equals(state, "CT", StringComparison.OrdinalIgnoreCase) || Towns.Contains(city);
+        return !string.Equals(state, "CT", StringComparison.OrdinalIgnoreCase) || towns.Contains(city);
     }
 
     /// <summary>

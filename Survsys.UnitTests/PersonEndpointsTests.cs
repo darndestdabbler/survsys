@@ -679,7 +679,11 @@ public class PersonEndpointsTests
                 new PersonAddressRequest(
                     City: "Danbury", State: "CT", CountyEquivalent: "09190", Ending: Today),
             ],
-        }, Today, new Dictionary<string, string> { ["06510"] = "09001" });
+        }, Today, new Dictionary<string, string> { ["06510"] = "09001" },
+        [
+            new CtTown { Town = "New Haven", County = "09009", PlanningRegion = "09170" },
+            new CtTown { Town = "Danbury", County = "09001", PlanningRegion = "09190" },
+        ]);
 
         var first = person.Addresses.First();
         Assert.Equal("09009", first.County);

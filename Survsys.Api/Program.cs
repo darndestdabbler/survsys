@@ -99,6 +99,7 @@ builder.Services.AddVaccines();
 builder.Services.AddEncounters();
 builder.Services.AddCodes();
 builder.Services.AddVocabulary();
+builder.Services.AddPlaces();
 builder.Services.AddIbis();
 builder.Services.AddReports();
 
@@ -231,6 +232,7 @@ app.MapTreatments();
 app.MapVaccines();
 app.MapEncounters();
 app.MapCodes();
+app.MapPlaces();
 app.MapIbis();
 app.MapReports();
 

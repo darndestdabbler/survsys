@@ -155,6 +155,55 @@ public class AgenciesClientTests
         Assert.StartsWith(AgenciesClient.FindFailurePrefix, asked.Failure);
     }
 
+    [Fact]
+    public async Task ExportZipCodesAsksForTheAgencysCsv()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new AgenciesClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, "zip_code\r\n84101\r\n", "text/csv");
+        }));
+
+        var asked = await client.ExportZipCodes(5);
+
+        Assert.Equal("http://api.example.test/api/agencies/5/zip-codes/csv", sent?.RequestUri?.ToString());
+        Assert.Equal("zip_code\r\n84101\r\n", asked.Value);
+    }
+
+    [Fact]
+    public async Task ImportZipCodesPostsTheCsvForAPreviewOrAConfirmation()
+    {
+        var sent = new List<HttpRequestMessage>();
+        var client = new AgenciesClient(Transport(request =>
+        {
+            sent.Add(request);
+            return Answer(
+                HttpStatusCode.OK,
+                """{ "applied": true, "added": [ { "line": 2, "key": "84101" } ], "changed": [], "refused": [] }""");
+        }));
+
+        await client.ImportZipCodes(5, "zip_code\r\n84101\r\n", confirm: false);
+        var confirmed = await client.ImportZipCodes(5, "zip_code\r\n84101\r\n", confirm: true);
+
+        Assert.Equal(
+            ["http://api.example.test/api/agencies/5/zip-codes/csv",
+             "http://api.example.test/api/agencies/5/zip-codes/csv?confirm=true"],
+            sent.Select(request => request.RequestUri?.ToString()));
+        Assert.Equal("text/csv", sent[0].Content?.Headers.ContentType?.MediaType);
+        Assert.Equal("84101", Assert.Single(confirmed.Value!.Added).Key);
+    }
+
+    [Fact]
+    public async Task ZipCodeImportAndExportFailuresStartWithTheirOwnPhrases()
+    {
+        var client = new AgenciesClient(Transport(_ => Answer(HttpStatusCode.InternalServerError, "")));
+
+        Assert.StartsWith(AgenciesClient.ExportFailurePrefix, (await client.ExportZipCodes(5)).Failure);
+        Assert.StartsWith(
+            AgenciesClient.ImportFailurePrefix, (await client.ImportZipCodes(5, "zip_code", confirm: false)).Failure);
+    }
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 

@@ -5,15 +5,15 @@ using Xunit;
 namespace Survsys.UnitTests;
 
 /// <summary>
-/// The vocabulary CSV: each table's rows written and read back unchanged, a
-/// header that does not name the columns refused, a row that is not one
-/// refused at its line, and the formula guard taken off on the way back.
+/// The vocabulary CSV: each table's rows written and read back unchanged, the
+/// formula guard taken off on the way back, and a row that is not one saying
+/// why. The reading of the file itself is <see cref="ReferenceCsvTests"/>'s.
 /// </summary>
 public class VocabularyCsvTests
 {
     private static IReadOnlyList<CsvRow> RoundTrip(IReadOnlyList<string> columns, IReadOnlyList<string?> fields)
     {
-        var (rows, refused) = VocabularyCsv.Read(VocabularyCsv.Write(columns, [fields]), columns);
+        var (rows, refused) = ReferenceCsv.Read(ReferenceCsv.Write(columns, [fields]), columns);
         Assert.Empty(refused);
         return rows;
     }
@@ -71,55 +71,13 @@ public class VocabularyCsvTests
         Assert.Equal(row, read.Row);
     }
 
-    [Fact]
-    public void ReadRefusesAFileWithNoHeader()
-    {
-        var (rows, refused) = VocabularyCsv.Read("  \r\n", VocabularyCsv.MasterValueColumns);
-
-        Assert.Empty(rows);
-        Assert.Equal(1, Assert.Single(refused).Line);
-    }
-
-    [Fact]
-    public void ReadRefusesAHeaderMissingAColumn()
-    {
-        var (rows, refused) = VocabularyCsv.Read("category,concept\r\nspecimen,Blood\r\n", VocabularyCsv.MasterValueColumns);
-
-        Assert.Empty(rows);
-        Assert.Contains("app_value", Assert.Single(refused).Reason);
-    }
-
-    [Fact]
-    public void ReadRefusesAHeaderNamingAColumnTwice()
-    {
-        var (rows, refused) = VocabularyCsv.Read(
-            "category,Category,concept,app_value\r\nspecimen,ignored,Blood,Blood\r\n", VocabularyCsv.MasterValueColumns);
-
-        Assert.Empty(rows);
-        var problem = Assert.Single(refused);
-        Assert.Equal(1, problem.Line);
-        Assert.Contains("'category' more than once", problem.Reason);
-    }
-
-    [Fact]
-    public void ReadRefusesARowWithTheWrongNumberOfFieldsAndKeepsTheRest()
-    {
-        var (rows, refused) = VocabularyCsv.Read(
-            "Category,Concept,App_Value\nspecimen,Blood,Blood\n\nspecimen,Urine\nspecimen,\"Swab, nasal\",Swab\n",
-            VocabularyCsv.MasterValueColumns);
-
-        Assert.Equal(4, Assert.Single(refused).Line);
-        Assert.Equal([2, 5], rows.Select(row => row.Line));
-        Assert.Equal("Swab, nasal", rows[1].Value("concept"));
-    }
-
     [Theory]
     [InlineData("lab_id,child_loinc,master_loinc,concept_name,archived\nthree,X,Y,,no", "lab_id")]
     [InlineData("lab_id,child_loinc,master_loinc,concept_name,archived\n,X,Y,,no", "lab_id is required")]
     [InlineData("lab_id,child_loinc,master_loinc,concept_name,archived\n3,X,Y,,maybe", "archived")]
     public void AChildLoincRowThatIsNotOneSaysWhy(string csv, string expected)
     {
-        var (rows, _) = VocabularyCsv.Read(csv, VocabularyCsv.ChildLoincColumns);
+        var (rows, _) = ReferenceCsv.Read(csv, VocabularyCsv.ChildLoincColumns);
 
         var read = VocabularyCsv.ChildLoinc(Assert.Single(rows));
 

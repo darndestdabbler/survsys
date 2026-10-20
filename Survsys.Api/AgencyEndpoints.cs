@@ -18,6 +18,10 @@ namespace Survsys.Api;
 /// existed, under the same identifiers — so every <c>agency_id</c> already
 /// written still names the agency it did.
 ///
+/// An agency's jurisdiction zip codes also export as CSV and import from it,
+/// by <see cref="ReferenceImport"/>, previewed and then confirmed: an import
+/// adds zips and keeps the ones the file leaves out.
+///
 /// The handlers are handed <see cref="AgencyQueries"/> and not the
 /// <c>DbContext</c>, because the architecture test lets no <c>Survsys.Data</c>
 /// type into an endpoint signature. The other slices that need to know whether
@@ -30,6 +34,9 @@ public static class AgencyEndpoints
     private const int ShortNameLength = 50;
 
     private const int NotificationEmailsLength = 1000;
+
+    /// <summary>The CSV columns of an agency's jurisdiction zip codes.</summary>
+    public static readonly IReadOnlyList<string> ZipCodeColumns = ["zip_code"];
 
     /// <summary>
     /// The projection from the stored agency to the wire shape a dropdown
@@ -158,7 +165,42 @@ public static class AgencyEndpoints
             .WithName("GetAgencyByZip")
             .WithSummary("The one agency whose jurisdiction a zip code falls in.");
 
+        routes.MapGet("/api/agencies/{id:int}/zip-codes/csv", ExportZipCodes)
+            .WithName("ExportAgencyZipCodes")
+            .WithSummary("An agency's jurisdiction zip codes, as CSV.");
+
+        routes.MapPost("/api/agencies/{id:int}/zip-codes/csv", ImportZipCodes)
+            .WithName("ImportAgencyZipCodes")
+            .WithSummary("Previews, or with confirm=true saves, the zip codes of a CSV file added to an "
+                + "agency's jurisdiction; a zip the file leaves out is kept.");
+
         return routes;
+    }
+
+    private static async Task<Results<ContentHttpResult, ProblemHttpResult>> ExportZipCodes(
+        AgencyQueries agencies,
+        int id,
+        CancellationToken cancellationToken = default) =>
+        await agencies.Find(id, cancellationToken) is null
+            ? NoSuchAgency(id)
+            : TypedResults.Text(await agencies.ExportZipCodes(id, cancellationToken), "text/csv; charset=utf-8");
+
+    private static async Task<Results<Ok<ReferenceImportResponse>, ProblemHttpResult>> ImportZipCodes(
+        AgencyQueries agencies,
+        int id,
+        HttpRequest request,
+        bool confirm = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (await agencies.Find(id, cancellationToken) is null)
+        {
+            return NoSuchAgency(id);
+        }
+
+        using var reader = new StreamReader(request.Body);
+        var csv = await reader.ReadToEndAsync(cancellationToken);
+
+        return TypedResults.Ok(await agencies.ImportZipCodes(id, csv, confirm, cancellationToken));
     }
 
     /// <remarks>
@@ -375,6 +417,17 @@ internal sealed class AgencyQueries(SurvsysDbContext database)
         return new AgencyDetailResponse(agency.Id, agency.Name, agency.ShortName, zipCodes, agency.NotificationEmails);
     }
 
+    public Task<string> ExportZipCodes(int id, CancellationToken cancellationToken) =>
+        ReferenceImport.Export(database, new AgencyZipCodeTable(id), cancellationToken);
+
+    /// <summary>
+    /// What adding a CSV file's zip codes to the agency's jurisdiction would
+    /// do, written only where <paramref name="confirm"/> is true.
+    /// </summary>
+    public Task<ReferenceImportResponse> ImportZipCodes(
+        int id, string? csv, bool confirm, CancellationToken cancellationToken) =>
+        ReferenceImport.Import(database, new AgencyZipCodeTable(id), csv, confirm, cancellationToken);
+
     /// <summary>
     /// What a zip code resolves to, reading only the mapping rows for that zip.
     /// </summary>
@@ -402,4 +455,47 @@ internal sealed class AgencyQueries(SurvsysDbContext database)
         agency.ShortName = string.IsNullOrWhiteSpace(request.ShortName) ? null : request.ShortName.Trim();
         agency.NotificationEmails = AgencyEndpoints.NotificationEmails(request.NotificationEmails);
     }
+}
+
+/// <summary>
+/// One agency's jurisdiction zip codes as a reference table: a zip is its own
+/// key, so an import adds the zips the agency does not hold, leaves alone the
+/// ones it does, and refuses a value that is not a zip code. A zip the file
+/// leaves out is kept; one is removed by saving the agency without it.
+/// </summary>
+internal sealed class AgencyZipCodeTable(int agencyId) : ReferenceTable<ZipCodeAgency, ZipCodeRow>
+{
+    public override IReadOnlyList<string> Columns => AgencyEndpoints.ZipCodeColumns;
+
+    public override async Task<List<ZipCodeRow>> List(SurvsysDbContext database, CancellationToken cancellationToken) =>
+        (await database.ZipCodeAgencies
+            .Where(mapping => mapping.AgencyId == agencyId)
+            .Select(mapping => mapping.ZipCode)
+            .ToListAsync(cancellationToken))
+        .Order(StringComparer.Ordinal)
+        .Select(zip => new ZipCodeRow(zip, null))
+        .ToList();
+
+    public override IReadOnlyList<string?> Fields(ZipCodeRow row) => [row.Code];
+
+    public override (ZipCodeRow? Row, string? Why) Parse(CsvRow row) => (PlaceEndpoints.ZipCode(row) with { County = null }, null);
+
+    public override string? WhyNot(ZipCodeRow row) => PlaceEndpoints.WhyNotAZipCode(row);
+
+    public override string KeyOf(ZipCodeRow row) => row.Code;
+
+    public override Task<ZipCodeAgency?> ByKey(
+        SurvsysDbContext database, ZipCodeRow row, CancellationToken cancellationToken) =>
+        database.ZipCodeAgencies.SingleOrDefaultAsync(
+            mapping => mapping.AgencyId == agencyId && mapping.ZipCode == row.Code, cancellationToken);
+
+    public override Task<ZipCodeRow> RowOf(
+        SurvsysDbContext database, ZipCodeAgency entity, CancellationToken cancellationToken) =>
+        Task.FromResult(new ZipCodeRow(entity.ZipCode, null));
+
+    public override ZipCodeAgency New(ZipCodeRow row) => new() { ZipCode = row.Code, AgencyId = agencyId };
+
+    public override Task<string?> Apply(
+        SurvsysDbContext database, ZipCodeAgency entity, ZipCodeRow row, CancellationToken cancellationToken) =>
+        Task.FromResult<string?>(null);
 }

@@ -279,6 +279,18 @@ public class ElrIntakeServiceTests
     }
 
     [Fact]
+    public void StageAcceptsATownGivenOnlyInTheTownsOnFile()
+    {
+        var towns = new HashSet<string>(["Gotham"], StringComparer.OrdinalIgnoreCase);
+
+        var staged = Assert.Single(ElrIntakeService.Stage(
+            Parser, CtMessage(city: "Gotham"), null, CtSenders, CtOptions().ProfilesBySender(towns)));
+
+        Assert.Equal(MessageReviewStatusRules.EntryCode, staged.ReviewStatus);
+        Assert.Null(staged.ConformanceWarnings);
+    }
+
+    [Fact]
     public void StageDoesNotCheckASenderWithNoProfile()
     {
         var staged = Assert.Single(ElrIntakeService.Stage(

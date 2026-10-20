@@ -17,10 +17,10 @@ namespace Survsys.Api;
 /// <remarks>
 /// The five tables differ only in their columns, their key and what they refer
 /// to, so each is a <see cref="VocabularyTable{TEntity, TRow}"/> and one set of
-/// handlers serves them all. A CSV import upserts by the table's unique key —
-/// the LOINC, the SNOMED, the category and concept, or the lab and its code —
-/// so an export imported back changes nothing, and refuses a row it cannot save
-/// with its line and why rather than failing the file. A child names its master
+/// handlers serves them all. A CSV import is <see cref="ReferenceImport"/>'s,
+/// previewed and then confirmed, and upserts by the table's unique key — the
+/// LOINC, the SNOMED, the category and concept, or the lab and its code — so an
+/// export imported back changes nothing. A child names its master
 /// by code, and a master, condition, organism or sending facility not on file is
 /// a 400 asked before the write rather than a dangling id. A master a child
 /// still names is not deleted. The vocabulary is small reference data, so a
@@ -227,14 +227,17 @@ public static class VocabularyEndpoints
             .WithSummary($"Every {noun}, as CSV.");
 
         routes.MapPost($"{path}/csv", async (
-                VocabularyQueries vocabulary, HttpRequest request, CancellationToken cancellationToken) =>
+                VocabularyQueries vocabulary,
+                HttpRequest request,
+                CancellationToken cancellationToken,
+                bool confirm = false) =>
             {
                 using var reader = new StreamReader(request.Body);
                 var csv = await reader.ReadToEndAsync(cancellationToken);
-                return TypedResults.Ok(await vocabulary.Import(shape, csv, cancellationToken));
+                return TypedResults.Ok(await vocabulary.Import(shape, csv, confirm, cancellationToken));
             })
             .WithName($"Import-{table}")
-            .WithSummary($"Adds or saves over each {noun} of a CSV file, by its key.");
+            .WithSummary($"Previews, or with confirm=true saves, each {noun} of a CSV file, added or saved over by its key.");
     }
 
     private static async Task<Results<Ok<IReadOnlyList<VocabRuleRow>>, ProblemHttpResult>> GetRules(
@@ -284,51 +287,26 @@ public static class VocabularyEndpoints
 }
 
 /// <summary>
-/// What distinguishes one vocabulary table from another: its rows, its CSV
-/// form, its key, what it refers to and what refers to it. The handling common
-/// to all five is <see cref="VocabularyQueries"/>'s.
+/// What distinguishes one vocabulary table from another beyond its CSV form:
+/// its id, what it refers to and what refers to it. The handling common to
+/// all five is <see cref="VocabularyQueries"/>'s.
 /// </summary>
-internal abstract class VocabularyTable<TEntity, TRow>
+internal abstract class VocabularyTable<TEntity, TRow> : ReferenceTable<TEntity, TRow>
     where TEntity : class
     where TRow : class
 {
-    public abstract IReadOnlyList<string> Columns { get; }
-
     public abstract int IdOf(TEntity entity);
-
-    /// <summary>
-    /// Every row of the table, in a stable order. Ordered once read, because
-    /// a projected row's members do not translate to SQL and the tables are
-    /// small.
-    /// </summary>
-    public abstract Task<List<TRow>> List(SurvsysDbContext database, CancellationToken cancellationToken);
 
     /// <summary>The row with this id, read as the list reads it.</summary>
     public abstract Task<TRow?> Find(SurvsysDbContext database, int id, CancellationToken cancellationToken);
 
-    public abstract IReadOnlyList<string?> Fields(TRow row);
-
-    public abstract (TRow? Row, string? Why) Parse(CsvRow row);
-
-    public abstract string? WhyNot(TRow row);
-
-    /// <summary>The entry already on file under the row's key, or null.</summary>
-    public abstract Task<TEntity?> ByKey(SurvsysDbContext database, TRow row, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Puts the row's values on the entity, resolving what it names, or says
-    /// which of those is not on file.
-    /// </summary>
-    public abstract Task<string?> Apply(
-        SurvsysDbContext database, TEntity entity, TRow row, CancellationToken cancellationToken);
-
-    public abstract TEntity New(TRow row);
+    public override async Task<TRow> RowOf(
+        SurvsysDbContext database, TEntity entity, CancellationToken cancellationToken) =>
+        (await Find(database, IdOf(entity), cancellationToken))!;
 
     /// <summary>Why the entry cannot be deleted, because something names it, or null.</summary>
     public abstract Task<string?> WhyNotDeleted(
         SurvsysDbContext database, TEntity entity, CancellationToken cancellationToken);
-
-    protected static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     protected static async Task<string?> Condition(
         SurvsysDbContext database, int? conditionId, CancellationToken cancellationToken) =>
@@ -422,56 +400,18 @@ internal sealed class VocabularyQueries(SurvsysDbContext database)
         return null;
     }
 
-    public async Task<string> Export<TEntity, TRow>(
+    public Task<string> Export<TEntity, TRow>(
         VocabularyTable<TEntity, TRow> table, CancellationToken cancellationToken)
         where TEntity : class
         where TRow : class =>
-        VocabularyCsv.Write(table.Columns, (await table.List(database, cancellationToken)).Select(table.Fields));
+        ReferenceImport.Export(database, table, cancellationToken);
 
-    /// <summary>
-    /// Imports a CSV file row by row: each row saved over the entry with its
-    /// key, or added where none has it, or refused with its line and why.
-    /// </summary>
-    public async Task<VocabImportResponse> Import<TEntity, TRow>(
-        VocabularyTable<TEntity, TRow> table, string? csv, CancellationToken cancellationToken)
+    /// <summary>What importing a CSV file would do, written only where <paramref name="confirm"/> is true.</summary>
+    public Task<ReferenceImportResponse> Import<TEntity, TRow>(
+        VocabularyTable<TEntity, TRow> table, string? csv, bool confirm, CancellationToken cancellationToken)
         where TEntity : class
-        where TRow : class
-    {
-        var (rows, refused) = VocabularyCsv.Read(csv, table.Columns);
-        var problems = refused.ToList();
-        var added = 0;
-        var updated = 0;
-
-        foreach (var csvRow in rows)
-        {
-            var (row, why) = table.Parse(csvRow);
-
-            if (row is null)
-            {
-                problems.Add(new ContactImportProblem(csvRow.Line, why!));
-                continue;
-            }
-
-            var holder = table.WhyNot(row) is null ? await table.ByKey(database, row, cancellationToken) : null;
-            var (saved, unsaved) = await Save(table, holder is null ? null : table.IdOf(holder), row, cancellationToken);
-
-            if (saved is null)
-            {
-                problems.Add(new ContactImportProblem(csvRow.Line, unsaved!));
-                database.ChangeTracker.Clear();
-            }
-            else if (holder is null)
-            {
-                added++;
-            }
-            else
-            {
-                updated++;
-            }
-        }
-
-        return new VocabImportResponse(added, updated, problems.OrderBy(problem => problem.Line).ToList());
-    }
+        where TRow : class =>
+        ReferenceImport.Import(database, table, csv, confirm, cancellationToken);
 
     /// <summary>A condition's rules in execution order, or null where there is no such condition.</summary>
     public async Task<IReadOnlyList<VocabRuleRow>?> Rules(int conditionId, CancellationToken cancellationToken)
@@ -590,6 +530,8 @@ internal sealed class MasterLoincTable : VocabularyTable<VocabMasterLoinc, Vocab
 
     public override string? WhyNot(VocabMasterLoincRow row) => VocabularyEndpoints.WhyNotAMasterLoinc(row);
 
+    public override string KeyOf(VocabMasterLoincRow row) => row.Loinc.Trim();
+
     public override Task<VocabMasterLoinc?> ByKey(
         SurvsysDbContext database, VocabMasterLoincRow row, CancellationToken cancellationToken) =>
         database.VocabMasterLoincs.SingleOrDefaultAsync(master => master.Loinc == row.Loinc.Trim(), cancellationToken);
@@ -657,6 +599,8 @@ internal sealed class ChildLoincTable : VocabularyTable<VocabChildLoinc, VocabCh
     public override (VocabChildLoincRow? Row, string? Why) Parse(CsvRow row) => VocabularyCsv.ChildLoinc(row);
 
     public override string? WhyNot(VocabChildLoincRow row) => VocabularyEndpoints.WhyNotAChildLoinc(row);
+
+    public override string KeyOf(VocabChildLoincRow row) => $"{row.LabId} {row.ChildLoinc.Trim()}";
 
     public override Task<VocabChildLoinc?> ByKey(
         SurvsysDbContext database, VocabChildLoincRow row, CancellationToken cancellationToken) =>
@@ -726,6 +670,8 @@ internal sealed class OrganismTable : VocabularyTable<VocabMasterOrganism, Vocab
     public override (VocabMasterOrganismRow? Row, string? Why) Parse(CsvRow row) => VocabularyCsv.Organism(row);
 
     public override string? WhyNot(VocabMasterOrganismRow row) => VocabularyEndpoints.WhyNotAnOrganism(row);
+
+    public override string KeyOf(VocabMasterOrganismRow row) => row.Snomed.Trim();
 
     public override Task<VocabMasterOrganism?> ByKey(
         SurvsysDbContext database, VocabMasterOrganismRow row, CancellationToken cancellationToken) =>
@@ -797,6 +743,8 @@ internal sealed class MasterValueTable : VocabularyTable<VocabMasterValue, Vocab
     public override (VocabMasterValueRow? Row, string? Why) Parse(CsvRow row) => VocabularyCsv.MasterValue(row);
 
     public override string? WhyNot(VocabMasterValueRow row) => VocabularyEndpoints.WhyNotAMasterValue(row);
+
+    public override string KeyOf(VocabMasterValueRow row) => $"{row.Category.Trim()} {row.Concept.Trim()}";
 
     public override Task<VocabMasterValue?> ByKey(
         SurvsysDbContext database, VocabMasterValueRow row, CancellationToken cancellationToken) =>
@@ -878,6 +826,9 @@ internal sealed class ChildValueTable : VocabularyTable<VocabChildValue, VocabCh
     public override (VocabChildValueRow? Row, string? Why) Parse(CsvRow row) => VocabularyCsv.ChildValue(row);
 
     public override string? WhyNot(VocabChildValueRow row) => VocabularyEndpoints.WhyNotAChildValue(row);
+
+    public override string KeyOf(VocabChildValueRow row) =>
+        $"{row.LabId} {row.Category.Trim()} {row.ChildCode.Trim()}";
 
     public override Task<VocabChildValue?> ByKey(
         SurvsysDbContext database, VocabChildValueRow row, CancellationToken cancellationToken) =>

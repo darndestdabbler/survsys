@@ -327,7 +327,8 @@ public static class PersonEndpoints
     ///
     /// The addresses are made regular by <see cref="AddressRules.Normalize"/>;
     /// <see cref="AddressRules.FillConnecticutCounties"/> fills a Connecticut
-    /// address's blank county and county equivalent from its town, and a
+    /// address's blank county and county equivalent from its town among
+    /// <paramref name="towns"/> — the rows of <c>ct_towns</c> the caller read — and a
     /// county still blank from its zip by <paramref name="countiesByZip"/> —
     /// the rows of <c>zip_codes</c> the caller read — and of the addresses with
     /// no ending, <see cref="AddressRules.CloseHistoric"/> leaves one current.
@@ -344,7 +345,8 @@ public static class PersonEndpoints
         Person person,
         UpdatePersonRequest request,
         DateOnly today,
-        IReadOnlyDictionary<string, string>? countiesByZip = null)
+        IReadOnlyDictionary<string, string>? countiesByZip = null,
+        IReadOnlyCollection<CtTown>? towns = null)
     {
         ArgumentNullException.ThrowIfNull(person);
         ArgumentNullException.ThrowIfNull(request);
@@ -395,7 +397,7 @@ public static class PersonEndpoints
             };
 
             AddressRules.Normalize(address);
-            AddressRules.FillConnecticutCounties(address, countiesByZip);
+            AddressRules.FillConnecticutCounties(address, towns, countiesByZip);
 
             person.Addresses.Add(address);
         }
@@ -772,8 +774,18 @@ internal sealed class PersonQueries(SurvsysDbContext database)
                 .Where(zip => zips.Contains(zip.Code) && zip.County != null)
                 .ToDictionaryAsync(zip => zip.Code, zip => zip.County!, cancellationToken);
 
+        var cities = request.Addresses
+            .Where(address => AddressRules.StateCode(address.State) == "CT")
+            .Select(address => AddressRules.Titled(address.City))
+            .OfType<string>()
+            .Distinct()
+            .ToList();
+        var towns = cities.Count == 0
+            ? []
+            : await database.CtTowns.Where(town => cities.Contains(town.Town)).ToListAsync(cancellationToken);
+
         PersonEndpoints.Apply(
-            stored, request, DateOnly.FromDateTime(DateTimeOffset.Now.Date), countiesByZip);
+            stored, request, DateOnly.FromDateTime(DateTimeOffset.Now.Date), countiesByZip, towns);
         await database.SaveChangesAsync(cancellationToken);
 
         return await Find(id, cancellationToken);

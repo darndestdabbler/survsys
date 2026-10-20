@@ -1,3 +1,4 @@
+using System.Text;
 using Survsys.Contracts;
 
 namespace Survsys.Web;
@@ -34,7 +35,17 @@ public sealed class AgenciesClient(HttpClient http)
 
     private static readonly ApiAsk Finding = new(FindFailurePrefix, "the agency's record");
 
+    /// <summary>How a failure to import a CSV file of zip codes starts.</summary>
+    public const string ImportFailurePrefix = "The CSV file of zip codes could not be imported";
+
+    /// <summary>How a failure to export an agency's zip codes starts.</summary>
+    public const string ExportFailurePrefix = "The agency's zip codes could not be exported";
+
     private static readonly ApiAsk Saving = new(SaveFailurePrefix, "the agency as saved");
+
+    private static readonly ApiAsk Importing = new(ImportFailurePrefix, "what the import did");
+
+    private static readonly ApiAsk Exporting = new(ExportFailurePrefix, "the zip codes as CSV");
 
     /// <summary>
     /// Every agency a report may be assigned to, in name order, or why there
@@ -62,4 +73,20 @@ public sealed class AgenciesClient(HttpClient http)
         SaveAgencyRequest request,
         CancellationToken cancellationToken = default) =>
         Saving.Put<SaveAgencyRequest, AgencyDetailResponse>(http, $"api/agencies/{id}", request, cancellationToken);
+
+    /// <summary>An agency's jurisdiction zip codes as CSV, or why there are none.</summary>
+    public Task<Asked<string>> ExportZipCodes(int id, CancellationToken cancellationToken = default) =>
+        Exporting.GetText(http, $"api/agencies/{id}/zip-codes/csv", cancellationToken);
+
+    /// <summary>
+    /// What adding a CSV file's zip codes to an agency's jurisdiction would do,
+    /// saved only where <paramref name="confirm"/> is true, or why it did nothing.
+    /// </summary>
+    public async Task<Asked<ReferenceImportResponse>> ImportZipCodes(
+        int id, string csv, bool confirm, CancellationToken cancellationToken = default)
+    {
+        using var content = new StringContent(csv, Encoding.UTF8, "text/csv");
+        return await Importing.PostContent<ReferenceImportResponse>(
+            http, $"api/agencies/{id}/zip-codes/csv{(confirm ? "?confirm=true" : "")}", content, cancellationToken);
+    }
 }

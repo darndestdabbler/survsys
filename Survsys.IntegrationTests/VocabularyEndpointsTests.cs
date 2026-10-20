@@ -100,7 +100,7 @@ public class VocabularyEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     [Fact]
-    public async Task ACsvExportImportsBackAsUpdatesAndAddsANewRow()
+    public async Task ACsvExportImportsBackOnlyOnceConfirmedChangingAndAddingRows()
     {
         var (labId, _) = await Setup();
         var client = api.CreateClient();
@@ -109,32 +109,48 @@ public class VocabularyEndpointsTests(SqlServerFixture server) : IDisposable
         {
             await Created<VocabMasterValueRow>(client, "master-values",
                 new VocabMasterValueRow(0, "specimen", $"{Marker}Serum", "Serum"));
+            await Created<VocabMasterValueRow>(client, "master-values",
+                new VocabMasterValueRow(0, "specimen", $"{Marker}Blood", "Blood"));
             await Created<VocabChildValueRow>(client, "child-values",
                 new VocabChildValueRow(0, labId, "specimen", $"{Marker}119364003", $"{Marker}Serum"));
+            await Created<VocabChildValueRow>(client, "child-values",
+                new VocabChildValueRow(0, labId, "specimen", $"{Marker}SER", $"{Marker}Serum"));
 
             var exported = await client.GetStringAsync("/api/vocabulary/child-values/csv");
             var ours = string.Join("\r\n", exported
                 .Split("\r\n")
                 .Where((line, at) => at == 0 || line.Contains(Marker, StringComparison.Ordinal)));
 
-            var import = ours
+            // Line 2 comes back as it went out, line 3 moves to another
+            // master, line 4 is new, and lines 5 and 6 cannot be saved.
+            var import = ours.Replace($"{Marker}SER,{Marker}Serum", $"{Marker}SER,{Marker}Blood", StringComparison.Ordinal)
                 + $"\r\n{labId},specimen,{Marker}BLD,{Marker}Serum"
                 + $"\r\n{labId},specimen,{Marker}URN,{Marker}Urine"
                 + $"\r\n{labId},specimen\r\n";
-            using var posted = await client.PostAsync(
-                "/api/vocabulary/child-values/csv", new StringContent(import, Encoding.UTF8, "text/csv"));
-            Assert.Equal(HttpStatusCode.OK, posted.StatusCode);
-            var result = (await posted.Content.ReadFromJsonAsync<VocabImportResponse>(Json))!;
 
-            Assert.Equal(1, result.Added);
-            Assert.Equal(1, result.Updated);
-            Assert.Equal([4, 5], result.Refused.Select(problem => problem.Line));
-            Assert.Contains("Urine", result.Refused[0].Reason);
+            var preview = await Imported(client, import, confirm: false);
 
-            var children = (await List<VocabChildValueRow>(client, "child-values"))
-                .Where(row => row.ChildCode.StartsWith(Marker, StringComparison.Ordinal))
-                .ToList();
-            Assert.Equal([$"{Marker}119364003", $"{Marker}BLD"], children.Select(row => row.ChildCode));
+            Assert.False(preview.Applied);
+            Assert.Equal([4], preview.Added.Select(row => row.Line));
+            Assert.Equal([3], preview.Changed.Select(row => row.Line));
+            Assert.Equal([5, 6], preview.Refused.Select(problem => problem.Line));
+            Assert.Contains("Urine", preview.Refused[0].Reason);
+            Assert.Equal(
+                [($"{Marker}119364003", $"{Marker}Serum"), ($"{Marker}SER", $"{Marker}Serum")],
+                await Ours(client));
+
+            var confirmed = await Imported(client, import, confirm: true);
+
+            Assert.True(confirmed.Applied);
+            Assert.Equal(preview.Added, confirmed.Added);
+            Assert.Equal(preview.Changed, confirmed.Changed);
+            Assert.Equal(
+                [
+                    ($"{Marker}119364003", $"{Marker}Serum"),
+                    ($"{Marker}BLD", $"{Marker}Serum"),
+                    ($"{Marker}SER", $"{Marker}Blood"),
+                ],
+                await Ours(client));
         }
         finally
         {
@@ -204,6 +220,24 @@ public class VocabularyEndpointsTests(SqlServerFixture server) : IDisposable
 
     private static async Task<List<T>> List<T>(HttpClient client, string table) =>
         (await client.GetFromJsonAsync<List<T>>($"/api/vocabulary/{table}", Json))!;
+
+    /// <summary>A child-values import, previewed or confirmed.</summary>
+    private static async Task<ReferenceImportResponse> Imported(HttpClient client, string csv, bool confirm)
+    {
+        using var posted = await client.PostAsync(
+            $"/api/vocabulary/child-values/csv{(confirm ? "?confirm=true" : "")}",
+            new StringContent(csv, Encoding.UTF8, "text/csv"));
+        Assert.Equal(HttpStatusCode.OK, posted.StatusCode);
+        return (await posted.Content.ReadFromJsonAsync<ReferenceImportResponse>(Json))!;
+    }
+
+    /// <summary>This test's child codes, each with its master, in code order.</summary>
+    private static async Task<List<(string ChildCode, string Master)>> Ours(HttpClient client) =>
+        (await List<VocabChildValueRow>(client, "child-values"))
+            .Where(row => row.ChildCode.StartsWith(Marker, StringComparison.Ordinal))
+            .Select(row => (row.ChildCode, row.Master))
+            .OrderBy(row => row.ChildCode, StringComparer.Ordinal)
+            .ToList();
 
     /// <summary>
     /// A clean start: the test's own rows cleared, a sending facility of its
