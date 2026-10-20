@@ -1,8 +1,10 @@
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Survsys.Contracts;
 using Survsys.Data;
+using Survsys.Messaging;
 
 namespace Survsys.Api;
 
@@ -80,6 +82,18 @@ public static class MessageQueueEndpoints
 
         return routes;
     }
+
+    /// <summary>
+    /// The review states a message can be promoted to a case from: entry,
+    /// pending, semi-auto and qa.
+    /// </summary>
+    public static readonly IReadOnlyList<string> PromotableCodes =
+    [
+        MessageReviewStatusRules.EntryCode,
+        MessageReviewStatusRules.PendingCode,
+        MessageReviewStatusRules.SemiAutoCode,
+        MessageReviewStatusRules.QaCode,
+    ];
 
     /// <summary>The most messages one action takes.</summary>
     public const int MaxActionIds = 500;
@@ -207,10 +221,7 @@ public static class MessageQueueEndpoints
 
         return reviewStatus.Trim() switch
         {
-            MessageReviewStatusRules.EntryCode
-                or MessageReviewStatusRules.PendingCode
-                or MessageReviewStatusRules.SemiAutoCode
-                or MessageReviewStatusRules.QaCode => null,
+            var code when PromotableCodes.Contains(code) => null,
             MessageReviewStatusRules.ExceptionCode =>
                 "This message is held as an exception: it never parsed, so there is nothing "
                 + "to promote. Resolve the exception before a case can be opened from it.",
@@ -270,16 +281,12 @@ public static class MessageQueueEndpoints
     /// there is a 404, and one whose state <see cref="WhyNotPromotable"/>
     /// refuses is a 409 against that state.
     ///
-    /// The report is opened with the same <see cref="PersonConditionQueries.Add"/>
-    /// a direct creation uses, so a promoted case is assigned a record number
-    /// the one way record numbers are assigned. It is then that the message is
-    /// marked promoted and the notification read back: the report write and the
-    /// status transition are two saves, not one, which leaves the same narrow
-    /// window the record-number race already does — a report could be opened
-    /// and the message left unmarked if the second save fails. The window is
-    /// accepted here for the reason it is there: a visible duplicate a reviewer
-    /// can see beats a case silently lost, and the alternative, marking first,
-    /// would lose the case rather than duplicate it.
+    /// The report is opened by <see cref="MessageCaseWriter.Open"/>, with the
+    /// same <see cref="PersonConditionQueries.Add"/> a direct creation uses, so
+    /// a promoted case is assigned a record number the one way record numbers
+    /// are assigned; the message's lab and address are written onto it and the
+    /// message assigned to it in the same transaction. A message another
+    /// promotion assigned first is refused as the state check would refuse it.
     /// </remarks>
     private static async Task<Results<Created<PromoteMessageResponse>, ProblemHttpResult>> PromoteStagedMessage(
         MessageQueueQueries messages,
@@ -307,6 +314,11 @@ public static class MessageQueueEndpoints
                 title: "This message is not in a state it can be promoted from.");
         }
 
+        if (request.PersonConditionId is { } caseId)
+        {
+            return await UpdateCase(messages, reports, id, request.PersonId, caseId, cancellationToken);
+        }
+
         var creation = new CreatePersonConditionRequest(
             request.PersonId,
             request.ConditionId,
@@ -328,13 +340,64 @@ public static class MessageQueueEndpoints
             return Refused(missing);
         }
 
-        var created = await reports.Add(creation, DateTimeOffset.Now, cancellationToken);
-        var notification = await messages.MarkPromoted(
-            id, created.Id, created.RecordNumber, created.ConditionId, cancellationToken);
+        if (await messages.Promote(id, creation, DateTimeOffset.Now, cancellationToken) is not { } created)
+        {
+            return TypedResults.Problem(
+                detail: WhyNotPromotable(await messages.StateOf(id, cancellationToken) ?? string.Empty),
+                statusCode: StatusCodes.Status409Conflict,
+                title: "This message is not in a state it can be promoted from.");
+        }
+
+        var notification = await messages.Notification(created.RecordNumber, created.ConditionId, cancellationToken);
 
         return TypedResults.Created(
             $"/api/person-conditions/{created.Id}",
             new PromoteMessageResponse(created, notification));
+    }
+
+    /// <summary>
+    /// Promotes a message onto a person's existing case, through
+    /// <see cref="MessageCaseWriter.Update"/>: the case must be an open one of
+    /// that person's on the message's condition. A message the update leaves to a reviewer has moved to pending, and is
+    /// a 409 with why.
+    /// </summary>
+    private static async Task<Results<Created<PromoteMessageResponse>, ProblemHttpResult>> UpdateCase(
+        MessageQueueQueries messages,
+        PersonConditionQueries reports,
+        int id,
+        int personId,
+        int caseId,
+        CancellationToken cancellationToken)
+    {
+        if (await messages.WhyNotACaseToUpdate(id, personId, caseId, cancellationToken) is { } why)
+        {
+            return Refused(why);
+        }
+
+        if (await messages.Update(id, personId, caseId, DateTimeOffset.Now, cancellationToken) is not { } update)
+        {
+            return TypedResults.Problem(
+                detail: WhyNotPromotable(await messages.StateOf(id, cancellationToken) ?? string.Empty),
+                statusCode: StatusCodes.Status409Conflict,
+                title: "This message is not in a state it can be promoted from.");
+        }
+
+        if (update.Status != MessageReviewStatusRules.AssignedCode)
+        {
+            return TypedResults.Problem(
+                detail: update.Reason,
+                statusCode: StatusCodes.Status409Conflict,
+                title: "This message could not update the case, and is pending review.");
+        }
+
+        var report = (await reports.Find(update.PersonConditionId!.Value, cancellationToken))!;
+        var notification = report.Id == caseId
+            ? $"Case {report.RecordNumber} was updated from this message."
+            : await messages.Notification(report.RecordNumber, report.ConditionId, cancellationToken);
+
+        return TypedResults.Created(
+            $"/api/person-conditions/{report.Id}",
+            new PromoteMessageResponse(report, notification));
     }
 
     private static Task<Results<Ok<StagedMessageActionResponse>, ProblemHttpResult>> MoveStagedMessages(
@@ -443,7 +506,11 @@ public static class MessageQueueEndpoints
 /// endpoint signature and <c>Survsys.Data</c> that the architecture test
 /// requires.
 /// </remarks>
-internal sealed class MessageQueueQueries(SurvsysDbContext database)
+internal sealed class MessageQueueQueries(
+    SurvsysDbContext database,
+    IMessageParser parser,
+    PersonMatchThresholds thresholds,
+    IOptions<MessageProcessingOptions> options)
 {
     /// <summary>
     /// One page of the queue, oldest first by id — a total order, so a message
@@ -530,34 +597,67 @@ internal sealed class MessageQueueQueries(SurvsysDbContext database)
             .SingleOrDefaultAsync(cancellationToken);
 
     /// <summary>
-    /// Marks a promoted message as assigned to the case it became, recording
-    /// that case on it, and answers
-    /// with the batch notification the promotion raises.
+    /// Opens the case for a message and assigns the message to it, through
+    /// <see cref="MessageCaseWriter.Open"/>; null where the message was no
+    /// longer promotable.
     /// </summary>
-    /// <remarks>
-    /// Called after the report is opened, so the message is known to exist and
-    /// the condition is known to be on file — the creation would have refused
-    /// otherwise. The transition to <see cref="MessageReviewStatus.Assigned"/>
-    /// is the message leaving the review queue; it is a save of its own, the
-    /// second of the promotion's two, for the reason the endpoint records. The
-    /// notification is read after it: a line naming the record number and the
-    /// condition, which is the batch notification reduced to what this phase
-    /// surfaces rather than an e-mail it sends.
-    /// </remarks>
-    public async Task<string> MarkPromoted(
+    public Task<PersonConditionResponse?> Promote(
         int id,
+        CreatePersonConditionRequest creation,
+        DateTimeOffset now,
+        CancellationToken cancellationToken) =>
+        MessageCaseWriter.Open(database, id, creation, now, cancellationToken);
+
+    /// <summary>
+    /// Why a case a reviewer names is not one a message may update, or null
+    /// where it is: it must be the person's, not deleted, not closed, and on
+    /// the message's condition where the message has one — the cases automatic
+    /// assignment chooses among.
+    /// </summary>
+    public async Task<string?> WhyNotACaseToUpdate(
+        int id, int personId, int personConditionId, CancellationToken cancellationToken)
+    {
+        var conditionId = await database.StagedMessages
+            .Where(message => message.Id == id)
+            .Select(message => message.ConditionId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return await database.PersonConditions.AnyAsync(
+                report => report.Id == personConditionId
+                    && report.PersonId == personId
+                    && report.DeletedAt == null
+                    && report.WorkflowState != WorkflowRules.ClosedCode
+                    && (conditionId == null || report.ConditionId == conditionId),
+                cancellationToken)
+            ? null
+            : $"personConditionId {personConditionId} is not an open case of person {personId} on this "
+                + "message's condition.";
+    }
+
+    /// <summary>
+    /// Updates the person's case from a message through
+    /// <see cref="MessageCaseWriter.Update"/>; null where the message was no
+    /// longer promotable.
+    /// </summary>
+    public Task<CaseUpdate?> Update(
+        int id,
+        int personId,
         int personConditionId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken) =>
+        MessageCaseWriter.Update(
+            database, parser, thresholds, options.Value, id, personId, personConditionId, now, cancellationToken);
+
+    /// <summary>
+    /// The batch notification a promotion raises: a line naming the record
+    /// number and the condition, which is the batch notification reduced to
+    /// what this phase surfaces rather than an e-mail it sends.
+    /// </summary>
+    public async Task<string> Notification(
         string recordNumber,
         int conditionId,
         CancellationToken cancellationToken)
     {
-        var message = await database.StagedMessages.SingleAsync(
-            staged => staged.Id == id, cancellationToken);
-
-        message.ReviewStatus = MessageReviewStatusRules.AssignedCode;
-        message.PersonConditionId = personConditionId;
-        await database.SaveChangesAsync(cancellationToken);
-
         var conditionName = await database.Conditions
             .Where(condition => condition.Id == conditionId)
             .Select(condition => condition.Name)

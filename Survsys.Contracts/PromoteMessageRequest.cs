@@ -34,8 +34,15 @@ namespace Survsys.Contracts;
 /// The date the condition was first reported to public health, where it is
 /// known.
 /// </param>
+/// <param name="PersonConditionId">
+/// The person's existing case the message updates, in place of opening a new
+/// one; null opens a new case. The case is updated as automatic assignment
+/// updates one, by the condition's whitelist rule and a comparison of labs,
+/// so the condition, agency and date are not read for it.
+/// </param>
 public record PromoteMessageRequest(
     int PersonId,
     int ConditionId,
     int? AgencyId = null,
-    DateOnly? FirstReportedPhDate = null);
+    DateOnly? FirstReportedPhDate = null,
+    int? PersonConditionId = null);

@@ -222,6 +222,10 @@ public class MessageQueuePromotionTests(SqlServerFixture server) : IDisposable
     {
         await using var context = server.NewContext();
 
+        // A promoted message writes its lab onto the case, so the labs go
+        // before the cases they are linked to.
+        await context.PersonConditionLabs.ExecuteDeleteAsync();
+        await context.Labs.ExecuteDeleteAsync();
         await context.PersonConditions.ExecuteDeleteAsync();
         await context.StagedMessages.ExecuteDeleteAsync();
     }

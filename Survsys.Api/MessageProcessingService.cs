@@ -34,6 +34,18 @@ public sealed class MessageProcessingOptions
     /// legacy pruner's 18 months.
     /// </summary>
     public int GraylistRetentionDays { get; set; } = 548;
+
+    /// <summary>
+    /// The whitelist rule choosing the case a message updates, for a condition
+    /// with none of its own: 90 days from the case's event date by default.
+    /// </summary>
+    public WhitelistRule Whitelist { get; set; } = new();
+
+    /// <summary>
+    /// Whitelist rules of their own, by condition code (the condition's CDC
+    /// code), or by name for a condition with no code.
+    /// </summary>
+    public Dictionary<string, WhitelistRule> WhitelistByCondition { get; set; } = [];
 }
 
 /// <summary>
@@ -47,9 +59,11 @@ public sealed record AssignmentCandidate(int PersonId, PersonMatchKind Kind, boo
 /// Where automatic assignment sends a message: the review-state code it moves
 /// to, and why. For <see cref="MessageReviewStatusRules.AssignedCode"/>, the
 /// person the case is opened for, or null where a new person is created from
-/// the message's patient.
+/// the message's patient. <paramref name="UpdatesCase"/> where the person
+/// already has an open case on the condition, which the message updates
+/// rather than opening another.
 /// </summary>
-public sealed record AssignmentDecision(string Status, int? PersonId, string? Reason);
+public sealed record AssignmentDecision(string Status, int? PersonId, string? Reason, bool UpdatesCase = false);
 
 /// <summary>
 /// The automated half of the legacy EMSA assignment, and the graylist: a
@@ -63,9 +77,8 @@ public sealed record AssignmentDecision(string Status, int? PersonId, string? Re
 /// worker runs in turn and the integration suite runs directly. Off unless
 /// <see cref="MessageProcessingOptions.PollIntervalSeconds"/> is configured.
 ///
-/// Assignment opens a new case or sends the message to a person; updating an
-/// existing case from a message is not here, so a confident person who already
-/// has an open case on the condition is left to a reviewer.
+/// Assignment opens a new case, or updates the open case a confident person
+/// already has on the condition, through <see cref="MessageCaseWriter"/>.
 /// </remarks>
 public sealed class MessageProcessingService(
     IMessageParser parser,
@@ -83,8 +96,9 @@ public sealed class MessageProcessingService(
     /// decision is a reviewer's; one whose rule allows no new case is
     /// graylisted to wait for a case; a patient outside the home state is out
     /// of state; a message with no investigating agency is a reviewer's. Then
-    /// the person: exactly one exact match is that person, unless they already
-    /// have an open case on the condition; no exact or probable match at all is
+    /// the person: exactly one exact match is that person, whose open case on
+    /// the condition, where they have one, the message updates; no exact or
+    /// probable match at all is
     /// a new person, if the message names one; anything else is a reviewer's.
     /// </remarks>
     public static AssignmentDecision Decide(
@@ -126,9 +140,8 @@ public sealed class MessageProcessingService(
 
         if (exact is [var person])
         {
-            return person.HasOpenCase
-                ? Pending($"Person {person.PersonId} already has an open case on this condition.")
-                : new AssignmentDecision(MessageReviewStatusRules.AssignedCode, person.PersonId, null);
+            return new AssignmentDecision(
+                MessageReviewStatusRules.AssignedCode, person.PersonId, null, UpdatesCase: person.HasOpenCase);
         }
 
         if (exact.Count > 1)
@@ -153,9 +166,11 @@ public sealed class MessageProcessingService(
     /// how many it moved.
     /// </summary>
     /// <remarks>
-    /// Each message is saved on its own, after its case, so one that fails
-    /// leaves the ones before it assigned. The case and the message are two
-    /// saves, the window promotion has and accepts for the same reason.
+    /// Each message is saved on its own, so one that fails leaves the ones
+    /// before it assigned. A message assigned is written by
+    /// <see cref="MessageCaseWriter.Open"/>, in one transaction with the new
+    /// person it is assigned to, so a failure leaves neither; one a reviewer
+    /// promoted in the meantime is left as they left it.
     /// </remarks>
     public static async Task<int> Assign(
         SurvsysDbContext database,
@@ -169,7 +184,6 @@ public sealed class MessageProcessingService(
         ArgumentNullException.ThrowIfNull(options);
 
         var matches = new PersonMatchQueries(database, thresholds, parser);
-        var reports = new PersonConditionQueries(database, new CaseNotificationQueue(database));
         var persons = new PersonQueries(database);
 
         var waiting = await database.StagedMessages
@@ -204,11 +218,22 @@ public sealed class MessageProcessingService(
 
             var decision = Decide(message, candidates, options.HomeState);
 
+            if (decision.UpdatesCase)
+            {
+                await MessageCaseWriter.Update(
+                    database, parser, thresholds, options, message.Id, decision.PersonId!.Value, null, now, cancellationToken);
+                continue;
+            }
+
             if (decision.Status == MessageReviewStatusRules.AssignedCode)
             {
+                await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+
                 var personId = decision.PersonId
                     ?? (await persons.Add(Patient(message), cancellationToken)).Id;
-                var created = await reports.Add(
+                var created = await MessageCaseWriter.Open(
+                    database,
+                    message.Id,
                     new CreatePersonConditionRequest(
                         personId,
                         message.ConditionId!.Value,
@@ -216,7 +241,13 @@ public sealed class MessageProcessingService(
                         DateOnly.FromDateTime(message.ReceivedAt)),
                     now,
                     cancellationToken);
-                message.PersonConditionId = created.Id;
+
+                if (created is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+
+                continue;
             }
 
             message.ReviewStatus = decision.Status;
@@ -400,7 +431,8 @@ public sealed class MessageProcessingService(
         message.PatientBirthDate,
         message.PatientSex);
 
-    private static PersonMatchRequest MatchRequest(StagedMessage message) => new(
+    /// <summary>A message's patient, as person matching scores it.</summary>
+    internal static PersonMatchRequest MatchRequest(StagedMessage message) => new(
         message.PatientLastName,
         message.PatientFirstName,
         message.PatientBirthDate,

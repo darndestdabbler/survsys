@@ -118,6 +118,18 @@ public class MessageQueueEndpointsTests
     }
 
     /// <summary>
+    /// The states promotion claims a message from are exactly the four the
+    /// rule passes.
+    /// </summary>
+    [Fact]
+    public void PromotableCodesAreTheStatesWhyNotPromotablePasses()
+    {
+        Assert.Equal(
+            MessageReviewStatusRules.Codes.Where(code => MessageQueueEndpoints.WhyNotPromotable(code) is null).Order(),
+            MessageQueueEndpoints.PromotableCodes.Order());
+    }
+
+    /// <summary>
     /// A message that never parsed cannot be promoted: there is nothing to
     /// open a case from, so the rule refuses it and names the exception so a
     /// reviewer reads why.

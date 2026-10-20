@@ -78,16 +78,32 @@ public class MessageProcessingServiceTests
         Assert.NotNull(decision.Reason);
     }
 
+    /// <summary>
+    /// An exact match who already has an open case on the condition has that
+    /// case updated rather than a second opened.
+    /// </summary>
     [Fact]
-    public void DecideSendsAnExactMatchWithAnOpenCaseToPending()
+    public void DecideUpdatesTheOpenCaseOfAnExactMatch()
     {
         var decision = MessageProcessingService.Decide(
             Message(),
             [new AssignmentCandidate(7, PersonMatchKind.Exact, HasOpenCase: true)],
             "CT");
 
-        Assert.Equal(MessageReviewStatusRules.PendingCode, decision.Status);
-        Assert.Contains("open case", decision.Reason, StringComparison.Ordinal);
+        Assert.Equal(MessageReviewStatusRules.AssignedCode, decision.Status);
+        Assert.Equal(7, decision.PersonId);
+        Assert.True(decision.UpdatesCase);
+    }
+
+    [Fact]
+    public void DecideOpensACaseForAnExactMatchWithNoOpenCase()
+    {
+        var decision = MessageProcessingService.Decide(
+            Message(),
+            [new AssignmentCandidate(7, PersonMatchKind.Exact, HasOpenCase: false)],
+            "CT");
+
+        Assert.False(decision.UpdatesCase);
     }
 
     [Fact]

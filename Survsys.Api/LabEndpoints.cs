@@ -472,7 +472,9 @@ internal sealed class LabQueries(SurvsysDbContext database)
     /// transaction rather than reached through navigations the entities do not
     /// have: the specimen first, then each test and its results, then the
     /// susceptibility rows and the join. The report's existence is confirmed by
-    /// <see cref="WhyNotOnFile"/> before this is called.
+    /// <see cref="WhyNotOnFile"/> before this is called. A transaction the
+    /// caller already holds is joined rather than a second begun, so a message
+    /// written onto a case is written whole or not at all.
     /// </remarks>
     public async Task<int> Add(
         int reportId,
@@ -484,7 +486,9 @@ internal sealed class LabQueries(SurvsysDbContext database)
             .Select(report => report.PersonId)
             .SingleAsync(cancellationToken);
 
-        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = database.Database.CurrentTransaction is null
+            ? await database.Database.BeginTransactionAsync(cancellationToken)
+            : null;
 
         var specimen = new Lab
         {
@@ -552,7 +556,11 @@ internal sealed class LabQueries(SurvsysDbContext database)
         });
 
         await database.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
 
         return specimen.Id;
     }

@@ -71,6 +71,14 @@ public class MessageProcessingServiceTests(SqlServerFixture server) : IAsyncLife
             var person = await check.Persons.SingleAsync(person => person.Id == report.PersonId);
             Assert.Equal(lastName, person.LastName);
             Assert.Equal(new DateOnly(1980, 1, 15), person.BirthDate);
+
+            // The message's specimen and its tests are written onto the case.
+            var labId = await check.PersonConditionLabs
+                .Where(link => link.PersonConditionId == report.Id)
+                .Select(link => link.LabId)
+                .SingleAsync();
+            Assert.Equal(message.AccessionNo, (await check.Labs.SingleAsync(lab => lab.Id == labId)).AccessionNo);
+            Assert.True(await check.LabTests.AnyAsync(test => test.LabId == labId));
         }
         finally
         {
@@ -228,6 +236,10 @@ public class MessageProcessingServiceTests(SqlServerFixture server) : IAsyncLife
     {
         await using var context = server.NewContext();
 
+        // An assigned message writes its lab onto the case, so the labs go
+        // before the cases they are linked to.
+        await context.PersonConditionLabs.ExecuteDeleteAsync();
+        await context.Labs.ExecuteDeleteAsync();
         await context.PersonConditions.ExecuteDeleteAsync();
         await context.StagedMessages.ExecuteDeleteAsync();
     }
