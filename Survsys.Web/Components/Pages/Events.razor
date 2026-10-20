@@ -1,0 +1,462 @@
+@* The case morbidity reports on file, found by searching for them: the screen
+   the legacy EVENTS menu item opens, and the one place a case is found again
+   once the screen that created it has been left. The legacy Events list, as
+   ../nedss/docs/functional/epitrax-core-workflows.md describes it, filters by
+   a great deal more — saved views, age, tags, investigators, queues, language,
+   an address, a facility — and this screen carries the criteria this schema
+   can answer and no other: the record number, the patient's name, the
+   disease, the investigating agency, the workflow state, the case status and
+   the event date range.
+
+   Laid out as the People screen and its search panel are, so that a user who
+   has learned one has learned the other: the boxes, Search and Clear, a
+   complaint for a date that is not one, then the busy, failed, empty and
+   counted states, and a table with one row per case. Unlike the people
+   search, the results are paged, because every case on file is a long list
+   where the people a surname matches are a short one.
+
+   Every element a walkthrough will name carries an identifier of its own,
+   prefixed events-, and one row per case keyed by the case's identifier with
+   its record cell named, so session 66's walkthrough selects by those and not
+   by a cell's position. The record number in each row opens the case, at the
+   address the creation flow opens it at.
+
+   The labels the selects show for the workflow and status codes are the ones
+   the work queue shows; the codes themselves are the legacy codes the wire
+   carries, and this tier reads Survsys.Contracts and not Survsys.Data, so the
+   rule classes that own them are not in reach and the mapping is a handful of
+   literals here as it is there. *@
+@page "/events"
+@inject CasesClient Cases
+@inject ConditionsClient Conditions
+@inject AgenciesClient Agencies
+@inject IConfiguration Configuration
+
+<PageTitle>Events — Survsys</PageTitle>
+
+<MudText id="events-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Events
+</MudText>
+
+<MudText id="events-lead-in" Typo="Typo.body2" Class="mb-4">
+    Search for a case by record number, patient, disease, agency, workflow
+    state, case status or onset date. Leave every box empty to list every case
+    on file, newest first.
+</MudText>
+
+<MudPaper id="events-search-form" Elevation="1" Class="pa-4 mb-4">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="recordNumber" id="events-record-number"
+                          Label="Record #" Variant="Variant.Outlined"
+                          OnKeyUp="@OnKey" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="lastName" id="events-last-name"
+                          Label="Last name" Variant="Variant.Outlined"
+                          OnKeyUp="@OnKey" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="firstName" id="events-first-name"
+                          Label="First name" Variant="Variant.Outlined"
+                          OnKeyUp="@OnKey" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect T="int?" @bind-Value="conditionId" id="events-disease"
+                       Label="Disease" Variant="Variant.Outlined">
+                <MudSelectItem T="int?" Value="null">Any</MudSelectItem>
+                @foreach (var condition in conditions)
+                {
+                    <MudSelectItem T="int?" Value="@condition.Id">@condition.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect T="int?" @bind-Value="agencyId" id="events-agency"
+                       Label="Investigating agency" Variant="Variant.Outlined">
+                <MudSelectItem T="int?" Value="null">Any</MudSelectItem>
+                @foreach (var agency in agencies)
+                {
+                    <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect T="string" @bind-Value="workflowState" id="events-workflow-state"
+                       Label="Workflow state" Variant="Variant.Outlined">
+                <MudSelectItem T="string" Value="@NoChoice">Any</MudSelectItem>
+                @foreach (var state in WorkflowCodes)
+                {
+                    <MudSelectItem T="string" Value="@state">@WorkflowLabel(state)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect T="string" @bind-Value="caseStatus" id="events-case-status"
+                       Label="Case status" Variant="Variant.Outlined">
+                <MudSelectItem T="string" Value="@NoChoice">Any</MudSelectItem>
+                @foreach (var status in StatusCodes)
+                {
+                    <MudSelectItem T="string" Value="@status">@StatusLabel(status)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            @* Native date inputs rather than date pickers, as the people
+               search's date of birth is: what one yields is always
+               yyyy-mm-dd or nothing, which is what the API tier parses. *@
+            <MudTextField @bind-Value="onsetFrom" id="events-onset-from"
+                          Label="Onset from" Variant="Variant.Outlined"
+                          InputType="InputType.Date" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="onsetTo" id="events-onset-to"
+                          Label="Onset to" Variant="Variant.Outlined"
+                          InputType="InputType.Date" />
+        </MudItem>
+        <MudItem xs="12" sm="4" Class="d-flex align-center">
+            @* Deleted cases are left out of the search unless asked for. *@
+            <MudCheckBox T="bool" @bind-Value="showDeleted" id="events-show-deleted"
+                         Label="Show deleted cases" />
+        </MudItem>
+    </MudGrid>
+
+    <div class="d-flex gap-2 mt-4">
+        <MudButton id="events-search" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@searching" OnClick="@Search">
+            Search
+        </MudButton>
+        <MudButton id="events-clear" Variant="Variant.Outlined" Disabled="@searching"
+                   OnClick="@Clear">
+            Clear
+        </MudButton>
+    </div>
+</MudPaper>
+
+@if (complaint is { } whyNotASearch)
+{
+    <MudAlert id="events-complaint" Severity="Severity.Warning" Class="mb-4">
+        @whyNotASearch
+    </MudAlert>
+}
+
+@if (searching)
+{
+    <MudProgressCircular id="events-busy" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked?.Failure is { } failure)
+{
+    <MudAlert id="events-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @failure
+    </MudAlert>
+}
+else if (asked?.Value is { } cases)
+{
+    @if (cases.Items.Count == 0)
+    {
+        <MudAlert id="events-none" Severity="Severity.Info" Class="mb-4">
+            No cases found.
+        </MudAlert>
+    }
+    else
+    {
+        <MudText id="events-total" Typo="Typo.body2" Class="mb-4">
+            @cases.TotalCount case(s) found, showing @cases.Items.Count.
+        </MudText>
+
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="events-results" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>Record #</th>
+                        <th>Patient</th>
+                        <th>Disease</th>
+                        <th>Agency</th>
+                        <th>Workflow</th>
+                        <th>Status</th>
+                        <th>MMWR week</th>
+                        <th>Onset</th>
+                        <th>County</th>
+                        <th>@AddressLabels.CountyEquivalent(Configuration)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in cases.Items)
+                    {
+                        <tr id="@($"events-row-{row.Id}")">
+                            <td id="@($"events-row-{row.Id}-record")">
+                                <a href="@($"/event/edit/{row.Id}")">@row.RecordNumber</a>
+                                @if (row.Deleted)
+                                {
+                                    <em id="@($"events-row-{row.Id}-deleted")"> (deleted)</em>
+                                }
+                            </td>
+                            <td id="@($"events-row-{row.Id}-patient")">@row.PatientName</td>
+                            <td id="@($"events-row-{row.Id}-disease")">@row.ConditionName</td>
+                            @* A dash rather than an empty cell for what nobody
+                               has said, so a walkthrough can say what the
+                               reader will see. *@
+                            <td id="@($"events-row-{row.Id}-agency")">@(row.AgencyName ?? "—")</td>
+                            <td id="@($"events-row-{row.Id}-workflow")">@WorkflowLabel(row.WorkflowState)</td>
+                            <td id="@($"events-row-{row.Id}-status")">@StatusLabel(row.CaseStatus)</td>
+                            <td id="@($"events-row-{row.Id}-mmwr")">@MmwrWeek(row)</td>
+                            <td id="@($"events-row-{row.Id}-onset")">@(row.EventOnsetDate?.ToString("yyyy-MM-dd") ?? "—")</td>
+                            <td id="@($"events-row-{row.Id}-county")">@(row.County ?? "—")</td>
+                            <td id="@($"events-row-{row.Id}-county-equivalent")">@(row.CountyEquivalent ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        @if (cases.TotalCount > PageSize || page > 1)
+        {
+            <div class="d-flex align-center gap-4 mt-2">
+                <MudButton id="events-prev" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page <= 1 || searching)" OnClick="PreviousPage">
+                    Previous
+                </MudButton>
+                <MudText id="events-page" Typo="Typo.body2">Page @(page) of @LastPage</MudText>
+                <MudButton id="events-next" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page >= LastPage || searching)" OnClick="NextPage">
+                    Next
+                </MudButton>
+            </div>
+        }
+    }
+}
+
+@code {
+    private static readonly string[] WorkflowCodes =
+        ["assigned_to_lhd", "accepted", "under_investigation", "closed", "not_investigated", "approved_by_state", "rejected_by_state"];
+
+    private static readonly string[] StatusCodes = ["C", "P", "S", "NC"];
+
+    /// <summary>
+    /// The Any row of a string-coded select: no code at all, which the client
+    /// leaves out of the request. A field rather than a literal because Razor
+    /// reads a string-typed attribute's text as the string itself.
+    /// </summary>
+    private static readonly string? NoChoice = null;
+
+    private string? recordNumber;
+    private string? lastName;
+    private string? firstName;
+    private int? conditionId;
+    private int? agencyId;
+    private string? workflowState;
+    private string? caseStatus;
+    private string? onsetFrom;
+    private string? onsetTo;
+    private bool showDeleted;
+
+    private IReadOnlyList<ConditionResponse> conditions = [];
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private Asked<PagedResult<CaseSearchItemResponse>>? asked;
+
+    /// <summary>
+    /// The criteria the answer on screen was found with, which is not
+    /// necessarily what the boxes hold now: the pager walks the search that
+    /// was made, not the one a user has started typing since.
+    /// </summary>
+    private CaseSearchCriteria searched = new();
+
+    private bool searching;
+
+    private string? complaint;
+
+    private int page = 1;
+
+    /// <summary>
+    /// How many cases one page of this screen holds — the API tier's own
+    /// default, stated here because the pager has to know what it asked for.
+    /// </summary>
+    private const int PageSize = 50;
+
+    /// <summary>
+    /// How many conditions the disease list asks for: the whole catalogue in
+    /// one page, as the work queue and the creation screen read it.
+    /// </summary>
+    private const int Catalogue = 200;
+
+    /// <summary>
+    /// The last page the search has, counting from one and never below it so
+    /// an empty answer still reads "Page 1 of 1".
+    /// </summary>
+    private int LastPage =>
+        Math.Max(1, ((asked?.Value?.TotalCount ?? 0) + PageSize - 1) / PageSize);
+
+    /// <summary>
+    /// The two lists the selects offer, read once. A list that could not be
+    /// read is empty, which leaves Any as the one choice; it is not a failure
+    /// to search, and the search's own failure is the one shown.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        var catalogue = await Conditions.Page(1, Catalogue);
+        var all = await Agencies.All();
+
+        conditions = catalogue.Value?.Items ?? [];
+        agencies = all.Value?.Items ?? [];
+    }
+
+    /// <summary>Searching with the keyboard, as the legacy form allows.</summary>
+    private async Task OnKey(KeyboardEventArgs key)
+    {
+        if (key.Key is "Enter")
+        {
+            await Search();
+        }
+    }
+
+    private async Task Search()
+    {
+        if (!TypedCriteria(out var criteria))
+        {
+            return;
+        }
+
+        complaint = null;
+        searched = criteria;
+        page = 1;
+
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        searching = true;
+
+        try
+        {
+            asked = await Cases.Page(searched, page, PageSize);
+        }
+        finally
+        {
+            searching = false;
+        }
+    }
+
+    private void Clear()
+    {
+        recordNumber = null;
+        lastName = null;
+        firstName = null;
+        conditionId = null;
+        agencyId = null;
+        workflowState = null;
+        caseStatus = null;
+        onsetFrom = null;
+        onsetTo = null;
+        showDeleted = false;
+
+        asked = null;
+        searched = new();
+        page = 1;
+        complaint = null;
+    }
+
+    private async Task PreviousPage()
+    {
+        if (page > 1)
+        {
+            page--;
+            await Load();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (page < LastPage)
+        {
+            page++;
+            await Load();
+        }
+    }
+
+    /// <summary>
+    /// The criteria in the boxes, or false with <see cref="complaint"/> set
+    /// where one of the dates is not something to search by.
+    /// </summary>
+    private bool TypedCriteria(out CaseSearchCriteria criteria)
+    {
+        criteria = new();
+
+        if (!Dated(onsetFrom, "Onset from", out var from) || !Dated(onsetTo, "Onset to", out var to))
+        {
+            return false;
+        }
+
+        criteria = new CaseSearchCriteria(
+            recordNumber,
+            lastName,
+            firstName,
+            conditionId,
+            agencyId,
+            PersonId: null,
+            workflowState,
+            caseStatus,
+            from,
+            to,
+            showDeleted);
+
+        return true;
+    }
+
+    /// <summary>
+    /// A date box read as a date, or as nothing where it is empty; false with
+    /// <see cref="complaint"/> set where it holds something that is not a date.
+    /// </summary>
+    private bool Dated(string? typed, string box, out DateOnly? date)
+    {
+        date = null;
+
+        if (string.IsNullOrWhiteSpace(typed))
+        {
+            return true;
+        }
+
+        if (!DateOnly.TryParse(typed, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+        {
+            complaint = $"Give {box} as yyyy-mm-dd, or leave it empty.";
+            return false;
+        }
+
+        date = parsed;
+        return true;
+    }
+
+    private static string MmwrWeek(CaseSearchItemResponse row) =>
+        row.MmwrWeek is { } week && row.MmwrYear is { } year ? $"{week}/{year}" : "—";
+
+    /// <summary>
+    /// A workflow code read as its label, as the work queue reads it. The
+    /// codes are the legacy codes the wire carries; this is display only.
+    /// </summary>
+    private static string WorkflowLabel(string workflowState) => workflowState switch
+    {
+        "assigned_to_lhd" => "Assigned to LHD",
+        "accepted" => "Accepted",
+        "under_investigation" => "Under investigation",
+        "closed" => "Closed",
+        "not_investigated" => "Not investigated",
+        "approved_by_state" => "Approved by state",
+        "rejected_by_state" => "Rejected by state",
+        _ => workflowState,
+    };
+
+    /// <summary>
+    /// A case status code read as its label; an unclassified case reads as
+    /// Unknown, as the work queue shows it.
+    /// </summary>
+    private static string StatusLabel(string? caseStatus) => caseStatus switch
+    {
+        "C" => "Confirmed",
+        "P" => "Probable",
+        "S" => "Suspected",
+        "NC" => "Not a case",
+        null => "Unknown",
+        _ => caseStatus,
+    };
+}
