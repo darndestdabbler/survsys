@@ -1,0 +1,56 @@
+@* The actionable work queue: an agency's own cases, and the one move each is
+   ready for. This schema has agencies and no users, so the assignee the queue
+   is keyed on is the investigating agency — the cases this agency is
+   responsible for, which is what the worklist shows and acts on. Cases only
+   shared to the agency are read-only and are the agency board's, not this one's.
+
+   The screen is the agency chooser and the shared panel, with actions on: the
+   panel offers each owned case its next workflow move and calls the report
+   client to make it. The vocabulary and the transition rule stay the API
+   tier's. *@
+@page "/queue"
+@inject AgenciesClient Agencies
+
+<PageTitle>Work queue — Survsys</PageTitle>
+
+<MudText id="assignee-queue-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Work queue
+</MudText>
+
+<MudText id="assignee-queue-lead-in" Typo="Typo.body2" Class="mb-4">
+    Choose an agency to see the cases it is investigating, and move each case
+    through its investigation — accept it, begin investigating it, then close it.
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="assignee-queue-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+<MudSelect T="int?" @bind-Value="agencyId" id="queue-agency-select" Label="Agency"
+           Variant="Variant.Outlined" Class="mb-4">
+    @foreach (var agency in agencies)
+    {
+        <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
+    }
+</MudSelect>
+
+<WorkQueuePanel AgencyId="@(agencyId ?? 0)" Actions="true" IncludeShared="false" />
+
+@code {
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private int? agencyId;
+
+    private string? failure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var listed = await Agencies.All();
+
+        agencies = listed.Value?.Items ?? [];
+        failure = listed.Failure;
+    }
+}

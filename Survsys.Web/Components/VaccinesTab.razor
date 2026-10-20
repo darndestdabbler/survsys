@@ -1,0 +1,349 @@
+@* The Vaccines tab of a case morbidity report: the vaccines administered to the
+   case's person. The records are listed; a form below adds a record or edits
+   one, choosing a vaccine from the catalogue and entering the dose, dates, lot
+   number and comment. Only an active vaccine is offered, and a record being
+   edited keeps the retired vaccine it already names. The dose, date and reference rules stay the API tier's;
+   a record it refuses is shown as the client's message rather than re-checked
+   here.
+
+   Every element carries a stable identifier: the edit and remove buttons for a
+   record are vaccines-tab-edit-{id} and vaccines-tab-remove-{id}, and the form
+   fields are vaccines-tab-vaccine, -dose, -administered, -expiration, -lot,
+   -manufacturer, -information-source and -comment. The manufacturer and the
+   information source are typed as their legacy codes until their lists exist. *@
+@using System.Globalization
+@inject VaccinesClient Api
+
+@if (records is null)
+{
+    <MudProgressCircular id="vaccines-tab-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (listFailure is { } badList)
+    {
+        <MudAlert id="vaccines-tab-list-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @badList
+        </MudAlert>
+    }
+
+    <MudPaper id="vaccines-tab-list" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Vaccines</MudText>
+
+        <MudSimpleTable id="vaccines-tab-table" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Vaccine</th>
+                    <th>Administered</th>
+                    <th>Dose</th>
+                    <th>Lot</th>
+                    <th>Expires</th>
+                    <th>Manufacturer</th>
+                    <th>Source</th>
+                    <th>Comment</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (records.Count == 0)
+                {
+                    <tr id="vaccines-tab-empty">
+                        <td colspan="9">No vaccines are recorded for this case.</td>
+                    </tr>
+                }
+                @foreach (var record in records)
+                {
+                    <tr data-vaccine="@record.Id">
+                        <td data-vaccine-name>@record.VaccineDescription</td>
+                        <td data-vaccine-administered>@Day(record.AdministeredDate)</td>
+                        <td data-vaccine-dose>@record.DoseNumber</td>
+                        <td data-vaccine-lot>@record.LotNumber</td>
+                        <td data-vaccine-expiration>@Day(record.ExpirationDate)</td>
+                        <td data-vaccine-manufacturer>@record.Manufacturer</td>
+                        <td data-vaccine-information-source>@record.InformationSource</td>
+                        <td data-vaccine-comment>@record.Comment</td>
+                        <td>
+                            <MudButton id="@($"vaccines-tab-edit-{record.Id}")" Variant="Variant.Text"
+                                       Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => Edit(record))">
+                                Edit
+                            </MudButton>
+                            <MudButton id="@($"vaccines-tab-remove-{record.Id}")" Variant="Variant.Text"
+                                       Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => Remove(record.Id))">
+                                Remove
+                            </MudButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+
+    <MudPaper id="vaccines-tab-form" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">@(editingId is null ? "Add a vaccine" : "Edit vaccine")</MudText>
+
+        @if (saved is { } ok)
+        {
+            <MudAlert id="vaccines-tab-saved" Severity="Severity.Success" Class="mb-2">@ok</MudAlert>
+        }
+        @if (saveFailure is { } bad)
+        {
+            <MudAlert id="vaccines-tab-error" Severity="Severity.Error" Class="mb-2">@bad</MudAlert>
+        }
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int?" @bind-Value="vaccineId" id="vaccines-tab-vaccine" Label="Vaccine"
+                           Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var vaccine in catalogue.Where(vaccine => vaccine.Active || vaccine.Id == vaccineId))
+                    {
+                        <MudSelectItem T="int?" Value="@vaccine.Id">@Describe(vaccine)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField T="int?" @bind-Value="doseNumber" id="vaccines-tab-dose" Label="Dose number"
+                              Variant="Variant.Outlined" InputType="InputType.Number" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="administeredDate" id="vaccines-tab-administered"
+                              Label="Administered date" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="lotNumber" id="vaccines-tab-lot" Label="Lot number"
+                              Variant="Variant.Outlined" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="expirationDate" id="vaccines-tab-expiration"
+                              Label="Expiration date" Variant="Variant.Outlined"
+                              InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <CodeSelect List="@CodeLists.VaccineManufacturer" @bind-Value="manufacturer" id="vaccines-tab-manufacturer"
+                            Label="Manufacturer" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <CodeSelect List="@CodeLists.VaccineInformationSource" @bind-Value="informationSource"
+                            id="vaccines-tab-information-source" Label="Information source" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="comment" id="vaccines-tab-comment" Label="Comment"
+                              Variant="Variant.Outlined" Lines="2" />
+            </MudItem>
+        </MudGrid>
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="vaccines-tab-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                @(editingId is null ? "Add vaccine" : "Save vaccine")
+            </MudButton>
+            @if (editingId is not null)
+            {
+                <MudButton id="vaccines-tab-cancel" Variant="Variant.Outlined" Disabled="@saving"
+                           OnClick="@Reset">
+                    Cancel
+                </MudButton>
+            }
+        </div>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>The case these vaccines are recorded against, from the shell.</summary>
+    [Parameter, EditorRequired]
+    public int ReportId { get; set; }
+
+    private const string DateForm = "yyyy-MM-dd";
+
+    private List<VaccineRecordResponse>? records;
+
+    private IReadOnlyList<VaccineResponse> catalogue = [];
+
+    private string? listFailure;
+
+    private int? editingId;
+
+    private int? vaccineId;
+
+    private int? doseNumber;
+
+    private string? administeredDate;
+
+    private string? expirationDate;
+
+    private string? lotNumber;
+
+    private string? comment;
+
+    private string? manufacturer;
+
+    private string? informationSource;
+
+    private bool saving;
+
+    private string? saved;
+
+    private string? saveFailure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if ((await Api.Catalogue()).Value is { } loaded)
+        {
+            catalogue = loaded;
+        }
+
+        await LoadRecords();
+    }
+
+    private async Task LoadRecords()
+    {
+        var asked = await Api.Records(ReportId);
+        records = asked.Value ?? [];
+        listFailure = asked.Failure;
+    }
+
+    private void Edit(VaccineRecordResponse record)
+    {
+        editingId = record.Id;
+        vaccineId = record.VaccineId;
+        doseNumber = record.DoseNumber;
+        administeredDate = record.AdministeredDate?.ToString(DateForm, CultureInfo.InvariantCulture);
+        expirationDate = record.ExpirationDate?.ToString(DateForm, CultureInfo.InvariantCulture);
+        lotNumber = record.LotNumber;
+        comment = record.Comment;
+        manufacturer = record.Manufacturer;
+        informationSource = record.InformationSource;
+        saved = null;
+        saveFailure = null;
+    }
+
+    private void Reset()
+    {
+        editingId = null;
+        vaccineId = null;
+        doseNumber = null;
+        administeredDate = null;
+        expirationDate = null;
+        lotNumber = null;
+        comment = null;
+        manufacturer = null;
+        informationSource = null;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        saved = null;
+        saveFailure = null;
+
+        if (vaccineId is not { } chosen)
+        {
+            saveFailure = "Choose a vaccine before saving the record.";
+            saving = false;
+
+            return;
+        }
+
+        if (!TryDate(administeredDate, out var administered, out var administeredWhy))
+        {
+            saveFailure = administeredWhy;
+            saving = false;
+
+            return;
+        }
+
+        if (!TryDate(expirationDate, out var expiration, out var expirationWhy))
+        {
+            saveFailure = expirationWhy;
+            saving = false;
+
+            return;
+        }
+
+        var request = new SaveVaccineRecordRequest(
+            chosen,
+            administered,
+            doseNumber,
+            Blank(lotNumber),
+            expiration,
+            Blank(comment),
+            Blank(manufacturer),
+            Blank(informationSource));
+
+        var answered = editingId is { } id
+            ? await Api.Update(id, request)
+            : await Api.Add(ReportId, request);
+
+        saving = false;
+
+        if (answered.Succeeded)
+        {
+            Reset();
+            saved = "The vaccine record has been saved.";
+            await LoadRecords();
+
+            return;
+        }
+
+        saveFailure = answered.Failure;
+    }
+
+    private async Task Remove(int id)
+    {
+        saving = true;
+        saved = null;
+        saveFailure = null;
+
+        var why = await Api.Delete(id);
+
+        saving = false;
+
+        if (why is null)
+        {
+            if (editingId == id)
+            {
+                Reset();
+            }
+
+            await LoadRecords();
+
+            return;
+        }
+
+        saveFailure = why;
+    }
+
+    private static string Describe(VaccineResponse vaccine) =>
+        string.IsNullOrWhiteSpace(vaccine.Description) ? vaccine.Code : vaccine.Description;
+
+    private static string Day(DateOnly? date) =>
+        date?.ToString(DateForm, CultureInfo.InvariantCulture) ?? string.Empty;
+
+    private static string? Blank(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private static bool TryDate(string? typed, out DateOnly? date, out string? why)
+    {
+        date = null;
+        why = null;
+
+        if (string.IsNullOrWhiteSpace(typed))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParseExact(typed.Trim(), DateForm, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var parsed))
+        {
+            date = parsed;
+
+            return true;
+        }
+
+        why = "Give each date as yyyy-mm-dd, or leave it empty.";
+
+        return false;
+    }
+}
