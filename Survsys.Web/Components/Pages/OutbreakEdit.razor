@@ -1,0 +1,599 @@
+@* An outbreak's detail screen: its core fields, the agencies granted sight of
+   it, its section-based report, its activity log and the cases linked to it.
+   A new outbreak carries only its core fields; the access, report, activity
+   and linked cases are an existing outbreak's, each saved on its own so the
+   screen need not save the whole at once. The core Save goes back to the
+   outbreaks list, as the agency screen's does. *@
+@page "/outbreaks/new"
+@page "/outbreaks/{Id:int}"
+@using System.Globalization
+@inject OutbreaksClient Client
+@inject AgenciesClient Agencies
+@inject ConditionsClient Conditions
+@inject NavigationManager Navigation
+
+<PageTitle>@Heading — Survsys</PageTitle>
+
+<MudText id="outbreak-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    @Heading
+</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="outbreak-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (failure is { } whyNot)
+    {
+        <MudAlert id="outbreak-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @whyNot
+        </MudAlert>
+    }
+
+    <MudPaper id="outbreak-form" Elevation="1" Class="pa-4 mb-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="number" id="outbreak-number" Label="Number"
+                              Variant="Variant.Outlined" MaxLength="50" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="name" id="outbreak-name" Label="Name"
+                              Variant="Variant.Outlined" Required="true" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="outbreakDate" id="outbreak-date" Label="Outbreak date"
+                              Variant="Variant.Outlined" InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int?" @bind-Value="conditionId" id="outbreak-condition" Label="Condition"
+                           Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var condition in conditions)
+                    {
+                        <MudSelectItem T="int?" Value="@condition.Id">@condition.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int?" @bind-Value="agencyId" id="outbreak-agency" Label="Owning agency"
+                           Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var agency in agencies)
+                    {
+                        <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudSelect T="int" @bind-Value="status" id="outbreak-status" Label="Status"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem T="int" Value="0">Active</MudSelectItem>
+                    <MudSelectItem T="int" Value="1">Completed</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="description" id="outbreak-description" Label="Description"
+                              Variant="Variant.Outlined" Lines="4" />
+            </MudItem>
+        </MudGrid>
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="outbreak-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                Save
+            </MudButton>
+            <MudButton id="outbreak-cancel" Variant="Variant.Outlined" Disabled="@saving"
+                       Href="/outbreaks">
+                Cancel
+            </MudButton>
+            @if (Id is not null)
+            {
+                <MudSpacer />
+                <MudButton id="outbreak-delete" Variant="Variant.Outlined" Color="Color.Error"
+                           Disabled="@saving" OnClick="@Delete">
+                    Delete
+                </MudButton>
+            }
+        </div>
+    </MudPaper>
+
+    @if (Id is { } outbreakId)
+    {
+        <MudPaper id="outbreak-access" Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">Agency access</MudText>
+            <MudText Typo="Typo.body2" Class="mb-2">
+                The agencies, besides the owner, granted sight of this outbreak.
+            </MudText>
+
+            @if (accessSaved is { } okAccess)
+            {
+                <MudAlert id="outbreak-access-saved" Severity="Severity.Success" Class="mb-2">@okAccess</MudAlert>
+            }
+            @if (accessFailure is { } badAccess)
+            {
+                <MudAlert id="outbreak-access-error" Severity="Severity.Error" Class="mb-2">@badAccess</MudAlert>
+            }
+
+            @foreach (var agency in agencies)
+            {
+                <MudCheckBox T="bool" id="@($"outbreak-access-{agency.Id}")"
+                             Value="@accessIds.Contains(agency.Id)"
+                             ValueChanged="@(on => ToggleAccess(agency.Id, on))" Label="@agency.Name" />
+            }
+
+            <div class="mt-2">
+                <MudButton id="outbreak-access-save" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@savingAccess" OnClick="@SaveAccess">
+                    Save access
+                </MudButton>
+            </div>
+        </MudPaper>
+
+        <MudPaper id="outbreak-report" Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">Outbreak report</MudText>
+
+            <MudTextField @bind-Value="reportAuthorId" id="outbreak-report-author"
+                          Label="Author (user id)" Variant="Variant.Outlined"
+                          InputType="InputType.Number" Class="mb-3" Style="max-width: 12rem;" />
+
+            @if (reportSaved is { } okReport)
+            {
+                <MudAlert id="outbreak-report-saved" Severity="Severity.Success" Class="mb-2">@okReport</MudAlert>
+            }
+            @if (reportFailure is { } badReport)
+            {
+                <MudAlert id="outbreak-report-error" Severity="Severity.Error" Class="mb-2">@badReport</MudAlert>
+            }
+
+            @foreach (var line in report)
+            {
+                <div class="mb-3" data-report-section="@line.SectionId">
+                    <MudTextField @bind-Value="line.Text" id="@($"outbreak-report-{line.SectionId}")"
+                                  Label="@line.Heading" Variant="Variant.Outlined" Lines="3" />
+                    <MudButton id="@($"outbreak-report-save-{line.SectionId}")"
+                               Variant="Variant.Outlined" Color="Color.Primary" Class="mt-1"
+                               Disabled="@savingReport" OnClick="@(() => SaveSection(line))">
+                        Save section
+                    </MudButton>
+                </div>
+            }
+        </MudPaper>
+
+        <MudPaper id="outbreak-activity" Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">Activity log</MudText>
+
+            @if (activityFailure is { } badActivity)
+            {
+                <MudAlert id="outbreak-activity-error" Severity="Severity.Error" Class="mb-2">@badActivity</MudAlert>
+            }
+
+            <MudGrid Spacing="2" Class="mb-2">
+                <MudItem xs="12" sm="2">
+                    <MudTextField @bind-Value="activityAuthorId" id="outbreak-activity-author"
+                                  Label="Author (user id)" Variant="Variant.Outlined"
+                                  InputType="InputType.Number" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="8">
+                    <MudTextField @bind-Value="activityText" id="outbreak-activity-text"
+                                  Label="What happened" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="2" Class="d-flex align-center">
+                    <MudButton id="outbreak-activity-add" Variant="Variant.Filled" Color="Color.Primary"
+                               Disabled="@addingActivity" OnClick="@AddActivity">
+                        Add entry
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+
+            <MudSimpleTable id="outbreak-activity-table" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>When</th>
+                        <th>Author</th>
+                        <th>Entry</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (activity.Count == 0)
+                    {
+                        <tr id="outbreak-activity-empty"><td colspan="3">No activity yet.</td></tr>
+                    }
+                    @foreach (var entry in activity)
+                    {
+                        <tr data-activity="@entry.Id">
+                            <td data-activity-when>@entry.CreatedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
+                            <td data-activity-author>@entry.UserId</td>
+                            <td data-activity-entry>@entry.Description</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        <MudPaper id="outbreak-cases" Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">Linked cases</MudText>
+
+            @if (casesFailure is { } badCases)
+            {
+                <MudAlert id="outbreak-cases-error" Severity="Severity.Error" Class="mb-2">@badCases</MudAlert>
+            }
+
+            <MudSimpleTable id="outbreak-cases-table" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>Record number</th>
+                        <th>Person</th>
+                        <th>Condition</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (cases.Count == 0)
+                    {
+                        <tr id="outbreak-cases-empty"><td colspan="3">No cases are linked to this outbreak.</td></tr>
+                    }
+                    @foreach (var linked in cases)
+                    {
+                        <tr data-case="@linked.ReportId">
+                            <td data-case-record-number>
+                                <MudLink Href="@($"/event/edit/{linked.ReportId}")">@linked.RecordNumber</MudLink>
+                            </td>
+                            <td data-case-person>@linked.PersonName</td>
+                            <td data-case-condition>@linked.Condition</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        @* The files filed against the outbreak itself, in the panel a
+           report's Notes tab uses for its own. *@
+        <div id="outbreak-attachments">
+            <AttachmentsPanel OutbreakId="@outbreakId" />
+        </div>
+    }
+}
+
+@code {
+    /// <summary>The outbreak being edited, or null for a new one.</summary>
+    [Parameter]
+    public int? Id { get; set; }
+
+    private const string DateForm = "yyyy-MM-dd";
+
+    private string? number;
+
+    private string? name;
+
+    private string? outbreakDate;
+
+    private string? description;
+
+    private int? conditionId;
+
+    private int? agencyId;
+
+    private int status;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private IReadOnlyList<ConditionResponse> conditions = [];
+
+    private readonly HashSet<int> accessIds = [];
+
+    private bool savingAccess;
+
+    private string? accessSaved;
+
+    private string? accessFailure;
+
+    private readonly List<SectionEdit> report = [];
+
+    private int? reportAuthorId;
+
+    private bool savingReport;
+
+    private string? reportSaved;
+
+    private string? reportFailure;
+
+    private List<OutbreakUpdateResponse> activity = [];
+
+    private int? activityAuthorId;
+
+    private string? activityText;
+
+    private bool addingActivity;
+
+    private string? activityFailure;
+
+    private List<OutbreakCaseResponse> cases = [];
+
+    private string? casesFailure;
+
+    private string Heading => Id is null ? "New outbreak" : "Edit outbreak";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if ((await Agencies.All()).Value is { } loadedAgencies)
+        {
+            agencies = loadedAgencies.Items;
+        }
+
+        if ((await Conditions.Page(1, 200)).Value is { } loadedConditions)
+        {
+            conditions = loadedConditions.Items;
+        }
+
+        if (Id is { } id)
+        {
+            var found = await Client.Find(id);
+
+            if (found.Value is { } outbreak)
+            {
+                number = outbreak.Number;
+                name = outbreak.Name;
+                outbreakDate = outbreak.OutbreakDate?.ToString(DateForm, CultureInfo.InvariantCulture);
+                description = outbreak.Description;
+                conditionId = outbreak.ConditionId;
+                agencyId = outbreak.AgencyId;
+                status = outbreak.Status;
+
+                await LoadAccess(id);
+                await LoadReport(id);
+                await LoadActivity(id);
+                await LoadCases(id);
+            }
+
+            failure = found.Failure;
+        }
+
+        loading = false;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        failure = null;
+
+        if (!TryDate(outbreakDate, out var date, out var dateWhy))
+        {
+            failure = dateWhy;
+            saving = false;
+
+            return;
+        }
+
+        var request = new SaveOutbreakRequest(
+            name ?? "",
+            number,
+            date,
+            description,
+            conditionId,
+            agencyId,
+            status);
+
+        var saved = Id is { } id
+            ? await Client.Update(id, request)
+            : await Client.Create(request);
+
+        saving = false;
+
+        if (saved.Succeeded)
+        {
+            Navigation.NavigateTo("/outbreaks");
+
+            return;
+        }
+
+        failure = saved.Failure;
+    }
+
+    private async Task Delete()
+    {
+        if (Id is not { } id)
+        {
+            return;
+        }
+
+        saving = true;
+        failure = null;
+
+        var why = await Client.Delete(id);
+
+        saving = false;
+
+        if (why is null)
+        {
+            Navigation.NavigateTo("/outbreaks");
+
+            return;
+        }
+
+        failure = why;
+    }
+
+    private async Task LoadAccess(int id)
+    {
+        var asked = await Client.Access(id);
+        accessIds.Clear();
+
+        if (asked.Value is { } granted)
+        {
+            foreach (var grant in granted)
+            {
+                accessIds.Add(grant.AgencyId);
+            }
+        }
+
+        accessFailure = asked.Failure;
+    }
+
+    private void ToggleAccess(int agencyIdToggled, bool granted)
+    {
+        if (granted)
+        {
+            accessIds.Add(agencyIdToggled);
+        }
+        else
+        {
+            accessIds.Remove(agencyIdToggled);
+        }
+    }
+
+    private async Task SaveAccess()
+    {
+        if (Id is not { } id)
+        {
+            return;
+        }
+
+        savingAccess = true;
+        accessSaved = null;
+        accessFailure = null;
+
+        var saved = await Client.SetAccess(id, new SetOutbreakAccessRequest(accessIds.ToList()));
+
+        savingAccess = false;
+
+        if (saved.Value is { } granted)
+        {
+            accessIds.Clear();
+
+            foreach (var grant in granted)
+            {
+                accessIds.Add(grant.AgencyId);
+            }
+
+            accessSaved = "The access has been saved.";
+
+            return;
+        }
+
+        accessFailure = saved.Failure;
+    }
+
+    private async Task LoadReport(int id)
+    {
+        report.Clear();
+
+        var sections = await Client.ReportSections();
+        var written = await Client.Report(id);
+
+        if (sections.Value is { } headings && written.Value is { } texts)
+        {
+            foreach (var heading in headings)
+            {
+                var text = texts.FirstOrDefault(section => section.ReportSectionId == heading.Id);
+                report.Add(new SectionEdit(heading.Id, heading.Description, text?.ReportText));
+            }
+        }
+
+        reportFailure = sections.Failure ?? written.Failure;
+    }
+
+    private async Task SaveSection(SectionEdit section)
+    {
+        if (Id is not { } id)
+        {
+            return;
+        }
+
+        savingReport = true;
+        reportSaved = null;
+        reportFailure = null;
+
+        var saved = await Client.SaveReportSection(
+            id,
+            section.SectionId,
+            new SaveOutbreakReportSectionRequest(reportAuthorId ?? 0, section.Text));
+
+        savingReport = false;
+
+        if (saved.Succeeded)
+        {
+            reportSaved = $"{section.Heading} has been saved.";
+
+            return;
+        }
+
+        reportFailure = saved.Failure;
+    }
+
+    private async Task LoadActivity(int id)
+    {
+        var asked = await Client.Activity(id);
+        activity = asked.Value ?? [];
+        activityFailure = asked.Failure;
+    }
+
+    private async Task AddActivity()
+    {
+        if (Id is not { } id)
+        {
+            return;
+        }
+
+        addingActivity = true;
+        activityFailure = null;
+
+        var added = await Client.AddActivity(
+            id,
+            new AddOutbreakUpdateRequest(activityAuthorId ?? 0, activityText, 0));
+
+        addingActivity = false;
+
+        if (added.Value is { } entry)
+        {
+            activity.Insert(0, entry);
+            activityText = null;
+
+            return;
+        }
+
+        activityFailure = added.Failure;
+    }
+
+    private async Task LoadCases(int id)
+    {
+        var asked = await Client.Cases(id);
+        cases = asked.Value ?? [];
+        casesFailure = asked.Failure;
+    }
+
+    private static bool TryDate(string? typed, out DateOnly? date, out string? why)
+    {
+        date = null;
+        why = null;
+
+        if (string.IsNullOrWhiteSpace(typed))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParseExact(typed.Trim(), DateForm, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var parsed))
+        {
+            date = parsed;
+
+            return true;
+        }
+
+        why = "Give the outbreak date as yyyy-mm-dd, or leave it empty.";
+
+        return false;
+    }
+
+    private sealed class SectionEdit(int sectionId, string heading, string? text)
+    {
+        public int SectionId { get; } = sectionId;
+
+        public string Heading { get; } = heading;
+
+        public string? Text { get; set; } = text;
+    }
+}
