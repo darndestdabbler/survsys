@@ -1696,9 +1696,9 @@
     {
       "number": 82,
       "title": "Repair ELR promotion's address and result value",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-20T08:12:03.907000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-20T08:17:21.739000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
