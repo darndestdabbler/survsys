@@ -1311,7 +1311,7 @@ the other. The historical counties stay choosable rather than being refused.*
    code a message carries in whichever of the two it names, by the code
    list, and fills the other from the town. `OruR01Generator` writes the
    FIPS code of the one `cdc-notification` names to PID-11, and the legacy
-   code where the list has no FIPS code. Session 100 reads `ecr` the same way
+   code where the list has no FIPS code. Session 102 reads `ecr` the same way
    when it writes an eICR's address to a case.
 5. `Survsys.Web`: the Demographics tab, the person screen and the case search
    show the county equivalent beside the county for a CT address. Its label
@@ -1326,7 +1326,98 @@ the other. The historical counties stay choosable rather than being refused.*
 8. Full test suite, recorded as the run of record.
 9. Close-out.
 
-### Session 82: Phase 10 walkthroughs
+### Session 82: Repair ELR promotion's address and result value
+
+*Inserted after session 81. Two faults found in phase 10 make a real laboratory
+message fail promotion. The transaction rolls back each time, leaving no case,
+no lab and the message still waiting. They come before the Phase 10
+walkthroughs because "update an existing case from a laboratory message"
+crosses both.*
+
+- *`MessageCaseWriter.AddAddress` adds the message's patient address with no
+  ending whenever the person has no address with that street and zip. For a
+  person who already has a different current address, the unique index
+  `IX_person_addresses_person_id_current`, which allows one address with no
+  ending, refuses the second. Session 81's integration test deletes the seeded
+  address to step around it.*
+- *`staged_message_results.result_value` holds 2000 characters and
+  `lab_test_results.result_value` holds 200, so a result longer than 200
+  characters throws on the write. `MessageCaseWriterTests.APromotionThatFailsPartWayLeavesNothing`
+  uses exactly that gap to fail part-way.*
+
+1. Register.
+2. `Survsys.Api`: where `MessageCaseWriter` adds a message's address, the
+   person's current address is closed as a save closes it, by
+   `AddressRules.CloseHistoric`, so the message's address becomes the one
+   current address. An address the person already has with that street and
+   zip is still not added again.
+3. `Survsys.Data`: `lab_test_results.result_value` widened to 2000 characters
+   to match the staged result it is written from, with its migration. No
+   other column changes.
+4. `Survsys.IntegrationTests`: a promotion for a person with a different
+   current address, which leaves the old address closed and the message's
+   current; a result of 2000 characters promoted whole;
+   `APromotionThatFailsPartWayLeavesNothing` given a new way to fail part-way
+   now that the result fits; and session 81's test no longer deleting the
+   seeded address. These reach SQL Server.
+5. Cross-provider verification.
+6. Full test suite, the integration suite included, recorded as the run of
+   record.
+7. Close-out.
+
+### Session 83: County names on screen and the CT town list checked
+
+*Inserted after session 81. Session 81 left three things owed. The new County
+and planning region columns on the person screen and the case search show a
+raw code such as 09003 rather than its name. The 169 town-to-county and
+town-to-region rows of `CtTownSeed` were typed from memory: every town appears
+once and each county's and region's total is right, but no row was checked
+against the official list. And the end-to-end tests were not run, so the
+screens were never seen rendered.*
+
+1. Register.
+2. `Survsys.Data`: every row of `CtTownSeed` checked against the Census
+   Bureau's list of Connecticut's county subdivisions with their historical
+   county and their planning region, and that list kept as its source under
+   `docs/planning/`. Any row found wrong is corrected by a migration, and the
+   session's notes say which rows changed, or that none did.
+3. `Survsys.Web`: the person screen and the case search show a county's and a
+   county equivalent's name from the county code list, not its code, as the
+   Demographics tab's pickers already do. Every element id stays unchanged.
+4. `Survsys.E2ETests`: a Playwright test that saves a Connecticut address on
+   the Demographics tab with its town alone, and finds its county and planning
+   region filled in by name on the Demographics tab, the person screen and the
+   case search.
+5. Cross-provider verification.
+6. Full test suite, the end-to-end walkthrough suite included, recorded as the
+   run of record.
+7. Close-out.
+
+### Session 84: Editor settings ignored, and the integration sign-in flake
+
+*Inserted after session 81. Two faults outside the product keep stopping the
+framework. Choosing the authoring model in VS Code writes
+`.vscode/settings.json`, which `.gitignore` does not cover, and the untracked
+file refuses a release session's working-tree and verification gates, as it
+did at 0.4.0. And since session 79 the full integration run has now and then
+failed `PersonConditionEndpointsTests.TheOptionsAreTheStatesMovesNarrowedToTheCallersPrivileges`
+on a 401 from `SurvsysApi.SignIn`, though the class passes alone. Most likely
+another test changes a user, its password or its lockout and does not put it
+back. Both come before release 0.11.0.*
+
+1. Register.
+2. `.gitignore`: `.vscode/` ignored as `.dabbler/` is, with a comment saying
+   why. Nothing else in the file changes.
+3. `Survsys.IntegrationTests`: the test that leaves the sign-in state behind
+   is found, and is made to sign in with a user of its own or to put back
+   what it changed, so no test depends on the order the suite runs in. The
+   session's notes name the test and the cause.
+4. Cross-provider verification.
+5. Full test suite, the integration suite included, recorded as the run of
+   record.
+6. Close-out.
+
+### Session 85: Phase 10 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: four documents — find a message assigned
@@ -1337,7 +1428,7 @@ the other. The historical counties stay choosable rather than being refused.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 83: Release 0.11.0 (release: 0.11.0)
+### Session 86: Release 0.11.0 (release: 0.11.0)
 
 ---
 
@@ -1347,7 +1438,7 @@ Specified by `NMI_EXPORT_PIPELINE.md`, `NMI_RULESETS.md`, `NMI_XML_GENERATION.md
 and `nmi-ui-overview.md`. NETSS stays unbuilt until the operator records CDC's
 answer in `docs/planning/netss-export-question.md`.*
 
-### Session 84: The notification queue worker and the export log
+### Session 87: The notification queue worker and the export log
 
 1. Register.
 2. `Survsys.Api`: a hosted service that takes each released entry off
@@ -1365,7 +1456,7 @@ answer in `docs/planning/netss-export-question.md`.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 85: Auto-queue on every change, queue actions and reconciliation
+### Session 88: Auto-queue on every change, queue actions and reconciliation
 
 1. Register.
 2. `Survsys.Api`: a case queued for notification on every change that reaches
@@ -1380,7 +1471,7 @@ answer in `docs/planning/netss-export-question.md`.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 86: Guide, rule set and value set administration
+### Session 89: Guide, rule set and value set administration
 
 1. Register.
 2. `Survsys.Api` and `Survsys.Web`: screens for notification guides, their
@@ -1395,7 +1486,7 @@ answer in `docs/planning/netss-export-question.md`.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 87: Transport to CDC
+### Session 90: Transport to CDC
 
 1. Register.
 2. `Survsys.Api`: a transport chosen in configuration — the HTTP post that
@@ -1409,7 +1500,7 @@ answer in `docs/planning/netss-export-question.md`.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 88: Phase 11 walkthroughs
+### Session 91: Phase 11 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: three documents — send a case to CDC, retract a
@@ -1422,7 +1513,7 @@ answer in `docs/planning/netss-export-question.md`.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 89: Release 0.12.0 (release: 0.12.0)
+### Session 92: Release 0.12.0 (release: 0.12.0)
 
 ---
 
@@ -1430,7 +1521,7 @@ answer in `docs/planning/netss-export-question.md`.*
 Specified by `phase-1.6-cross-cutting-patterns.md`, `CLASSIFICATION_RULES.md`
 and `phase-1.6-feature-matrix.md` §11–§14.*
 
-### Session 90: Audit with its user and values, and its screens
+### Session 93: Audit with its user and values, and its screens
 
 1. Register.
 2. `Survsys.Data`: the audit interceptor recording the signed-in user and the
@@ -1444,7 +1535,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 91: Jurisdiction-scoped access and sign-in protection
+### Session 94: Jurisdiction-scoped access and sign-in protection
 
 1. Register.
 2. `Survsys.Api`: a user's case access scoped to their agencies' jurisdictions
@@ -1460,7 +1551,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 92: Classification rules on save
+### Session 95: Classification rules on save
 
 1. Register.
 2. `Survsys.Data`: the validation and classification rules of
@@ -1474,7 +1565,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 93: IBIS, ad-hoc reporting and system configuration
+### Session 96: IBIS, ad-hoc reporting and system configuration
 
 1. Register.
 2. `Survsys.Web`: a Send to IBIS action on the report, privilege-gated, over
@@ -1489,7 +1580,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 94: Phase 12 walkthroughs
+### Session 97: Phase 12 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: four documents — review a case's audit history, run
@@ -1499,7 +1590,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 95: Release 0.13.0 (release: 0.13.0)
+### Session 98: Release 0.13.0 (release: 0.13.0)
 
 ---
 
@@ -1509,7 +1600,7 @@ eCR documents in `../nedss/docs/specs/site-specs/`. Its items marked
 **[confirm]** are confirmed with the APHL eCR service desk before the session
 that depends on them, and a session that finds one wrong amends this phase.*
 
-### Session 96: eICR and RR parsing and document intake
+### Session 99: eICR and RR parsing and document intake
 
 1. Register.
 2. `Survsys.Messaging`: a CDA parser behind phase 10's parser seam, reading
@@ -1527,7 +1618,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 97: eCR validation and the eICR viewer
+### Session 100: eCR validation and the eICR viewer
 
 1. Register.
 2. `Survsys.Messaging`: validation against the CDA schema and the HL7
@@ -1540,7 +1631,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 98: Reportability and condition mapping
+### Session 101: Reportability and condition mapping
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: a mapping from RCTC and SNOMED condition
@@ -1554,7 +1645,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 99: Cases from eCR
+### Session 102: Cases from eCR
 
 1. Register.
 2. `Survsys.Api`: a reportable eICR's patient matched by phase 9's matcher,
@@ -1573,7 +1664,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 100: eCR senders and data quality
+### Session 103: eCR senders and data quality
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: eCR senders with their onboarding stage —
@@ -1586,7 +1677,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 101: Phase 13 walkthroughs
+### Session 104: Phase 13 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: four documents — review an eICR and its reportability
@@ -1597,13 +1688,13 @@ that depends on them, and a session that finds one wrong amends this phase.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 102: Release 0.14.0 (release: 0.14.0)
+### Session 105: Release 0.14.0 (release: 0.14.0)
 
 ---
 
 *Phase 14 — parity → release 1.0.0, the first release that claims parity.*
 
-### Session 103: The parity check and the documentation for 1.0.0
+### Session 106: The parity check and the documentation for 1.0.0
 
 1. Register.
 2. `docs/planning/gap-analysis.md`: every gap marked closed with the session
@@ -1617,4 +1708,4 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 104: Release 1.0.0 (release: 1.0.0)
+### Session 107: Release 1.0.0 (release: 1.0.0)
