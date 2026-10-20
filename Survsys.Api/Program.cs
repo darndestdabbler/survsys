@@ -108,6 +108,10 @@ builder.Services.AddReports();
 // deployment that has not turned them on.
 builder.Services.Configure<ElrIntakeOptions>(
     builder.Configuration.GetSection(ElrIntakeOptions.SectionName));
+// The conformance profile each sender is checked against at intake; a sender
+// with none is not checked.
+builder.Services.Configure<ConformanceOptions>(
+    builder.Configuration.GetSection(ConformanceOptions.SectionName));
 builder.Services.AddSingleton<IMessageParser, OruR01Parser>();
 builder.Services.AddHostedService<ElrIntakeService>();
 builder.Services.AddHostedService<MllpListener>();

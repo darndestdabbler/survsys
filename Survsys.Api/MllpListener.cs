@@ -25,6 +25,7 @@ public sealed class MllpListener(
     IMessageParser parser,
     IServiceScopeFactory scopeFactory,
     IOptions<ElrIntakeOptions> options,
+    IOptions<ConformanceOptions> conformance,
     ILogger<MllpListener> logger) : BackgroundService
 {
     /// <summary>The source recorded on a message received over MLLP.</summary>
@@ -119,7 +120,8 @@ public sealed class MllpListener(
         {
             using var scope = scopeFactory.CreateScope();
             var database = scope.ServiceProvider.GetRequiredService<SurvsysDbContext>();
-            var staged = await ElrIntakeService.Receive(parser, database, raw, Source, perMessage.Token);
+            var staged = await ElrIntakeService.Receive(
+                parser, database, raw, Source, perMessage.Token, conformance.Value.ProfilesBySender());
 
             var held = staged.FirstOrDefault(message => message.ReviewStatus != MessageReviewStatusRules.EntryCode);
             logger.LogInformation(

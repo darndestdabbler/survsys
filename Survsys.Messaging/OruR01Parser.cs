@@ -95,9 +95,11 @@ public sealed class OruR01Parser : IMessageParser
     /// (<c>\015</c>) and any line ending become the single CR that nHapi
     /// requires between segments, each segment is trimmed of surrounding
     /// whitespace, and the empty segments the legacy cleanup dropped are left
-    /// out. It is not a per-lab transformation pipeline.
+    /// out. It is not a per-lab transformation pipeline. Shared with
+    /// <see cref="Er7Message"/>, so a conformance check reads the segments
+    /// this parser reads.
     /// </summary>
-    private static string Preprocess(string raw)
+    internal static string Preprocess(string raw)
     {
         var unescaped = raw
             .Replace("\\015", "\r", StringComparison.Ordinal)

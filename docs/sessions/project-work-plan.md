@@ -91,7 +91,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 77 | The graylist, automatic assignment and the full queue | no | 2026-10-19 |
 | 78 | Labs from messages, and updating an existing case | no | 2026-10-20 |
 | 79 | Exceptions, reprocessing, notifications and statistics | no | 2026-10-20 |
-| 80 | Connecticut ELR conformance | — | not declared |
+| 80 | Connecticut ELR conformance | no | 2026-10-20 |
 | 81 | Connecticut planning regions as county equivalents | — | not declared |
 | 82 | Phase 10 walkthroughs | — | not declared |
 | 83 | Release 0.11.0 (release: 0.11.0) | — | not declared |
@@ -715,3 +715,9 @@ Type the reasons a message is held, let the retryable ones be reprocessed, keep 
 
 - 2026-10-20 — step 'integration': its files: Prove the statistics query's grouping by received day translates and counts against SQL Server, which the unit suite cannot (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-20 — step 'integration': its checks: Run the statistics integration test with the step's other checks (claude-code (anthropic, claude-opus-5-5))
+
+### Session 80 — Connecticut ELR conformance
+
+**Releasable: no.**
+
+Add HL7 conformance checking to ELR intake. Survsys.Messaging gets a small conformance profile engine: a profile is a list of rules, each naming an ER7 element (a segment, field, component or subcomponent such as PID-3.4 or NK1) with a usage of R, RE, O or X, or a conditional C(R/X), C(RE/X), C(R/RE) or C(R/O) whose predicate over the message picks the usage, and an optional value check; checking a preprocessed raw message yields failures, an exception where an R element is empty or invalid and a warning where an RE element is empty, any present element is invalid, or an X element is present. The Connecticut profile follows CT-ELR-HL7-251_Implementation_Guide_v1.0.pdf: MSH-5 and MSH-6 against the CT OIDs taken from configuration (the testing MSH-5 OID in Development, the production one otherwise); an OID or CLIA universal ID with a matching ISO/CLIA type in PID-3.4, ORC-2, ORC-3, OBR-2, OBR-3 and SPM-2's filler EI; OBR-16 (first and last name), OBR-17, ORC-24 and OBX-2 required; a CT patient's town (PID-11.3 where PID-11.4 is CT) checked against the guide's 169 CT town names as a warning, since the guide prefers but does not require them; and NK1 required when a blood-lead result (OBX-3 LOINC 5671-3, 10368-9 or 77307-7) is reported for a patient under 18 at observation. The profile is chosen per sending facility (MSH-4.1) through a Conformance configuration section; intake holds every row of a message with a failed exception-level check in the Exception state under a new non-retryable conformance category (the legacy Validation Rule Failure, 33) with the failures as its detail, and records warning-level failures on each staged row in a new ConformanceWarnings column. Unit tests give every CT rule a passing and a failing message.

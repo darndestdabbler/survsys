@@ -18,8 +18,9 @@ public sealed record MessageExceptionCategory(string Code, int LegacyId, string 
 /// Mirth parameters, master and application XML documents and SQL agent
 /// responses the rest describe are plumbing this tier does not have. Each keeps
 /// the legacy id and the legacy retry flag, except
-/// <see cref="UnparseableCode"/>: a retry translates a message again and does
-/// not parse it again, so one that never parsed has nothing to retry. The
+/// <see cref="UnparseableCode"/> and <see cref="ConformanceCode"/>: a retry
+/// translates a message again and does not parse or check it again, so one
+/// that never parsed or did not conform has nothing to retry. The
 /// legacy pending-queue categories, an entry-queue exception and a whitelist
 /// rule exception, are a person's to resolve and are not retried.
 ///
@@ -68,6 +69,12 @@ public static class MessageExceptionRules
     /// </summary>
     public const string WhitelistRuleExceptionCode = "whitelist-rule";
 
+    /// <summary>
+    /// The message fails a required check of its sender's conformance profile.
+    /// The legacy <c>Validation Rule Failure</c>, 33.
+    /// </summary>
+    public const string ConformanceCode = "conformance";
+
     /// <summary>Every category this vocabulary knows, in the order the codes are declared.</summary>
     public static IReadOnlyList<MessageExceptionCategory> Categories { get; } =
     [
@@ -81,6 +88,7 @@ public static class MessageExceptionRules
         new(ZipCodeNotMappedCode, 3, "Zip Code", Retryable: true),
         new(EntryQueueExceptionCode, 69, "Entry Queue Exception", Retryable: false),
         new(WhitelistRuleExceptionCode, 70, "Whitelist Rule Exception", Retryable: false),
+        new(ConformanceCode, 33, "Validation Rule Failure", Retryable: false),
     ];
 
     private static readonly Dictionary<string, MessageExceptionCategory> ByCode =

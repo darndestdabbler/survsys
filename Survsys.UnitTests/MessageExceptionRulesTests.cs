@@ -20,6 +20,7 @@ public class MessageExceptionRulesTests
     [InlineData(MessageExceptionRules.ZipCodeNotMappedCode, 3, true)]
     [InlineData(MessageExceptionRules.EntryQueueExceptionCode, 69, false)]
     [InlineData(MessageExceptionRules.WhitelistRuleExceptionCode, 70, false)]
+    [InlineData(MessageExceptionRules.ConformanceCode, 33, false)]
     public void ReadNamesTheLegacyCategoryAndWhetherItMayBeRetried(string code, int legacyId, bool retryable)
     {
         var category = MessageExceptionRules.Read(code);

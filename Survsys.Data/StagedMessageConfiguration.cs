@@ -49,6 +49,9 @@ internal sealed class StagedMessageConfiguration : IEntityTypeConfiguration<Stag
         builder.Property(message => message.ExceptionCategory)
             .HasColumnName("exception_category")
             .HasMaxLength(40);
+        builder.Property(message => message.ConformanceWarnings)
+            .HasColumnName("conformance_warnings")
+            .HasMaxLength(2000);
         builder.Property(message => message.RetryCount).HasColumnName("retry_count");
         builder.Property(message => message.NotifiedAt).HasColumnName("notified_at");
 

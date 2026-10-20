@@ -43,6 +43,72 @@ public sealed class ElrIntakeOptions
 }
 
 /// <summary>
+/// The <c>Conformance</c> configuration section: the conformance profile each
+/// sending facility's messages are checked against at intake, and the
+/// environment's values the profiles expect.
+/// </summary>
+/// <remarks>
+/// A sender with no profile is not checked, so an empty
+/// <see cref="SenderProfiles"/> leaves conformance off. The Connecticut OIDs
+/// differ between CT's testing and production receivers, so each environment's
+/// configuration names its own.
+/// </remarks>
+public sealed class ConformanceOptions
+{
+    /// <summary>The configuration section these options bind from.</summary>
+    public const string SectionName = "Conformance";
+
+    /// <summary>The OID the Connecticut profile expects in MSH-5.2.</summary>
+    public string? ConnecticutReceivingApplicationOid { get; set; }
+
+    /// <summary>The OID the Connecticut profile expects in MSH-6.2.</summary>
+    public string? ConnecticutReceivingFacilityOid { get; set; }
+
+    /// <summary>
+    /// Each sending facility's profile, by its MSH-4.1 code, named as
+    /// <see cref="ConnecticutElrProfile.Name"/> names the one profile there is.
+    /// </summary>
+    public Dictionary<string, string> SenderProfiles { get; set; } = [];
+
+    /// <summary>
+    /// The profile each sender in <see cref="SenderProfiles"/> is checked
+    /// against, its code matched without regard to case. Throws
+    /// <see cref="InvalidOperationException"/> for a profile this tier does not
+    /// know, or the Connecticut profile without both its OIDs, so a
+    /// misconfiguration is refused rather than left unchecked.
+    /// </summary>
+    public IReadOnlyDictionary<string, ConformanceProfile> ProfilesBySender()
+    {
+        ConformanceProfile? connecticut = null;
+        var profiles = new Dictionary<string, ConformanceProfile>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (sender, name) in SenderProfiles)
+        {
+            if (!string.Equals(name, ConnecticutElrProfile.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"{SectionName}:{nameof(SenderProfiles)} names '{name}' for '{sender}', which is not a "
+                    + $"profile this tier knows; the one there is is {ConnecticutElrProfile.Name}.");
+            }
+
+            if (string.IsNullOrWhiteSpace(ConnecticutReceivingApplicationOid)
+                || string.IsNullOrWhiteSpace(ConnecticutReceivingFacilityOid))
+            {
+                throw new InvalidOperationException(
+                    $"The {ConnecticutElrProfile.Name} profile needs {SectionName}:"
+                    + $"{nameof(ConnecticutReceivingApplicationOid)} and {nameof(ConnecticutReceivingFacilityOid)}.");
+            }
+
+            connecticut ??= ConnecticutElrProfile.Create(
+                ConnecticutReceivingApplicationOid, ConnecticutReceivingFacilityOid);
+            profiles[sender] = connecticut;
+        }
+
+        return profiles;
+    }
+}
+
+/// <summary>
 /// The inbound ELR intake: a background worker inside the API tier that polls a
 /// file drop, parses each message and queues it for review. The cut session 2
 /// decided — Mirth's file receipt absorbed into an <see cref="IHostedService"/>
@@ -74,8 +140,12 @@ public sealed class ElrIntakeService(
     IMessageParser parser,
     IServiceScopeFactory scopeFactory,
     IOptions<ElrIntakeOptions> options,
+    IOptions<ConformanceOptions> conformance,
     ILogger<ElrIntakeService> logger) : BackgroundService
 {
+    /// <summary>The longest <see cref="StagedMessage.ConformanceWarnings"/> its column holds.</summary>
+    private const int ConformanceWarningsLength = 2000;
+
     /// <summary>Where a handled file is moved once it has been staged.</summary>
     private const string ProcessedFolder = ".processed";
 
@@ -92,12 +162,20 @@ public sealed class ElrIntakeService(
     /// parse becomes one row in the <see cref="MessageReviewStatus.Exception"/>
     /// state carrying the parser's detail, and a message whose sending facility
     /// (MSH-4.1) is not among <paramref name="knownSendingFacilities"/> has every
-    /// row held in that state with that reason. The one decision the intake
-    /// makes, kept pure and static so it is proven without a host, a database
-    /// or a file.
+    /// row held in that state with that reason. A message from a known sender
+    /// with a profile in <paramref name="profilesBySender"/> is checked against
+    /// it: where it fails an exception-level check every row is held under
+    /// <see cref="MessageExceptionRules.ConformanceCode"/> with the failures as
+    /// its detail, and the warning-level failures are recorded on every row.
+    /// The one decision the intake makes, kept pure and static so it is proven
+    /// without a host, a database or a file.
     /// </summary>
     public static IReadOnlyList<StagedMessage> Stage(
-        IMessageParser parser, string raw, string? source, IReadOnlySet<string> knownSendingFacilities)
+        IMessageParser parser,
+        string raw,
+        string? source,
+        IReadOnlySet<string> knownSendingFacilities,
+        IReadOnlyDictionary<string, ConformanceProfile>? profilesBySender = null)
     {
         ArgumentNullException.ThrowIfNull(parser);
         ArgumentNullException.ThrowIfNull(raw);
@@ -127,10 +205,27 @@ public sealed class ElrIntakeService(
             return [excepted];
         }
 
-        string? unknownSender = parsed.SendingFacility is { } sender && knownSendingFacilities.Contains(sender)
-            ? null
-            : UnknownSender(parsed.SendingFacility);
-        var unknownSenderCategory = unknownSender is null ? null : MessageExceptionRules.UnknownSenderCode;
+        var known = parsed.SendingFacility is { } sender && knownSendingFacilities.Contains(sender);
+        string? heldDetail = known ? null : UnknownSender(parsed.SendingFacility);
+        var heldCategory = known ? null : MessageExceptionRules.UnknownSenderCode;
+        string? warnings = null;
+
+        if (known && profilesBySender is not null && profilesBySender.TryGetValue(parsed.SendingFacility!, out var profile))
+        {
+            var failures = profile.Check(raw);
+            var exceptions = failures.Where(failure => failure.Severity == ConformanceSeverity.Exception).ToList();
+            if (exceptions.Count > 0)
+            {
+                heldDetail = $"The message does not conform to the {profile.Name} profile: "
+                    + string.Join(" ", exceptions.Select(failure => failure.Detail));
+                heldCategory = MessageExceptionRules.ConformanceCode;
+            }
+
+            warnings = string.Join(
+                "\n",
+                failures.Where(failure => failure.Severity == ConformanceSeverity.Warning).Select(failure => failure.Detail));
+            warnings = warnings.Length == 0 ? null : warnings[..Math.Min(warnings.Length, ConformanceWarningsLength)];
+        }
 
         // A message that reports no patient at all is still staged, once, so it
         // is not lost.
@@ -140,11 +235,12 @@ public sealed class ElrIntakeService(
             var empty = NewMessage();
             empty.MessageType = parsed.MessageType;
             empty.SendingFacility = parsed.SendingFacility;
-            empty.ReviewStatus = unknownSender is null
+            empty.ReviewStatus = heldCategory is null
                 ? MessageReviewStatusRules.EntryCode
                 : MessageReviewStatusRules.ExceptionCode;
-            empty.ExceptionDetail = unknownSender;
-            empty.ExceptionCategory = unknownSenderCategory;
+            empty.ExceptionDetail = heldDetail;
+            empty.ExceptionCategory = heldCategory;
+            empty.ConformanceWarnings = warnings;
             return [empty];
         }
 
@@ -165,11 +261,12 @@ public sealed class ElrIntakeService(
                 message.PatientCity = patient.City;
                 message.PatientState = patient.State;
                 message.PatientZip = patient.Zip;
-                message.ReviewStatus = unknownSender is null
+                message.ReviewStatus = heldCategory is null
                     ? MessageReviewStatusRules.EntryCode
                     : MessageReviewStatusRules.ExceptionCode;
-                message.ExceptionDetail = unknownSender;
-                message.ExceptionCategory = unknownSenderCategory;
+                message.ExceptionDetail = heldDetail;
+                message.ExceptionCategory = heldCategory;
+                message.ConformanceWarnings = warnings;
 
                 if (order is not null)
                 {
@@ -206,17 +303,20 @@ public sealed class ElrIntakeService(
     /// stages it against the sending facilities on file, a facility being on
     /// file when its short name is the message's MSH-4.1, translates each
     /// message it queued through <see cref="Translate"/>, and saves what it
-    /// staged.
+    /// staged. A sender with a profile in <paramref name="profilesBySender"/>
+    /// is checked against it, as <see cref="Stage"/> says.
     /// </summary>
     public static async Task<IReadOnlyList<StagedMessage>> Receive(
         IMessageParser parser,
         SurvsysDbContext database,
         string raw,
         string? source,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, ConformanceProfile>? profilesBySender = null)
     {
         var facilities = await LoadFacilities(database, cancellationToken);
-        var staged = Stage(parser, raw, source, facilities.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase));
+        var staged = Stage(
+            parser, raw, source, facilities.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase), profilesBySender);
 
         await Translate(database, facilities, staged, cancellationToken);
 
@@ -456,7 +556,8 @@ public sealed class ElrIntakeService(
 
             using var scope = scopeFactory.CreateScope();
             var database = scope.ServiceProvider.GetRequiredService<SurvsysDbContext>();
-            var staged = await Receive(parser, database, raw, fileName, perMessage.Token);
+            var staged = await Receive(
+                parser, database, raw, fileName, perMessage.Token, conformance.Value.ProfilesBySender());
 
             Move(file, Path.Combine(dropDirectory, ProcessedFolder));
             logger.LogInformation(

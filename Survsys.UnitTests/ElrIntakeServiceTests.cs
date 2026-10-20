@@ -213,4 +213,89 @@ public class ElrIntakeServiceTests
                     ]),
             ]);
     }
+
+    private const string CtSender = "CTLAB";
+
+    private static readonly IReadOnlySet<string> CtSenders = new HashSet<string> { CtSender };
+
+    private static ConformanceOptions CtOptions(string sender = CtSender) => new()
+    {
+        ConnecticutReceivingApplicationOid = "2.16.840.1.113883.3.5609.4.1.1.3.2.2",
+        ConnecticutReceivingFacilityOid = "2.16.840.1.113883.3.5609.4.1",
+        SenderProfiles = new() { [sender] = ConnecticutElrProfile.Name },
+    };
+
+    /// <summary>A Connecticut message conforming to the CT profile, with its OBR-17 callback number and PID-11 city given.</summary>
+    private static string CtMessage(string callback = "^WPN^PH^^^860^9995661", string city = "Hartford") => string.Join('\r',
+        "MSH|^~\\&|HealthSentry^2.16.840.1.113883.3.13.2.2.1^ISO|" + CtSender
+            + "^07D0092913^CLIA|CT^2.16.840.1.113883.3.5609.4.1.1.3.2.2^ISO|CTA-DPH^2.16.840.1.113883.3.5609.4.1^ISO|20151004154300-0500||ORU^R01^ORU_R01|MSG1|T|2.5.1",
+        "PID|1||999QQQ1234z^^^Lab&07D0092913&CLIA^MR||Patient^Test||19800115|F|||410 Capitol Avenue^^" + city + "^CT^06106^USA^H",
+        "ORC|RE|PL1^EHR^07D0092913^CLIA|FL1^EHR^07D0092913^CLIA|||||||||^Anydoctor^Adam||^WPN^PH^^^860^9995661||||||||||100 Main St^^New Britain^CT^06051",
+        "OBR|1|PL1^EHR^07D0092913^CLIA|FL1^EHR^07D0092913^CLIA|22327-1^Hepatitis C Antibody^LN|||20151003061900-0500|||||||||^Anydoctor^Adam|" + callback,
+        "OBX|1|NM|22327-1^Hepatitis C Antibody^LN|1|31.8||||||F",
+        "SPM|1|SP1^SP1&EHR&07D0092913&CLIA||119297000^Blood^SCT");
+
+    [Fact]
+    public void StageQueuesAMessageThatConformsToItsSendersProfile()
+    {
+        var staged = Assert.Single(ElrIntakeService.Stage(
+            Parser, CtMessage(), null, CtSenders, CtOptions().ProfilesBySender()));
+
+        Assert.Equal(MessageReviewStatusRules.EntryCode, staged.ReviewStatus);
+        Assert.Null(staged.ExceptionCategory);
+        Assert.Null(staged.ConformanceWarnings);
+    }
+
+    [Fact]
+    public void StageHoldsAMessageThatFailsARequiredCheckOfItsSendersProfile()
+    {
+        var staged = Assert.Single(ElrIntakeService.Stage(
+            Parser, CtMessage(callback: ""), null, CtSenders, CtOptions().ProfilesBySender()));
+
+        Assert.Equal(MessageReviewStatusRules.ExceptionCode, staged.ReviewStatus);
+        Assert.Equal(MessageExceptionRules.ConformanceCode, staged.ExceptionCategory);
+        Assert.Contains("OBR-17", staged.ExceptionDetail);
+        Assert.Equal("22327-1", staged.TestCode);
+    }
+
+    [Fact]
+    public void StageRecordsTheWarningsOfAMessageItQueues()
+    {
+        var staged = Assert.Single(ElrIntakeService.Stage(
+            Parser, CtMessage(city: "Gotham"), null, CtSenders, CtOptions().ProfilesBySender()));
+
+        Assert.Equal(MessageReviewStatusRules.EntryCode, staged.ReviewStatus);
+        Assert.Contains("PID-11", staged.ConformanceWarnings);
+    }
+
+    [Fact]
+    public void StageDoesNotCheckASenderWithNoProfile()
+    {
+        var staged = Assert.Single(ElrIntakeService.Stage(
+            Parser, CtMessage(callback: "", city: "Gotham"), null, CtSenders, CtOptions("OTHERLAB").ProfilesBySender()));
+
+        Assert.Equal(MessageReviewStatusRules.EntryCode, staged.ReviewStatus);
+        Assert.Null(staged.ConformanceWarnings);
+    }
+
+    [Fact]
+    public void ProfilesBySenderMapsEachSenderToItsProfileWithoutRegardToCase()
+    {
+        var profile = Assert.Single(CtOptions().ProfilesBySender()).Value;
+
+        Assert.Equal(ConnecticutElrProfile.Name, profile.Name);
+        Assert.True(CtOptions().ProfilesBySender().ContainsKey("ctlab"));
+        Assert.Empty(new ConformanceOptions().ProfilesBySender());
+    }
+
+    [Fact]
+    public void ProfilesBySenderRefusesAnUnknownProfileOrTheCtProfileWithoutItsOids()
+    {
+        var unknown = CtOptions();
+        unknown.SenderProfiles[CtSender] = "NY";
+        var withoutOids = new ConformanceOptions { SenderProfiles = new() { [CtSender] = ConnecticutElrProfile.Name } };
+
+        Assert.Throws<InvalidOperationException>(() => unknown.ProfilesBySender());
+        Assert.Throws<InvalidOperationException>(() => withoutOids.ProfilesBySender());
+    }
 }

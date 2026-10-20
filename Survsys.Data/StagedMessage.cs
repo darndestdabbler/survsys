@@ -82,6 +82,14 @@ public class StagedMessage
     /// </summary>
     public string? ExceptionCategory { get; set; }
 
+    /// <summary>
+    /// The warning-level checks of its sender's conformance profile the
+    /// message failed at intake, one per line, or null where it failed none or
+    /// its sender has no profile. A message that fails a required check is
+    /// held instead, under <see cref="MessageExceptionRules.ConformanceCode"/>.
+    /// </summary>
+    public string? ConformanceWarnings { get; set; }
+
     /// <summary>How many times this message has been retried, by hand or by reprocessing.</summary>
     public int RetryCount { get; set; }
 

@@ -13068,6 +13068,11 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("condition_id");
 
+                    b.Property<string>("ConformanceWarnings")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("conformance_warnings");
+
                     b.Property<string>("ExceptionCategory")
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)")
