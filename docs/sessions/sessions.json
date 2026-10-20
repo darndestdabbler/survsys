@@ -1775,7 +1775,7 @@
       "startCommit": "2e4524388cdbf3d2cca44bed3c95363f7b323a6a",
       "frameworkVersion": "3.21.0",
       "verification": {
-        "rounds": 1,
+        "rounds": 2,
         "verifierModel": "gpt-5.6-terra",
         "verifierProvider": "openai",
         "transport": "api"
