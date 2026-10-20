@@ -1,0 +1,189 @@
+@* The outbound CDC notification queue: the cases waiting to be notified, as
+   the notification-queue endpoint returns them. One page of rows, oldest
+   first, each naming the case and carrying the hold a reviewer raises to keep
+   it back from export and lowers to release it.
+
+   Every element a later walkthrough will name carries an identifier of its
+   own — `notification-queue-heading`, `notification-queue-loading`,
+   `notification-queue-error`, `notification-queue-total`,
+   `notification-queue-none`, `notification-queue-hold-error`, the table, and
+   one row per case keyed by its id with a hold button of its own. A test
+   selects by those and not by a MudBlazor class or a cell's position. *@
+@page "/notification-queue"
+@inject NotificationQueueClient Client
+
+<PageTitle>Notification queue — Survsys</PageTitle>
+
+<MudText id="notification-queue-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Notification queue
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    The cases waiting to be notified to CDC, oldest first. Hold a case to keep it
+    back from export pending review, or release one to let it go.
+</MudText>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="notification-queue-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result)
+{
+    <MudText id="notification-queue-total" Typo="Typo.body2" Class="mb-4">
+        @result.TotalCount case(s) queued, showing @result.Items.Count.
+    </MudText>
+
+    @if (holdFailure is { } whyNot)
+    {
+        @* The tier's contract: an API failure is a message on the screen.
+           NotificationQueueClient hands over the message, which includes the
+           404 a case not in the queue comes back as. *@
+        <MudAlert id="notification-queue-hold-error" Severity="Severity.Error"
+                  Variant="Variant.Filled" Class="mb-4">
+            @whyNot
+        </MudAlert>
+    }
+
+    @if (result.Items.Count == 0)
+    {
+        <MudText id="notification-queue-none" Typo="Typo.body2">
+            No cases are waiting to be notified.
+        </MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="notification-queue-table" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>Record number</th>
+                        <th>Patient</th>
+                        <th>Condition</th>
+                        <th>Queued</th>
+                        <th>Hold</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in result.Items)
+                    {
+                        <tr id="@($"notification-queue-row-{item.PersonConditionId}")" data-notification-case="@item.PersonConditionId">
+                            <td data-notification-record>@item.RecordNumber</td>
+                            <td data-notification-patient>@item.PatientName</td>
+                            <td data-notification-condition>@item.Condition</td>
+                            <td data-notification-queued>@item.QueuedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td data-notification-hold>@(item.Hold ? "Held" : "—")</td>
+                            <td>
+                                <MudButton id="@($"notification-queue-hold-{item.PersonConditionId}")"
+                                           data-notification-hold-toggle="@item.PersonConditionId"
+                                           Variant="Variant.Outlined" Size="Size.Small"
+                                           Disabled="@working"
+                                           OnClick="@(() => ToggleHold(item))">
+                                    @(item.Hold ? "Release" : "Hold")
+                                </MudButton>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        @if (result.TotalCount > PageSize || page > 1)
+        {
+            <div class="d-flex align-center gap-4 mt-2">
+                <MudButton id="notification-queue-prev" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page <= 1)" OnClick="PreviousPage">
+                    Previous
+                </MudButton>
+                <MudText id="notification-queue-page" Typo="Typo.body2">Page @(page) of @LastPage</MudText>
+                <MudButton id="notification-queue-next" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page >= LastPage)" OnClick="NextPage">
+                    Next
+                </MudButton>
+            </div>
+        }
+    }
+}
+else
+{
+    @* The tier's contract: an API failure is a message on the screen, never
+       an unhandled exception in a circuit. NotificationQueueClient hands over
+       the message; this is where it is shown. *@
+    <MudAlert id="notification-queue-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    /// <summary>
+    /// How many cases one page of this screen holds. The API tier's own
+    /// default, stated here because a screen that shows a count has to know
+    /// what it asked for.
+    /// </summary>
+    private const int PageSize = 50;
+
+    private int page = 1;
+
+    private bool working;
+
+    private string? holdFailure;
+
+    private Asked<PagedResult<NotificationQueueItemResponse>>? asked;
+
+    private int LastPage => Math.Max(1, ((asked?.Value?.TotalCount ?? 0) + PageSize - 1) / PageSize);
+
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load()
+    {
+        asked = null;
+        asked = await Client.Page(page, PageSize);
+    }
+
+    /// <summary>
+    /// Raises the hold on a case that is not held and lowers it on one that is,
+    /// then reloads the page so the row reads the state the API tier now holds
+    /// — or shows why nothing changed.
+    /// </summary>
+    private async Task ToggleHold(NotificationQueueItemResponse item)
+    {
+        holdFailure = null;
+        working = true;
+
+        try
+        {
+            var changed = await Client.SetHold(item.PersonConditionId, !item.Hold);
+
+            if (changed.Succeeded)
+            {
+                await Load();
+            }
+            else
+            {
+                holdFailure = changed.Failure;
+            }
+        }
+        finally
+        {
+            working = false;
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (page > 1)
+        {
+            page--;
+            await Load();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (page < LastPage)
+        {
+            page++;
+            await Load();
+        }
+    }
+}
