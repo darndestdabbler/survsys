@@ -1630,9 +1630,9 @@
     {
       "number": 79,
       "title": "Exceptions, reprocessing, notifications and statistics",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-20T01:15:00.530000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-20T01:50:51.822000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
