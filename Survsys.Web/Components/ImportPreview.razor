@@ -1,0 +1,128 @@
+@* A reference table's CSV import, previewed before it is saved: choose a file,
+   see the rows it would add, the rows it would change and the rows it refuses
+   with each one's reason, then confirm it or cancel. Nothing is saved until
+   Confirm is pressed, and the import confirmed is the file previewed. Every id
+   starts with Prefix: the file chooser is Prefix itself, so a screen keeps the
+   id its import always had. *@
+
+<div class="d-flex gap-4 align-center">
+    <label for="@Prefix">@Label</label>
+    <InputFile @key="chooser" id="@Prefix" accept=".csv" OnChange="@Choose" />
+</div>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="@($"{Prefix}-error")" Severity="Severity.Error" Variant="Variant.Filled" Class="mt-2">
+        @whyNot
+    </MudAlert>
+}
+
+@if (result is { } import)
+{
+    <MudAlert id="@($"{Prefix}-{(import.Applied ? "done" : "preview")}")" Class="mt-2"
+              Severity="@(import.Applied ? Severity.Success : import.Refused.Count == 0 ? Severity.Info : Severity.Warning)">
+        @if (import.Applied)
+        {
+            <span>Imported: @import.Added.Count added, @import.Changed.Count changed, @import.Refused.Count refused.</span>
+        }
+        else
+        {
+            <span>
+                The file would add @import.Added.Count, change @import.Changed.Count and refuse
+                @import.Refused.Count row(s). Nothing is saved until you confirm.
+            </span>
+        }
+        @foreach (var row in import.Added)
+        {
+            <div id="@($"{Prefix}-added-{row.Line}")">Line @row.Line adds @row.Key</div>
+        }
+        @foreach (var row in import.Changed)
+        {
+            <div id="@($"{Prefix}-changed-{row.Line}")">Line @row.Line changes @row.Key</div>
+        }
+        @foreach (var refused in import.Refused)
+        {
+            <div id="@($"{Prefix}-refused-{refused.Line}")">Line @refused.Line: @refused.Reason</div>
+        }
+    </MudAlert>
+
+    @if (!import.Applied)
+    {
+        <div class="d-flex gap-2 mt-2">
+            <MudButton id="@($"{Prefix}-confirm")" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(working || import.Added.Count + import.Changed.Count == 0)" OnClick="@Confirm">
+                Confirm import
+            </MudButton>
+            <MudButton id="@($"{Prefix}-cancel")" Variant="Variant.Outlined" Disabled="@working" OnClick="@Cancel">
+                Cancel
+            </MudButton>
+        </div>
+    }
+}
+
+@code {
+    private const long MaxCsvBytes = 5 * 1024 * 1024;
+
+    /// <summary>The id of the file chooser, and the start of every other id here.</summary>
+    [Parameter, EditorRequired]
+    public string Prefix { get; set; } = "";
+
+    /// <summary>The file chooser's label.</summary>
+    [Parameter]
+    public string Label { get; set; } = "Import CSV";
+
+    /// <summary>Asks the API what the file would do, or with true, to do it.</summary>
+    [Parameter, EditorRequired]
+    public Func<string, bool, Task<Asked<ReferenceImportResponse>>> Import { get; set; } = default!;
+
+    /// <summary>Raised once an import is confirmed and saved, so the screen reloads.</summary>
+    [Parameter]
+    public EventCallback Imported { get; set; }
+
+    private string? csv;
+
+    private ReferenceImportResponse? result;
+
+    private string? failure;
+
+    private bool working;
+
+    private int chooser;
+
+    private async Task Choose(InputFileChangeEventArgs chosen)
+    {
+        result = null;
+        failure = null;
+
+        using var reader = new StreamReader(chosen.File.OpenReadStream(MaxCsvBytes));
+        csv = await reader.ReadToEndAsync();
+        chooser++;
+
+        var asked = await Import(csv, false);
+        result = asked.Value;
+        failure = asked.Failure;
+    }
+
+    private async Task Confirm()
+    {
+        working = true;
+
+        var asked = await Import(csv!, true);
+        result = asked.Value;
+        failure = asked.Failure;
+        csv = null;
+        working = false;
+
+        if (asked.Value is not null)
+        {
+            await Imported.InvokeAsync();
+        }
+    }
+
+    private void Cancel()
+    {
+        csv = null;
+        result = null;
+        failure = null;
+    }
+}

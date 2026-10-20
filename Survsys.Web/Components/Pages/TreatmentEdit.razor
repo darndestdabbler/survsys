@@ -1,0 +1,160 @@
+@* A treatment's editor: its name, its active and default-treatment flags, and
+   the set of conditions it is listed for, chosen from the conditions. One
+   screen for both a new treatment and an existing one; which it is, is whether
+   the address carries an id. A save sends the whole treatment and its condition
+   set in one call and goes back to the treatments list. *@
+@page "/treatments/new"
+@page "/treatments/{Id:int}"
+@inject TreatmentsClient Client
+@inject NavigationManager Navigation
+
+<PageTitle>@Heading — Survsys</PageTitle>
+
+<MudText id="treatment-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    @Heading
+</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="treatment-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (failure is { } whyNot)
+    {
+        <MudAlert id="treatment-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @whyNot
+        </MudAlert>
+    }
+
+    <MudPaper id="treatment-form" Elevation="1" Class="pa-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="name" id="treatment-name" Label="Name"
+                              Variant="Variant.Outlined" Required="true" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudCheckBox @bind-Value="active" id="treatment-active" Label="Active" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudCheckBox @bind-Value="defaultTreatment" id="treatment-default" Label="Default" />
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.h6" Class="mt-4" GutterBottom="true">Conditions</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            The conditions this treatment is listed for.
+        </MudText>
+
+        @foreach (var condition in conditions)
+        {
+            <MudCheckBox T="bool" id="@($"treatment-condition-{condition.Id}")"
+                         Value="@conditionIds.Contains(condition.Id)"
+                         ValueChanged="@(on => ToggleCondition(condition.Id, on))"
+                         Label="@condition.Name" />
+        }
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="treatment-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                Save
+            </MudButton>
+            <MudButton id="treatment-cancel" Variant="Variant.Outlined" Disabled="@saving"
+                       Href="/treatments">
+                Cancel
+            </MudButton>
+        </div>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>The treatment being edited, or null for a new one.</summary>
+    [Parameter]
+    public int? Id { get; set; }
+
+    private string? name;
+
+    private bool active = true;
+
+    private bool defaultTreatment;
+
+    private IReadOnlyList<ConditionResponse> conditions = [];
+
+    private readonly HashSet<int> conditionIds = [];
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    private string Heading => Id is null ? "New treatment" : "Edit treatment";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if ((await Client.Conditions()).Value is { } loaded)
+        {
+            conditions = loaded.Items;
+        }
+
+        if (Id is { } id)
+        {
+            var found = await Client.Find(id);
+
+            if (found.Value is { } treatment)
+            {
+                name = treatment.Name;
+                active = treatment.Active;
+                defaultTreatment = treatment.DefaultTreatment;
+
+                foreach (var condition in treatment.Conditions)
+                {
+                    conditionIds.Add(condition.Id);
+                }
+            }
+
+            failure = found.Failure;
+        }
+
+        loading = false;
+    }
+
+    private void ToggleCondition(int conditionId, bool listed)
+    {
+        if (listed)
+        {
+            conditionIds.Add(conditionId);
+        }
+        else
+        {
+            conditionIds.Remove(conditionId);
+        }
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        failure = null;
+
+        var request = new SaveTreatmentRequest(
+            name ?? "",
+            active,
+            defaultTreatment,
+            conditionIds.ToList());
+
+        var saved = Id is { } id
+            ? await Client.Update(id, request)
+            : await Client.Create(request);
+
+        saving = false;
+
+        if (saved.Succeeded)
+        {
+            Navigation.NavigateTo("/treatments");
+
+            return;
+        }
+
+        failure = saved.Failure;
+    }
+}
