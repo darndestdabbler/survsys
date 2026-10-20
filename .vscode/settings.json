@@ -1,5 +1,0 @@
-{
-  "dabbler.reviewerModel": "gpt-5.6-terra",
-  "dabbler.auxiliaryModel": "gemini-4-argon",
-  "dabbler.engine": "claude-code"
-}

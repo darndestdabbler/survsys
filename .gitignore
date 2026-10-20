@@ -3,6 +3,11 @@
 # makes verified work look like it changed post-verification.
 .dabbler/
 
+# VS Code editor settings: choosing the authoring model writes
+# .vscode/settings.json, and the untracked file refuses a release session's
+# working-tree and verification gates.
+.vscode/
+
 # .NET build output. Untracked build artefacts would otherwise be committed
 # at the land and digested as part of the tree the run of record stands for.
 bin/

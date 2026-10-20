@@ -153,8 +153,10 @@ public class PersonMergeEndpointsTests(SqlServerFixture server) : IDisposable
     [Fact]
     public async Task ACallerWithoutMergePersonsIsAnswered403()
     {
+        // A user of its own: PersonConditionEndpointsTests creates "case-editor"
+        // with another password, and whichever class ran first would decide it.
         using var editor = await SignedIn(
-            "Case editor", "case-editor", [Privileges.ViewCases, Privileges.EditCases]);
+            "Merge case editor", "merge-case-editor", [Privileges.ViewCases, Privileges.EditCases]);
 
         using var candidates = await editor.GetAsync("/api/person-merges/candidates");
         Assert.Equal(HttpStatusCode.Forbidden, candidates.StatusCode);

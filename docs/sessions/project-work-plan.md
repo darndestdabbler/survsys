@@ -96,7 +96,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 82 | Repair ELR promotion's address and result value | no | 2026-10-20 |
 | 83 | Reference data administration — code lists and addresses | no | 2026-10-20 |
 | 84 | Reference data administration — facilities, conditions, treatments and vaccines | no | 2026-10-20 |
-| 85 | Editor settings ignored, and the integration sign-in flake | — | not declared |
+| 85 | Editor settings ignored, and the integration sign-in flake | no | 2026-10-20 |
 | 86 | Phase 10 walkthroughs | — | not declared |
 | 87 | Release 0.11.0 (release: 0.11.0) | — | not declared |
 | 88 | The notification queue worker and the export log | — | not declared |
@@ -764,3 +764,13 @@ Make facilities (sending facilities among them), conditions, treatments and vacc
 **Amended after acceptance:**
 
 - 2026-10-20 — step 'conditions-csv': its files: A condition lead-in holds line breaks; ReferenceCsv writes them quoted but reads a row as one line, so an exported condition would not import back. Read must keep a line break inside quotes. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 85 — Editor settings ignored, and the integration sign-in flake
+
+**Releasable: no.**
+
+Remove two faults outside the product that stop the framework. First, `.gitignore` ignores `.vscode/` as it ignores `.dabbler/`, with a comment saying why: choosing the authoring model in VS Code writes `.vscode/settings.json`, and the untracked file refuses a release session's working-tree and verification gates. Second, the integration sign-in flake: `PersonMergeEndpointsTests.ACallerWithoutMergePersonsIsAnswered403` creates a user named `case-editor` (role `Case editor`) with its own password, `person-merge-test-password`, while `PersonConditionEndpointsTests.SignedInCaseEditor` creates the same user name with `case-editor-password` and reuses the user when it already exists. The database is created once per run, so when the merge test runs first, `TheOptionsAreTheStatesMovesNarrowedToTheCallersPrivileges` finds the merge test's user, signs in with the wrong password and gets 401. The merge test is given a user and role of its own (`merge-case-editor`, `Merge case editor`) so neither class depends on the order the suite runs in.
+
+**Amended after acceptance:**
+
+- 2026-10-20 — step 'ignore-vscode': its files: The file was committed before sessions 30 and 62, so the ignore only takes effect once it is untracked (git rm --cached; the file stays on disk). (claude-code (anthropic, claude-opus-5-5))

@@ -941,6 +941,21 @@
       "what": "step 'conditions-csv': its files",
       "reason": "A condition lead-in holds line breaks; ReferenceCsv writes them quoted but reads a row as one line, so an exported condition would not import back. Read must keep a line break inside quotes.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 85,
+      "dateTime": "2026-10-20T18:32:08.406000-04:00",
+      "task": "Remove two faults outside the product that stop the framework. First, `.gitignore` ignores `.vscode/` as it ignores `.dabbler/`, with a comment saying why: choosing the authoring model in VS Code writes `.vscode/settings.json`, and the untracked file refuses a release session's working-tree and verification gates. Second, the integration sign-in flake: `PersonMergeEndpointsTests.ACallerWithoutMergePersonsIsAnswered403` creates a user named `case-editor` (role `Case editor`) with its own password, `person-merge-test-password`, while `PersonConditionEndpointsTests.SignedInCaseEditor` creates the same user name with `case-editor-password` and reuses the user when it already exists. The database is created once per run, so when the merge test runs first, `TheOptionsAreTheStatesMovesNarrowedToTheCallersPrivileges` finds the merge test's user, signs in with the wrong password and gets 401. The merge test is given a user and role of its own (`merge-case-editor`, `Merge case editor`) so neither class depends on the order the suite runs in.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 85,
+      "dateTime": "2026-10-20T18:32:35.350000-04:00",
+      "what": "step 'ignore-vscode': its files",
+      "reason": "The file was committed before sessions 30 and 62, so the ignore only takes effect once it is untracked (git rm --cached; the file stays on disk).",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }
