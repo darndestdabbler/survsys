@@ -1674,9 +1674,9 @@
     {
       "number": 81,
       "title": "Connecticut planning regions as county equivalents",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-20T03:52:47.120000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-20T04:14:02.194000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
