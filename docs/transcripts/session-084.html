@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 084 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 084 transcript</h1>
+<p class="stamp">Rendered 2026-10-20T22:22:34.292Z by dabbler-ai-router 3.21.0 at 70ac361eaeeb3c528e5e0fdb34aafb851ddd0d05.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-20T17:59:22.679-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 84: Reference data administration — facilities, conditions, treatments and vaccines</h3>
+<p>*Inserted after session 81, and the second half of session 83's work. These tables have screens but no upload or download. Vaccines have no edit screen at all, only the catalogue a case's vaccine field reads. Notification guides, PHIN variables and value sets are left to session 90, which already imports them.*</p>
+<ol><li>Register.</li><li><code>Survsys.Api</code> and <code>Survsys.Web</code>: import and export, by session 83's CSV and its preview, for facilities (sending facilities among them), for conditions, and for treatments with the conditions each one is offered for, each on its existing screen.</li><li><code>Survsys.Api</code> and <code>Survsys.Web</code>: a vaccines administration screen with view, add, edit, import and export. A vaccine is retired, never deleted, so a case's vaccine record still shows it.</li><li><code>Survsys.IntegrationTests</code>: an import and an export for each table, and a refused row for each. These reach SQL Server.</li><li><code>Survsys.E2ETests</code>: a Playwright test that uploads a facility file and finds the new facility on <code>/facilities</code>.</li><li>Cross-provider verification.</li><li>Full test suite, the integration and end-to-end suites included, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Make facilities (sending facilities among them), conditions, treatments and vaccines exportable and importable as CSV through session 83's ReferenceImport, previewed before it is confirmed, and give vaccines an administration screen. Survsys.Api: FacilityEndpoints, ConditionEndpoints and TreatmentEndpoints each gain a ReferenceTable and GET and POST /api/facilities/csv, /api/conditions/csv and /api/treatments/csv (POST taking ?confirm). These tables have no unique natural key, so a row is matched by its id column: a row whose id is blank is added, a row whose id is on file is saved over it, and a row naming an id not on file is refused; each row is refused for what the table's existing WhyNot refuses, a facility for an agency not on file, and a treatment for a condition not on file, its condition_ids (semicolon-separated) replacing the conditions it is offered for. Vaccines gain an Active column (true for every seeded row, by a migration); a vaccine is retired by clearing Active and never deleted, and a case's vaccine record still shows a retired vaccine. /api/vaccines lists every vaccine with its sort order and active flag, and gains POST, PUT /api/vaccines/{id} and GET and POST /api/vaccines/csv keyed by the vaccine's CDC code; /api/vaccines joins the reference-data paths in PrivilegeRules, so writes need the privilege /codes needs. Survsys.Web: the existing Facilities, Conditions and Treatments screens each offer an export link and session 83's ImportPreview; a new /vaccines screen lists, adds, edits, imports and exports vaccines behind the reference-data privilege in the nav, and the case's Vaccines tab offers only active vaccines for a new record while keeping a record's own retired vaccine. Unit, integration (SQL Server) and one Playwright test prove it.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/deabd21e0b086c4cf745a282d9a2e4fd893034a5"><code>deabd21e0b086c4cf745a282d9a2e4fd893034a5</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Vaccine active</td><td><p>Survsys.Data: Vaccine gains Active (bool, true by default) and VaccineConfiguration maps it with every seeded row active; add the migration 20261020130000_VaccineActive (with its Designer) adding the column defaulting to true, and update SurvsysDbContextModelSnapshot.</p></td><td><span class="mono">Survsys.Data/Vaccine.cs</span><br><span class="mono">Survsys.Data/VaccineConfiguration.cs</span><br><span class="mono">Survsys.Data/Migrations/20261020130000_VaccineActive.cs</span><br><span class="mono">Survsys.Data/Migrations/20261020130000_VaccineActive.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Vaccines api</td><td><p>Survsys.Contracts: VaccineResponse gains SortOrder and Active; add SaveVaccineRequest(Code, Description, SortOrder, Active). Survsys.Api VaccineEndpoints: GET /api/vaccines lists every vaccine, retired ones included; POST /api/vaccines and PUT /api/vaccines/{id} add and save over a vaccine, refusing what a pure WhyNotAVaccine refuses (code required and within its length, description within its length, sort order not negative) and answering 409 for a code another vaccine holds; a VaccineTable ReferenceTable keyed by code with columns code, description, sort_order, active, behind GET and POST /api/vaccines/csv (POST taking ?confirm). PrivilegeRules adds /api/vaccines to the reference data. Tests in VaccineEndpointsTests.cs and PrivilegeRulesTests.cs.</p></td><td><span class="mono">Survsys.Contracts/VaccineResponse.cs</span><br><span class="mono">Survsys.Contracts/SaveVaccineRequest.cs</span><br><span class="mono">Survsys.Api/VaccineEndpoints.cs</span><br><span class="mono">Survsys.Api/PrivilegeRules.cs</span><br><span class="mono">Survsys.UnitTests/VaccineEndpointsTests.cs</span><br><span class="mono">Survsys.UnitTests/PrivilegeRulesTests.cs</span></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~VaccineEndpointsTests|FullyQualifiedName~PrivilegeRulesTests</code></td><td>yes</td></tr>
+<tr><td>Vaccines screen</td><td><p>Survsys.Web: VaccinesClient gains Add, Save, Export and Import(csv, confirm); Program.cs maps /vaccines/export as the other exports are mapped; add Components/Pages/Vaccines.razor at /vaccines (a table of every vaccine with its code, description, sort order and active flag, an add/edit form, an export link vaccines-export and an ImportPreview prefixed vaccines-import); MainLayout.razor gains nav-vaccines under the reference-data privilege; VaccinesTab.razor offers the active vaccines for a new record and, editing a record, also the retired vaccine it already names. Tests in VaccinesClientTests.cs.</p></td><td><span class="mono">Survsys.Web/VaccinesClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.Web/Components/Pages/Vaccines.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span><br><span class="mono">Survsys.Web/Components/VaccinesTab.razor</span><br><span class="mono">Survsys.UnitTests/VaccinesClientTests.cs</span></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~VaccinesClientTests</code></td><td>yes</td></tr>
+<tr><td>Facilities csv</td><td><p>Survsys.Api FacilityEndpoints: a FacilityTable ReferenceTable keyed by id (blank id adds, an id not on file is refused) with columns id, name, short_name, agency_id, street, city, state, zip, phone, refusing what WhyNotAFacility refuses and an agency not on file; GET and POST /api/facilities/csv (POST taking ?confirm). Survsys.Web: FacilitiesClient gains Export and Import(csv, confirm), Program.cs maps /facilities/export, and Facilities.razor offers the export link (facilities-export) and an ImportPreview (prefix facilities-import), reloading the list after a confirmed import. Tests in FacilityEndpointsTests.cs and FacilitiesClientTests.cs.</p></td><td><span class="mono">Survsys.Api/FacilityEndpoints.cs</span><br><span class="mono">Survsys.Web/FacilitiesClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.Web/Components/Pages/Facilities.razor</span><br><span class="mono">Survsys.UnitTests/FacilityEndpointsTests.cs</span><br><span class="mono">Survsys.UnitTests/FacilitiesClientTests.cs</span></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~FacilityEndpointsTests|FullyQualifiedName~FacilitiesClientTests</code></td><td>yes</td></tr>
+<tr><td>Conditions csv</td><td><p>Survsys.Api ConditionEndpoints: a ConditionTable ReferenceTable keyed by id (blank id adds, an id not on file is refused) with columns id, name, active, cdc_code, contact_lead_in, place_lead_in, treatment_lead_in, refusing what WhyNotACondition refuses; GET and POST /api/conditions/csv (POST taking ?confirm). Survsys.Web: ConditionsClient gains Export and Import(csv, confirm), Program.cs maps /conditions/export, and Conditions.razor offers the export link (conditions-export) and an ImportPreview (prefix conditions-import) to a holder of the reference-data privilege, reloading the list after a confirmed import. Tests in ConditionEndpointsTests.cs and ConditionsClientTests.cs.</p></td><td><span class="mono">Survsys.Api/ConditionEndpoints.cs</span><br><span class="mono">Survsys.Api/ReferenceCsv.cs</span><br><span class="mono">Survsys.Web/ConditionsClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.Web/Components/Pages/Conditions.razor</span><br><span class="mono">Survsys.UnitTests/ConditionEndpointsTests.cs</span><br><span class="mono">Survsys.UnitTests/ConditionsClientTests.cs</span><br><span class="mono">Survsys.UnitTests/ReferenceCsvTests.cs</span></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ConditionEndpointsTests|FullyQualifiedName~ConditionsClientTests</code></td><td>yes</td></tr>
+<tr><td>Treatments csv</td><td><p>Survsys.Api TreatmentEndpoints: a TreatmentTable ReferenceTable keyed by id (blank id adds, an id not on file is refused) with columns id, name, active, default_treatment, condition_ids (semicolon-separated condition ids), refusing what WhyNotATreatment refuses and a condition not on file, its condition ids replacing the conditions the treatment is offered for; GET and POST /api/treatments/csv (POST taking ?confirm). Survsys.Web: TreatmentsClient gains Export and Import(csv, confirm), Program.cs maps /treatments/export, and Treatments.razor offers the export link (treatments-export) and an ImportPreview (prefix treatments-import), reloading the list after a confirmed import. Tests in TreatmentEndpointsTests.cs and TreatmentsClientTests.cs.</p></td><td><span class="mono">Survsys.Api/TreatmentEndpoints.cs</span><br><span class="mono">Survsys.Web/TreatmentsClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.Web/Components/Pages/Treatments.razor</span><br><span class="mono">Survsys.UnitTests/TreatmentEndpointsTests.cs</span><br><span class="mono">Survsys.UnitTests/TreatmentsClientTests.cs</span></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~TreatmentEndpointsTests|FullyQualifiedName~TreatmentsClientTests</code></td><td>yes</td></tr>
+<tr><td>Integration tests</td><td><p>Survsys.IntegrationTests against SQL Server: FacilityEndpointsTests.cs (new: a facility file previewed then confirmed adds a facility and saves over another, a row with an unknown agency is refused, and the export lists them), ConditionEndpointsTests.cs, TreatmentEndpointsTests.cs (the imported treatment's conditions replaced, a row with an unknown condition refused) and VaccineEndpointsTests.cs (a vaccine added and edited, an import and an export, a refused row, and a retired vaccine still shown on a case's vaccine record) each prove an import, an export and a refused row.</p></td><td><span class="mono">Survsys.IntegrationTests/FacilityEndpointsTests.cs</span><br><span class="mono">Survsys.IntegrationTests/ConditionEndpointsTests.cs</span><br><span class="mono">Survsys.IntegrationTests/TreatmentEndpointsTests.cs</span><br><span class="mono">Survsys.IntegrationTests/VaccineEndpointsTests.cs</span></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+<tr><td>E2e facility upload</td><td><p>Survsys.E2ETests: UploadAFacilityTests.cs, a Playwright test that signs in as an administrator, uploads a facility file on /facilities, confirms its preview, and finds the new facility in the /facilities list.</p></td><td><span class="mono">Survsys.E2ETests/UploadAFacilityTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>Notification guides, PHIN variables and value sets get no import or export here; that is session 90's.</li><li>No facility, condition, treatment or vaccine is deleted by an import, and no delete endpoint is added; a condition, treatment or vaccine is retired by clearing Active.</li><li>No natural key is added to facilities, conditions or treatments: they are matched by id, so a file from another database adds rather than matches its rows.</li><li>No new columns on facilities, conditions or treatments; the CSV carries their existing columns (a condition's condition group is not carried).</li><li>The case vaccine record endpoints are unchanged: they do not refuse a retired vaccine; the Vaccines tab's picker offers only active ones.</li><li>The /api/treatments privilege rule is not changed.</li><li>No seed row is refreshed or checked against CDC's CVX list or any other official list.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[21:59:22]</span> <span class="muted">run-started</span> session=084 mode=pull</div>
+<div class="line"><span class="at">[21:59:22]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[22:01:25]</span> <span class="muted">run-resumed</span> session=084 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[22:01:25]</span> <span class="muted">plan-accepted</span> steps=[&quot;vaccine-active&quot;,&quot;vaccines-api&quot;,&quot;vaccines-screen&quot;,&quot;facilities-csv&quot;,&quot;conditions-csv&quot;,&quot;treatments-csv&quot;,&quot;integration-tests&quot;,&quot;e2e-facility-upload&quot;] non_goals=7</div>
+<div class="line"><span class="at">[22:01:25]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[22:01:26]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=vaccine-active</div>
+<div class="line"><span class="at">[22:02:50]</span> <span class="muted">run-resumed</span> session=084 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:02:54]</span> <span class="muted">check-passed</span> step=vaccine-active argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[22:02:55]</span> <span class="muted">report-accepted</span> seq=2 step=vaccine-active files=[&quot;Survsys.Data/Vaccine.cs&quot;,&quot;Survsys.Data/VaccineConfiguration.cs&quot;,&quot;Survsys.Data/Migrations/20261020130000_VaccineActive.cs&quot;,&quot;Survsys.Data/Migrations/20261020130000_VaccineActive.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=Vaccine.Active added, true by default; migration adds the column defaulting to true</div>
+<div class="line"><span class="at">[22:02:55]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=vaccines-api</div>
+<div class="line"><span class="at">[22:05:11]</span> <span class="muted">run-resumed</span> session=084 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:05:15]</span> <span class="muted">check-passed</span> step=vaccines-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[22:05:21]</span> <span class="muted">check-passed</span> step=vaccines-api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~VaccineEndpointsTests|FullyQualifiedName~PrivilegeRulesTests&quot;]</div>
+<div class="line"><span class="at">[22:05:22]</span> <span class="muted">report-accepted</span> seq=3 step=vaccines-api files=[&quot;Survsys.Contracts/VaccineResponse.cs&quot;,&quot;Survsys.Contracts/SaveVaccineRequest.cs&quot;,&quot;Survsys.Api/VaccineEndpoints.cs&quot;,&quot;Survsys.Api/PrivilegeRules.cs&quot;,&quot;Survsys.UnitTests/VaccineEndpointsTests.cs&quot;,&quot;Survsys.UnitTests/PrivilegeRulesTests.cs&quot;] notes=Vaccine catalogue add, save over, CSV export and import keyed by code; /api/vaccines is reference data</div>
+<div class="line"><span class="at">[22:05:22]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=vaccines-screen</div>
+<div class="line"><span class="at">[22:06:58]</span> <span class="muted">run-resumed</span> session=084 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:07:02]</span> <span class="muted">check-passed</span> step=vaccines-screen argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[22:07:07]</span> <span class="muted">check-passed</span> step=vaccines-screen argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~VaccinesClientTests&quot;]</div>
+<div class="line"><span class="at">[22:07:08]</span> <span class="muted">report-accepted</span> seq=4 step=vaccines-screen files=[&quot;Survsys.Web/VaccinesClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.Web/Components/Pages/Vaccines.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;,&quot;Survsys.Web/Components/VaccinesTab.razor&quot;,&quot;Survsys.UnitTests/VaccinesClientTests.cs&quot;] notes=Vaccines screen at /vaccines with add, edit, export and import; client methods named AddVaccine and SaveVaccine beside the record Add; Vaccines tab offers active vaccines plus the record own</div>
+<div class="line"><span class="at">[22:07:08]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=facilities-csv</div>
+<div class="line"><span class="at">[22:09:13]</span> <span class="muted">run-resumed</span> session=084 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:09:16]</span> <span class="muted">check-passed</span> step=facilities-csv argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[22:09:21]</span> <span class="muted">check-passed</span> step=facilities-csv argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~FacilityEndpointsTests|FullyQualifiedName~FacilitiesClientTests&quot;]</div>
+<div class="line"><span class="at">[22:09:22]</span> <span class="muted">report-accepted</span> seq=5 step=facilities-csv files=[&quot;Survsys.Api/FacilityEndpoints.cs&quot;,&quot;Survsys.Web/FacilitiesClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.Web/Components/Pages/Facilities.razor&quot;,&quot;Survsys.UnitTests/FacilityEndpointsTests.cs&quot;,&quot;Survsys.UnitTests/FacilitiesClientTests.cs&quot;] notes=Facility CSV export and import keyed by id, blank id adds, unknown id or agency refused; Facilities screen offers export and ImportPreview</div>
+<div class="line"><span class="at">[22:09:22]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=conditions-csv</div>
+<div class="line"><span class="at">[22:12:30]</span> <span class="muted">run-resumed</span> session=084 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:12:34]</span> <span class="muted">check-passed</span> step=conditions-csv argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[22:12:39]</span> <span class="muted">check-passed</span> step=conditions-csv argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ConditionEndpointsTests|FullyQualifiedName~ConditionsClientTests&quot;]</div>
+<div class="line"><span class="at">[22:12:40]</span> <span class="muted">report-accepted</span> seq=6 step=conditions-csv files=[&quot;Survsys.Api/ConditionEndpoints.cs&quot;,&quot;Survsys.Api/ReferenceCsv.cs&quot;,&quot;Survsys.Web/ConditionsClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.Web/Components/Pages/Conditions.razor&quot;,&quot;Survsys.UnitTests/ConditionEndpointsTests.cs&quot;,&quot;Survsys.UnitTests/ConditionsClientTests.cs&quot;,&quot;Survsys.UnitTests/ReferenceCsvTests.cs&quot;] notes=Condition CSV export and import keyed by id; ReferenceCsv.Read now keeps line breaks inside quoted fields so lead-ins round-trip (step amended); Conditions screen shows export and import to reference-data holders</div>
+<div class="line"><span class="at">[22:12:40]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=treatments-csv</div>
+<div class="line"><span class="at">[22:15:01]</span> <span class="muted">run-resumed</span> session=084 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:15:05]</span> <span class="muted">check-passed</span> step=treatments-csv argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[22:15:10]</span> <span class="muted">check-passed</span> step=treatments-csv argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~TreatmentEndpointsTests|FullyQualifiedName~TreatmentsClientTests&quot;]</div>
+<div class="line"><span class="at">[22:15:11]</span> <span class="muted">report-accepted</span> seq=7 step=treatments-csv files=[&quot;Survsys.Api/TreatmentEndpoints.cs&quot;,&quot;Survsys.Web/TreatmentsClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.Web/Components/Pages/Treatments.razor&quot;,&quot;Survsys.UnitTests/TreatmentEndpointsTests.cs&quot;,&quot;Survsys.UnitTests/TreatmentsClientTests.cs&quot;] notes=Treatment CSV export and import keyed by id with condition_ids replacing its conditions; unknown id or condition refused; Treatments screen offers export and ImportPreview</div>
+<div class="line"><span class="at">[22:15:11]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=integration-tests</div>
+<div class="line"><span class="at">[22:18:56]</span> <span class="muted">run-resumed</span> session=084 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:19:00]</span> <span class="muted">check-passed</span> step=integration-tests argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[22:19:01]</span> <span class="muted">report-accepted</span> seq=8 step=integration-tests files=[&quot;Survsys.IntegrationTests/FacilityEndpointsTests.cs&quot;,&quot;Survsys.IntegrationTests/ConditionEndpointsTests.cs&quot;,&quot;Survsys.IntegrationTests/TreatmentEndpointsTests.cs&quot;,&quot;Survsys.IntegrationTests/VaccineEndpointsTests.cs&quot;] notes=Import preview then confirm, export, refused rows and export round trip for facilities, conditions, treatments and vaccines; a retired vaccine still shown on a case record</div>
+<div class="line"><span class="at">[22:19:01]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=e2e-facility-upload</div>
+<div class="line"><span class="at">[22:20:28]</span> <span class="muted">run-resumed</span> session=084 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:20:32]</span> <span class="muted">check-passed</span> step=e2e-facility-upload argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[22:20:33]</span> <span class="muted">report-accepted</span> seq=9 step=e2e-facility-upload files=[&quot;Survsys.E2ETests/UploadAFacilityTests.cs&quot;] notes=Playwright test uploads a facility file on /facilities, confirms the preview and finds the facility listed with its agency, city and zip</div>
+<div class="line"><span class="at">[22:20:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[22:20:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[22:20:35]</span> <span class="muted">job-started</span> name=verification pid=7952 log=.dabbler/runs/s84/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[22:22:00]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s84/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[22:22:00]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[22:22:00]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[22:22:00]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[22:22:02]</span> <span class="muted">job-started</span> name=run of record: unit pid=53600 log=.dabbler/runs/s84/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[22:22:13]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s84/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[22:22:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[22:22:20]</span> <span class="muted">landed</span> commit=deabd21e0b086c4cf745a282d9a2e4fd893034a5</div>
+<div class="line"><span class="at">[22:22:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[22:22:20]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[22:22:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[22:22:22]</span> <span class="muted">job-started</span> name=close pid=28452 log=.dabbler/runs/s84/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:22:34]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s84/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:22:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>8s</td><td>1940</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

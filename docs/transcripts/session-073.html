@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 073 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 073 transcript</h1>
+<p class="stamp">Rendered 2026-10-19T18:22:56.474Z by dabbler-ai-router 3.21.0 at f0faec9e19d500e2c5e52f549b87cede97efc1c0.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-19T14:18:49.445-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 73: Repair the three walkthroughs Phase 9 broke</h3>
+<p>*Inserted after session 72. The whole end-to-end suite, run after session 72 closed, fails three of its 40 walkthroughs every time. The run of record of sessions 69 to 72 covered the unit suite only, so nothing caught them. The release runs the whole walkthrough regression, so this repair comes before the release.*</p>
+<ul><li>*<code>find-a-person.md</code> step 6 and <code>FindAPersonTests</code> expect only the four columns ID, Last, First, Birth date and Birth sex. Session 70 added a <strong>Score</strong> and a <strong>Why</strong> column to every person search made with criteria.*</li><li>*<code>record-a-treatment.md</code> and <code>record-a-case-treatment.md</code> fail at step 1, pressing <strong>Treatments</strong>. The application bar has grown past the width of the window, most likely when session 71 added <strong>Duplicate persons</strong>, and it runs off the right-hand edge rather than wrapping. <strong>Treatments</strong> is rendered outside the viewport, so it cannot be pressed.*</li></ul>
+<p>*<code>log-an-exposure-event.md</code> also failed once at step 13, where &quot;The exposure has been recorded.&quot; never appeared. It passed on two later full runs, so it is intermittent and is watched here rather than repaired.*</p>
+<ol><li>Register.</li><li><code>docs/walkthroughs/find-a-person.md</code> and <code>Survsys.E2ETests/FindAPersonTests.cs</code>: after a search with criteria, the results carry the <strong>Score</strong> and <strong>Why</strong> columns. The document says what those read on the two Rodriguez rows, and the test asserts the six column headings and those values. Nothing else in either file changes.</li><li><code>Survsys.Web</code>: <code>MainLayout.razor</code> lets the application bar's buttons wrap onto further lines rather than run past the window, so every button a user holds the privilege for stays visible and pressable at the suite's window size. No button is renamed, reordered or removed, and every element id stays unchanged. The two treatment walkthroughs and their tests pass unchanged.</li><li>Cross-provider verification.</li><li>Full test suite, the end-to-end walkthrough suite included, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Repair the three end-to-end walkthroughs Phase 9 broke, before the 0.10.0 release. The find-a-person walkthrough and its test are brought up to the Score and Why columns session 70 added to every person search made with criteria: step 6 of docs/walkthroughs/find-a-person.md names the six column headings and says what Score and Why read on the two Rodriguez rows (30 (None) and Last name matches, since a last name alone scores only its own weight), and FindAPersonTests asserts those headings and values. The application bar in Survsys.Web's MainLayout.razor is made to wrap its buttons onto further lines instead of running past the right-hand edge of the window, so Treatments and every other button a user holds the privilege for is visible and pressable at the suite's window size, which repairs record-a-treatment and record-a-case-treatment without changing either.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/b4c57bc2b1427967910cf27753950fca950fdf2b"><code>b4c57bc2b1427967910cf27753950fca950fdf2b</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Find a person score columns</td><td><p>In docs/walkthroughs/find-a-person.md, rewrite step 6 so it names the six column headings ID, Last, First, Birth date, Birth sex, Score and Why, and adds to its table what Score and Why read on the two Rodriguez rows: 30 (None) and Last name matches on each, with one sentence saying a search with criteria scores each row against them and why that row scores 30. Correct the one sentence that says Survsys does not yet have the legacy Score column, and the 'What you should see' bullet for the Rodriguez search, so the document does not contradict itself. In Survsys.E2ETests/FindAPersonTests.cs, step 6 asserts the six headings and that the data-person-score and data-person-why cells read those values on both rows, in order. Nothing else in either file changes.</p></td><td><span class="mono">docs/walkthroughs/find-a-person.md</span><br><span class="mono">Survsys.E2ETests/FindAPersonTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code><br><code>git grep -q -F 30 (None) -- docs/walkthroughs/find-a-person.md Survsys.E2ETests/FindAPersonTests.cs</code></td><td>yes</td></tr>
+<tr><td>Wrap application bar</td><td><p>In Survsys.Web/Components/Layout/MainLayout.razor, let the application bar's buttons wrap onto further lines rather than run past the window: the bar's content wraps (MudAppBar WrapContent), its toolbar height is allowed to grow with the lines (MudBlazor fixes the app bar toolbar's height at 600px and wider), and the bar sits in the page's flow rather than fixed over it, so a bar taller than one line pushes the content down instead of covering it. No button is renamed, reordered or removed, and every element id stays unchanged. Update the layout's leading comment with one sentence saying why the bar wraps.</p></td><td><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code><br><code>git grep -q -F WrapContent=&quot;true&quot; -- Survsys.Web/Components/Layout/MainLayout.razor</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No button in the application bar is renamed, reordered, removed or given a new element id, and no navigation is regrouped into menus or a drawer.</li><li>The two treatment walkthroughs and their tests are not changed.</li><li>The intermittent failure of log-an-exposure-event.md at step 13 is watched, not repaired.</li><li>The person search, its scoring rules and the Score and Why columns themselves are not changed; only the walkthrough and its test catch up with them.</li><li>No other walkthrough, test or screen is touched, and no stylesheet is added.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[18:18:49]</span> <span class="muted">run-started</span> session=073 mode=pull</div>
+<div class="line"><span class="at">[18:18:49]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[18:20:04]</span> <span class="muted">run-resumed</span> session=073 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[18:20:04]</span> <span class="muted">plan-accepted</span> steps=[&quot;find-a-person-score-columns&quot;,&quot;wrap-application-bar&quot;] non_goals=5</div>
+<div class="line"><span class="at">[18:20:04]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[18:20:05]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=find-a-person-score-columns</div>
+<div class="line"><span class="at">[18:20:42]</span> <span class="muted">run-resumed</span> session=073 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:20:45]</span> <span class="muted">check-passed</span> step=find-a-person-score-columns argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[18:20:46]</span> <span class="muted">check-passed</span> step=find-a-person-score-columns argv=[&quot;git&quot;,&quot;grep&quot;,&quot;-q&quot;,&quot;-F&quot;,&quot;30 (None)&quot;,&quot;--&quot;,&quot;docs/walkthroughs/find-a-person.md&quot;,&quot;Survsys.E2ETests/FindAPersonTests.cs&quot;]</div>
+<div class="line"><span class="at">[18:20:46]</span> <span class="muted">report-accepted</span> seq=2 step=find-a-person-score-columns files=[&quot;docs/walkthroughs/find-a-person.md&quot;,&quot;Survsys.E2ETests/FindAPersonTests.cs&quot;] notes=Step 6 of find-a-person names six headings and the Rodriguez rows' Score 30 (None) and Why 'Last name matches'; the test asserts them.</div>
+<div class="line"><span class="at">[18:20:46]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=wrap-application-bar</div>
+<div class="line"><span class="at">[18:21:35]</span> <span class="muted">run-resumed</span> session=073 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:21:38]</span> <span class="muted">check-passed</span> step=wrap-application-bar argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[18:21:39]</span> <span class="muted">check-passed</span> step=wrap-application-bar argv=[&quot;git&quot;,&quot;grep&quot;,&quot;-q&quot;,&quot;-F&quot;,&quot;WrapContent=\&quot;true\&quot;&quot;,&quot;--&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;]</div>
+<div class="line"><span class="at">[18:21:40]</span> <span class="muted">report-accepted</span> seq=3 step=wrap-application-bar files=[&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;] notes=App bar wraps (WrapContent, toolbar height auto via --mud-appbar-height), sits in flow (Fixed=false), main content drops its bar padding; no button or id changed.</div>
+<div class="line"><span class="at">[18:21:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[18:21:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[18:21:41]</span> <span class="muted">job-started</span> name=verification pid=52804 log=.dabbler/runs/s73/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[18:22:27]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s73/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[18:22:27]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[18:22:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[18:22:27]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[18:22:28]</span> <span class="muted">job-started</span> name=run of record: unit pid=61436 log=.dabbler/runs/s73/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[18:22:39]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s73/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[18:22:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[18:22:45]</span> <span class="muted">landed</span> commit=b4c57bc2b1427967910cf27753950fca950fdf2b</div>
+<div class="line"><span class="at">[18:22:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[18:22:45]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[18:22:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[18:22:46]</span> <span class="muted">job-started</span> name=close pid=48864 log=.dabbler/runs/s73/driver/jobs/close.log</div>
+<div class="line"><span class="at">[18:22:56]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s73/driver/jobs/close.log</div>
+<div class="line"><span class="at">[18:22:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>8s</td><td>1481</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

@@ -1,0 +1,153 @@
+@* The roles, for their administration: every role by name with the
+   privileges it holds, and one form that adds a role or, with Edit, saves
+   over one. The privileges are the catalogue the API tier enforces; a change
+   reaches a role's users at their next sign-in.
+
+   Every element a walkthrough would name carries a stable identifier. *@
+@page "/roles"
+@inject RolesClient Client
+
+<PageTitle>Roles — Survsys</PageTitle>
+
+<MudText id="roles-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Roles
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="roles-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (roles is null)
+{
+    @if (failure is null)
+    {
+        <MudProgressCircular id="roles-loading" Color="Color.Primary" Indeterminate="true" />
+    }
+}
+else
+{
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        <MudText id="role-form-heading" Typo="Typo.h6" GutterBottom="true">
+            @(editingId is null ? "New role" : $"Edit {name}")
+        </MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="name" id="role-name" Label="Name" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12">
+                @foreach (var privilege in privileges)
+                {
+                    <MudCheckBox T="bool" Value="@held.Contains(privilege)" id="@($"role-privilege-{privilege}")"
+                                 Label="@privilege" ValueChanged="@(holds => Hold(privilege, holds))" />
+                }
+            </MudItem>
+            <MudItem xs="12">
+                <MudButton id="role-save" Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save">
+                    Save role
+                </MudButton>
+                <MudButton id="role-new" Variant="Variant.Text" OnClick="@Clear">
+                    New role
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Elevation="1">
+        <MudSimpleTable id="roles-table" Hover="true" Striped="true" Dense="true">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Privileges</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var role in roles)
+                {
+                    <tr data-role="@role.Name">
+                        <td>@role.Name</td>
+                        <td>@string.Join(", ", role.Privileges)</td>
+                        <td>
+                            <MudButton id="@($"role-edit-{role.Id}")" Size="Size.Small" Variant="Variant.Text"
+                                       OnClick="@(() => Edit(role))">
+                                Edit
+                            </MudButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+@code {
+    private List<RoleResponse>? roles;
+
+    private IReadOnlyList<string> privileges = [];
+
+    private string? failure;
+
+    private int? editingId;
+
+    private string name = "";
+
+    private HashSet<string> held = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var askedRoles = await Client.All();
+        var askedPrivileges = await Client.Privileges();
+
+        failure = askedRoles.Failure ?? askedPrivileges.Failure;
+
+        if (failure is null)
+        {
+            roles = [.. askedRoles.Value!.Items];
+            privileges = askedPrivileges.Value!;
+        }
+    }
+
+    private void Hold(string privilege, bool holds)
+    {
+        if (holds)
+        {
+            held.Add(privilege);
+        }
+        else
+        {
+            held.Remove(privilege);
+        }
+    }
+
+    private void Edit(RoleResponse role)
+    {
+        editingId = role.Id;
+        name = role.Name;
+        held = [.. role.Privileges];
+    }
+
+    private void Clear()
+    {
+        editingId = null;
+        name = "";
+        held = [];
+    }
+
+    private async Task Save()
+    {
+        var request = new SaveRoleRequest(name, privileges.Where(held.Contains).ToList());
+        var saved = editingId is { } id ? await Client.Update(id, request) : await Client.Create(request);
+        failure = saved.Failure;
+
+        if (saved.Value is { } stored)
+        {
+            roles!.RemoveAll(role => role.Id == stored.Id);
+            roles.Add(stored);
+            roles.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
+            Clear();
+        }
+    }
+}
