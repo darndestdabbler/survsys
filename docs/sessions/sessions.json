@@ -1842,9 +1842,9 @@
     {
       "number": 89,
       "title": "Auto-queue on every change, queue actions and reconciliation",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-21T05:41:54.654000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-21T06:14:17.326000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
