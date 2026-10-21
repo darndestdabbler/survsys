@@ -1,0 +1,219 @@
+@* The hepatitis lab groups, for their setup: each group names the conditions
+   whose CDC notifications carry its labs, and the test types it carries, each
+   with the test group it is reported under and where it sorts. A group is
+   chosen from the list to edit, or New starts an empty one; Save replaces it
+   whole. A condition is in one group: the API says so when it is in another,
+   and the message shows here. *@
+@page "/hep-lab-setup"
+@inject HepLabGroupsClient Client
+@inject ConditionsClient Conditions
+@inject CodesClient Codes
+
+<PageTitle>Hepatitis lab setup — Survsys</PageTitle>
+
+<MudText id="hep-lab-setup-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Hepatitis lab setup
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="hep-lab-setup-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@whyNot</MudAlert>
+}
+
+@if (loading)
+{
+    <MudProgressCircular id="hep-lab-setup-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudSimpleTable id="hep-lab-groups-table" Dense="true" Hover="true" Class="mb-4">
+        <thead>
+            <tr><th>Group</th><th>Conditions</th><th>Test types</th><th></th></tr>
+        </thead>
+        <tbody>
+            @if (groups.Count == 0)
+            {
+                <tr id="hep-lab-groups-empty"><td colspan="4">No hepatitis lab groups have been added.</td></tr>
+            }
+            @foreach (var group in groups)
+            {
+                <tr id="@($"hep-lab-groups-row-{group.Id}")">
+                    <td>@group.Name</td>
+                    <td>@string.Join(", ", group.ConditionIds.Select(ConditionName))</td>
+                    <td>@string.Join(", ", group.TestTypes.Select(item => item.TestGroupName))</td>
+                    <td>
+                        <MudButton id="@($"hep-lab-groups-edit-{group.Id}")" Size="Size.Small" Variant="Variant.Text"
+                                   OnClick="@(() => { form = new GroupForm(group); failure = null; })">
+                            Edit
+                        </MudButton>
+                        <MudButton id="@($"hep-lab-groups-delete-{group.Id}")" Size="Size.Small" Variant="Variant.Text"
+                                   Color="Color.Error" OnClick="@(() => Delete(group.Id))">
+                            Delete
+                        </MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    <MudPaper id="hep-lab-group-form" Elevation="0" Outlined="true" Class="pa-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">@(form.Id == 0 ? "New group" : $"Edit {form.Name}")</MudText>
+        <MudTextField @bind-Value="form.Name" id="hep-lab-group-name" Label="Group name" Variant="Variant.Outlined"
+                      Required="true" MaxLength="100" Class="mb-4" />
+
+        <MudText Typo="Typo.subtitle2">Conditions</MudText>
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            @foreach (var condition in conditions)
+            {
+                <MudCheckBox T="bool" id="@($"hep-lab-group-condition-{condition.Id}")" Label="@condition.Name"
+                             Value="@form.ConditionIds.Contains(condition.Id)"
+                             ValueChanged="@(on => { if (on) form.ConditionIds.Add(condition.Id); else form.ConditionIds.Remove(condition.Id); })" />
+            }
+        </div>
+
+        <MudText Typo="Typo.subtitle2">Test types</MudText>
+        @foreach (var (item, at) in form.TestTypes.Select((item, at) => (item, at)))
+        {
+            <div class="d-flex gap-2 align-center mb-2">
+                <MudSelect T="int?" id="@($"hep-lab-group-test-type-{at}")" Label="Test type" Variant="Variant.Outlined"
+                           Margin="Margin.Dense" @bind-Value="item.TestTypeId">
+                    @foreach (var testType in testTypes)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)testType.Id)">
+                            @(testType.Description ?? testType.Code) (@testType.Code)
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField @bind-Value="item.TestGroupName" id="@($"hep-lab-group-test-group-{at}")" Label="Test group"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="100" />
+                <MudNumericField T="int" @bind-Value="item.SortOrder" id="@($"hep-lab-group-sort-{at}")" Label="Sort order"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 8rem" />
+                <MudButton id="@($"hep-lab-group-test-type-remove-{at}")" Size="Size.Small" Color="Color.Error"
+                           OnClick="@(() => form.TestTypes.Remove(item))">
+                    Remove
+                </MudButton>
+            </div>
+        }
+        <MudButton id="hep-lab-group-test-type-add" Variant="Variant.Text"
+                   OnClick="@(() => form.TestTypes.Add(new TestTypeForm { SortOrder = form.TestTypes.Count + 1 }))">
+            Add test type
+        </MudButton>
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="hep-lab-group-save" Variant="Variant.Filled" Color="Color.Primary" Disabled="@saving"
+                       OnClick="@Save">
+                Save
+            </MudButton>
+            <MudButton id="hep-lab-group-new" Variant="Variant.Outlined" Disabled="@saving"
+                       OnClick="@(() => { form = new(); failure = null; })">
+                New
+            </MudButton>
+        </div>
+    </MudPaper>
+}
+
+@code {
+    private IReadOnlyList<HepLabGroupRow> groups = [];
+
+    private IReadOnlyList<ConditionResponse> conditions = [];
+
+    private IReadOnlyList<CodeResponse> testTypes = [];
+
+    private GroupForm form = new();
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var loadedConditions = await Conditions.Page(1, 200);
+        var loadedTestTypes = await Codes.List(CodeLists.TestType, inactive: true);
+        conditions = loadedConditions.Value?.Items ?? [];
+        testTypes = loadedTestTypes.Value ?? [];
+        failure = loadedConditions.Failure ?? loadedTestTypes.Failure;
+
+        await Load();
+        loading = false;
+    }
+
+    private async Task Load()
+    {
+        var loaded = await Client.List();
+        groups = loaded.Value ?? [];
+        failure ??= loaded.Failure;
+    }
+
+    private string ConditionName(int id) => conditions.FirstOrDefault(condition => condition.Id == id)?.Name ?? $"#{id}";
+
+    private async Task Save()
+    {
+        saving = true;
+        failure = null;
+        var saved = await Client.Save(form.ToRow());
+        saving = false;
+
+        if (saved.Value is { } group)
+        {
+            form = new GroupForm(group);
+            await Load();
+            return;
+        }
+
+        failure = saved.Failure;
+    }
+
+    private async Task Delete(int id)
+    {
+        failure = await Client.Delete(id);
+
+        if (failure is null)
+        {
+            form = new();
+            await Load();
+        }
+    }
+
+    private sealed class GroupForm
+    {
+        public GroupForm()
+        {
+        }
+
+        public GroupForm(HepLabGroupRow row)
+        {
+            Id = row.Id;
+            Name = row.Name;
+            ConditionIds = [.. row.ConditionIds];
+            TestTypes = row.TestTypes
+                .Select(item => new TestTypeForm { TestTypeId = item.TestTypeId, TestGroupName = item.TestGroupName, SortOrder = item.SortOrder })
+                .ToList();
+        }
+
+        public int Id { get; }
+
+        public string? Name { get; set; }
+
+        public HashSet<int> ConditionIds { get; } = [];
+
+        public List<TestTypeForm> TestTypes { get; } = [];
+
+        public HepLabGroupRow ToRow() =>
+            new(
+                Id,
+                Name ?? "",
+                ConditionIds.Order().ToList(),
+                TestTypes.Select(item => new HepLabGroupTestTypeRow(item.TestTypeId ?? 0, item.TestGroupName ?? "", item.SortOrder)).ToList());
+    }
+
+    private sealed class TestTypeForm
+    {
+        public int? TestTypeId { get; set; }
+
+        public string? TestGroupName { get; set; }
+
+        public int SortOrder { get; set; }
+    }
+}

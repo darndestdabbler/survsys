@@ -1,0 +1,264 @@
+@* The Encounters tab of a case morbidity report: the healthcare encounters on
+   the case. The encounters are listed; a form below adds one or edits one,
+   with its date, its type as the legacy code, a facility chosen from the ones
+   on file, and a description. The rules stay the API tier's; an encounter it
+   refuses is shown as the client's message rather than re-checked here.
+
+   Every element carries a stable identifier: the edit and remove buttons for an
+   encounter are encounters-tab-edit-{id} and encounters-tab-remove-{id}, and
+   the form fields are encounters-tab-date, -type, -facility and -description. *@
+@using System.Globalization
+@inject EncountersClient Api
+@inject FacilitiesClient Facilities
+
+@if (records is null)
+{
+    <MudProgressCircular id="encounters-tab-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (listFailure is { } badList)
+    {
+        <MudAlert id="encounters-tab-list-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @badList
+        </MudAlert>
+    }
+
+    <MudPaper id="encounters-tab-list" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Encounters</MudText>
+
+        <MudSimpleTable id="encounters-tab-table" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Facility</th>
+                    <th>Description</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (records.Count == 0)
+                {
+                    <tr id="encounters-tab-empty">
+                        <td colspan="5">No encounters are recorded for this case.</td>
+                    </tr>
+                }
+                @foreach (var record in records)
+                {
+                    <tr data-encounter="@record.Id">
+                        <td data-encounter-date>@Written(record.EncounterDate)</td>
+                        <td data-encounter-type>@record.EncounterType</td>
+                        <td data-encounter-facility>@record.FacilityName</td>
+                        <td data-encounter-description>@record.Description</td>
+                        <td>
+                            <MudButton id="@($"encounters-tab-edit-{record.Id}")" Variant="Variant.Text"
+                                       Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => Edit(record))">
+                                Edit
+                            </MudButton>
+                            <MudButton id="@($"encounters-tab-remove-{record.Id}")" Variant="Variant.Text"
+                                       Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => Remove(record.Id))">
+                                Remove
+                            </MudButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+
+    <MudPaper id="encounters-tab-form" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">@(editingId is null ? "Add an encounter" : "Edit encounter")</MudText>
+
+        @if (saved is { } ok)
+        {
+            <MudAlert id="encounters-tab-saved" Severity="Severity.Success" Class="mb-2">@ok</MudAlert>
+        }
+        @if (saveFailure is { } bad)
+        {
+            <MudAlert id="encounters-tab-error" Severity="Severity.Error" Class="mb-2">@bad</MudAlert>
+        }
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="encounterDate" id="encounters-tab-date" Label="Date"
+                              Variant="Variant.Outlined" InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <CodeSelect List="@CodeLists.EncounterType" @bind-Value="encounterType" id="encounters-tab-type"
+                            Label="Type" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int?" @bind-Value="facilityId" id="encounters-tab-facility" Label="Facility"
+                           Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var facility in facilities)
+                    {
+                        <MudSelectItem T="int?" Value="@facility.Id">@facility.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="description" id="encounters-tab-description" Label="Description"
+                              Variant="Variant.Outlined" Lines="2" />
+            </MudItem>
+        </MudGrid>
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="encounters-tab-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                @(editingId is null ? "Add encounter" : "Save encounter")
+            </MudButton>
+            @if (editingId is not null)
+            {
+                <MudButton id="encounters-tab-cancel" Variant="Variant.Outlined" Disabled="@saving"
+                           OnClick="@Reset">
+                    Cancel
+                </MudButton>
+            }
+        </div>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>The case these encounters are on, from the shell.</summary>
+    [Parameter, EditorRequired]
+    public int ReportId { get; set; }
+
+    private const string DateForm = "yyyy-MM-dd";
+
+    /// <summary>The widest page of facilities the API tier serves, for the facility select.</summary>
+    private const int FacilityPageSize = 200;
+
+    private List<EncounterResponse>? records;
+
+    private IReadOnlyList<FacilityResponse> facilities = [];
+
+    private string? listFailure;
+
+    private int? editingId;
+
+    private string? encounterDate;
+
+    private string? encounterType;
+
+    private int? facilityId;
+
+    private string? description;
+
+    private bool saving;
+
+    private string? saved;
+
+    private string? saveFailure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if ((await Facilities.Page(1, FacilityPageSize)).Value is { } page)
+        {
+            facilities = page.Items;
+        }
+
+        await LoadRecords();
+    }
+
+    private async Task LoadRecords()
+    {
+        var asked = await Api.Records(ReportId);
+        records = asked.Value ?? [];
+        listFailure = asked.Failure;
+    }
+
+    private void Edit(EncounterResponse record)
+    {
+        editingId = record.Id;
+        encounterDate = Written(record.EncounterDate);
+        encounterType = record.EncounterType;
+        facilityId = record.FacilityId;
+        description = record.Description;
+        saved = null;
+        saveFailure = null;
+    }
+
+    private void Reset()
+    {
+        editingId = null;
+        encounterDate = null;
+        encounterType = null;
+        facilityId = null;
+        description = null;
+    }
+
+    private async Task Save()
+    {
+        saved = null;
+        saveFailure = null;
+
+        DateOnly? date = null;
+
+        if (!string.IsNullOrWhiteSpace(encounterDate))
+        {
+            if (!DateOnly.TryParseExact(encounterDate.Trim(), DateForm, CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out var parsed))
+            {
+                saveFailure = "Give the date as yyyy-mm-dd.";
+
+                return;
+            }
+
+            date = parsed;
+        }
+
+        saving = true;
+
+        var request = new SaveEncounterRequest(date, Blank(encounterType), facilityId, Blank(description));
+
+        var answered = editingId is { } id
+            ? await Api.Update(id, request)
+            : await Api.Add(ReportId, request);
+
+        saving = false;
+
+        if (answered.Succeeded)
+        {
+            Reset();
+            saved = "The encounter has been saved.";
+            await LoadRecords();
+
+            return;
+        }
+
+        saveFailure = answered.Failure;
+    }
+
+    private async Task Remove(int id)
+    {
+        saving = true;
+        saved = null;
+        saveFailure = null;
+
+        var why = await Api.Delete(id);
+
+        saving = false;
+
+        if (why is null)
+        {
+            if (editingId == id)
+            {
+                Reset();
+            }
+
+            await LoadRecords();
+
+            return;
+        }
+
+        saveFailure = why;
+    }
+
+    private static string Written(DateOnly date) => date.ToString(DateForm, CultureInfo.InvariantCulture);
+
+    private static string? Blank(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+}

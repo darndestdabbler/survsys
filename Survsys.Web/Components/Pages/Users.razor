@@ -1,0 +1,204 @@
+@* The users, for their administration: every user by user name with their
+   roles, the agencies whose cases they may reach and whether they may sign in, and one form that adds a user or, with
+   Edit, saves over one. A user is deactivated rather than deleted, because
+   the access audit names them. A new user needs a password; an existing
+   user's password changes only where a new one is typed.
+
+   Every element a walkthrough would name carries a stable identifier. *@
+@page "/users"
+@inject UsersClient Client
+@inject RolesClient Roles
+@inject AgenciesClient Agencies
+
+<PageTitle>Users — Survsys</PageTitle>
+
+<MudText id="users-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Users
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="users-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (users is null)
+{
+    @if (failure is null)
+    {
+        <MudProgressCircular id="users-loading" Color="Color.Primary" Indeterminate="true" />
+    }
+}
+else
+{
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        <MudText id="user-form-heading" Typo="Typo.h6" GutterBottom="true">
+            @(editingId is null ? "New user" : $"Edit {userName}")
+        </MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="userName" id="user-user-name" Label="User name" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="displayName" id="user-display-name" Label="Display name" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="password" id="user-password" InputType="InputType.Password"
+                              Label="@(editingId is null ? "Password" : "New password (empty to keep)")"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudCheckBox @bind-Value="active" id="user-active" Label="May sign in" />
+                @foreach (var role in roles)
+                {
+                    <MudCheckBox T="bool" Value="@roleIds.Contains(role.Id)" id="@($"user-role-{role.Id}")"
+                                 Label="@role.Name" ValueChanged="@(held => Hold(roleIds, role.Id, held))" />
+                }
+            </MudItem>
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle2">Agencies</MudText>
+                @foreach (var agency in agencies)
+                {
+                    <MudCheckBox T="bool" Value="@agencyIds.Contains(agency.Id)" id="@($"user-agency-{agency.Id}")"
+                                 Label="@agency.Name" ValueChanged="@(held => Hold(agencyIds, agency.Id, held))" />
+                }
+            </MudItem>
+            <MudItem xs="12">
+                <MudButton id="user-save" Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save">
+                    Save user
+                </MudButton>
+                <MudButton id="user-new" Variant="Variant.Text" OnClick="@Clear">
+                    New user
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Elevation="1">
+        <MudSimpleTable id="users-table" Hover="true" Striped="true" Dense="true">
+            <thead>
+                <tr>
+                    <th>User name</th>
+                    <th>Display name</th>
+                    <th>Roles</th>
+                    <th>Agencies</th>
+                    <th>May sign in</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in users)
+                {
+                    <tr data-user="@user.UserName">
+                        <td>@user.UserName</td>
+                        <td>@user.DisplayName</td>
+                        <td>@string.Join(", ", user.RoleIds.Select(RoleName))</td>
+                        <td>@string.Join(", ", user.AgencyIds.Select(AgencyName))</td>
+                        <td>@(user.Active ? "Yes" : "No")</td>
+                        <td>
+                            <MudButton id="@($"user-edit-{user.Id}")" Size="Size.Small" Variant="Variant.Text"
+                                       OnClick="@(() => Edit(user))">
+                                Edit
+                            </MudButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+@code {
+    private List<UserResponse>? users;
+
+    private IReadOnlyList<RoleResponse> roles = [];
+
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private string? failure;
+
+    private int? editingId;
+
+    private string userName = "";
+
+    private string displayName = "";
+
+    private string password = "";
+
+    private bool active = true;
+
+    private HashSet<int> roleIds = [];
+
+    private HashSet<int> agencyIds = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var askedUsers = await Client.All();
+        var askedRoles = await Roles.All();
+        var askedAgencies = await Agencies.All();
+
+        failure = askedUsers.Failure ?? askedRoles.Failure ?? askedAgencies.Failure;
+
+        if (failure is null)
+        {
+            users = [.. askedUsers.Value!.Items];
+            roles = askedRoles.Value!.Items;
+            agencies = askedAgencies.Value!.Items;
+        }
+    }
+
+    private static void Hold(HashSet<int> ids, int id, bool held)
+    {
+        if (held)
+        {
+            ids.Add(id);
+        }
+        else
+        {
+            ids.Remove(id);
+        }
+    }
+
+    private void Edit(UserResponse user)
+    {
+        editingId = user.Id;
+        userName = user.UserName;
+        displayName = user.DisplayName;
+        password = "";
+        active = user.Active;
+        roleIds = [.. user.RoleIds];
+        agencyIds = [.. user.AgencyIds];
+    }
+
+    private void Clear()
+    {
+        editingId = null;
+        userName = "";
+        displayName = "";
+        password = "";
+        active = true;
+        roleIds = [];
+        agencyIds = [];
+    }
+
+    private async Task Save()
+    {
+        var request = new SaveUserRequest(
+            userName, displayName, active, [.. roleIds], string.IsNullOrEmpty(password) ? null : password, [.. agencyIds]);
+        var saved = editingId is { } id ? await Client.Update(id, request) : await Client.Create(request);
+        failure = saved.Failure;
+
+        if (saved.Value is { } stored)
+        {
+            users!.RemoveAll(user => user.Id == stored.Id);
+            users.Add(stored);
+            users.Sort((a, b) => string.Compare(a.UserName, b.UserName, StringComparison.Ordinal));
+            Clear();
+        }
+    }
+
+    private string RoleName(int id) => roles.FirstOrDefault(role => role.Id == id)?.Name ?? $"role {id}";
+
+    private string AgencyName(int id) => agencies.FirstOrDefault(agency => agency.Id == id)?.Name ?? $"agency {id}";
+}
