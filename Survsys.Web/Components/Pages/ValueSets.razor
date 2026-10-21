@@ -1,0 +1,266 @@
+@* The PHIN value sets and units of measure a notification rule set's coded
+   output resolves through: a tab each, listing every concept, adding, editing
+   and deleting one, and exporting and importing CSV. An import is previewed
+   first — the rows it would add, change and refuse — and saved over the
+   concept with the same value set and code once it is confirmed. *@
+@page "/value-sets"
+@inject ValueSetsClient Client
+
+<PageTitle>Value sets — Survsys</PageTitle>
+
+<MudText id="value-sets-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Value sets
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="value-sets-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (loading)
+{
+    <MudProgressCircular id="value-sets-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudTabs id="value-sets-tabs" Elevation="1" Rounded="true" TabPanelsClass="pa-4">
+        <MudTabPanel ID="@("value-sets-tab-phin")" Text="PHIN value sets">
+            @Transfer(ValueSetsClient.PhinValueSets, "value set")
+            @ConceptEditor(ValueSetsClient.PhinValueSets, concept, withCdcName: true, () => concept = new())
+
+            <MudTextField @bind-Value="filter" id="phin-value-sets-filter" Label="Value set" Variant="Variant.Outlined"
+                          Immediate="true" Class="mb-2" />
+            <MudSimpleTable id="phin-value-sets-table" Dense="true" Hover="true">
+                <thead>
+                    <tr><th>Value set</th><th>Code</th><th>Preferred name</th><th>CDC name</th><th>HL7 code</th><th>Code system</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in valueSets.Where(row => Matches(row.ValueSetName)))
+                    {
+                        <tr id="@($"phin-value-sets-row-{row.Id}")">
+                            <td>@row.ValueSetName</td>
+                            <td>@row.ConceptCode</td>
+                            <td>@row.PreferredConceptName</td>
+                            <td>@row.CdcName</td>
+                            <td>@row.Hl7Code</td>
+                            <td>@row.CodeSystemOid</td>
+                            <td>
+                                @RowButtons(ValueSetsClient.PhinValueSets, row.Id, () => concept = new ConceptForm(row))
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudTabPanel>
+
+        <MudTabPanel ID="@("value-sets-tab-units")" Text="Units of measure">
+            @Transfer(ValueSetsClient.UnitsOfMeasure, "unit of measure")
+            @ConceptEditor(ValueSetsClient.UnitsOfMeasure, unit, withCdcName: false, () => unit = new())
+
+            <MudSimpleTable id="units-of-measure-table" Dense="true" Hover="true">
+                <thead>
+                    <tr><th>Value set</th><th>Code</th><th>Preferred name</th><th>HL7 code</th><th>Code system</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in units)
+                    {
+                        <tr id="@($"units-of-measure-row-{row.Id}")">
+                            <td>@row.ValueSetName</td>
+                            <td>@row.ConceptCode</td>
+                            <td>@row.PreferredConceptName</td>
+                            <td>@row.Hl7Code</td>
+                            <td>@row.CodeSystemOid</td>
+                            <td>
+                                @RowButtons(ValueSetsClient.UnitsOfMeasure, row.Id, () => unit = new ConceptForm(row))
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+    private IReadOnlyList<PhinValueSetRow> valueSets = [];
+
+    private IReadOnlyList<PhinUnitOfMeasureRow> units = [];
+
+    private ConceptForm concept = new();
+
+    private ConceptForm unit = new();
+
+    private string? filter;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+        loading = false;
+    }
+
+    private async Task Load()
+    {
+        var loadedValueSets = await Client.List<PhinValueSetRow>(ValueSetsClient.PhinValueSets);
+        var loadedUnits = await Client.List<PhinUnitOfMeasureRow>(ValueSetsClient.UnitsOfMeasure);
+
+        valueSets = loadedValueSets.Value ?? [];
+        units = loadedUnits.Value ?? [];
+        failure ??= loadedValueSets.Failure ?? loadedUnits.Failure;
+    }
+
+    private bool Matches(string valueSetName) =>
+        string.IsNullOrWhiteSpace(filter) || valueSetName.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private async Task Save(string table, ConceptForm form, Action clear)
+    {
+        saving = true;
+        failure = null;
+
+        var saved = table == ValueSetsClient.PhinValueSets
+            ? (form.Id is { } id
+                ? await Client.Update(table, id, form.ToValueSetRow())
+                : await Client.Create(table, form.ToValueSetRow())).Failure
+            : (form.Id is { } unitId
+                ? await Client.Update(table, unitId, form.ToUnitRow())
+                : await Client.Create(table, form.ToUnitRow())).Failure;
+
+        saving = false;
+
+        if (saved is null)
+        {
+            clear();
+            await Load();
+            return;
+        }
+
+        failure = saved;
+    }
+
+    private async Task Delete(string table, int id)
+    {
+        failure = await Client.Delete(table, id);
+
+        if (failure is null)
+        {
+            await Load();
+        }
+    }
+
+    /// <summary>A table's export link and its previewed import.</summary>
+    private RenderFragment Transfer(string table, string label) => __builder =>
+    {
+        <div class="d-flex gap-4 align-start mb-4">
+            <MudButton id="@($"{table}-export")" Variant="Variant.Outlined" Href="@($"/value-sets/{table}/export")"
+                       Target="_blank">
+                Export @label CSV
+            </MudButton>
+            <div>
+                <ImportPreview Prefix="@($"{table}-import")" Label="@($"Import {label} CSV")"
+                               Import="@((csv, confirm) => Client.Import(table, csv, confirm))" Imported="@Load" />
+            </div>
+        </div>
+    };
+
+    /// <summary>A concept's form: its value set, code, names, HL7 code and code system, and Save and New.</summary>
+    private RenderFragment ConceptEditor(string table, ConceptForm form, bool withCdcName, Action clear) => __builder =>
+    {
+        <MudPaper id="@($"{table}-form")" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">@(form.Id is null ? "New entry" : "Edit entry")</MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="form.ValueSetName" id="@($"{table}-value-set")" Label="Value set"
+                                  Variant="Variant.Outlined" Required="true" MaxLength="100" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudTextField @bind-Value="form.ConceptCode" id="@($"{table}-code")" Label="Code"
+                                  Variant="Variant.Outlined" Required="true" MaxLength="50" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.PreferredConceptName" id="@($"{table}-name")" Label="Preferred name"
+                                  Variant="Variant.Outlined" Required="true" MaxLength="500" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudTextField @bind-Value="form.Hl7Code" id="@($"{table}-hl7-code")" Label="HL7 code"
+                                  Variant="Variant.Outlined" MaxLength="50" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="form.CodeSystemOid" id="@($"{table}-code-system")" Label="Code system OID"
+                                  Variant="Variant.Outlined" MaxLength="100" />
+                </MudItem>
+                @if (withCdcName)
+                {
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="form.CdcName" id="@($"{table}-cdc-name")" Label="CDC name"
+                                      Variant="Variant.Outlined" MaxLength="500" />
+                    </MudItem>
+                }
+            </MudGrid>
+            <div class="d-flex gap-2 mt-4">
+                <MudButton id="@($"{table}-save")" Variant="Variant.Filled" Color="Color.Primary" Disabled="@saving"
+                           OnClick="@(() => Save(table, form, clear))">
+                    Save
+                </MudButton>
+                <MudButton id="@($"{table}-new")" Variant="Variant.Outlined" Disabled="@saving"
+                           OnClick="@(() => { clear(); failure = null; })">
+                    New
+                </MudButton>
+            </div>
+        </MudPaper>
+    };
+
+    /// <summary>A listed row's Edit and Delete buttons.</summary>
+    private RenderFragment RowButtons(string table, int id, Action edit) => __builder =>
+    {
+        <MudButton id="@($"{table}-edit-{id}")" Size="Size.Small" Variant="Variant.Text"
+                   OnClick="@(() => { edit(); failure = null; })">
+            Edit
+        </MudButton>
+        <MudButton id="@($"{table}-delete-{id}")" Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                   OnClick="@(() => Delete(table, id))">
+            Delete
+        </MudButton>
+    };
+
+    private sealed class ConceptForm
+    {
+        public ConceptForm()
+        {
+        }
+
+        public ConceptForm(PhinValueSetRow row) =>
+            (Id, ValueSetName, ConceptCode, PreferredConceptName, Hl7Code, CodeSystemOid, CdcName) =
+            (row.Id, row.ValueSetName, row.ConceptCode, row.PreferredConceptName, row.Hl7Code, row.CodeSystemOid, row.CdcName);
+
+        public ConceptForm(PhinUnitOfMeasureRow row) =>
+            (Id, ValueSetName, ConceptCode, PreferredConceptName, Hl7Code, CodeSystemOid) =
+            (row.Id, row.ValueSetName, row.ConceptCode, row.PreferredConceptName, row.Hl7Code, row.CodeSystemOid);
+
+        public int? Id { get; }
+
+        public string? ValueSetName { get; set; }
+
+        public string? ConceptCode { get; set; }
+
+        public string? PreferredConceptName { get; set; }
+
+        public string? Hl7Code { get; set; }
+
+        public string? CodeSystemOid { get; set; }
+
+        public string? CdcName { get; set; }
+
+        public PhinValueSetRow ToValueSetRow() =>
+            new(Id ?? 0, ValueSetName ?? "", ConceptCode ?? "", PreferredConceptName ?? "", Hl7Code, CodeSystemOid, CdcName);
+
+        public PhinUnitOfMeasureRow ToUnitRow() =>
+            new(Id ?? 0, ValueSetName ?? "", ConceptCode ?? "", PreferredConceptName ?? "", Hl7Code, CodeSystemOid);
+    }
+}

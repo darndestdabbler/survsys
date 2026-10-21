@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 041 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 041 transcript</h1>
+<p class="stamp">Rendered 2026-10-17T10:36:30.039Z by dabbler-ai-router 3.21.0 at 8f8dcce60ab283ea245c9b419df819bcb2338e23.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-17T06:02:03.623-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 41: Phase 5 walkthroughs</h3>
+<ol><li>Register.</li><li><code>docs/walkthroughs/</code>: three documents — review a staged message, resolve a duplicate, promote a message to a case.</li><li><code>Survsys.E2ETests</code>: the three Playwright tests named after them, recording video.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Document the Phase 5 ELR review workflow session 40 shipped, as three walkthroughs under docs/walkthroughs/ with the one Playwright test named after each. First give the end-to-end suite staged messages to act on: a staged-messages SQL fixture seeded into system_messages, linked into Survsys.E2ETests and cleared and reseeded by the harness the way conditions and people already are. Then write, in turn, review-a-staged-message (a reviewer opens the staged-message queue, filters it, opens one message and reads its source, received time, review state, QA flag, exception detail and raw HL7), promote-a-message-to-a-case (a reviewer opens a queued message, confirms the person, disease, agency and first-reported date, promotes it and reads back the new case and its batch notification) and resolve-a-duplicate (a reviewer who promotes a message and returns to it finds Survsys already shows it as a case and offers no second promotion, so no duplicate case is opened). Each document is numbered steps naming controls by the words the StagedMessages and StagedMessageReview screens show, and each test performs those steps in order and asserts the outcome by the screens' stable identifiers, with video recording left on through the harness.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/f348d4ec32e892acdbee992db8d473dae1c8a2a1"><code>f348d4ec32e892acdbee992db8d473dae1c8a2a1</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Seed staged messages</td><td><p>Give the end-to-end suite staged messages to act on. Add Survsys.IntegrationTests/Fixtures/staged-messages.sql seeding a small set of rows into the system_messages table, each with a distinct Source that a test uses to find its own row: a queued (Entry) message for the promote walkthrough, a second queued message for the duplicate walkthrough, a QA-flagged message, and an exception message carrying an exception detail. Link the fixture into the Survsys.E2ETests output beside conditions.sql and persons.sql in Survsys.E2ETests.csproj, add it to the harness Fixtures list, and add system_messages to SurvsysHarness.TablesInDeletionOrder in its correct order so the seed is cleared and reseeded idempotently and a promoted message leaves nothing behind. Confirm or extend SurvsysHarnessTests to cover system_messages being cleared and the staged messages reseeded. Write no Survsys.Web or Survsys.Api code.</p></td><td><span class="mono">Survsys.IntegrationTests/Fixtures/staged-messages.sql</span><br><span class="mono">Survsys.E2ETests/Survsys.E2ETests.csproj</span><br><span class="mono">Survsys.E2ETests/SurvsysHarness.cs</span><br><span class="mono">Survsys.E2ETests/SurvsysHarnessTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code></td><td>yes</td></tr>
+<tr><td>Review a staged message</td><td><p>Write docs/walkthroughs/review-a-staged-message.md as one user story: a reviewer opens the staged-message queue, filters it by review state, opens one message, and reads its source, received time, review state, QA flag, exception detail and the raw HL7 it arrived as. Write it as numbered steps naming each control by the words the StagedMessages and StagedMessageReview screens show, with the Before-you-start and What-you-should-see sections the other walkthroughs carry, and add its row to the walkthroughs index docs/walkthroughs/README.md. Write Survsys.E2ETests/ReviewAStagedMessageTests.cs performing those steps in their written order, finding its seeded message by its Source and asserting the outcome by the screens' stable identifiers, never by a MudBlazor class or a cell's position.</p></td><td><span class="mono">docs/walkthroughs/review-a-staged-message.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/ReviewAStagedMessageTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContract</code></td><td>yes</td></tr>
+<tr><td>Promote a message to a case</td><td><p>Write docs/walkthroughs/promote-a-message-to-a-case.md as one user story: a reviewer opens a queued staged message, finds the person it is about, confirms the disease, the investigating agency and the first-reported date, promotes it, and reads back the success message with its batch notification and the link to the new case. Write it as numbered steps naming the StagedMessageReview promote controls by the words they show, with the usual Before-you-start and What-you-should-see sections, and add its row to the index docs/walkthroughs/README.md. Write Survsys.E2ETests/PromoteAMessageToACaseTests.cs performing those steps in order against the seeded promote message, asserting the new case and the notification by the screen's stable identifiers.</p></td><td><span class="mono">docs/walkthroughs/promote-a-message-to-a-case.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/PromoteAMessageToACaseTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContract</code></td><td>yes</td></tr>
+<tr><td>Resolve a duplicate</td><td><p>Write docs/walkthroughs/resolve-a-duplicate.md as one user story: a reviewer promotes a staged message to a case, then returns to the same message and finds Survsys already shows it as promoted to a case and offers no second promotion, so no duplicate case is opened. Ground every step in the shipped guard that a message already promoted cannot be promoted again — the review screen's already-promoted notice and the API's 409 against a message not in a promotable state — and claim no graylist, discard or merge action, which this phase does not ship. Write it as numbered steps against the StagedMessageReview screen, with the usual Before-you-start and What-you-should-see sections, and add its row to the index docs/walkthroughs/README.md. Write Survsys.E2ETests/ResolveADuplicateTests.cs performing those steps against the seeded duplicate message, asserting the already-promoted notice and that only the one case exists, by the screen's stable identifiers.</p></td><td><span class="mono">docs/walkthroughs/resolve-a-duplicate.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/ResolveADuplicateTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContract</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No application change: the staged-message queue, the review screen and the promotion form are session 40's and are documented as they are, so no Survsys.Web Razor and no Survsys.Api endpoint is written or altered in this session.</li><li>No duplicate-resolution feature beyond the shipped guard: graylist matching, a discard or merge action, and clearing the QA flag are not added, and resolve-a-duplicate documents only that a message already promoted to a case cannot be promoted a second time (the review screen's already-promoted notice and the API's 409).</li><li>Only the three named walkthroughs: no fourth walkthrough is written and the existing walkthrough documents and their tests are left unchanged.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[10:02:03]</span> <span class="muted">run-started</span> session=041 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[10:02:03]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[10:02:03]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[10:15:51]</span> <span class="muted">engine-session</span> id=c8b024c4-d890-4f9a-89f8-86eb7e8a5b08</div>
+<div class="line"><span class="at">[10:15:51]</span> <span class="muted">engine-returned</span> seq=1 exit=<span class="good">0</span> seconds=827 transcript=.dabbler/runs/s41/driver/engine-01.log</div>
+<div class="line"><span class="at">[10:15:51]</span> <span class="muted">plan-accepted</span> steps=[&quot;seed-staged-messages&quot;,&quot;review-a-staged-message&quot;,&quot;promote-a-message-to-a-case&quot;,&quot;resolve-a-duplicate&quot;] non_goals=3</div>
+<div class="line"><span class="at">[10:15:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[10:15:51]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=seed-staged-messages</div>
+<div class="line"><span class="at">[10:15:51]</span> <span class="muted">engine-invoked</span> seq=2 invocation=2/24 first=false output=stream</div>
+<div class="line"><span class="at">[10:23:50]</span> <span class="muted">engine-returned</span> seq=2 exit=<span class="good">0</span> seconds=479 transcript=.dabbler/runs/s41/driver/engine-02.log</div>
+<div class="line"><span class="at">[10:23:52]</span> <span class="muted">check-passed</span> step=seed-staged-messages argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[10:23:53]</span> <span class="muted">report-accepted</span> seq=2 step=seed-staged-messages files=[&quot;Survsys.IntegrationTests/Fixtures/staged-messages.sql&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;Survsys.E2ETests/SurvsysHarness.cs&quot;,&quot;Survsys.E2ETests/SurvsysHarnessTests.cs&quot;] notes=Seeded four staged messages (exception, QA-flagged, promote, duplicate) into system_messages via a linked fixture; wired the harness Fixtures list, deletion order and a reseed test; E2E build green.</div>
+<div class="line"><span class="at">[10:23:53]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=review-a-staged-message</div>
+<div class="line"><span class="at">[10:23:53]</span> <span class="muted">engine-invoked</span> seq=3 invocation=3/24 first=false output=stream</div>
+<div class="line"><span class="at">[10:29:08]</span> <span class="muted">engine-returned</span> seq=3 exit=<span class="good">0</span> seconds=315 transcript=.dabbler/runs/s41/driver/engine-03.log</div>
+<div class="line"><span class="at">[10:29:10]</span> <span class="muted">check-passed</span> step=review-a-staged-message argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[10:29:13]</span> <span class="muted">check-passed</span> step=review-a-staged-message argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContract&quot;]</div>
+<div class="line"><span class="at">[10:29:13]</span> <span class="muted">report-accepted</span> seq=3 step=review-a-staged-message files=[&quot;docs/walkthroughs/review-a-staged-message.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/ReviewAStagedMessageTests.cs&quot;] notes=Wrote the review-a-staged-message walkthrough, indexed it, and its Playwright test that filters the queue to the exception message and reads its detail and raw HL7; E2E build and walkthrough-contract test green.</div>
+<div class="line"><span class="at">[10:29:13]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=promote-a-message-to-a-case</div>
+<div class="line"><span class="at">[10:29:13]</span> <span class="muted">engine-invoked</span> seq=4 invocation=4/24 first=false output=stream</div>
+<div class="line"><span class="at">[10:32:07]</span> <span class="muted">engine-returned</span> seq=4 exit=<span class="good">0</span> seconds=174 transcript=.dabbler/runs/s41/driver/engine-04.log</div>
+<div class="line"><span class="at">[10:32:10]</span> <span class="muted">check-passed</span> step=promote-a-message-to-a-case argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[10:32:13]</span> <span class="muted">check-passed</span> step=promote-a-message-to-a-case argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContract&quot;]</div>
+<div class="line"><span class="at">[10:32:13]</span> <span class="muted">report-accepted</span> seq=4 step=promote-a-message-to-a-case files=[&quot;docs/walkthroughs/promote-a-message-to-a-case.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/PromoteAMessageToACaseTests.cs&quot;] notes=Wrote the promote-a-message-to-a-case walkthrough, indexed it, and its Playwright test promoting the seeded queued message to a case and reading the notification and the new report header; E2E build and walkthrough-contract test green.</div>
+<div class="line"><span class="at">[10:32:13]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=resolve-a-duplicate</div>
+<div class="line"><span class="at">[10:32:13]</span> <span class="muted">engine-invoked</span> seq=5 invocation=5/24 first=false output=stream</div>
+<div class="line"><span class="at">[10:35:02]</span> <span class="muted">engine-returned</span> seq=5 exit=<span class="good">0</span> seconds=169 transcript=.dabbler/runs/s41/driver/engine-05.log</div>
+<div class="line"><span class="at">[10:35:04]</span> <span class="muted">check-passed</span> step=resolve-a-duplicate argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[10:35:07]</span> <span class="muted">check-passed</span> step=resolve-a-duplicate argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContract&quot;]</div>
+<div class="line"><span class="at">[10:35:07]</span> <span class="muted">report-accepted</span> seq=5 step=resolve-a-duplicate files=[&quot;docs/walkthroughs/resolve-a-duplicate.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/ResolveADuplicateTests.cs&quot;] notes=Wrote the resolve-a-duplicate walkthrough, indexed it, and its Playwright test that promotes the seeded message then revisits it to find the already-promoted notice and no second promotion; E2E build and walkthrough-contract test green.</div>
+<div class="line"><span class="at">[10:35:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[10:35:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[10:35:07]</span> <span class="muted">job-started</span> name=verification pid=42896 log=.dabbler/runs/s41/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:36:15]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s41/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:36:15]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[10:36:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[10:36:15]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[10:36:15]</span> <span class="muted">job-started</span> name=run of record: unit pid=22356 log=.dabbler/runs/s41/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[10:36:20]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s41/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[10:36:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[10:36:24]</span> <span class="muted">landed</span> commit=f348d4ec32e892acdbee992db8d473dae1c8a2a1</div>
+<div class="line"><span class="at">[10:36:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[10:36:24]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[10:36:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[10:36:24]</span> <span class="muted">job-started</span> name=close pid=14380 log=.dabbler/runs/s41/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:36:30]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s41/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:36:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>13 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.E2ETests/SurvsysHarnessTests.cs` (`SeedingReseedsTheStagedMessages`), the XML summary states that the test proves seeding clears a message promoted in place back to its initial seed state, but the query only asserts `SELECT source FROM system_messages ORDER BY received_at`.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Precondition:** `system_messages` has `elr-promote-example.hl7` or `elr-duplicate-example.hl7` updated in place to `final_status = 'assigned'` by a prior promotion walkthrough.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Input:** Call `harness.Seed()` and query `SELECT source, final_status FROM system_messages ORDER BY received_at` in `SeedingReseedsTheStagedMessages`.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Expectation:** Assert that `final_status` for the four rows is `[&quot;exception&quot;, &quot;entry&quot;, &quot;entry&quot;, &quot;entry&quot;]` in addition to matching `SurvsysHarness.SeededStagedMessageSources`; today's assertion only checks `source`, which would still pass if `final_status` remained `'assigned'` across runs.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.E2ETests/PromoteAMessageToACaseTests.cs` (Step 6), `ToContainTextAsync($&quot;Reporting on Okafor, Chidi (person {personId}&quot;)` omits the closing parenthesis that Step 6 of `docs/walkthroughs/promote-a-message-to-a-case.md` specifies.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Precondition:** Step 5 of `PromoteAMessageToACase` has read `personId` (e.g., `&quot;4&quot;`) from the search results row.</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Input:** Click `[data-promote-person]` in Step 6 and assert `#staged-message-promote-person` text.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Expectation:** Assert `ToContainTextAsync($&quot;Reporting on Okafor, Chidi (person {personId})&quot;)` so a prefix match like `&quot;person 42&quot;` cannot satisfy an expectation for `&quot;person 4&quot;`.</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.E2ETests/ResolveADuplicateTests.cs` (Step 6), `docs/walkthroughs/resolve-a-duplicate.md` states `&quot;The Review state list is back on All&quot;`, but Step 6 of the test does not assert the combobox value.</td><td>not answered</td></tr>
+<tr><td>9</td><td><strong>minor</strong></td><td>**Precondition:** Step 5 of `ResolveADuplicate` has completed promotion of `elr-duplicate-example.hl7`.</td><td>not answered</td></tr>
+<tr><td>10</td><td><strong>minor</strong></td><td>**Input:** Click `#nav-staged-messages` in Step 6 to return to the queue.</td><td>not answered</td></tr>
+<tr><td>11</td><td><strong>minor</strong></td><td>**Expectation:** Assert `await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = &quot;Review state&quot;, Exact = true })).ToHaveTextAsync(&quot;All&quot;)` alongside the heading and row assertions; today's test skips verifying the filter state mentioned in the step.</td><td>not answered</td></tr>
+<tr><td>12</td><td><strong>minor</strong></td><td>**Nit:** In `docs/walkthroughs/promote-a-message-to-a-case.md` and `docs/walkthroughs/resolve-a-duplicate.md`, the `## Before you start` section says `&quot;You need all six of these&quot;` before a numbered list of five items.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>5s</td><td>845</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
