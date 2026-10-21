@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 043 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 043 transcript</h1>
+<p class="stamp">Rendered 2026-10-17T10:53:04.411Z by dabbler-ai-router 3.21.0 at 19610648afaaae5ee6b3758171c8eafd7c6c6270.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-17T06:37:16.321-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 43: Notification guides and PHIN variable mapping</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code>: notification guides per condition and the PHIN variable table across the 588 CDC variables, with their migration.</li><li><code>Survsys.Messaging</code>: the PHIN variable mapping over that table.</li><li><code>Survsys.UnitTests</code>: the mapping's tests named after it, including a condition with no guide.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Session 043 gives the outbound CDC notification half its first structure: the notification guides a case is exported under, and the catalogue of CDC PHIN variables each guide carries. Survsys.Data gains five reference tables under the legacy NMI snake_case names, with one migration creating them -- phin_var (a CDC PHIN variable definition: its identifier, description, HL7 data type, priority, status, code system, and the bare ruleset ids a later session fills, holding the 588 CDC variables the legacy snapshot carries), guide (a notification guide by name), condition_detail (the guide assigned to a condition, one per condition), guide_phin_var (which PHIN variables a guide carries), and guide_link (the guides a guide pulls in alongside its own) -- each a bare entity with its internal IEntityTypeConfiguration and a DbSet, the association tables keyed by their natural pairs and every cross-table id left a bare int or string with no navigation, exactly as the existing reference entities do. Survsys.Messaging gains the PHIN variable mapping over that catalogue, built so it takes the guides, their variable memberships, their links and the variable definitions as plain in-memory data rather than reaching for a DbContext -- so the module keeps the fence the architecture test already asserts, referencing neither Survsys.Data nor Entity Framework Core. The mapper resolves, for a condition, the guide it is exported under and then the PHIN variables that guide carries together with the variables of the guides it links, returned distinct and ordered; a condition with no assigned guide resolves to no variables rather than throwing. Survsys.UnitTests gains PhinVariableMapperTests, the tests named after the mapper, covering a condition whose guide carries variables, a guide that pulls variables in through a link, the distinct-and-ordered union, and a condition with no guide.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/0b53ce3c0571aa6678ce6911c5ce68deb1e3c451"><code>0b53ce3c0571aa6678ce6911c5ce68deb1e3c451</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Nmi reference tables</td><td><p>Survsys.Data: the five notification-guide and PHIN variable reference tables, each as an entity with its own internal IEntityTypeConfiguration mapping it to the legacy NMI snake_case table and column names, plus a DbSet on SurvsysDbContext for each. PhinVariable onto phin_var, keyed by the variable identifier string: PhinVar (the identifier such as &quot;INV163&quot;, the primary key, required), Description (required), Identifier (nullable, the LOINC or other standard identifier), Priority (nullable, the single-letter priority), Hl7DataType (nullable, the HL7 v2 data type such as CWE, SN, DT), RuleSetId (nullable int, left bare for a later session), RuleSetConfigId (nullable int, left bare for a later session), Status (nullable), Note (nullable), CodeSystem (nullable). NotificationGuide onto guide: Id, Name (required). ConditionDetail onto condition_detail, keyed by ConditionId so a condition is exported under one guide: ConditionId (int, the key, a bare id into conditions), GuideId (int, a bare id into guide). GuidePhinVariable onto guide_phin_var, keyed by the pair (GuideId, PhinVar): GuideId (int), PhinVar (string, the phin_var it carries). GuideLink onto guide_link, keyed by the pair (GuideId, LinkedGuideId): GuideId (int), LinkedGuideId (int, the guide pulled in alongside). Keep every cross-table id a bare int or string with no navigation, as the existing reference entities do, and give each string a sensible bounded length. Write no migration in this step; the project compiles.</p></td><td><span class="mono">Survsys.Data/PhinVariable.cs</span><br><span class="mono">Survsys.Data/PhinVariableConfiguration.cs</span><br><span class="mono">Survsys.Data/NotificationGuide.cs</span><br><span class="mono">Survsys.Data/NotificationGuideConfiguration.cs</span><br><span class="mono">Survsys.Data/ConditionDetail.cs</span><br><span class="mono">Survsys.Data/ConditionDetailConfiguration.cs</span><br><span class="mono">Survsys.Data/GuidePhinVariable.cs</span><br><span class="mono">Survsys.Data/GuidePhinVariableConfiguration.cs</span><br><span class="mono">Survsys.Data/GuideLink.cs</span><br><span class="mono">Survsys.Data/GuideLinkConfiguration.cs</span><br><span class="mono">Survsys.Data/SurvsysDbContext.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Nmi migration</td><td><p>Generate the NotificationGuidesAndPhinVariables migration with dotnet ef under the migration id 20261017040000_NotificationGuidesAndPhinVariables, creating the five tables -- phin_var, guide, condition_detail, guide_phin_var and guide_link -- with their keys and the composite keys on the association tables, together with the updated model snapshot. Change no entity or configuration in this step; the migration is exactly what the model from the previous step produces.</p></td><td><span class="mono">Survsys.Data/Migrations/20261017040000_NotificationGuidesAndPhinVariables.cs</span><br><span class="mono">Survsys.Data/Migrations/20261017040000_NotificationGuidesAndPhinVariables.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Phin mapping</td><td><p>Survsys.Messaging: the PHIN variable mapping over the notification-guide catalogue, taking it as plain in-memory data rather than reaching for a DbContext, so the module keeps its fence against Survsys.Data and Entity Framework Core and references neither. PhinVariableCatalog.cs: the input records the mapper reads, each a small immutable record and none of them a Survsys.Data entity -- a PHIN variable definition (its identifier string, its description, its HL7 data type, its priority, its code system; the fields a caller carries over for a variable the mapping returns), a condition-to-guide assignment (the condition id and the guide id it is exported under), a guide-to-variable membership (the guide id and the PHIN variable identifier it carries), and a guide link (the guide id and the id of a guide it pulls in alongside) -- gathered in one PhinVariableCatalog container the caller fills from whatever source it has. PhinVariableMapper.cs: the mapper built over a PhinVariableCatalog, exposing a method that resolves the PHIN variables for a condition -- it finds the guide the condition is exported under, gathers that guide together with the guides it links, unions the variable memberships of those guides, resolves them to their definitions, and returns them distinct and ordered by the variable identifier. A condition with no assigned guide, or a guide that carries no variables, yields an empty result rather than throwing; a membership whose variable the catalogue does not define is skipped. Write no test in this step.</p></td><td><span class="mono">Survsys.Messaging/PhinVariableCatalog.cs</span><br><span class="mono">Survsys.Messaging/PhinVariableMapper.cs</span></td><td><code>dotnet build Survsys.Messaging/Survsys.Messaging.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Phin mapping tests</td><td><p>Survsys.UnitTests/PhinVariableMapperTests.cs, the test file named after PhinVariableMapper.cs. Build a small in-memory PhinVariableCatalog and assert the mapper's behaviour: a condition whose guide carries variables resolves to exactly those variables; a guide that links another guide resolves to the union of both guides' variables; the result is distinct (a variable carried by both a guide and its linked guide appears once) and ordered by the variable identifier; a condition that has no assigned guide resolves to no variables rather than throwing; and a guide membership naming a variable the catalogue does not define is skipped rather than throwing. Change no production code in this step.</p></td><td><span class="mono">Survsys.UnitTests/PhinVariableMapperTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~PhinVariableMapperTests --blame-hang-timeout 5m --nologo</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No reference from Survsys.Messaging to Microsoft.EntityFrameworkCore or to Survsys.Data: the mapper takes the catalogue as in-memory data, and nothing in this module reads the database.</li><li>No ruleset types and no ruleset evaluation: the seven rule set types, the rule_set and rule_set_config tables, the expression engine and the value-set translation are Session 044's work. phin_var carries its rule_set_id and rule_set_config_id as bare nullable ints that this session neither populates nor reads, and the mapper resolves which variables apply, not how each variable's value is formatted.</li><li>No repeating groups and no XML generation: the repeating_group table, the repeating-values logic and ORU^R01 message generation are later sessions (044 and 045).</li><li>No export pipeline, queue, log or reconciliation: export_queue, nmi.log, the CDC export log, print criteria, notification status and the MMWR reconciliation cutoff are Sessions 045 and 046.</li><li>No seeding or population of the tables: phin_var, guide, condition_detail, guide_phin_var and guide_link are created empty, and importing the legacy 588-variable dump or any guide configuration is out of scope. The 588 figure describes the shape the phin_var table is built to hold, not rows written in this session.</li><li>No foreign-key constraints or navigations between the new tables or out to conditions: the cross-table ids stay bare ints and strings with composite keys where the pair is natural, as the existing reference entities already are.</li><li>No wiring of the mapper into Survsys.Api, Survsys.Web, the ORU^R01 parser or any request, and no projection of the catalogue from the database: the mapper is built and tested over data the caller supplies, and connecting it to a real source is a later session's work.</li><li>No change to Survsys.Contracts, Survsys.Web, Survsys.Api or the existing Condition entity.</li><li>The session does not register, perform cross-provider verification, run or record the full test suite, or close out: those are the framework's own work between instructions.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[10:37:16]</span> <span class="muted">run-started</span> session=043 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[10:37:16]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[10:37:16]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[10:45:33]</span> <span class="muted">engine-session</span> id=1bdb1597-01ec-4479-9494-232c9ccdea7e</div>
+<div class="line"><span class="at">[10:45:33]</span> <span class="muted">engine-returned</span> seq=1 exit=<span class="good">0</span> seconds=497 transcript=.dabbler/runs/s43/driver/engine-01.log</div>
+<div class="line"><span class="at">[10:45:33]</span> <span class="muted">plan-accepted</span> steps=[&quot;nmi-reference-tables&quot;,&quot;nmi-migration&quot;,&quot;phin-mapping&quot;,&quot;phin-mapping-tests&quot;] non_goals=9</div>
+<div class="line"><span class="at">[10:45:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[10:45:33]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=nmi-reference-tables</div>
+<div class="line"><span class="at">[10:45:33]</span> <span class="muted">engine-invoked</span> seq=2 invocation=2/24 first=false output=stream</div>
+<div class="line"><span class="at">[10:47:38]</span> <span class="muted">engine-returned</span> seq=2 exit=<span class="good">0</span> seconds=125 transcript=.dabbler/runs/s43/driver/engine-02.log</div>
+<div class="line"><span class="at">[10:47:40]</span> <span class="muted">check-passed</span> step=nmi-reference-tables argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[10:47:40]</span> <span class="muted">report-accepted</span> seq=2 step=nmi-reference-tables files=[&quot;Survsys.Data/PhinVariable.cs&quot;,&quot;Survsys.Data/PhinVariableConfiguration.cs&quot;,&quot;Survsys.Data/NotificationGuide.cs&quot;,&quot;Survsys.Data/NotificationGuideConfiguration.cs&quot;,&quot;Survsys.Data/ConditionDetail.cs&quot;,&quot;Survsys.Data/ConditionDetailConfiguration.cs&quot;,&quot;Survsys.Data/GuidePhinVariable.cs&quot;,&quot;Survsys.Data/GuidePhinVariableConfiguration.cs&quot;,&quot;Survsys.Data/GuideLink.cs&quot;,&quot;Survsys.Data/GuideLinkConfiguration.cs&quot;,&quot;Survsys.Data/SurvsysDbContext.cs&quot;] notes=Added phin_var, guide, condition_detail, guide_phin_var and guide_link entities with internal configurations under the legacy snake_case names and DbSets; cross-table ids kept bare, no navigations; Survsys.Data build green.</div>
+<div class="line"><span class="at">[10:47:40]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=nmi-migration</div>
+<div class="line"><span class="at">[10:47:40]</span> <span class="muted">engine-invoked</span> seq=3 invocation=3/24 first=false output=stream</div>
+<div class="line"><span class="at">[10:49:33]</span> <span class="muted">engine-returned</span> seq=3 exit=<span class="good">0</span> seconds=112 transcript=.dabbler/runs/s43/driver/engine-03.log</div>
+<div class="line"><span class="at">[10:49:34]</span> <span class="muted">check-passed</span> step=nmi-migration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[10:49:34]</span> <span class="muted">report-accepted</span> seq=3 step=nmi-migration files=[&quot;Survsys.Data/Migrations/20261017040000_NotificationGuidesAndPhinVariables.cs&quot;,&quot;Survsys.Data/Migrations/20261017040000_NotificationGuidesAndPhinVariables.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=Generated the NotificationGuidesAndPhinVariables migration (id 20261017040000) creating phin_var, guide, condition_detail, guide_phin_var and guide_link with their keys and composite keys, plus the updated snapshot; Survsys.Data build green.</div>
+<div class="line"><span class="at">[10:49:34]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=phin-mapping</div>
+<div class="line"><span class="at">[10:49:34]</span> <span class="muted">engine-invoked</span> seq=4 invocation=4/24 first=false output=stream</div>
+<div class="line"><span class="at">[10:50:30]</span> <span class="muted">engine-returned</span> seq=4 exit=<span class="good">0</span> seconds=55 transcript=.dabbler/runs/s43/driver/engine-04.log</div>
+<div class="line"><span class="at">[10:50:31]</span> <span class="muted">check-passed</span> step=phin-mapping argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Messaging/Survsys.Messaging.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[10:50:32]</span> <span class="muted">report-accepted</span> seq=4 step=phin-mapping files=[&quot;Survsys.Messaging/PhinVariableCatalog.cs&quot;,&quot;Survsys.Messaging/PhinVariableMapper.cs&quot;] notes=Added PhinVariableCatalog (in-memory variable definitions, condition-to-guide, guide memberships, guide links) and PhinVariableMapper resolving a condition to its guide plus linked guides distinct and ordered; no DbContext, Survsys.Messaging references neither Survsys.Data nor EF Core; build green.</div>
+<div class="line"><span class="at">[10:50:32]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=phin-mapping-tests</div>
+<div class="line"><span class="at">[10:50:32]</span> <span class="muted">engine-invoked</span> seq=5 invocation=5/24 first=false output=stream</div>
+<div class="line"><span class="at">[10:51:53]</span> <span class="muted">engine-returned</span> seq=5 exit=<span class="good">0</span> seconds=81 transcript=.dabbler/runs/s43/driver/engine-05.log</div>
+<div class="line"><span class="at">[10:51:57]</span> <span class="muted">check-passed</span> step=phin-mapping-tests argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~PhinVariableMapperTests&quot;,&quot;--blame-hang-timeout&quot;,&quot;5m&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[10:51:57]</span> <span class="muted">report-accepted</span> seq=5 step=phin-mapping-tests files=[&quot;Survsys.UnitTests/PhinVariableMapperTests.cs&quot;] notes=Added PhinVariableMapperTests: a guide-exact resolution, linked-guide union, the shared variable deduped, an undefined membership skipped, a condition with no guide and a guide with no variables both empty; 6 tests pass.</div>
+<div class="line"><span class="at">[10:51:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[10:51:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[10:51:57]</span> <span class="muted">job-started</span> name=verification pid=37896 log=.dabbler/runs/s43/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:52:49]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s43/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:52:49]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[10:52:49]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[10:52:49]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[10:52:49]</span> <span class="muted">job-started</span> name=run of record: unit pid=7556 log=.dabbler/runs/s43/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[10:52:55]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s43/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[10:52:55]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[10:52:58]</span> <span class="muted">landed</span> commit=0b53ce3c0571aa6678ce6911c5ce68deb1e3c451</div>
+<div class="line"><span class="at">[10:52:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[10:52:58]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[10:52:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[10:52:58]</span> <span class="muted">job-started</span> name=close pid=25260 log=.dabbler/runs/s43/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:53:04]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s43/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:53:04]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>12 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `PhinVariableMapperTests` only projects `variable.PhinVar` in its assertions and never asserts that the returned `PhinVariable` definitions preserve their non-key metadata (`Description`, `Hl7DataType`, `Priority`, `CodeSystem`).</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Precondition:** The existing `Mapper()` catalogue in `Survsys.UnitTests/PhinVariableMapperTests.cs` where `INV100` is defined as `new PhinVariable(&quot;INV100&quot;, &quot;First investigation variable&quot;, &quot;ST&quot;, &quot;P&quot;, &quot;PHINQUESTION&quot;)`.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Input:** `Mapper().MapForCondition(conditionId: 10)`.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Expectation:** Assert that the first element equals `new PhinVariable(&quot;INV100&quot;, &quot;First investigation variable&quot;, &quot;ST&quot;, &quot;P&quot;, &quot;PHINQUESTION&quot;)` in full; today's code passes this, whereas a test inspecting only `.Select(variable =&gt; variable.PhinVar)` would still pass if `PhinVariableMapper` constructed stub records with only `PhinVar` populated.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** `PhinVariableMapper` documents that &quot;a guide pulls in the variables of the guides it links one level deep&quot;, but no test in `PhinVariableMapperTests` includes a two-hop link chain to pin that transitive links are not traversed.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Precondition:** `Mapper()` in `Survsys.UnitTests/PhinVariableMapperTests.cs` extended with `new GuideLink(GuideId: 2, LinkedGuideId: 1)` (where guide 3 already links guide 2, and guide 1 carries `INV200`).</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Input:** `Mapper().MapForCondition(conditionId: 30)`.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Expectation:** Assert `[&quot;INV100&quot;, &quot;SHARED&quot;, &quot;STD300&quot;]` (excluding guide 1's `INV200`), which today's one-level traversal returns.</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>**Nit:** In `LinkedGuideVariablesAreUnionedWithTheGuidesOwn`, guide 3's variables (`INV100`, `SHARED`) already precede linked guide 2's variable (`STD300`) alphabetically, so the discovery order across the two guides coincides with the sorted order.</td><td>not answered</td></tr>
+<tr><td>9</td><td><strong>minor</strong></td><td>**Precondition:** Guide 3 carries `INV200` and `SHARED`, and links guide 2 which carries `INV100` and `STD300`.</td><td>not answered</td></tr>
+<tr><td>10</td><td><strong>minor</strong></td><td>**Input:** `Mapper().MapForCondition(conditionId: 30)`.</td><td>not answered</td></tr>
+<tr><td>11</td><td><strong>minor</strong></td><td>**Expectation:** Assert `[&quot;INV100&quot;, &quot;INV200&quot;, &quot;SHARED&quot;, &quot;STD300&quot;]`, ensuring the linked guide's `INV100` sorts ahead of the primary guide's `INV200` (which today's code does, whereas sorting per-guide before concatenating would return `[&quot;INV200&quot;, &quot;SHARED&quot;, &quot;INV100&quot;, &quot;STD300&quot;]`).</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>4s</td><td>851</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
