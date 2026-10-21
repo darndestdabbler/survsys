@@ -254,3 +254,49 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
         Assert.Equal(".webm", Path.GetExtension(recording));
     }
 }
+
+/// <summary>
+/// The intake harness, proved as <see cref="SurvsysHarnessTests"/> proves the
+/// main one. Not walkthrough tests either.
+/// </summary>
+[Collection(IntakeCollection.Name)]
+public class IntakeHarnessTests(IntakeHarness harness)
+{
+    /// <summary>
+    /// The intake harness runs over a database of its own, so its assignment
+    /// pass never reaches the messages the main harness seeds, and its seed
+    /// holds the sending facility and the master LOINC rows its messages are
+    /// translated by.
+    /// </summary>
+    [Fact]
+    public void ItsDatabaseIsItsOwnAndHoldsTheIntakeReferenceData()
+    {
+        var main = new SqlConnectionStringBuilder(SurvsysHarness.ConfiguredConnectionString()).InitialCatalog;
+        var intake = new SqlConnectionStringBuilder(harness.ConnectionString).InitialCatalog;
+
+        Assert.NotEqual(main, intake);
+        Assert.Equal(main + "_intake", intake);
+        Assert.True(Directory.Exists(harness.IntakeDirectory));
+
+        using var connection = new SqlConnection(harness.ConnectionString);
+        connection.Open();
+
+        using var facility = connection.CreateCommand();
+        facility.CommandText = "SELECT COUNT(*) FROM facilities WHERE short_name = N'ARUP_LAB'";
+        Assert.Equal(1, (int)facility.ExecuteScalar()!);
+
+        var loincs = new List<string>();
+
+        using var read = connection.CreateCommand();
+        read.CommandText = "SELECT loinc FROM vocab_master_loinc ORDER BY loinc";
+
+        using var reader = read.ExecuteReader();
+
+        while (reader.Read())
+        {
+            loincs.Add(reader.GetString(0));
+        }
+
+        Assert.Equal(["22314-9", "5061-8", "6463-4"], loincs);
+    }
+}

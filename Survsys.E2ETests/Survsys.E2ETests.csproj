@@ -60,6 +60,13 @@
     <Content Include="..\Survsys.IntegrationTests\Fixtures\nmi-log.sql"
              Link="Fixtures\nmi-log.sql"
              CopyToOutputDirectory="PreserveNewest" />
+    <!-- The intake walkthroughs' own reference data and the messages they
+         drop, this suite's alone: no integration test runs the intake over
+         them, so there is nothing to link them from. -->
+    <Content Include="Fixtures\elr-intake.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\Hl7\*.hl7"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

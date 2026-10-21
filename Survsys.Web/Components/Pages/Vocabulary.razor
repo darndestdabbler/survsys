@@ -7,7 +7,6 @@
    a child still names is not deleted: the API says
    so, and the message shows here. *@
 @page "/vocabulary"
-@using Microsoft.AspNetCore.Components.Rendering
 @inject VocabularyClient Client
 @inject ConditionsClient Conditions
 @inject FacilitiesClient Facilities
@@ -33,7 +32,7 @@ else
 {
     <MudTabs id="vocabulary-tabs" Elevation="1" Rounded="true" TabPanelsClass="pa-4">
         <MudTabPanel ID="@("vocabulary-tab-master-loinc")" Text="Master LOINC">
-            @{ Transfer(__builder, VocabularyClient.MasterLoincs, "master LOINC"); }
+            @Transfer(VocabularyClient.MasterLoincs, "master LOINC")
 
             <MudPaper id="master-loinc-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
                 <MudText Typo="Typo.h6" GutterBottom="true">
@@ -49,8 +48,8 @@ else
                                       Label="Concept name" Variant="Variant.Outlined" MaxLength="200" />
                     </MudItem>
                     <MudItem xs="12" sm="4">
-                        @{ ConditionSelect(__builder, "master-loinc-condition", masterLoinc.ConditionId,
-                               chosen => masterLoinc.ConditionId = chosen); }
+                        @ConditionSelect("master-loinc-condition", masterLoinc.ConditionId,
+                               chosen => masterLoinc.ConditionId = chosen)
                     </MudItem>
                     <MudItem xs="12" sm="4">
                         <MudSelect T="int?" id="master-loinc-organism" Label="Organism" Variant="Variant.Outlined"
@@ -69,7 +68,7 @@ else
                                      Label="Organism taken from the result's SNOMED" />
                     </MudItem>
                 </MudGrid>
-                @{ FormButtons(__builder, "master-loinc", SaveMasterLoinc, () => masterLoinc = new()); }
+                @FormButtons("master-loinc", SaveMasterLoinc, () => masterLoinc = new())
             </MudPaper>
 
             <MudSimpleTable id="master-loinc-table" Dense="true" Hover="true">
@@ -89,8 +88,8 @@ else
                                     .Select(child => $"{FacilityName(child.LabId)}: {child.ChildLoinc}"))
                             </td>
                             <td>
-                                @{ RowButtons(__builder, "master-loinc", row.Id,
-                                       () => masterLoinc = new MasterLoincForm(row), VocabularyClient.MasterLoincs); }
+                                @RowButtons("master-loinc", row.Id,
+                                       () => masterLoinc = new MasterLoincForm(row), VocabularyClient.MasterLoincs)
                             </td>
                         </tr>
                     }
@@ -99,7 +98,7 @@ else
         </MudTabPanel>
 
         <MudTabPanel ID="@("vocabulary-tab-child-loinc")" Text="Child LOINC">
-            @{ Transfer(__builder, VocabularyClient.ChildLoincs, "child LOINC"); }
+            @Transfer(VocabularyClient.ChildLoincs, "child LOINC")
 
             <MudPaper id="child-loinc-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
                 <MudText Typo="Typo.h6" GutterBottom="true">
@@ -107,8 +106,8 @@ else
                 </MudText>
                 <MudGrid Spacing="2">
                     <MudItem xs="12" sm="4">
-                        @{ FacilitySelect(__builder, "child-loinc-lab", childLoinc.LabId,
-                               chosen => childLoinc.LabId = chosen); }
+                        @FacilitySelect("child-loinc-lab", childLoinc.LabId,
+                               chosen => childLoinc.LabId = chosen)
                     </MudItem>
                     <MudItem xs="12" sm="4">
                         <MudTextField @bind-Value="childLoinc.ChildLoinc" id="child-loinc-code" Label="Lab's code"
@@ -133,7 +132,7 @@ else
                         <MudCheckBox @bind-Value="childLoinc.Archived" id="child-loinc-archived" Label="Archived" />
                     </MudItem>
                 </MudGrid>
-                @{ FormButtons(__builder, "child-loinc", SaveChildLoinc, () => childLoinc = new()); }
+                @FormButtons("child-loinc", SaveChildLoinc, () => childLoinc = new())
             </MudPaper>
 
             <MudSimpleTable id="child-loinc-table" Dense="true" Hover="true">
@@ -150,8 +149,8 @@ else
                             <td>@row.ConceptName</td>
                             <td>@(row.Archived ? "Yes" : "No")</td>
                             <td>
-                                @{ RowButtons(__builder, "child-loinc", row.Id,
-                                       () => childLoinc = new ChildLoincForm(row), VocabularyClient.ChildLoincs); }
+                                @RowButtons("child-loinc", row.Id,
+                                       () => childLoinc = new ChildLoincForm(row), VocabularyClient.ChildLoincs)
                             </td>
                         </tr>
                     }
@@ -160,7 +159,7 @@ else
         </MudTabPanel>
 
         <MudTabPanel ID="@("vocabulary-tab-organisms")" Text="Organisms">
-            @{ Transfer(__builder, VocabularyClient.Organisms, "organisms"); }
+            @Transfer(VocabularyClient.Organisms, "organisms")
 
             <MudPaper id="organism-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
                 <MudText Typo="Typo.h6" GutterBottom="true">
@@ -180,11 +179,11 @@ else
                                       Variant="Variant.Outlined" Required="true" MaxLength="200" />
                     </MudItem>
                     <MudItem xs="12" sm="6">
-                        @{ ConditionSelect(__builder, "organism-condition", organism.ConditionId,
-                               chosen => organism.ConditionId = chosen); }
+                        @ConditionSelect("organism-condition", organism.ConditionId,
+                               chosen => organism.ConditionId = chosen)
                     </MudItem>
                 </MudGrid>
-                @{ FormButtons(__builder, "organism", SaveOrganism, () => organism = new()); }
+                @FormButtons("organism", SaveOrganism, () => organism = new())
             </MudPaper>
 
             <MudSimpleTable id="organism-table" Dense="true" Hover="true" Class="mb-6">
@@ -201,25 +200,25 @@ else
                             <td>@ConditionName(row.ConditionId)</td>
                             <td>@ChildCodes("organism", row.Snomed)</td>
                             <td>
-                                @{ RowButtons(__builder, "organism", row.Id,
-                                       () => organism = new OrganismForm(row), VocabularyClient.Organisms); }
+                                @RowButtons("organism", row.Id,
+                                       () => organism = new OrganismForm(row), VocabularyClient.Organisms)
                             </td>
                         </tr>
                     }
                 </tbody>
             </MudSimpleTable>
 
-            @{ ChildCodeSection(__builder, "organism", "SNOMED", organisms.Select(row => (row.Snomed, $"{row.OrganismName} ({row.Snomed})"))); }
+            @ChildCodeSection("organism", "SNOMED", organisms.Select(row => (row.Snomed, $"{row.OrganismName} ({row.Snomed})")))
         </MudTabPanel>
 
         <MudTabPanel ID="@("vocabulary-tab-specimens")" Text="Specimens">
-            @{ MasterValueSection(__builder, "specimen", "specimen"); }
-            @{ ChildCodeSection(__builder, "specimen", "Specimen", MasterChoices("specimen")); }
+            @MasterValueSection("specimen", "specimen")
+            @ChildCodeSection("specimen", "Specimen", MasterChoices("specimen"))
         </MudTabPanel>
 
         <MudTabPanel ID="@("vocabulary-tab-results")" Text="Results">
-            @{ MasterValueSection(__builder, "test_result", "result"); }
-            @{ ChildCodeSection(__builder, "test_result", "Result", MasterChoices("test_result")); }
+            @MasterValueSection("test_result", "result")
+            @ChildCodeSection("test_result", "Result", MasterChoices("test_result"))
         </MudTabPanel>
     </MudTabs>
 }
@@ -368,7 +367,7 @@ else
             () => childValue[category] = new());
 
     /// <summary>A table's export link and its previewed import.</summary>
-    private void Transfer(RenderTreeBuilder __builder, string table, string label)
+    private RenderFragment Transfer(string table, string label) => __builder =>
     {
         <div class="d-flex gap-4 align-start mb-4">
             <MudButton id="@($"{table}-export")" Variant="Variant.Outlined" Href="@($"/vocabulary/{table}/export")"
@@ -380,10 +379,10 @@ else
                                Import="@((csv, confirm) => Client.Import(table, csv, confirm))" Imported="@Load" />
             </div>
         </div>
-    }
+    };
 
     /// <summary>A form's Save and New buttons.</summary>
-    private void FormButtons(RenderTreeBuilder __builder, string prefix, Func<Task> save, Action clear)
+    private RenderFragment FormButtons(string prefix, Func<Task> save, Action clear) => __builder =>
     {
         <div class="d-flex gap-2 mt-4">
             <MudButton id="@($"{prefix}-save")" Variant="Variant.Filled" Color="Color.Primary"
@@ -395,10 +394,10 @@ else
                 New
             </MudButton>
         </div>
-    }
+    };
 
     /// <summary>A listed row's Edit and Delete buttons.</summary>
-    private void RowButtons(RenderTreeBuilder __builder, string prefix, int id, Action edit, string table)
+    private RenderFragment RowButtons(string prefix, int id, Action edit, string table) => __builder =>
     {
         <MudButton id="@($"{prefix}-edit-{id}")" Size="Size.Small" Variant="Variant.Text"
                    OnClick="@(() => { edit(); failure = null; })">
@@ -408,9 +407,9 @@ else
                    OnClick="@(() => Delete(table, id))">
             Delete
         </MudButton>
-    }
+    };
 
-    private void ConditionSelect(RenderTreeBuilder __builder, string id, int? value, Action<int?> chosen)
+    private RenderFragment ConditionSelect(string id, int? value, Action<int?> chosen) => __builder =>
     {
         <MudSelect T="int?" id="@id" Label="Condition" Variant="Variant.Outlined"
                    Value="@value" ValueChanged="@chosen">
@@ -420,9 +419,9 @@ else
                 <MudSelectItem T="int?" Value="@((int?)condition.Id)">@condition.Name (#@condition.Id)</MudSelectItem>
             }
         </MudSelect>
-    }
+    };
 
-    private void FacilitySelect(RenderTreeBuilder __builder, string id, int? value, Action<int?> chosen)
+    private RenderFragment FacilitySelect(string id, int? value, Action<int?> chosen) => __builder =>
     {
         <MudSelect T="int?" id="@id" Label="Sending lab" Variant="Variant.Outlined" Required="true"
                    Value="@value" ValueChanged="@chosen">
@@ -433,14 +432,14 @@ else
                 </MudSelectItem>
             }
         </MudSelect>
-    }
+    };
 
     /// <summary>A category's master values: their form and their table, with the lab codes beside each.</summary>
-    private void MasterValueSection(RenderTreeBuilder __builder, string category, string noun)
+    private RenderFragment MasterValueSection(string category, string noun) => __builder =>
     {
         var form = masterValue[category];
 
-        Transfer(__builder, VocabularyClient.MasterValues, "master values");
+        <div>@Transfer(VocabularyClient.MasterValues, "master values")</div>
 
         <MudPaper id="@($"{category}-master-form")" Elevation="0" Outlined="true" Class="pa-4 mb-4">
             <MudText Typo="Typo.h6" GutterBottom="true">
@@ -457,7 +456,7 @@ else
                                   Variant="Variant.Outlined" MaxLength="200" />
                 </MudItem>
             </MudGrid>
-            @{ FormButtons(__builder, $"{category}-master", () => SaveMasterValue(category), () => masterValue[category] = new()); }
+            @FormButtons($"{category}-master", () => SaveMasterValue(category), () => masterValue[category] = new())
         </MudPaper>
 
         <MudSimpleTable id="@($"{category}-master-table")" Dense="true" Hover="true" Class="mb-6">
@@ -472,23 +471,23 @@ else
                         <td>@row.AppValue</td>
                         <td>@ChildCodes(category, row.Concept)</td>
                         <td>
-                            @{ RowButtons(__builder, $"{category}-master", row.Id,
-                                   () => masterValue[category] = new MasterValueForm(row), VocabularyClient.MasterValues); }
+                            @RowButtons($"{category}-master", row.Id,
+                                   () => masterValue[category] = new MasterValueForm(row), VocabularyClient.MasterValues)
                         </td>
                     </tr>
                 }
             </tbody>
         </MudSimpleTable>
-    }
+    };
 
     /// <summary>A category's lab-specific child codes: their form and their table.</summary>
-    private void ChildCodeSection(
-        RenderTreeBuilder __builder, string category, string masterLabel, IEnumerable<(string Value, string Label)> masters)
+    private RenderFragment ChildCodeSection(
+        string category, string masterLabel, IEnumerable<(string Value, string Label)> masters) => __builder =>
     {
         var form = childValue[category];
 
         <MudText Typo="Typo.h6" GutterBottom="true">Lab codes</MudText>
-        Transfer(__builder, VocabularyClient.ChildValues, "lab codes");
+        <div>@Transfer(VocabularyClient.ChildValues, "lab codes")</div>
 
         <MudPaper id="@($"{category}-child-form")" Elevation="0" Outlined="true" Class="pa-4 mb-4">
             <MudText Typo="Typo.h6" GutterBottom="true">
@@ -496,7 +495,7 @@ else
             </MudText>
             <MudGrid Spacing="2">
                 <MudItem xs="12" sm="4">
-                    @{ FacilitySelect(__builder, $"{category}-child-lab", form.LabId, chosen => form.LabId = chosen); }
+                    @FacilitySelect($"{category}-child-lab", form.LabId, chosen => form.LabId = chosen)
                 </MudItem>
                 <MudItem xs="12" sm="4">
                     <MudTextField @bind-Value="form.ChildCode" id="@($"{category}-child-code")" Label="Lab's code"
@@ -512,7 +511,7 @@ else
                     </MudSelect>
                 </MudItem>
             </MudGrid>
-            @{ FormButtons(__builder, $"{category}-child", () => SaveChildValue(category), () => childValue[category] = new()); }
+            @FormButtons($"{category}-child", () => SaveChildValue(category), () => childValue[category] = new())
         </MudPaper>
 
         <MudSimpleTable id="@($"{category}-child-table")" Dense="true" Hover="true">
@@ -527,14 +526,14 @@ else
                         <td>@row.ChildCode</td>
                         <td>@row.Master</td>
                         <td>
-                            @{ RowButtons(__builder, $"{category}-child", row.Id,
-                                   () => childValue[category] = new ChildValueForm(row), VocabularyClient.ChildValues); }
+                            @RowButtons($"{category}-child", row.Id,
+                                   () => childValue[category] = new ChildValueForm(row), VocabularyClient.ChildValues)
                         </td>
                     </tr>
                 }
             </tbody>
         </MudSimpleTable>
-    }
+    };
 
     private sealed class MasterLoincForm
     {

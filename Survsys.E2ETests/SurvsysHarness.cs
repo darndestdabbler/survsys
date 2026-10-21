@@ -25,8 +25,12 @@ namespace Survsys.E2ETests;
 /// exits while starting all fail the suite loudly and name what to do about
 /// it: a skipped walkthrough suite reads as a green run, and a green run that
 /// proved nothing is worse than a red one that says so.
+///
+/// <see cref="IntakeHarness"/> is the same two tiers over a database of their
+/// own with the ELR intake turned on, which is why the constructor that does
+/// the work takes what differs between them.
 /// </remarks>
-public sealed class SurvsysHarness : IDisposable
+public class SurvsysHarness : IDisposable
 {
     /// <summary>
     /// The environment variable that redirects this suite at another SQL
@@ -130,26 +134,47 @@ public sealed class SurvsysHarness : IDisposable
 
     private readonly Tier api;
     private readonly Tier web;
+    private readonly string[] seeded;
 
     public SurvsysHarness()
+        : this(ConfiguredConnectionString(), Fixtures, SignedInStatePath, new Dictionary<string, string>())
+    {
+    }
+
+    /// <summary>
+    /// Both tiers over <paramref name="connectionString"/>, seeded from
+    /// <paramref name="fixtures"/>, signed in with the state kept at
+    /// <paramref name="signedInStatePath"/>, and the API tier given
+    /// <paramref name="apiSettings"/> beside the settings every harness gives it.
+    /// </summary>
+    protected SurvsysHarness(
+        string connectionString,
+        string[] fixtures,
+        string signedInStatePath,
+        IDictionary<string, string> apiSettings)
     {
         InstallBrowser();
 
-        ConnectionString =
-            Environment.GetEnvironmentVariable(ConnectionVariable) is { Length: > 0 } redirected
-                ? redirected
-                : LocalDefault;
+        ConnectionString = connectionString;
+        seeded = fixtures;
 
-        // The API tier first and alone: it is what brings the database to this
-        // assembly's migration level, so until it is ready there is no table
-        // to seed and nothing for the application tier to read.
-        api = Tier.Start("Survsys.Api", new Dictionary<string, string>
+        var settings = new Dictionary<string, string>
         {
             ["ConnectionStrings__Survsys"] = ConnectionString,
             ["Survsys__ApplyMigrations"] = "true",
             ["Survsys__Administrator__UserName"] = AdministratorUserName,
             ["Survsys__Administrator__Password"] = AdministratorPassword,
-        });
+        };
+
+        foreach (var (key, value) in apiSettings)
+        {
+            settings[key] = value;
+        }
+
+        // The API tier first and alone: it is what brings the database to this
+        // assembly's migration level, so until it is ready there is no table
+        // to seed and nothing for the application tier to read.
+        api = Tier.Start("Survsys.Api", settings);
 
         // Whatever goes wrong from here on, the tier that is already running
         // is stopped before the failure leaves: a fixture whose constructor
@@ -172,7 +197,7 @@ public sealed class SurvsysHarness : IDisposable
 
         try
         {
-            SignIn().GetAwaiter().GetResult();
+            SignIn(signedInStatePath).GetAwaiter().GetResult();
         }
         catch
         {
@@ -205,6 +230,15 @@ public sealed class SurvsysHarness : IDisposable
 
     /// <summary>The database the suite runs against.</summary>
     public string ConnectionString { get; }
+
+    /// <summary>
+    /// The database the main harness runs against: the one
+    /// <see cref="ConnectionVariable"/> names, or this host's own.
+    /// </summary>
+    public static string ConfiguredConnectionString() =>
+        Environment.GetEnvironmentVariable(ConnectionVariable) is { Length: > 0 } redirected
+            ? redirected
+            : LocalDefault;
 
     /// <summary>The application tier a walkthrough is performed against.</summary>
     public string WebBaseAddress => web.BaseAddress;
@@ -245,9 +279,9 @@ public sealed class SurvsysHarness : IDisposable
     /// <summary>
     /// Signs a browser in as the administrator through the application tier's
     /// own Sign in page, as a reader of a walkthrough does, and keeps the
-    /// cookie it is given at <see cref="SignedInStatePath"/>.
+    /// cookie it is given at <paramref name="signedInStatePath"/>.
     /// </summary>
-    private async Task SignIn()
+    private async Task SignIn(string signedInStatePath)
     {
         using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync();
@@ -273,7 +307,7 @@ public sealed class SurvsysHarness : IDisposable
                 refused);
         }
 
-        await context.StorageStateAsync(new() { Path = SignedInStatePath });
+        await context.StorageStateAsync(new() { Path = signedInStatePath });
     }
 
     /// <summary>
@@ -363,9 +397,25 @@ public sealed class SurvsysHarness : IDisposable
     /// walkthrough would start from a queue that is already a case rather than
     /// from the seed, and the clearing is what puts it back.
     /// </para>
+    /// <para>
+    /// The vocabulary, its rules and the zip-to-agency mapping phase 10's
+    /// intake reads go first: a lab's own codes name their facility, and the
+    /// master LOINC rows and the rules name their condition, by references the
+    /// schema refuses to cascade. <c>Fixtures/elr-intake.sql</c> fills them for
+    /// <see cref="IntakeHarness"/>; for this harness they start empty, and the
+    /// LOINC walkthrough adds what it needs.
+    /// </para>
     /// </remarks>
     public static readonly string[] TablesInDeletionOrder =
     [
+        "vocab_rule_conditions",
+        "vocab_rules",
+        "vocab_child_vocab",
+        "vocab_child_loinc",
+        "vocab_master_loinc",
+        "vocab_master_vocab",
+        "vocab_master_organism",
+        "zip_code_agencies",
         "facilities",
         "saved_views",
         "attachments",
@@ -421,18 +471,17 @@ public sealed class SurvsysHarness : IDisposable
     /// </summary>
     public void Seed()
     {
-        var paths = Fixtures
+        var paths = seeded
             .Select(fixture => Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture))
             .ToList();
 
         foreach (var path in paths.Where(path => !File.Exists(path)))
         {
             throw new InvalidOperationException(
-                $"The fixture is not at {path}. conditions.sql, persons.sql, "
-                + "staged-messages.sql and nmi-log.sql are linked into this project's output from "
-                + "Survsys.IntegrationTests by Survsys.E2ETests.csproj; without one the "
-                + "screen it fills would have no rows and a walkthrough would assert against "
-                + "an empty table.");
+                $"The fixture is not at {path}. {string.Join(", ", seeded)} are copied into "
+                + "this project's output by Survsys.E2ETests.csproj, most of them linked from "
+                + "Survsys.IntegrationTests; without one the screen it fills would have no rows "
+                + "and a walkthrough would assert against an empty table.");
         }
 
         try
@@ -457,9 +506,8 @@ public sealed class SurvsysHarness : IDisposable
         catch (SqlException unreachable)
         {
             throw new InvalidOperationException(
-                "Survsys.E2ETests needs a reachable SQL Server to seed the conditions, the "
-                + "people, the staged messages and the export log the screens show, from "
-                + "conditions.sql, persons.sql, staged-messages.sql and nmi-log.sql, and it "
+                "Survsys.E2ETests needs a reachable SQL Server to seed the rows the screens "
+                + $"show, from {string.Join(", ", seeded)}, and it "
                 + $"could not: {unreachable.Message} This suite does not skip when the "
                 + "server is missing, because a skipped walkthrough suite reads as a green "
                 + $"run. Start SQL Server, or set {ConnectionVariable} to the connection "
@@ -695,6 +743,116 @@ public sealed class SurvsysHarness : IDisposable
 public sealed class SurvsysCollection : ICollectionFixture<SurvsysHarness>
 {
     public const string Name = "Survsys tiers";
+}
+
+/// <summary>
+/// Both tiers with the inbound ELR intake turned on: a drop directory polled
+/// every few seconds, and the assignment pass that assigns, graylists and
+/// releases what it stages. What the intake walkthroughs are performed
+/// against.
+/// </summary>
+/// <remarks>
+/// Its database is its own — the main harness's name with <c>_intake</c>
+/// appended — because the assignment pass takes every message queued for
+/// review, and over the main harness's database it would move the seeded
+/// messages the review, promote and duplicate walkthroughs read before they
+/// read them. It is seeded from the conditions, the people and
+/// <c>Fixtures/elr-intake.sql</c>, and no staged message: what is in its
+/// queue is what a walkthrough dropped.
+/// </remarks>
+public sealed class IntakeHarness : SurvsysHarness
+{
+    /// <summary>
+    /// How often the drop directory is polled and the assignment pass runs, in
+    /// seconds: short, so a walkthrough waits on the queue for moments rather
+    /// than the two minutes a deployment's default would take.
+    /// </summary>
+    public const int PollIntervalSeconds = 2;
+
+    /// <summary>The fixtures this harness seeds, in the order they run.</summary>
+    public static readonly string[] IntakeFixtures = ["conditions.sql", "persons.sql", "elr-intake.sql"];
+
+    /// <summary>
+    /// The signed-in browser state this harness's tests open with: a file of
+    /// its own, because both harnesses' application tiers listen on
+    /// <c>127.0.0.1</c> and the two collections run at once.
+    /// </summary>
+    public static string IntakeSignedInStatePath { get; } =
+        Path.Combine(AppContext.BaseDirectory, "intake-signed-in-state.json");
+
+    private static readonly string DropDirectory = Path.Combine(AppContext.BaseDirectory, "intake-drop");
+
+    public IntakeHarness()
+        : base(
+            IntakeConnectionString(ConfiguredConnectionString()),
+            IntakeFixtures,
+            IntakeSignedInStatePath,
+            Settings())
+    {
+    }
+
+    /// <summary>
+    /// The directory the API tier's intake polls: a walkthrough's reader
+    /// copies a message here. Emptied before the tier starts, so nothing a
+    /// previous run dropped is staged again.
+    /// </summary>
+    public string IntakeDirectory => DropDirectory;
+
+    /// <summary>
+    /// The database this harness runs against, given the main harness's:
+    /// the same server and sign-in, the database name with <c>_intake</c> on
+    /// the end.
+    /// </summary>
+    public static string IntakeConnectionString(string main)
+    {
+        var builder = new SqlConnectionStringBuilder(main);
+        builder.InitialCatalog += "_intake";
+
+        return builder.ConnectionString;
+    }
+
+    /// <summary>One of the messages under <c>Fixtures/Hl7</c>, by file name.</summary>
+    public static string Message(string name) =>
+        Path.Combine(AppContext.BaseDirectory, "Fixtures", "Hl7", name);
+
+    private static Dictionary<string, string> Settings()
+    {
+        if (Directory.Exists(DropDirectory))
+        {
+            Directory.Delete(DropDirectory, recursive: true);
+        }
+
+        Directory.CreateDirectory(DropDirectory);
+
+        var interval = PollIntervalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        return new Dictionary<string, string>
+        {
+            ["ElrIntake__DropDirectory"] = DropDirectory,
+            ["ElrIntake__PollIntervalSeconds"] = interval,
+            ["MessageProcessing__PollIntervalSeconds"] = interval,
+        };
+    }
+}
+
+/// <summary>The intake harness, shared by every intake walkthrough.</summary>
+[CollectionDefinition(Name)]
+public sealed class IntakeCollection : ICollectionFixture<IntakeHarness>
+{
+    public const string Name = "Survsys tiers with the ELR intake";
+}
+
+/// <summary>
+/// The base class an intake walkthrough's test derives from: a
+/// <see cref="SurvsysPageTest"/> signed in to <see cref="IntakeHarness"/>.
+/// </summary>
+public class IntakePageTest : SurvsysPageTest
+{
+    public override BrowserNewContextOptions ContextOptions() => new()
+    {
+        RecordVideoDir = VideoDirectory,
+        StorageStatePath = IntakeHarness.IntakeSignedInStatePath,
+    };
 }
 
 /// <summary>

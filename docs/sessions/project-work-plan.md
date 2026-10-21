@@ -97,7 +97,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 83 | Reference data administration — code lists and addresses | no | 2026-10-20 |
 | 84 | Reference data administration — facilities, conditions, treatments and vaccines | no | 2026-10-20 |
 | 85 | Editor settings ignored, and the integration sign-in flake | no | 2026-10-20 |
-| 86 | Phase 10 walkthroughs | — | not declared |
+| 86 | Phase 10 walkthroughs | no | 2026-10-20 |
 | 87 | Release 0.11.0 (release: 0.11.0) | — | not declared |
 | 88 | The notification queue worker and the export log | — | not declared |
 | 89 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
@@ -774,3 +774,13 @@ Remove two faults outside the product that stop the framework. First, `.gitignor
 **Amended after acceptance:**
 
 - 2026-10-20 — step 'ignore-vscode': its files: The file was committed before sessions 30 and 62, so the ignore only takes effect once it is untracked (git rm --cached; the file stays on disk). (claude-code (anthropic, claude-opus-5-5))
+
+### Session 86 — Phase 10 walkthroughs
+
+**Releasable: no.**
+
+Write the four Phase 10 walkthroughs and the Playwright test named after each: find a message assigned automatically, update an existing case from a laboratory message, release a graylisted message, and maintain a LOINC mapping. The first three need inbound ELR intake running with its assignment pass on, which the end-to-end harness leaves off, and turning it on over the harness's own database would move the seeded queued messages the review, promote and duplicate walkthroughs read. So the harness gains a second collection fixture, an intake harness: the same two tiers started over a database of their own (the harness's database name with an _intake suffix), with ElrIntake:DropDirectory pointed at a folder under the test output and MessageProcessing:PollIntervalSeconds set short, seeded from one new fixture, Survsys.E2ETests/Fixtures/elr-intake.sql, holding the sending facility, the master and child LOINC rows, the result interpretation and case-management rule, the investigating agency's zip codes and the people and open case those three walkthroughs start from, with the HL7 files each walkthrough drops beside it. Each of those walkthroughs has its reader copy its HL7 file into the drop directory and then read on the Staged messages queue and the case what intake and assignment did; the LOINC walkthrough runs on the existing harness and has an administrator add a child LOINC mapping for a lab on the Vocabulary screen, edit it and read it back. The walkthrough index links all four and counts thirty-six.
+
+**Amended after acceptance:**
+
+- 2026-10-21 — step 'maintain-a-loinc-mapping': its files: The Vocabulary screen renders none of its helper fragments (Condition and Sending lab lists, Save/New, row Edit/Delete, CSV transfer) because they are written to the outer render tree builder from inside child content; the operator approved repairing it in this session so the LOINC walkthrough can be performed (claude-code (anthropic, claude-opus-5-5))

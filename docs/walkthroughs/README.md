@@ -37,6 +37,10 @@ running Survsys. Perform them in any order; each one stands alone.
 | [Find a person by a former name](find-a-person-by-a-former-name.md) | An investigator changes a patient's last name on their case's Demographic tab, then finds them on the People screen by the name they used to have, and reads the former name on their own screen. | `Survsys.E2ETests/FindAPersonByAFormerNameTests.cs` |
 | [Record a person's address history](record-a-persons-address-history.md) | An investigator dates a patient's current address and adds the one they lived at before with the dates they lived there, saves, and reads both back — the earlier one historic by its dates and stored made regular. | `Survsys.E2ETests/RecordAPersonsAddressHistoryTests.cs` |
 | [Merge duplicate persons](merge-duplicate-persons.md) | A user trusted to merge people finds two records for one person on the Duplicate persons screen, compares them side by side, keeps the record on file, and reads both records' cases under it. | `Survsys.E2ETests/MergeDuplicatePersonsTests.cs` |
+| [Find a message assigned automatically](find-a-message-assigned-automatically.md) | A surveillance reviewer drops a lab's message into the ELR intake, finds it on the Staged messages queue assigned with no reviewer, and opens the case it made for a patient who was not on file from the Events screen. | `Survsys.E2ETests/FindAMessageAssignedAutomaticallyTests.cs` |
+| [Update an existing case from a laboratory message](update-an-existing-case-from-a-laboratory-message.md) | An investigator reads a patient's open case with no laboratory result, drops a lab's message for that patient and disease into the ELR intake, and finds its specimen added to the same case rather than a second case opened. | `Survsys.E2ETests/UpdateAnExistingCaseFromALaboratoryMessageTests.cs` |
+| [Release a graylisted message](release-a-graylisted-message.md) | A surveillance reviewer drops a lab's message whose rule opens no case into the ELR intake and finds it graylisted, opens a case for its patient and disease, and finds the message released to Held for review naming that case. | `Survsys.E2ETests/ReleaseAGraylistedMessageTests.cs` |
+| [Maintain a LOINC mapping](maintain-a-loinc-mapping.md) | A surveillance administrator maps a LOINC code to a condition on the Vocabulary screen, maps a sending lab's own code to it, corrects the lab's mapping, and deletes both again. | `Survsys.E2ETests/MaintainALoincMappingTests.cs` |
 
 ## The contract every entry here is held to
 
@@ -69,8 +73,13 @@ dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj
 ```
 
 That starts both tiers on ports it finds free, seeds the database, performs
-every walkthrough in a browser and records each one. The whole run is the full
-walkthrough regression a release runs: it performs all thirty-two
-walkthroughs above, every one of them, with nothing selected out. It needs a reachable SQL
+every walkthrough in a browser and records each one. The four phase 10
+walkthroughs — the three that drop a message into the ELR intake, and the
+LOINC mapping, which needs the sending lab their seed puts on file — run
+against a second pair of tiers over a database of their own, the first one's
+name with `_intake` on the end, with the intake and its assignment pass turned
+on. The whole run is the full walkthrough regression a release runs: it
+performs all thirty-six walkthroughs above, every one of them, with nothing
+selected out. It needs a reachable SQL
 Server; each walkthrough's own **Before you start** says what it needs to be
 performed by hand instead.
