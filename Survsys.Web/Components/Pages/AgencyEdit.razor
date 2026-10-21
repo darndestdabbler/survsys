@@ -1,0 +1,168 @@
+@* An agency's administration screen: its name, its short name, and the zip
+   codes of its jurisdiction. The zip codes are one box, one or more per line
+   or separated by commas or spaces, because a jurisdiction is a list someone
+   pastes rather than types a row at a time; the API tier reads each one, cuts
+   a ZIP+4 to its zip, and refuses a value that is not a zip code. The
+   notification addresses are the agency's batch e-mail of assigned laboratory
+   messages, refused where one is not an address. A save goes back to the
+   agencies list. A saved agency's zip codes also export as CSV and import
+   from it: an import, previewed before it is confirmed, adds zips and keeps
+   the ones the file leaves out, and the box shows the jurisdiction after it. *@
+@page "/agencies/new"
+@page "/agencies/{Id:int}"
+@inject AgenciesClient Agencies
+@inject NavigationManager Navigation
+
+<PageTitle>@Heading — Survsys</PageTitle>
+
+<MudText id="agency-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    @Heading
+</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="agency-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (failure is { } whyNot)
+    {
+        <MudAlert id="agency-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @whyNot
+        </MudAlert>
+    }
+
+    <MudPaper id="agency-form" Elevation="1" Class="pa-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="name" id="agency-name" Label="Name"
+                              Variant="Variant.Outlined" Required="true" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="shortName" id="agency-short-name" Label="Short name"
+                              Variant="Variant.Outlined" MaxLength="50" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="zipCodes" id="agency-zip-codes"
+                              Label="Jurisdiction zip codes" Variant="Variant.Outlined" Lines="6"
+                              HelperText="Separate zip codes with commas, spaces or new lines." />
+            </MudItem>
+            @if (Id is { } saved)
+            {
+                <MudItem xs="12">
+                    <div class="d-flex gap-4 align-start">
+                        <MudButton id="agency-zip-codes-export" Variant="Variant.Outlined"
+                                   Href="@($"/agencies/{saved}/zip-codes/export")" Target="_blank">
+                            Export zip codes CSV
+                        </MudButton>
+                        <div>
+                            <ImportPreview Prefix="agency-zip-codes-import" Label="Import zip codes CSV"
+                                           Import="@((csv, confirm) => Agencies.ImportZipCodes(saved, csv, confirm))"
+                                           Imported="@ReloadZipCodes" />
+                        </div>
+                    </div>
+                </MudItem>
+            }
+            <MudItem xs="12">
+                <MudTextField @bind-Value="notificationEmails" id="agency-notification-emails"
+                              Label="Notification e-mail addresses" Variant="Variant.Outlined" MaxLength="1000"
+                              HelperText="Sent a batch e-mail of the laboratory messages assigned to the agency's cases. Separate addresses with semicolons." />
+            </MudItem>
+        </MudGrid>
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="agency-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                Save
+            </MudButton>
+            <MudButton id="agency-cancel" Variant="Variant.Outlined" Disabled="@saving"
+                       Href="/agencies">
+                Cancel
+            </MudButton>
+        </div>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>The agency being edited, or null for a new one.</summary>
+    [Parameter]
+    public int? Id { get; set; }
+
+    private static readonly char[] Separators = [',', ' ', '\t', '\r', '\n', ';'];
+
+    private string? name;
+
+    private string? shortName;
+
+    private string? zipCodes;
+
+    private string? notificationEmails;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    private string Heading => Id is null ? "New agency" : "Edit agency";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id is { } id)
+        {
+            var found = await Agencies.Find(id);
+
+            if (found.Value is { } agency)
+            {
+                name = agency.Name;
+                shortName = agency.ShortName;
+                zipCodes = string.Join(Environment.NewLine, agency.ZipCodes);
+                notificationEmails = agency.NotificationEmails;
+            }
+
+            failure = found.Failure;
+        }
+
+        loading = false;
+    }
+
+    /// <summary>The jurisdiction box refilled from the agency on file, after an import saved to it.</summary>
+    private async Task ReloadZipCodes()
+    {
+        var found = await Agencies.Find(Id!.Value);
+
+        if (found.Value is { } agency)
+        {
+            zipCodes = string.Join(Environment.NewLine, agency.ZipCodes);
+        }
+
+        failure = found.Failure;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        failure = null;
+
+        var request = new SaveAgencyRequest(
+            name ?? "",
+            shortName,
+            (zipCodes ?? "").Split(Separators, StringSplitOptions.RemoveEmptyEntries),
+            notificationEmails);
+
+        var saved = Id is { } id
+            ? await Agencies.Update(id, request)
+            : await Agencies.Create(request);
+
+        saving = false;
+
+        if (saved.Succeeded)
+        {
+            Navigation.NavigateTo("/agencies");
+
+            return;
+        }
+
+        failure = saved.Failure;
+    }
+}
