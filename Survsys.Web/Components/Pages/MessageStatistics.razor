@@ -1,0 +1,120 @@
+@* The intake statistics: how many laboratory messages were received, by
+   sending facility, review state and day, over a range of days the screen
+   chooses — the last thirty by default. A message is counted under the state
+   it is in now, on the day it arrived.
+
+   Every element a later walkthrough will name carries an identifier of its
+   own — `message-statistics-heading`, the two dates, the show button,
+   `message-statistics-loading`, `message-statistics-error`,
+   `message-statistics-total`, `message-statistics-none` and the table. *@
+@page "/staged-messages/statistics"
+@using System.Globalization
+@inject MessageQueueClient Client
+
+<PageTitle>Intake statistics — Survsys</PageTitle>
+
+<MudText id="message-statistics-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Intake statistics
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    Laboratory messages received, by sending facility, review state and day.
+</MudText>
+
+<div class="d-flex align-center gap-4 mb-4">
+    <MudTextField @bind-Value="from" id="message-statistics-from" Label="From"
+                  Variant="Variant.Outlined" InputType="InputType.Date" />
+    <MudTextField @bind-Value="to" id="message-statistics-to" Label="To"
+                  Variant="Variant.Outlined" InputType="InputType.Date" />
+    <MudButton id="message-statistics-show" Variant="Variant.Filled" Color="Color.Primary" OnClick="Load">
+        Show
+    </MudButton>
+</div>
+
+@if (why is not null)
+{
+    <MudAlert id="message-statistics-error" Severity="Severity.Error" Variant="Variant.Filled">@why</MudAlert>
+}
+else if (asked is null)
+{
+    <MudProgressCircular id="message-statistics-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } rows)
+{
+    <MudText id="message-statistics-total" Typo="Typo.body2" Class="mb-4">
+        @rows.Sum(row => row.Count) message(s) received.
+    </MudText>
+
+    @if (rows.Count == 0)
+    {
+        <MudText id="message-statistics-none" Typo="Typo.body2">
+            No messages were received in this range.
+        </MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="message-statistics-table" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Sending facility</th>
+                        <th>Review state</th>
+                        <th>Messages</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in rows)
+                    {
+                        <tr data-statistics-row>
+                            <td data-statistics-day>@row.Day.ToString(DateForm, CultureInfo.InvariantCulture)</td>
+                            <td data-statistics-sender>@(row.SendingFacility ?? "—")</td>
+                            <td data-statistics-state>@row.ReviewStatus</td>
+                            <td data-statistics-count>@row.Count</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
+}
+else
+{
+    <MudAlert id="message-statistics-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    private const string DateForm = "yyyy-MM-dd";
+
+    private string? from;
+
+    private string? to;
+
+    private string? why;
+
+    private Asked<IReadOnlyList<MessageStatisticsRowResponse>>? asked;
+
+    protected override Task OnInitializedAsync()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        to = today.ToString(DateForm, CultureInfo.InvariantCulture);
+        from = today.AddDays(-29).ToString(DateForm, CultureInfo.InvariantCulture);
+        return Load();
+    }
+
+    private async Task Load()
+    {
+        why = null;
+        if (!DateOnly.TryParseExact(from, DateForm, CultureInfo.InvariantCulture, DateTimeStyles.None, out var start)
+            || !DateOnly.TryParseExact(to, DateForm, CultureInfo.InvariantCulture, DateTimeStyles.None, out var end))
+        {
+            why = "Choose a day to count from and a day to count to.";
+            return;
+        }
+
+        asked = null;
+        asked = await Client.Statistics(start, end);
+    }
+}

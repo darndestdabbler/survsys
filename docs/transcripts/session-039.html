@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 039 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 039 transcript</h1>
+<p class="stamp">Rendered 2026-10-17T08:33:36.575Z by dabbler-ai-router 3.21.0 at cafa4e700c8bd835bd8ffbd690043773db7fc3de.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-17T04:07:26.891-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 39: The message queue and the intake service</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code> and <code>Survsys.Api</code>: the message queue with its review states, QA flags and exception handling, with its migration and endpoints.</li><li><code>Survsys.Api</code>: inbound ELR intake as an <code>IHostedService</code> inside the API tier — the cut session 2 decided — with its own timeout and no Mirth dependency.</li><li><code>Survsys.IntegrationTests</code>: a message carried from file to queued-for-review, over <code>db-snapshots/session-013/</code> fixtures.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Add the inbound ELR message queue and the service that fills it. In Survsys.Data, a StagedMessage entity records each received lab message — its raw HL7 text, its source and its receipt time — alongside a review-state code, a QA flag and an exception detail, with a MessageReviewStatusRules class holding the queue's review-state vocabulary and the reading of a stored code in the shape of CaseStatusRules, its own EF Core configuration, and a migration. In Survsys.Api, an ElrIntakeService running as an IHostedService inside the API tier polls a configured file-drop directory, parses each dropped message with the existing Survsys.Messaging OruR01Parser, and queues it for review — a parseable message as Entry, a message that fails to parse as Exception carrying its detail — with its own per-message timeout and no dependency on Mirth or any integration engine; the service sits idle when no drop directory is configured, so it changes nothing for a deployment that has not turned it on. Read-only endpoints expose the staged-message queue and a single staged message whole. An integration test carries a message from a dropped file through to queued-for-review against the shared SQL Server fixture, its review states echoing the db-snapshots/session-013 snapshot.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/5bcb4cad3880fc81cc00b31e46948f3311d4094c"><code>5bcb4cad3880fc81cc00b31e46948f3311d4094c</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Message queue entity</td><td><p>In Survsys.Data, add the staged-message queue's types following the CaseStatusRules convention — a thin entity storing codes, with a Rules class owning the vocabulary. Add StagedMessage.cs: an entity with an Id, the raw HL7 message text, a nullable source (the connector or dropped file name), a receipt time in UTC, a review-state code (a string, as PersonCondition.CaseStatus holds its code), a QA flag, and a nullable exception detail. Add MessageReviewStatusRules.cs holding a MessageReviewStatus enum and the rule that reads a stored code into it, in the shape of CaseStatusRules: the review states are the ones the legacy queue state machine documents and this phase needs — Entry (newly received, queued for review), Pending (held for epidemiologist review), and Exception (processing failed) — each with its stored code, echoing the EMSA_MESSAGE_PIPELINE.md status names. Add StagedMessageConfiguration.cs mapping the entity to its table under legacy-faithful column names, internal and found by the assembly scan as the other configurations are. Register the DbSet on SurvsysDbContext.cs. Add Survsys.UnitTests/MessageReviewStatusRulesTests.cs covering the reading of each known code and the refusal of a stored code the vocabulary does not know, named after the rule class as CaseStatusRulesTests is.</p></td><td><span class="mono">Survsys.Data/StagedMessage.cs</span><br><span class="mono">Survsys.Data/MessageReviewStatusRules.cs</span><br><span class="mono">Survsys.Data/StagedMessageConfiguration.cs</span><br><span class="mono">Survsys.Data/SurvsysDbContext.cs</span><br><span class="mono">Survsys.UnitTests/MessageReviewStatusRulesTests.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code><br><code>dotnet build Survsys.UnitTests/Survsys.UnitTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Message queue migration</td><td><p>Generate the EF Core migration for the staged-message queue table and no other change, named MessageQueue, following the round-hour timestamp convention the existing migrations use so the files are Survsys.Data/Migrations/20261017030000_MessageQueue.cs and its Designer. The migration adds the one table and updates the model snapshot; it must contain only the staged-message table, with no change to any existing table. Confirm the model snapshot matches the model after it is written.</p></td><td><span class="mono">Survsys.Data/Migrations/20261017030000_MessageQueue.cs</span><br><span class="mono">Survsys.Data/Migrations/20261017030000_MessageQueue.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Message queue endpoints</td><td><p>Expose the staged-message queue read-only from Survsys.Api, mapping entities to wire shapes inside the API tier as the other slices do. In Survsys.Contracts, add StagedMessageResponse.cs — a queue-list summary carrying the id, source, receipt time, review-state code, whether it is QA-flagged, and its exception detail — and StagedMessageDetailResponse.cs, which adds the raw HL7 text (kept out of the list because it is large). In Survsys.Api, add MessageQueueEndpoints.cs holding a MessageQueueQueries service and the endpoints GET /api/staged-messages (the queue, paged as the other lists are, filterable by review state) and GET /api/staged-messages/{id} (one message whole), with the entity-to-wire projection as a public Expression a unit test proves, in the shape of LabEndpoints. Wire AddMessageQueue and MapMessageQueue into Program.cs beside the other slices. Add Survsys.UnitTests/MessageQueueEndpointsTests.cs compiling and invoking the projection to prove what it carries, named after the endpoints as LabEndpointsTests is.</p></td><td><span class="mono">Survsys.Contracts/StagedMessageResponse.cs</span><br><span class="mono">Survsys.Contracts/StagedMessageDetailResponse.cs</span><br><span class="mono">Survsys.Api/MessageQueueEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.UnitTests/MessageQueueEndpointsTests.cs</span></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj</code><br><code>dotnet build Survsys.UnitTests/Survsys.UnitTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Elr intake service</td><td><p>Add the inbound ELR intake as an IHostedService inside the API tier, the cut session 2 decided, absorbing Mirth's file receipt rather than keeping it. Add Survsys.Api/ElrIntakeService.cs: a BackgroundService that, on each poll of a configured file-drop directory, reads each dropped file and stages it — resolving a scoped SurvsysDbContext through IServiceScopeFactory because it is a singleton — parsing with the Survsys.Messaging OruR01Parser and persisting a StagedMessage in the Entry review state on success and the Exception state carrying the Hl7ParseException detail on failure, then moving the handled file out of the drop so it is not read twice. It has its own per-message timeout, a CancellationTokenSource linked to the stopping token, so one pathological message cannot stall the poller, and it depends on no integration engine. Its options — the drop directory, the poll interval and the per-message timeout — are bound from configuration; with no drop directory configured the service logs once and does nothing, so it is inert for a deployment that has not turned it on and for the existing integration suite. Register it and bind its options in Program.cs, and add the disabled-by-default ElrIntake configuration section to Survsys.Api/appsettings.json. Add Survsys.UnitTests/ElrIntakeServiceTests.cs covering the pure classification of a raw message into a StagedMessage — a parseable fixture to Entry and the malformed fixture to Exception with a detail — over the existing Fixtures/Hl7 messages, named after the service.</p></td><td><span class="mono">Survsys.Api/ElrIntakeService.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.Api/appsettings.json</span><br><span class="mono">Survsys.UnitTests/ElrIntakeServiceTests.cs</span></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj</code><br><code>dotnet build Survsys.UnitTests/Survsys.UnitTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Elr intake integration test</td><td><p>Add Survsys.IntegrationTests/ElrIntakeTests.cs in the shared SQL Server collection, carrying a message from a dropped file through to queued-for-review against the real host. Point the host's intake at a fresh temporary drop directory, write a valid ORU^R01 message file into it, start the host so the ElrIntakeService runs, and poll — through the DbContext or the GET /api/staged-messages endpoint, with a bounded wait — until a StagedMessage appears in the Entry (queued-for-review) state, asserting its source and that it holds the raw message; then drop a message that fails to parse and assert it lands in the Exception state with a detail. The review states asserted echo the db-snapshots/session-013 snapshot, as SqlServerFixture's seeded record number echoes session-011. Add the valid message as Survsys.IntegrationTests/Fixtures/Hl7/oru-r01-chlamydia.hl7, and add a Content include copying Fixtures/Hl7/*.hl7 to the output directory in Survsys.IntegrationTests.csproj so the suite finds it at run time.</p></td><td><span class="mono">Survsys.IntegrationTests/ElrIntakeTests.cs</span><br><span class="mono">Survsys.IntegrationTests/Fixtures/Hl7/oru-r01-chlamydia.hl7</span><br><span class="mono">Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</span></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No case creation, no person or lab landing, and no promotion to a case: intake stages the raw message for review and writes nothing into the live person, lab, or case-report tables — promotion is session 40.</li><li>No assignment or rules engine: the message-filter, case-management, whitelist and graylist decision chain, the add/update decisions, lab comparison, one-to-many and out-of-state paths are all out of scope.</li><li>No message-review user interface: the staged-message queue screen and the message review screen in Survsys.Web are session 40's work.</li><li>No Mirth, SOAP, MLLP or outbound/EpiTrax delivery: intake reads a local file drop only and depends on no integration engine.</li><li>No change to the authorization rules: staged-message reads fall under the existing /api ViewCases fallback policy, so PrivilegeRules is left untouched.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[08:07:26]</span> <span class="muted">run-started</span> session=039 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[08:07:26]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[08:07:26]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[08:18:45]</span> <span class="muted">engine-session</span> id=0b7c1e65-5695-499e-946e-398ba8fdf10a</div>
+<div class="line"><span class="at">[08:18:45]</span> <span class="muted">engine-returned</span> seq=1 exit=<span class="good">0</span> seconds=679 transcript=.dabbler/runs/s39/driver/engine-01.log</div>
+<div class="line"><span class="at">[08:18:45]</span> <span class="muted">plan-accepted</span> steps=[&quot;message-queue-entity&quot;,&quot;message-queue-migration&quot;,&quot;message-queue-endpoints&quot;,&quot;elr-intake-service&quot;,&quot;elr-intake-integration-test&quot;] non_goals=5</div>
+<div class="line"><span class="at">[08:18:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[08:18:45]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=message-queue-entity</div>
+<div class="line"><span class="at">[08:18:45]</span> <span class="muted">engine-invoked</span> seq=2 invocation=2/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:21:41]</span> <span class="muted">engine-returned</span> seq=2 exit=<span class="good">0</span> seconds=176 transcript=.dabbler/runs/s39/driver/engine-02.log</div>
+<div class="line"><span class="at">[08:21:43]</span> <span class="muted">check-passed</span> step=message-queue-entity argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[08:21:45]</span> <span class="muted">check-passed</span> step=message-queue-entity argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;]</div>
+<div class="line"><span class="at">[08:21:45]</span> <span class="muted">report-accepted</span> seq=2 step=message-queue-entity files=[&quot;Survsys.Data/StagedMessage.cs&quot;,&quot;Survsys.Data/MessageReviewStatusRules.cs&quot;,&quot;Survsys.Data/StagedMessageConfiguration.cs&quot;,&quot;Survsys.Data/SurvsysDbContext.cs&quot;,&quot;Survsys.UnitTests/MessageReviewStatusRulesTests.cs&quot;] notes=StagedMessage entity, MessageReviewStatusRules vocabulary (entry/pending/exception), its configuration onto system_messages, DbSet, and the rules test.</div>
+<div class="line"><span class="at">[08:21:45]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=message-queue-migration</div>
+<div class="line"><span class="at">[08:21:45]</span> <span class="muted">engine-invoked</span> seq=3 invocation=3/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:23:04]</span> <span class="muted">engine-returned</span> seq=3 exit=<span class="good">0</span> seconds=79 transcript=.dabbler/runs/s39/driver/engine-03.log</div>
+<div class="line"><span class="at">[08:23:05]</span> <span class="muted">check-passed</span> step=message-queue-migration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[08:23:05]</span> <span class="muted">report-accepted</span> seq=3 step=message-queue-migration files=[&quot;Survsys.Data/Migrations/20261017030000_MessageQueue.cs&quot;,&quot;Survsys.Data/Migrations/20261017030000_MessageQueue.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=MessageQueue migration adds only the system_messages table; snapshot matches the model (has-pending-model-changes reports none).</div>
+<div class="line"><span class="at">[08:23:05]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=message-queue-endpoints</div>
+<div class="line"><span class="at">[08:23:05]</span> <span class="muted">engine-invoked</span> seq=4 invocation=4/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:25:49]</span> <span class="muted">engine-returned</span> seq=4 exit=<span class="good">0</span> seconds=163 transcript=.dabbler/runs/s39/driver/engine-04.log</div>
+<div class="line"><span class="at">[08:25:51]</span> <span class="muted">check-passed</span> step=message-queue-endpoints argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;]</div>
+<div class="line"><span class="at">[08:25:52]</span> <span class="muted">check-passed</span> step=message-queue-endpoints argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;]</div>
+<div class="line"><span class="at">[08:25:52]</span> <span class="muted">report-accepted</span> seq=4 step=message-queue-endpoints files=[&quot;Survsys.Contracts/StagedMessageResponse.cs&quot;,&quot;Survsys.Contracts/StagedMessageDetailResponse.cs&quot;,&quot;Survsys.Api/MessageQueueEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.UnitTests/MessageQueueEndpointsTests.cs&quot;] notes=Read-only GET /api/staged-messages (paged, status filter) and /api/staged-messages/{id}, with the public MessageToResponse projection, queries, Program wiring, and the projection test.</div>
+<div class="line"><span class="at">[08:25:52]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=elr-intake-service</div>
+<div class="line"><span class="at">[08:25:52]</span> <span class="muted">engine-invoked</span> seq=5 invocation=5/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:29:07]</span> <span class="muted">engine-returned</span> seq=5 exit=<span class="good">0</span> seconds=194 transcript=.dabbler/runs/s39/driver/engine-05.log</div>
+<div class="line"><span class="at">[08:29:09]</span> <span class="muted">check-passed</span> step=elr-intake-service argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;]</div>
+<div class="line"><span class="at">[08:29:10]</span> <span class="muted">check-passed</span> step=elr-intake-service argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;]</div>
+<div class="line"><span class="at">[08:29:11]</span> <span class="muted">report-accepted</span> seq=5 step=elr-intake-service files=[&quot;Survsys.Api/ElrIntakeService.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.Api/appsettings.json&quot;,&quot;Survsys.UnitTests/ElrIntakeServiceTests.cs&quot;] notes=ElrIntakeService BackgroundService polls a file drop, stages each message (Entry on parse, Exception with detail on failure) via a scoped DbContext with a per-message timeout, moves handled files aside, and is inert when no drop directory is configured; options bound and hosted service registered in Program; disabled-by-default ElrIntake section added.</div>
+<div class="line"><span class="at">[08:29:11]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=elr-intake-integration-test</div>
+<div class="line"><span class="at">[08:29:11]</span> <span class="muted">engine-invoked</span> seq=6 invocation=6/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:32:30]</span> <span class="muted">engine-returned</span> seq=6 exit=<span class="good">0</span> seconds=200 transcript=.dabbler/runs/s39/driver/engine-06.log</div>
+<div class="line"><span class="at">[08:32:32]</span> <span class="muted">check-passed</span> step=elr-intake-integration-test argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[08:32:33]</span> <span class="muted">report-accepted</span> seq=6 step=elr-intake-integration-test files=[&quot;Survsys.IntegrationTests/ElrIntakeTests.cs&quot;,&quot;Survsys.IntegrationTests/Fixtures/Hl7/oru-r01-chlamydia.hl7&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;] notes=Integration test points the real host intake at a temp drop, carries a valid ORU^R01 file to a queued-for-review StagedMessage in the Entry state (asserted via DbContext and the GET detail endpoint), and an unparseable file to the Exception state with a detail; chlamydia fixture added and copied to output.</div>
+<div class="line"><span class="at">[08:32:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[08:32:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[08:32:33]</span> <span class="muted">job-started</span> name=verification pid=37568 log=.dabbler/runs/s39/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:33:21]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s39/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:33:21]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[08:33:21]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[08:33:21]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[08:33:21]</span> <span class="muted">job-started</span> name=run of record: unit pid=41612 log=.dabbler/runs/s39/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:33:27]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s39/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:33:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[08:33:31]</span> <span class="muted">landed</span> commit=5bcb4cad3880fc81cc00b31e46948f3311d4094c</div>
+<div class="line"><span class="at">[08:33:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[08:33:31]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[08:33:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[08:33:31]</span> <span class="muted">job-started</span> name=close pid=35236 log=.dabbler/runs/s39/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:33:36]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s39/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:33:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>9 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `Survsys.UnitTests/MessageQueueEndpointsTests.cs` states in its remarks that *&quot;that the queue pages, filters by review state, and reads one message whole, and that a missing message is a 404, are `Survsys.IntegrationTests`'s to prove against a real SQL Server&quot;*, but `Survsys.IntegrationTests/ElrIntakeTests.cs` only exercises `GET /api/staged-messages/{queued.Id}` for an existing row and never calls `GET /api/staged-messages` or tests the 404 path.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Precondition:** Both `oru-r01-chlamydia.hl7` (`entry`) and `unparseable.hl7` (`exception`) have been staged in `ElrIntakeTests.ADroppedMessageIsCarriedToQueuedForReviewAndAnUnparseableOneToException`.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Input:** Call `GET /api/staged-messages?status=entry`, `GET /api/staged-messages?status=exception`, `GET /api/staged-messages?page=0`, and `GET /api/staged-messages/999999`.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Expectation:** The filtered list calls should return `PagedResult&lt;StagedMessageResponse&gt;` containing only matching `ReviewStatus` rows (`entry` and `exception` respectively), `page=0` should return HTTP 400 `BadRequest`, and `id=999999` should return HTTP 404 `NotFound`; today's test never exercises `MessageQueueQueries.Page` or the 400/404 branches in `MessageQueueEndpoints`.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** `Survsys.IntegrationTests/ElrIntakeTests.cs` polls `context.StagedMessages` via `WaitForStaged`, which can observe the committed database row before `ElrIntakeService.Handle` executes `Move(file, Path.Combine(dropDirectory, ProcessedFolder))`, and never asserts that processed files are moved out of the top-level drop directory into `.processed`.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Precondition:** `ElrIntakeService` has staged `oru-r01-chlamydia.hl7` and `unparseable.hl7` in `ElrIntakeTests` and completed `Handle`.</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Input:** Check `File.Exists(Path.Combine(drop.FullName, validFile))` and `File.Exists(Path.Combine(drop.FullName, &quot;.processed&quot;, validFile))`.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Expectation:** The original file path in `drop.FullName` should no longer exist and the file should exist under `.processed`, proving that subsequent polls will not re-stage the same file; today's test would still pass if `Move` in `ElrIntakeService.Handle` were a no-op (provided the test finished before the next 1-second poll).</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>**Nit:** `Survsys.Api/ElrIntakeService.cs` (`ElrIntakeOptions` XML remarks) states that `PollIntervalSeconds` and `MessageTimeoutSeconds` *&quot;both fall back to their default rather than to zero when misconfigured&quot;*, whereas `ElrIntakeService.ExecuteAsync` clamps non-positive values to 1 second via `Math.Max(1, ...)`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>4s</td><td>831</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
