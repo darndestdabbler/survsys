@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 082 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 082 transcript</h1>
+<p class="stamp">Rendered 2026-10-20T12:17:27.685Z by dabbler-ai-router 3.21.0 at 8e229b0929e2fcf59a4cefb8ff6745b8903a7a34.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-20T08:12:18.029-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 82: Repair ELR promotion's address and result value</h3>
+<p>*Inserted after session 81. Two faults found in phase 10 make a real laboratory message fail promotion. The transaction rolls back each time, leaving no case, no lab and the message still waiting. They come before the Phase 10 walkthroughs because &quot;update an existing case from a laboratory message&quot; crosses both.*</p>
+<ul><li>*<code>MessageCaseWriter.AddAddress</code> adds the message's patient address with no ending whenever the person has no address with that street and zip. For a person who already has a different current address, the unique index <code>IX_person_addresses_person_id_current</code>, which allows one address with no ending, refuses the second. Session 81's integration test deletes the seeded address to step around it.*</li><li>*<code>staged_message_results.result_value</code> holds 2000 characters and <code>lab_test_results.result_value</code> holds 200, so a result longer than 200 characters throws on the write. <code>MessageCaseWriterTests.APromotionThatFailsPartWayLeavesNothing</code> uses exactly that gap to fail part-way.*</li></ul>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: where <code>MessageCaseWriter</code> adds a message's address, the person's current address is closed as a save closes it, by <code>AddressRules.CloseHistoric</code>, so the message's address becomes the one current address. An address the person already has with that street and zip is still not added again.</li><li><code>Survsys.Data</code>: <code>lab_test_results.result_value</code> widened to 2000 characters to match the staged result it is written from, with its migration. No other column changes.</li><li><code>Survsys.IntegrationTests</code>: a promotion for a person with a different current address, which leaves the old address closed and the message's current; a result of 2000 characters promoted whole; <code>APromotionThatFailsPartWayLeavesNothing</code> given a new way to fail part-way now that the result fits; and session 81's test no longer deleting the seeded address. These reach SQL Server.</li><li>Cross-provider verification.</li><li>Full test suite, the integration suite included, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Repair the two faults that make a real laboratory message fail promotion. MessageCaseWriter.AddAddress, when it adds the message's patient address (still only where the person has no address with that street and zip), loads the person's addresses, adds the message's address begun today, and closes the rest by AddressRules.CloseHistoric as a person save does, saving the closing before the insert so the one-current-address index never sees two open addresses; the message's address becomes the one current address. lab_test_results.result_value is widened from 200 to 2000 characters, matching staged_message_results.result_value, with its migration. The integration suite proves both against SQL Server: a promotion for a person with a different current address closes the old address and leaves the message's current; a 2000-character result is promoted whole; the two tests that relied on the 200-character gap to fail part-way (MessageCaseWriterTests.APromotionThatFailsPartWayLeavesNothing and MessageProcessingServiceTests.AFailedAssignmentIsHeldRetriedAndAssignedWithItsTrail) fail instead on an interpretation longer than lab_test_results.test_result's 100 characters; and session 81's county test no longer deletes the seeded address.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/98d4235f3fb4e991a4471009eb90e31a0bc6fc24"><code>98d4235f3fb4e991a4471009eb90e31a0bc6fc24</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Message address current</td><td><p>In Survsys.Api/MessageCaseWriter.cs, AddAddress takes the moment of promotion (the <code>now</code> Update and OpenClaimed already have) and, where it adds the message's address, loads the person's addresses tracked, gives the new address Beginning = today, runs AddressRules.CloseHistoric over the existing addresses plus the new one, saves the closed addresses before adding the new one, then saves the new one. Its doc comment says the message's address becomes the current one. The same-street-and-zip skip stays as it is.</p></td><td><span class="mono">Survsys.Api/MessageCaseWriter.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code></td><td>yes</td></tr>
+<tr><td>Lab result value length</td><td><p>In Survsys.Data, LabTestResultConfiguration sets ResultValue's maximum length to 2000; a hand-written migration (20261020120000_LabResultValueLength, with its Designer file) alters lab_test_results.result_value from nvarchar(200) to nvarchar(2000) and back on Down; the model snapshot is updated to match. No other column changes.</p></td><td><span class="mono">Survsys.Data/LabTestResultConfiguration.cs</span><br><span class="mono">Survsys.Data/Migrations/20261020120000_LabResultValueLength.cs</span><br><span class="mono">Survsys.Data/Migrations/20261020120000_LabResultValueLength.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code></td><td>yes</td></tr>
+<tr><td>Promotion integration tests</td><td><p>In Survsys.IntegrationTests/MessageCaseWriterTests.cs: add a test that promotes a message whose address differs from the seeded person's current address and asserts the old address is ended and the message's address is the one with no ending; add a test that promotes a 2000-character result value and reads it back whole from lab_test_results; change APromotionThatFailsPartWayLeavesNothing to fail on an interpretation longer than test_result's 100 characters, its comment updated; remove the seeded-address delete from the county test and find the added address by its street. In Survsys.IntegrationTests/MessageProcessingServiceTests.cs, AFailedAssignmentIsHeldRetriedAndAssignedWithItsTrail fails its first assignment on an over-long interpretation instead of a 500-character result value, restoring the interpretation for the retry.</p></td><td><span class="mono">Survsys.IntegrationTests/MessageCaseWriterTests.cs</span><br><span class="mono">Survsys.IntegrationTests/MessageProcessingServiceTests.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No column other than lab_test_results.result_value changes; the interpretation-to-test_result gap (200 to 100) is left as it is and only used by the tests to fail part-way.</li><li>An address the person already has with the message's street and zip is not added again, reopened or re-dated.</li><li>No change to how a person save (PersonEndpoints) closes addresses, nor to AddressRules.CloseHistoric itself.</li><li>No change to ELR matching, case comparison, the web UI or any other promotion path.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[12:12:18]</span> <span class="muted">run-started</span> session=082 mode=pull</div>
+<div class="line"><span class="at">[12:12:18]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[12:13:23]</span> <span class="muted">run-resumed</span> session=082 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[12:13:23]</span> <span class="muted">plan-accepted</span> steps=[&quot;message-address-current&quot;,&quot;lab-result-value-length&quot;,&quot;promotion-integration-tests&quot;] non_goals=4</div>
+<div class="line"><span class="at">[12:13:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[12:13:24]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=message-address-current</div>
+<div class="line"><span class="at">[12:14:06]</span> <span class="muted">run-resumed</span> session=082 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:14:14]</span> <span class="muted">check-passed</span> step=message-address-current argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[12:14:14]</span> <span class="muted">report-accepted</span> seq=2 step=message-address-current files=[&quot;Survsys.Api/MessageCaseWriter.cs&quot;] notes=AddAddress begins the message's address today and closes the prior current one by CloseHistoric, saved before the insert</div>
+<div class="line"><span class="at">[12:14:14]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=lab-result-value-length</div>
+<div class="line"><span class="at">[12:14:57]</span> <span class="muted">run-resumed</span> session=082 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:15:03]</span> <span class="muted">check-passed</span> step=lab-result-value-length argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[12:15:04]</span> <span class="muted">report-accepted</span> seq=3 step=lab-result-value-length files=[&quot;Survsys.Data/LabTestResultConfiguration.cs&quot;,&quot;Survsys.Data/Migrations/20261020120000_LabResultValueLength.cs&quot;,&quot;Survsys.Data/Migrations/20261020120000_LabResultValueLength.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=lab_test_results.result_value widened to nvarchar(2000); migration scaffolded by dotnet ef and renamed to the declared timestamp</div>
+<div class="line"><span class="at">[12:15:04]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=promotion-integration-tests</div>
+<div class="line"><span class="at">[12:16:12]</span> <span class="muted">run-resumed</span> session=082 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:16:15]</span> <span class="muted">check-passed</span> step=promotion-integration-tests argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[12:16:16]</span> <span class="muted">report-accepted</span> seq=4 step=promotion-integration-tests files=[&quot;Survsys.IntegrationTests/MessageCaseWriterTests.cs&quot;,&quot;Survsys.IntegrationTests/MessageProcessingServiceTests.cs&quot;] notes=New address and 2000-char result tests added; part-way failures now use a 150-char interpretation; county test keeps the seeded address</div>
+<div class="line"><span class="at">[12:16:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[12:16:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[12:16:18]</span> <span class="muted">job-started</span> name=verification pid=49348 log=.dabbler/runs/s82/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:16:58]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s82/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:16:58]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[12:16:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[12:16:58]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[12:17:00]</span> <span class="muted">job-started</span> name=run of record: unit pid=19364 log=.dabbler/runs/s82/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[12:17:09]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s82/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[12:17:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[12:17:16]</span> <span class="muted">landed</span> commit=98d4235f3fb4e991a4471009eb90e31a0bc6fc24</div>
+<div class="line"><span class="at">[12:17:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[12:17:16]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[12:17:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[12:17:17]</span> <span class="muted">job-started</span> name=close pid=48380 log=.dabbler/runs/s82/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:17:27]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s82/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:17:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>8s</td><td>1826</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

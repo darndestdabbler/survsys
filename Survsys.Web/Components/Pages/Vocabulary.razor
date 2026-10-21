@@ -1,0 +1,652 @@
+@* The ELR vocabulary intake translates through, and its maintenance: a tab
+   each for master LOINC, child LOINC, organisms, specimens and results. Each
+   tab lists its masters with the lab-specific child codes that resolve to them
+   beside them, adds, edits and deletes entries, and exports and imports CSV.
+   An import is previewed first — the rows it would add, change and refuse —
+   and saves over the entry with the same key once it is confirmed. A master
+   a child still names is not deleted: the API says
+   so, and the message shows here. *@
+@page "/vocabulary"
+@inject VocabularyClient Client
+@inject ConditionsClient Conditions
+@inject FacilitiesClient Facilities
+
+<PageTitle>Vocabulary — Survsys</PageTitle>
+
+<MudText id="vocabulary-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Vocabulary
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="vocabulary-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (loading)
+{
+    <MudProgressCircular id="vocabulary-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudTabs id="vocabulary-tabs" Elevation="1" Rounded="true" TabPanelsClass="pa-4">
+        <MudTabPanel ID="@("vocabulary-tab-master-loinc")" Text="Master LOINC">
+            @Transfer(VocabularyClient.MasterLoincs, "master LOINC")
+
+            <MudPaper id="master-loinc-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" GutterBottom="true">
+                    @(masterLoinc.Id is null ? "New master LOINC" : "Edit master LOINC")
+                </MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="3">
+                        <MudTextField @bind-Value="masterLoinc.Loinc" id="master-loinc-loinc" Label="LOINC"
+                                      Variant="Variant.Outlined" Required="true" MaxLength="20" />
+                    </MudItem>
+                    <MudItem xs="12" sm="5">
+                        <MudTextField @bind-Value="masterLoinc.ConceptName" id="master-loinc-concept"
+                                      Label="Concept name" Variant="Variant.Outlined" MaxLength="200" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        @ConditionSelect("master-loinc-condition", masterLoinc.ConditionId,
+                               chosen => masterLoinc.ConditionId = chosen)
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="int?" id="master-loinc-organism" Label="Organism" Variant="Variant.Outlined"
+                                   @bind-Value="masterLoinc.OrganismId">
+                            <MudSelectItem T="int?" Value="@((int?)null)">(none)</MudSelectItem>
+                            @foreach (var organism in organisms)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)organism.Id)">
+                                    @organism.OrganismName (@organism.Snomed)
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="8">
+                        <MudCheckBox @bind-Value="masterLoinc.OrganismFromResult" id="master-loinc-from-result"
+                                     Label="Organism taken from the result's SNOMED" />
+                    </MudItem>
+                </MudGrid>
+                @FormButtons("master-loinc", SaveMasterLoinc, () => masterLoinc = new())
+            </MudPaper>
+
+            <MudSimpleTable id="master-loinc-table" Dense="true" Hover="true">
+                <thead>
+                    <tr><th>LOINC</th><th>Concept</th><th>Condition</th><th>Organism</th><th>Lab codes</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in masterLoincs)
+                    {
+                        <tr id="@($"master-loinc-row-{row.Id}")">
+                            <td>@row.Loinc</td>
+                            <td>@row.ConceptName</td>
+                            <td>@ConditionName(row.ConditionId)</td>
+                            <td>@(row.OrganismFromResult ? "From result" : OrganismName(row.OrganismId))</td>
+                            <td>
+                                @string.Join("; ", childLoincs.Where(child => child.MasterLoinc == row.Loinc)
+                                    .Select(child => $"{FacilityName(child.LabId)}: {child.ChildLoinc}"))
+                            </td>
+                            <td>
+                                @RowButtons("master-loinc", row.Id,
+                                       () => masterLoinc = new MasterLoincForm(row), VocabularyClient.MasterLoincs)
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudTabPanel>
+
+        <MudTabPanel ID="@("vocabulary-tab-child-loinc")" Text="Child LOINC">
+            @Transfer(VocabularyClient.ChildLoincs, "child LOINC")
+
+            <MudPaper id="child-loinc-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" GutterBottom="true">
+                    @(childLoinc.Id is null ? "New child LOINC" : "Edit child LOINC")
+                </MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="4">
+                        @FacilitySelect("child-loinc-lab", childLoinc.LabId,
+                               chosen => childLoinc.LabId = chosen)
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @bind-Value="childLoinc.ChildLoinc" id="child-loinc-code" Label="Lab's code"
+                                      Variant="Variant.Outlined" Required="true" MaxLength="50" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="string" id="child-loinc-master" Label="Master LOINC" Variant="Variant.Outlined"
+                                   @bind-Value="childLoinc.MasterLoinc">
+                            @foreach (var master in masterLoincs)
+                            {
+                                <MudSelectItem T="string" Value="@master.Loinc">
+                                    @master.Loinc @master.ConceptName
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="8">
+                        <MudTextField @bind-Value="childLoinc.ConceptName" id="child-loinc-concept"
+                                      Label="Lab's concept name" Variant="Variant.Outlined" MaxLength="200" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudCheckBox @bind-Value="childLoinc.Archived" id="child-loinc-archived" Label="Archived" />
+                    </MudItem>
+                </MudGrid>
+                @FormButtons("child-loinc", SaveChildLoinc, () => childLoinc = new())
+            </MudPaper>
+
+            <MudSimpleTable id="child-loinc-table" Dense="true" Hover="true">
+                <thead>
+                    <tr><th>Lab</th><th>Lab's code</th><th>Master LOINC</th><th>Concept</th><th>Archived</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in childLoincs)
+                    {
+                        <tr id="@($"child-loinc-row-{row.Id}")">
+                            <td>@FacilityName(row.LabId)</td>
+                            <td>@row.ChildLoinc</td>
+                            <td>@row.MasterLoinc</td>
+                            <td>@row.ConceptName</td>
+                            <td>@(row.Archived ? "Yes" : "No")</td>
+                            <td>
+                                @RowButtons("child-loinc", row.Id,
+                                       () => childLoinc = new ChildLoincForm(row), VocabularyClient.ChildLoincs)
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudTabPanel>
+
+        <MudTabPanel ID="@("vocabulary-tab-organisms")" Text="Organisms">
+            @Transfer(VocabularyClient.Organisms, "organisms")
+
+            <MudPaper id="organism-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" GutterBottom="true">
+                    @(organism.Id is null ? "New organism" : "Edit organism")
+                </MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="3">
+                        <MudTextField @bind-Value="organism.Snomed" id="organism-snomed" Label="SNOMED"
+                                      Variant="Variant.Outlined" Required="true" MaxLength="20" />
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudTextField @bind-Value="organism.SnomedAlt" id="organism-snomed-alt"
+                                      Label="Alternate SNOMED" Variant="Variant.Outlined" MaxLength="20" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="organism.OrganismName" id="organism-name" Label="Organism"
+                                      Variant="Variant.Outlined" Required="true" MaxLength="200" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        @ConditionSelect("organism-condition", organism.ConditionId,
+                               chosen => organism.ConditionId = chosen)
+                    </MudItem>
+                </MudGrid>
+                @FormButtons("organism", SaveOrganism, () => organism = new())
+            </MudPaper>
+
+            <MudSimpleTable id="organism-table" Dense="true" Hover="true" Class="mb-6">
+                <thead>
+                    <tr><th>Organism</th><th>SNOMED</th><th>Alternate</th><th>Condition</th><th>Lab codes</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in organisms)
+                    {
+                        <tr id="@($"organism-row-{row.Id}")">
+                            <td>@row.OrganismName</td>
+                            <td>@row.Snomed</td>
+                            <td>@row.SnomedAlt</td>
+                            <td>@ConditionName(row.ConditionId)</td>
+                            <td>@ChildCodes("organism", row.Snomed)</td>
+                            <td>
+                                @RowButtons("organism", row.Id,
+                                       () => organism = new OrganismForm(row), VocabularyClient.Organisms)
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+
+            @ChildCodeSection("organism", "SNOMED", organisms.Select(row => (row.Snomed, $"{row.OrganismName} ({row.Snomed})")))
+        </MudTabPanel>
+
+        <MudTabPanel ID="@("vocabulary-tab-specimens")" Text="Specimens">
+            @MasterValueSection("specimen", "specimen")
+            @ChildCodeSection("specimen", "Specimen", MasterChoices("specimen"))
+        </MudTabPanel>
+
+        <MudTabPanel ID="@("vocabulary-tab-results")" Text="Results">
+            @MasterValueSection("test_result", "result")
+            @ChildCodeSection("test_result", "Result", MasterChoices("test_result"))
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+    private IReadOnlyList<VocabMasterLoincRow> masterLoincs = [];
+
+    private IReadOnlyList<VocabChildLoincRow> childLoincs = [];
+
+    private IReadOnlyList<VocabMasterOrganismRow> organisms = [];
+
+    private IReadOnlyList<VocabMasterValueRow> masterValues = [];
+
+    private IReadOnlyList<VocabChildValueRow> childValues = [];
+
+    private IReadOnlyList<ConditionResponse> conditions = [];
+
+    private IReadOnlyList<FacilityResponse> facilities = [];
+
+    private MasterLoincForm masterLoinc = new();
+
+    private ChildLoincForm childLoinc = new();
+
+    private OrganismForm organism = new();
+
+    private readonly Dictionary<string, MasterValueForm> masterValue = new()
+    {
+        ["specimen"] = new(),
+        ["test_result"] = new(),
+    };
+
+    private readonly Dictionary<string, ChildValueForm> childValue = new()
+    {
+        ["organism"] = new(),
+        ["specimen"] = new(),
+        ["test_result"] = new(),
+    };
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if ((await Conditions.Page(1, 200)).Value is { } loadedConditions)
+        {
+            conditions = loadedConditions.Items;
+        }
+
+        if ((await Facilities.Page(1, 200)).Value is { } loadedFacilities)
+        {
+            facilities = loadedFacilities.Items;
+        }
+
+        await Load();
+        loading = false;
+    }
+
+    private async Task Load()
+    {
+        var loadedMasterLoincs = await Client.List<VocabMasterLoincRow>(VocabularyClient.MasterLoincs);
+        var loadedChildLoincs = await Client.List<VocabChildLoincRow>(VocabularyClient.ChildLoincs);
+        var loadedOrganisms = await Client.List<VocabMasterOrganismRow>(VocabularyClient.Organisms);
+        var loadedMasterValues = await Client.List<VocabMasterValueRow>(VocabularyClient.MasterValues);
+        var loadedChildValues = await Client.List<VocabChildValueRow>(VocabularyClient.ChildValues);
+
+        masterLoincs = loadedMasterLoincs.Value ?? [];
+        childLoincs = loadedChildLoincs.Value ?? [];
+        organisms = loadedOrganisms.Value ?? [];
+        masterValues = loadedMasterValues.Value ?? [];
+        childValues = loadedChildValues.Value ?? [];
+
+        failure ??= loadedMasterLoincs.Failure ?? loadedChildLoincs.Failure ?? loadedOrganisms.Failure
+            ?? loadedMasterValues.Failure ?? loadedChildValues.Failure;
+    }
+
+    private string? ConditionName(int? id) =>
+        id is null ? null : conditions.FirstOrDefault(condition => condition.Id == id)?.Name ?? $"#{id}";
+
+    private string? OrganismName(int? id) =>
+        id is null ? null : organisms.FirstOrDefault(row => row.Id == id)?.OrganismName ?? $"#{id}";
+
+    private string FacilityName(int id) =>
+        facilities.FirstOrDefault(facility => facility.Id == id) is { } facility
+            ? facility.ShortName ?? facility.Name
+            : $"#{id}";
+
+    private string ChildCodes(string category, string master) =>
+        string.Join("; ", childValues
+            .Where(child => child.Category == category && child.Master == master)
+            .Select(child => $"{FacilityName(child.LabId)}: {child.ChildCode}"));
+
+    private IEnumerable<(string Value, string Label)> MasterChoices(string category) =>
+        masterValues.Where(row => row.Category == category).Select(row => (row.Concept, row.Concept));
+
+    private async Task Save<TRow>(string table, int? id, TRow row, Action clear)
+        where TRow : class
+    {
+        saving = true;
+        failure = null;
+
+        var saved = id is { } existing
+            ? await Client.Update(table, existing, row)
+            : await Client.Create(table, row);
+
+        saving = false;
+
+        if (saved.Succeeded)
+        {
+            clear();
+            await Load();
+
+            return;
+        }
+
+        failure = saved.Failure;
+    }
+
+    private async Task Delete(string table, int id)
+    {
+        failure = await Client.Delete(table, id);
+
+        if (failure is null)
+        {
+            await Load();
+        }
+    }
+
+    private Task SaveMasterLoinc() =>
+        Save(VocabularyClient.MasterLoincs, masterLoinc.Id, masterLoinc.ToRow(), () => masterLoinc = new());
+
+    private Task SaveChildLoinc() =>
+        Save(VocabularyClient.ChildLoincs, childLoinc.Id, childLoinc.ToRow(), () => childLoinc = new());
+
+    private Task SaveOrganism() =>
+        Save(VocabularyClient.Organisms, organism.Id, organism.ToRow(), () => organism = new());
+
+    private Task SaveMasterValue(string category) =>
+        Save(VocabularyClient.MasterValues, masterValue[category].Id, masterValue[category].ToRow(category),
+            () => masterValue[category] = new());
+
+    private Task SaveChildValue(string category) =>
+        Save(VocabularyClient.ChildValues, childValue[category].Id, childValue[category].ToRow(category),
+            () => childValue[category] = new());
+
+    /// <summary>A table's export link and its previewed import.</summary>
+    private RenderFragment Transfer(string table, string label) => __builder =>
+    {
+        <div class="d-flex gap-4 align-start mb-4">
+            <MudButton id="@($"{table}-export")" Variant="Variant.Outlined" Href="@($"/vocabulary/{table}/export")"
+                       Target="_blank">
+                Export @label CSV
+            </MudButton>
+            <div>
+                <ImportPreview Prefix="@($"{table}-import")" Label="@($"Import {label} CSV")"
+                               Import="@((csv, confirm) => Client.Import(table, csv, confirm))" Imported="@Load" />
+            </div>
+        </div>
+    };
+
+    /// <summary>A form's Save and New buttons.</summary>
+    private RenderFragment FormButtons(string prefix, Func<Task> save, Action clear) => __builder =>
+    {
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="@($"{prefix}-save")" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@save">
+                Save
+            </MudButton>
+            <MudButton id="@($"{prefix}-new")" Variant="Variant.Outlined" Disabled="@saving"
+                       OnClick="@(() => { clear(); failure = null; })">
+                New
+            </MudButton>
+        </div>
+    };
+
+    /// <summary>A listed row's Edit and Delete buttons.</summary>
+    private RenderFragment RowButtons(string prefix, int id, Action edit, string table) => __builder =>
+    {
+        <MudButton id="@($"{prefix}-edit-{id}")" Size="Size.Small" Variant="Variant.Text"
+                   OnClick="@(() => { edit(); failure = null; })">
+            Edit
+        </MudButton>
+        <MudButton id="@($"{prefix}-delete-{id}")" Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                   OnClick="@(() => Delete(table, id))">
+            Delete
+        </MudButton>
+    };
+
+    private RenderFragment ConditionSelect(string id, int? value, Action<int?> chosen) => __builder =>
+    {
+        <MudSelect T="int?" id="@id" Label="Condition" Variant="Variant.Outlined"
+                   Value="@value" ValueChanged="@chosen">
+            <MudSelectItem T="int?" Value="@((int?)null)">(none)</MudSelectItem>
+            @foreach (var condition in conditions)
+            {
+                <MudSelectItem T="int?" Value="@((int?)condition.Id)">@condition.Name (#@condition.Id)</MudSelectItem>
+            }
+        </MudSelect>
+    };
+
+    private RenderFragment FacilitySelect(string id, int? value, Action<int?> chosen) => __builder =>
+    {
+        <MudSelect T="int?" id="@id" Label="Sending lab" Variant="Variant.Outlined" Required="true"
+                   Value="@value" ValueChanged="@chosen">
+            @foreach (var facility in facilities)
+            {
+                <MudSelectItem T="int?" Value="@((int?)facility.Id)">
+                    @facility.Name@(facility.ShortName is { } shortName ? $" ({shortName})" : "")
+                </MudSelectItem>
+            }
+        </MudSelect>
+    };
+
+    /// <summary>A category's master values: their form and their table, with the lab codes beside each.</summary>
+    private RenderFragment MasterValueSection(string category, string noun) => __builder =>
+    {
+        var form = masterValue[category];
+
+        <div>@Transfer(VocabularyClient.MasterValues, "master values")</div>
+
+        <MudPaper id="@($"{category}-master-form")" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">
+                @(form.Id is null ? $"New master {noun}" : $"Edit master {noun}")
+            </MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.Concept" id="@($"{category}-master-concept")" Label="Concept"
+                                  Variant="Variant.Outlined" Required="true" MaxLength="200" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.AppValue" id="@($"{category}-master-app-value")"
+                                  Label="@(category == "test_result" ? "Interpretation" : "Recorded as")"
+                                  Variant="Variant.Outlined" MaxLength="200" />
+                </MudItem>
+            </MudGrid>
+            @FormButtons($"{category}-master", () => SaveMasterValue(category), () => masterValue[category] = new())
+        </MudPaper>
+
+        <MudSimpleTable id="@($"{category}-master-table")" Dense="true" Hover="true" Class="mb-6">
+            <thead>
+                <tr><th>Concept</th><th>@(category == "test_result" ? "Interpretation" : "Recorded as")</th><th>Lab codes</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var row in masterValues.Where(row => row.Category == category))
+                {
+                    <tr id="@($"{category}-master-row-{row.Id}")">
+                        <td>@row.Concept</td>
+                        <td>@row.AppValue</td>
+                        <td>@ChildCodes(category, row.Concept)</td>
+                        <td>
+                            @RowButtons($"{category}-master", row.Id,
+                                   () => masterValue[category] = new MasterValueForm(row), VocabularyClient.MasterValues)
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    };
+
+    /// <summary>A category's lab-specific child codes: their form and their table.</summary>
+    private RenderFragment ChildCodeSection(
+        string category, string masterLabel, IEnumerable<(string Value, string Label)> masters) => __builder =>
+    {
+        var form = childValue[category];
+
+        <MudText Typo="Typo.h6" GutterBottom="true">Lab codes</MudText>
+        <div>@Transfer(VocabularyClient.ChildValues, "lab codes")</div>
+
+        <MudPaper id="@($"{category}-child-form")" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">
+                @(form.Id is null ? "New lab code" : "Edit lab code")
+            </MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="4">
+                    @FacilitySelect($"{category}-child-lab", form.LabId, chosen => form.LabId = chosen)
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="form.ChildCode" id="@($"{category}-child-code")" Label="Lab's code"
+                                  Variant="Variant.Outlined" Required="true" MaxLength="200" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="string" id="@($"{category}-child-master")" Label="@masterLabel"
+                               Variant="Variant.Outlined" @bind-Value="form.Master">
+                        @foreach (var (value, label) in masters)
+                        {
+                            <MudSelectItem T="string" Value="@value">@label</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+            @FormButtons($"{category}-child", () => SaveChildValue(category), () => childValue[category] = new())
+        </MudPaper>
+
+        <MudSimpleTable id="@($"{category}-child-table")" Dense="true" Hover="true">
+            <thead>
+                <tr><th>Lab</th><th>Lab's code</th><th>@masterLabel</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var row in childValues.Where(row => row.Category == category))
+                {
+                    <tr id="@($"{category}-child-row-{row.Id}")">
+                        <td>@FacilityName(row.LabId)</td>
+                        <td>@row.ChildCode</td>
+                        <td>@row.Master</td>
+                        <td>
+                            @RowButtons($"{category}-child", row.Id,
+                                   () => childValue[category] = new ChildValueForm(row), VocabularyClient.ChildValues)
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    };
+
+    private sealed class MasterLoincForm
+    {
+        public MasterLoincForm()
+        {
+        }
+
+        public MasterLoincForm(VocabMasterLoincRow row) =>
+            (Id, Loinc, ConceptName, ConditionId, OrganismId, OrganismFromResult) =
+            (row.Id, row.Loinc, row.ConceptName, row.ConditionId, row.OrganismId, row.OrganismFromResult);
+
+        public int? Id { get; }
+
+        public string? Loinc { get; set; }
+
+        public string? ConceptName { get; set; }
+
+        public int? ConditionId { get; set; }
+
+        public int? OrganismId { get; set; }
+
+        public bool OrganismFromResult { get; set; }
+
+        public VocabMasterLoincRow ToRow() =>
+            new(Id ?? 0, Loinc ?? "", ConceptName, ConditionId, OrganismId, OrganismFromResult);
+    }
+
+    private sealed class ChildLoincForm
+    {
+        public ChildLoincForm()
+        {
+        }
+
+        public ChildLoincForm(VocabChildLoincRow row) =>
+            (Id, LabId, ChildLoinc, MasterLoinc, ConceptName, Archived) =
+            (row.Id, row.LabId, row.ChildLoinc, row.MasterLoinc, row.ConceptName, row.Archived);
+
+        public int? Id { get; }
+
+        public int? LabId { get; set; }
+
+        public string? ChildLoinc { get; set; }
+
+        public string? MasterLoinc { get; set; }
+
+        public string? ConceptName { get; set; }
+
+        public bool Archived { get; set; }
+
+        public VocabChildLoincRow ToRow() =>
+            new(Id ?? 0, LabId ?? 0, ChildLoinc ?? "", MasterLoinc ?? "", ConceptName, Archived);
+    }
+
+    private sealed class OrganismForm
+    {
+        public OrganismForm()
+        {
+        }
+
+        public OrganismForm(VocabMasterOrganismRow row) =>
+            (Id, Snomed, SnomedAlt, OrganismName, ConditionId) =
+            (row.Id, row.Snomed, row.SnomedAlt, row.OrganismName, row.ConditionId);
+
+        public int? Id { get; }
+
+        public string? Snomed { get; set; }
+
+        public string? SnomedAlt { get; set; }
+
+        public string? OrganismName { get; set; }
+
+        public int? ConditionId { get; set; }
+
+        public VocabMasterOrganismRow ToRow() =>
+            new(Id ?? 0, Snomed ?? "", SnomedAlt, OrganismName ?? "", ConditionId);
+    }
+
+    private sealed class MasterValueForm
+    {
+        public MasterValueForm()
+        {
+        }
+
+        public MasterValueForm(VocabMasterValueRow row) =>
+            (Id, Concept, AppValue) = (row.Id, row.Concept, row.AppValue);
+
+        public int? Id { get; }
+
+        public string? Concept { get; set; }
+
+        public string? AppValue { get; set; }
+
+        public VocabMasterValueRow ToRow(string category) => new(Id ?? 0, category, Concept ?? "", AppValue);
+    }
+
+    private sealed class ChildValueForm
+    {
+        public ChildValueForm()
+        {
+        }
+
+        public ChildValueForm(VocabChildValueRow row) =>
+            (Id, LabId, ChildCode, Master) = (row.Id, row.LabId, row.ChildCode, row.Master);
+
+        public int? Id { get; }
+
+        public int? LabId { get; set; }
+
+        public string? ChildCode { get; set; }
+
+        public string? Master { get; set; }
+
+        public VocabChildValueRow ToRow(string category) =>
+            new(Id ?? 0, LabId ?? 0, category, ChildCode ?? "", Master ?? "");
+    }
+}
