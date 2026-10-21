@@ -1886,9 +1886,9 @@
     {
       "number": 91,
       "title": "Transport to CDC",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-21T09:33:44.680000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-21T09:42:59.625000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
