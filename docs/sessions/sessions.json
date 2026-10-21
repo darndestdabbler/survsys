@@ -1944,9 +1944,9 @@
     {
       "number": 94,
       "title": "Audit with its user and values, and its screens",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-21T16:09:11.846000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-21T16:22:53.569000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
