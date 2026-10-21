@@ -103,7 +103,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 89 | Auto-queue on every change, queue actions and reconciliation | no | 2026-10-21 |
 | 90 | Guide, rule set and value set administration | no | 2026-10-21 |
 | 91 | Transport to CDC | no | 2026-10-21 |
-| 92 | Phase 11 walkthroughs | — | not declared |
+| 92 | Phase 11 walkthroughs | no | 2026-10-21 |
 | 93 | Release 0.12.0 (release: 0.12.0) | — | not declared |
 | 94 | Audit with its user and values, and its screens | — | not declared |
 | 95 | Jurisdiction-scoped access and sign-in protection | — | not declared |
@@ -829,3 +829,14 @@ Put the notification configuration in an administrator's hands and finish the ge
 **Releasable: no.**
 
 Give the CDC export a transport chosen in configuration, batch-file tracking, export-log retention and credentials read from configuration. Survsys.Data: CdcExportLogEntry gains a nullable BatchFile (the legacy cdc_batch_file) in one migration (20261021200000_ExportLogBatchFile) with its designer and the snapshot. Survsys.Api: CdcTransmissionOptions gains Transport (Http, the default, or File), OutboxDirectory, UserName and Password; CdcTransmitter either POSTs as today, now with HTTP Basic credentials when a user name is configured (the password supplied by the deployment's environment or secret store, never appsettings), or writes the message as one .hl7 file into the outbox folder that a PHINMS or AIMS sender picks up, its result carrying the file name; NotificationQueueService records that file name on the log row as its BatchFile, so each file is traced to the export it carried, and GET /api/export-log/{id} returns it. NotificationQueueOptions gains ExportLogRetentionDays (null keeps everything), and each worker pass first deletes log rows (and, by cascade, their details) queued longer ago than that, through a public static PruneExportLog. The shipped appsettings leave the endpoint and the outbox empty, so transmission stays off. Tests: option binding in unit tests; the file transport's output, the credential header against a local stub, the batch file on the log row and the pruning in integration tests.
+
+### Session 92 — Phase 11 walkthroughs
+
+**Releasable: no.**
+
+Write the Phase 11 walkthroughs and the Playwright tests that perform them. The E2E harness turns on the CDC file transport, writing into an outbox under its own build output, so the notification queue worker's "process queue now" makes real export-log rows without anything leaving the machine, and it stops seeding nmi-log.sql. Review a generated message and inspect the export log are rewritten to read an export the worker made for a case the walkthrough queued itself, found by its own record number rather than seeded counts, and their tests follow. Three new documents are added to docs/walkthroughs/ and linked from its README — send a case to CDC, retract a notification, configure a notification guide — each with the one test named after it in Survsys.E2ETests.
+
+**Amended after acceptance:**
+
+- 2026-10-21 — step 'export-log-walkthroughs-from-the-worker': its files: The worker builds a message only for a condition exported under a notification guide (condition_detail), and nothing in the application assigns one, so the E2E harness seeds a guide for Lyme disease from a fixture of its own, as elr-intake.sql seeds the intake reference data. (claude-code (anthropic, claude-opus-5-5))
+- 2026-10-21 — step 'configure-a-notification-guide': its files: A guide carries only PHIN variables already in the catalog, and no migration seeds phin_var, so the walkthrough adds the variable on the PHIN variables screen first; the harness must clear phin_var with the guides, or the second run would refuse adding it again. (claude-code (anthropic, claude-opus-5-5))

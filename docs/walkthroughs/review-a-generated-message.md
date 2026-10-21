@@ -28,13 +28,11 @@ describes what Survsys shows rather than what NMI showed:
   and the export's own number, with a **Back to the export log** button.
 - **The message is shown as it was generated.** The review screen shows the
   message whole, line for line, in a preformatted block — there is no
-  separate XML and HL7 copy, and no per-PHIN-variable log beneath it.
-- **The history this walkthrough reads is seeded.** Survsys does not yet
-  write the export log as it generates and sends messages, so the export you
-  review is one the seed places in the log
-  (`Survsys.IntegrationTests/Fixtures/nmi-log.sql`): case **202500048**,
-  exported twice — once sent and accepted with its message, and once queued
-  with no message yet. This walkthrough reviews the first.
+  separate XML copy. The build's own messages, where it raised any, are
+  listed above it under **Messages**.
+- **The queue is processed on demand.** Survsys's queue worker is off unless
+  a deployment gives it an interval, so this walkthrough sends its case with
+  the queue's **Process now** button and reviews the export that made.
 
 ## Before you start
 
@@ -43,14 +41,22 @@ You need all four of these.
 1. **A reachable SQL Server**, holding a Survsys database at this build's
    migration level. `Survsys.Api` is the only tier permitted to touch the
    database, and it is what brings an empty one up to level: start it with
-   `Survsys__ApplyMigrations=true` and it migrates and then serves. The export
-   history this walkthrough reads is the one
-   `Survsys.IntegrationTests/Fixtures/nmi-log.sql` seeds, against a person and
-   a condition `persons.sql` and `conditions.sql` seed in the same folder; run
-   all three, in that order, against your database if you brought it up by
-   hand.
-2. **The `Survsys.Api` tier running.** On a developer machine:
-   `dotnet run --project Survsys.Api --urls http://localhost:5100`.
+   `Survsys__ApplyMigrations=true` and it migrates and then serves. The
+   person this walkthrough reports on, **Okafor, Chidi**, is one the people
+   seed inserts (`Survsys.IntegrationTests/Fixtures/persons.sql`), and the
+   condition, **Lyme disease**, one the conditions seed inserts
+   (`Survsys.IntegrationTests/Fixtures/conditions.sql`). A case's message is
+   built only under the notification guide its condition is exported under,
+   and `Survsys.E2ETests/Fixtures/notification-guide.sql` puts Lyme disease
+   under one, **Walkthrough guide**, which carries no PHIN variables of its
+   own. Run all three, in that order, against your database if you brought it
+   up by hand.
+2. **The `Survsys.Api` tier running, writing to CDC as files.** On a
+   developer machine: `dotnet run --project Survsys.Api --urls
+   http://localhost:5100`, with `CdcTransmission__Transport=File` and
+   `CdcTransmission__OutboxDirectory` set to a folder of your own where it
+   runs. Each message is then written into that folder for a PHINMS or AIMS
+   sender to pick up, and nothing is sent anywhere.
 3. **The `Survsys.Web` tier running**, pointed at that API tier. On a
    developer machine: `dotnet run --project Survsys.Web --urls
    http://localhost:5000`, where `Survsys.Web/appsettings.Development.json`
@@ -70,7 +76,8 @@ You need all four of these.
 dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj
 ```
 
-That suite starts both tiers on ports it finds free, brings the database to
+That suite starts both tiers on ports it finds free, with the file transport
+writing into a folder under its own build output, brings the database to
 migration level and seeds it, and performs the steps below in a real browser.
 It records video of every test it runs, and writes the recordings to
 `Survsys.E2ETests/bin/<configuration>/net10.0/videos` as `.webm` files.
@@ -79,43 +86,69 @@ It records video of every test it runs, and writes the recordings to
 
 1. Open your browser and go to the application tier's address — on a
    developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Export log**.
-2. The browser tab reads **Export log — Survsys** and the heading reads
-   **Export log**. Under it, the table lists the exports newest first, each
-   with its **Record number**, **Queued**, **Sent** and **Outcome**.
-3. Find the row whose **Record number** is **202500048** and whose
-   **Outcome** reads **accepted**. Its **Sent** reads **2025-11-04 08:05**.
-   Press its record number, **202500048**, which is a link.
-4. The browser tab reads **Generated message — Survsys**, and the heading
+   bar across the top of the window, press **New CMR**.
+2. Under the heading **New case morbidity report**, in the box labelled
+   **Last name**, type `Okafor`, then press **Search**.
+3. The one row reads **Okafor, Chidi**. Press its **Create CMR** button.
+4. In the box labelled **First reported to public health**, enter
+   `2026-10-02`. In the list labelled **Disease**, choose **Lyme disease**. In
+   the list labelled **Investigating agency**, choose **Davis County**. Press
+   **Save & Continue**.
+5. The report's own form opens, headed **Case morbidity report**, with
+   **Lyme disease** for the disease and a record number of the current year
+   and five more digits. Note the record number: it is how you will find the
+   case's export.
+6. Press **Edit** at the top of the report, then, in the panel headed **CDC
+   notification**, press **Queue for notification**. A green confirmation
+   reads **This case was queued for notification at** followed by the date
+   and time you pressed.
+7. In the application bar, press **Notifications**. On the **Notification
+   queue**, press **Process now**. A line beside it reads **_n_ case(s)
+   processed; each is on the export log.**
+8. In the application bar, press **Export log**. Find the row whose **Record
+   number** is the one you noted; its **Outcome** reads **accepted**. Press
+   its record number, which is a link.
+9. The browser tab reads **Generated message — Survsys**, and the heading
    reads **Export** followed by the export's own number, which this document
    does not print. A **Back to the export log** button sits under it.
-5. Read the export's summary:
-   - **Record number** reads **202500048**.
-   - **Guide** reads **—**: no notification guide was recorded for this export.
-   - **Queued** reads **2025-11-04 08:00**.
-   - **Sent** reads **2025-11-04 08:05**.
-   - **Outcome** reads **accepted**.
-6. Under the heading **Generated message**, a line reads **The message that
-   was, or would be, sent to CDC for this export.** Below it, the message is
-   shown whole, as four lines:
+10. Read the export's summary:
+    - **Record number** reads the record number you noted.
+    - **Guide** reads a number: the identifier of the guide the message was
+      built under, **Walkthrough guide**.
+    - **Queued** and **Sent** read when you queued the case and when Process
+      now sent it, as `yyyy-mm-dd hh:mm`.
+    - **Outcome** reads **accepted**.
+    - **Detail** reads **Written to the outbox as** followed by the name of
+      the file the message was written to, ending `.hl7`.
+    - **Processing** reads **P**, and **Queue** reads **production**.
 
-   ```
-   MSH|^~\&|SURVSYS|CT_DPH|CDC|CDC_NNDSS|20251104080500||ORU^R01^ORU_R01|NMI202500048-1|P|2.5.1
-   PID|1||202500048^^^SURVSYS||NGUYEN^AN||19920229|M
-   OBR|1||202500048^SURVSYS|68991-9^Epidemiologic information^LN|||20251103
-   OBX|1|CWE|78746-5^Country of birth^LN||VNM^Viet Nam^ISO3166_1||||||F
-   ```
+    No **Messages** table follows: the build raised none.
+11. Under the heading **Generated message**, a line reads **The message that
+    was, or would be, sent to CDC for this export.** Below it, the message is
+    shown whole, as two lines:
+
+    ```
+    MSH|^~\&|Survsys^2.16.840.1.114222.4.3.3.2.1^ISO|CTDPH^2.16.840.1.114222.4.1.3650^ISO|CDC^2.16.840.1.114222.4.3.2.10^ISO|CDC^2.16.840.1.114222.4.1.3650^ISO|<sent>||ORU^R01^ORU_R01|SURVSYS<sent><id>|P|2.5.1|||||||||NOTF_ORU_v3.0
+    OBR|1|||68991-9^Epidemiologic Information^LN
+    ```
+
+    where `<sent>` is the moment it was sent, as `yyyymmddhhmmss`, and `<id>`
+    the case's own identifier, neither of which this document prints. The
+    `MSH` names Survsys at CTDPH sending an `ORU^R01` to CDC under processing
+    `P` and profile `NOTF_ORU_v3.0`; the `OBR` is the *Epidemiologic
+    Information* order, and there is no `OBX`, because the guide carries no
+    PHIN variables.
 
 ## What you should see
 
 One export to CDC read whole:
 
-- On the **Export log**, a row for **202500048** that was sent at
-  **2025-11-04 08:05** and whose outcome is **accepted**.
-- On its review screen, the summary **202500048**, guide **—**, queued
-  **2025-11-04 08:00**, sent **2025-11-04 08:05**, outcome **accepted**.
-- The generated message, an `ORU^R01` of four segments — `MSH`, `PID`, `OBR`
-  and `OBX` — about **NGUYEN^AN** under record number **202500048**.
+- On the **Export log**, a row for the record number you noted whose outcome
+  is **accepted**.
+- On its review screen, that record number, a guide, the queued and sent
+  times, outcome **accepted**, the outbox file in the detail, processing
+  **P** and queue **production**.
+- The generated message, an `ORU^R01` of two segments — `MSH` and `OBR`.
 
 You now know how to open an export from the export log and read the message
 that was generated for it. If what you saw differs from what is written above,

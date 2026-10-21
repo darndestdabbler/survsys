@@ -53,17 +53,15 @@
     <Content Include="..\Survsys.IntegrationTests\Fixtures\staged-messages.sql"
              Link="Fixtures\staged-messages.sql"
              CopyToOutputDirectory="PreserveNewest" />
-    <!-- The CDC export history the phase 6 walkthroughs inspect and review,
-         linked beside the others: nothing writes nmi_log yet, so this case and
-         its two exports are the rows the export log and the generated-message
-         review show. -->
-    <Content Include="..\Survsys.IntegrationTests\Fixtures\nmi-log.sql"
-             Link="Fixtures\nmi-log.sql"
-             CopyToOutputDirectory="PreserveNewest" />
     <!-- The intake walkthroughs' own reference data and the messages they
          drop, this suite's alone: no integration test runs the intake over
          them, so there is nothing to link them from. -->
     <Content Include="Fixtures\elr-intake.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <!-- The notification guide the CDC walkthroughs send under, this suite's
+         alone for the same reason: the export log those walkthroughs read is
+         written by the queue worker, not seeded. -->
+    <Content Include="Fixtures\notification-guide.sql"
              CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Fixtures\Hl7\*.hl7"
              CopyToOutputDirectory="PreserveNewest" />

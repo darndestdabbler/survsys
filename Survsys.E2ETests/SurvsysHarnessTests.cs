@@ -104,9 +104,8 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
 
     /// <summary>
     /// Seeding leaves what the fixtures fill — the conditions, the people and
-    /// the people's own details, and the one report nmi-log.sql seeds with
-    /// its export history — and nothing a walkthrough fills: no other report,
-    /// no share, no specimen, no test, no result, no susceptibility row, no
+    /// the people's own details, and the notification guide — and nothing a
+    /// walkthrough fills: no report, no export, no queued notification, no share, no specimen, no test, no result, no susceptibility row, no
     /// exposure with its place, contacts and sources, no note, no task, no
     /// attachment with its bytes, no form with its assignments and answers,
     /// no vaccine record, no outbreak and no treatment. Run here over whatever the walkthroughs
@@ -136,14 +135,8 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
 
         foreach (var table in filledByWalkthroughs)
         {
-            // The export history nmi-log.sql seeds is the one report, and the
-            // log rows against it, that seeding is meant to leave; anything
-            // else in those two tables is a walkthrough's.
             using var count = connection.CreateCommand();
-            count.CommandText = table is "person_conditions" or "nmi_log"
-                ? $"SELECT COUNT(*) FROM {table} WHERE record_number <> @seeded"
-                : $"SELECT COUNT(*) FROM {table}";
-            count.Parameters.AddWithValue("@seeded", SurvsysHarness.SeededExportLog);
+            count.CommandText = $"SELECT COUNT(*) FROM {table}";
 
             if ((int)count.ExecuteScalar()! is var rows && rows > 0)
             {
@@ -192,46 +185,38 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
     }
 
     /// <summary>
-    /// Seeding clears the export log and fills it with exactly the fixture's
-    /// history: the two exports of the seeded case, the newer one queued with
-    /// no message and the older one sent and accepted with its message, and
-    /// one copy of the case they name rather than one per run. Run here over
-    /// whatever the walkthroughs before it left, so it proves the clearing
-    /// takes the last run's log and queue with it.
+    /// Seeding clears the notification guides and puts back exactly the
+    /// fixture's one, with Lyme disease exported under it: whatever guide the
+    /// guide walkthrough added is gone, and the CDC walkthroughs' cases have a
+    /// guide to be built under. The file transport's outbox is there for the
+    /// API tier to write into.
     /// </summary>
     [Fact]
-    public void SeedingReseedsTheExportLog()
+    public void SeedingReseedsTheNotificationGuide()
     {
         harness.Seed();
+
+        Assert.True(Directory.Exists(SurvsysHarness.OutboxDirectory));
+
+        var guides = new List<(string Guide, string? Condition)>();
 
         using var connection = new SqlConnection(harness.ConnectionString);
         connection.Open();
 
-        using var reports = connection.CreateCommand();
-        reports.CommandText = "SELECT COUNT(*) FROM person_conditions WHERE record_number = @seeded";
-        reports.Parameters.AddWithValue("@seeded", SurvsysHarness.SeededExportLog);
-        Assert.Equal(1, (int)reports.ExecuteScalar()!);
-
-        using var queued = connection.CreateCommand();
-        queued.CommandText = "SELECT COUNT(*) FROM nmi_export_queue";
-        Assert.Equal(0, (int)queued.ExecuteScalar()!);
-
-        var exports = new List<(bool Sent, bool HasMessage, string? Outcome)>();
-
         using var read = connection.CreateCommand();
-        read.CommandText = "SELECT record_number, sent_at, xml, outcome FROM nmi_log ORDER BY queue_time DESC";
+        read.CommandText =
+            "SELECT guide.name, conditions.name FROM guide "
+            + "LEFT JOIN condition_detail ON condition_detail.guide_id = guide.id "
+            + "LEFT JOIN conditions ON conditions.id = condition_detail.condition_id";
 
         using var reader = read.ExecuteReader();
 
         while (reader.Read())
         {
-            Assert.Equal(SurvsysHarness.SeededExportLog, reader.GetString(0));
-            exports.Add((!reader.IsDBNull(1), !reader.IsDBNull(2), reader.IsDBNull(3) ? null : reader.GetString(3)));
+            guides.Add((reader.GetString(0), reader.IsDBNull(1) ? null : reader.GetString(1)));
         }
 
-        Assert.Equal(SurvsysHarness.SeededExportLogRows, exports.Count);
-        Assert.Equal((false, false, null), exports[0]);
-        Assert.Equal((true, true, "accepted"), exports[1]);
+        Assert.Equal([(SurvsysHarness.SeededGuide, "Lyme disease")], guides);
     }
 
     /// <summary>

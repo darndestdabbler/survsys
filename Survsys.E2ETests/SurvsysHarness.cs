@@ -110,17 +110,19 @@ public class SurvsysHarness : IDisposable
     ];
 
     /// <summary>
-    /// The record number of the case <c>Fixtures/nmi-log.sql</c> seeds with
-    /// its CDC export history — one export sent and accepted with its
-    /// generated message, and one queued with no message yet. The handle the
-    /// export log walkthroughs' tests find its rows by, since identity assigns
-    /// the ids. Stated here as <see cref="SeededConditionsByName"/> is, because
-    /// this project may not reference the integration suite.
+    /// The notification guide <c>Fixtures/notification-guide.sql</c> seeds,
+    /// with Lyme disease exported under it: the guide the CDC walkthroughs'
+    /// messages are built under.
     /// </summary>
-    public const string SeededExportLog = "202500048";
+    public const string SeededGuide = "Walkthrough guide";
 
-    /// <summary>How many exports <c>Fixtures/nmi-log.sql</c> seeds against <see cref="SeededExportLog"/>.</summary>
-    public const int SeededExportLogRows = 2;
+    /// <summary>
+    /// The folder the API tier's CDC file transport writes each message into:
+    /// the harness turns the file transport on, so "process queue now" sends a
+    /// case without anything leaving this host. Emptied before the tier starts,
+    /// so what is in it is what this run sent.
+    /// </summary>
+    public static string OutboxDirectory { get; } = Path.Combine(AppContext.BaseDirectory, "cdc-outbox");
 
     /// <summary>
     /// This host's own SQL Server, used when nothing redirects the suite. Its
@@ -137,7 +139,7 @@ public class SurvsysHarness : IDisposable
     private readonly string[] seeded;
 
     public SurvsysHarness()
-        : this(ConfiguredConnectionString(), Fixtures, SignedInStatePath, new Dictionary<string, string>())
+        : this(ConfiguredConnectionString(), Fixtures, SignedInStatePath, Settings())
     {
     }
 
@@ -315,10 +317,31 @@ public class SurvsysHarness : IDisposable
     /// conditions first, because a report names one of them, then the people,
     /// then the staged messages the ELR walkthroughs act on — which name
     /// neither a person nor a condition the schema enforces — and last the
-    /// export history, whose case names a person and a condition the first
-    /// two have already seeded.
+    /// notification guide, which names a condition the first has seeded.
     /// </summary>
-    private static readonly string[] Fixtures = ["conditions.sql", "persons.sql", "staged-messages.sql", "nmi-log.sql"];
+    private static readonly string[] Fixtures = ["conditions.sql", "persons.sql", "staged-messages.sql", "notification-guide.sql"];
+
+    /// <summary>
+    /// What the main harness gives the API tier: the CDC file transport,
+    /// writing into <see cref="OutboxDirectory"/>, emptied here. The queue
+    /// worker stays off, as the shipped configuration leaves it, so a case is
+    /// sent when a walkthrough presses Process now and not before.
+    /// </summary>
+    private static Dictionary<string, string> Settings()
+    {
+        if (Directory.Exists(OutboxDirectory))
+        {
+            Directory.Delete(OutboxDirectory, recursive: true);
+        }
+
+        Directory.CreateDirectory(OutboxDirectory);
+
+        return new Dictionary<string, string>
+        {
+            ["CdcTransmission__Transport"] = "File",
+            ["CdcTransmission__OutboxDirectory"] = OutboxDirectory,
+        };
+    }
 
     /// <summary>
     /// The tables the fixtures fill, and the ones that hang off them, in the
@@ -326,9 +349,8 @@ public class SurvsysHarness : IDisposable
     /// so the laboratory rows go before the reports and the people they
     /// name, the reports before the people, and the people before the
     /// conditions. Cleared before any insert, so a second run of the suite
-    /// seeds the same seven people and seven conditions rather than fourteen
-    /// of each — and no report but the one <c>Fixtures/nmi-log.sql</c> seeds
-    /// with its two exports, and no queued notification, specimen, exposure,
+    /// seeds the same seven people, seven conditions and one guide rather than
+    /// fourteen of each — and no report, export, queued notification, specimen, exposure,
     /// note, task, attachment, facility, saved view, form, vaccine record,
     /// outbreak or treatment at all, since a
     /// walkthrough that needs one creates it, and one left over from the last
@@ -348,8 +370,18 @@ public class SurvsysHarness : IDisposable
     /// schema cascades, so the reports' clearing would take them anyway; they
     /// are listed before <c>person_conditions</c> so the order says what it
     /// clears rather than leaving it to the cascade. The queue is filled by
-    /// the queue-a-case walkthrough and the log by <c>Fixtures/nmi-log.sql</c>,
-    /// which reseeds it after the clearing.
+    /// the walkthroughs that queue a case, and the log by the queue worker when
+    /// they press Process now.
+    /// </para>
+    /// <para>
+    /// The notification guides go after the people and before the conditions:
+    /// <c>Fixtures/notification-guide.sql</c> reseeds the one the CDC
+    /// walkthroughs send under, and the guide walkthrough adds one of its own.
+    /// A guide's condition, variables, links and header values name it by bare
+    /// ids or by references the schema refuses to cascade, so they go first.
+    /// The PHIN variable catalogue follows the guides that carry its variables:
+    /// no migration seeds it, and the guide walkthrough adds the variable it
+    /// gives its guide, which a second run could not add again.
     /// </para>
     /// <para>
     /// The exposure chain is listed in full for the same reason, and it is
@@ -457,6 +489,12 @@ public class SurvsysHarness : IDisposable
         "person_telephones",
         "person_addresses",
         "persons",
+        "condition_detail",
+        "guide_phin_var",
+        "guide_link",
+        "nmi_guide_variable",
+        "guide",
+        "phin_var",
         "conditions",
         "system_messages",
     ];
