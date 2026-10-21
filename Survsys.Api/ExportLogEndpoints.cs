@@ -42,7 +42,10 @@ public static class ExportLogEndpoints
             entry.GuideId,
             entry.QueuedAt,
             entry.SentAt,
-            entry.Outcome);
+            entry.Outcome,
+            entry.Detail,
+            entry.ProcessingId,
+            entry.Queue);
 
     /// <summary>
     /// Registers what the export-log endpoints need of the container. Kept here
@@ -135,8 +138,8 @@ internal sealed class ExportLogQueries(SurvsysDbContext database)
     }
 
     /// <summary>
-    /// One export whole — its log summary and the message generated for it — or
-    /// null where no export has that id.
+    /// One export whole — its log summary, the message generated for it and the
+    /// messages raised while it was built — or null where no export has that id.
     /// </summary>
     /// <remarks>
     /// The summary and the message are read in the one query: the filter sits
@@ -154,7 +157,14 @@ internal sealed class ExportLogQueries(SurvsysDbContext database)
                     entry.GuideId,
                     entry.QueuedAt,
                     entry.SentAt,
-                    entry.Outcome),
-                entry.GeneratedMessage))
+                    entry.Outcome,
+                    entry.Detail,
+                    entry.ProcessingId,
+                    entry.Queue),
+                entry.GeneratedMessage,
+                entry.Details
+                    .OrderBy(detail => detail.Id)
+                    .Select(detail => new CdcExportLogMessageResponse(detail.PhinVar, detail.Message, detail.Severity))
+                    .ToList()))
             .SingleOrDefaultAsync(cancellationToken);
 }

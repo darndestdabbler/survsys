@@ -4,8 +4,9 @@
 
    Every element a later walkthrough will name carries an identifier of its
    own — `generated-message-review-heading`, `-back`, `-loading`, `-error`,
-   `-record`, `-guide`, `-queued`, `-sent`, `-outcome`, `-message` and
-   `-none`. A test selects by those and not by a MudBlazor class or a cell's
+   `-record`, `-guide`, `-queued`, `-sent`, `-outcome`, `-detail`,
+   `-processing`, `-queue`, `-messages` (the build's messages with their
+   severities), `-message` and `-none`. A test selects by those and not by a MudBlazor class or a cell's
    position. *@
 @page "/export-log/{Id:int}"
 @inject ExportLogClient Client
@@ -55,9 +56,53 @@ else if (asked.Value is { } detail)
                         @(string.IsNullOrWhiteSpace(detail.Entry.Outcome) ? "—" : detail.Entry.Outcome)
                     </td>
                 </tr>
+                <tr>
+                    <th scope="row">Detail</th>
+                    <td id="generated-message-review-detail">
+                        @(string.IsNullOrWhiteSpace(detail.Entry.Detail) ? "—" : detail.Entry.Detail)
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Processing</th>
+                    <td id="generated-message-review-processing">
+                        @(string.IsNullOrWhiteSpace(detail.Entry.ProcessingId) ? "—" : detail.Entry.ProcessingId)
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Queue</th>
+                    <td id="generated-message-review-queue">
+                        @(string.IsNullOrWhiteSpace(detail.Entry.Queue) ? "—" : detail.Entry.Queue)
+                    </td>
+                </tr>
             </tbody>
         </MudSimpleTable>
     </MudPaper>
+
+    @if (detail.Messages.Count > 0)
+    {
+        <MudText Typo="Typo.h6" GutterBottom="true">Messages</MudText>
+        <MudPaper Elevation="1" Class="mb-4">
+            <MudSimpleTable id="generated-message-review-messages" Dense="true">
+                <thead>
+                    <tr>
+                        <th>Severity</th>
+                        <th>PHIN variable</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var message in detail.Messages)
+                    {
+                        <tr data-export-message>
+                            <td data-export-message-severity>@message.Severity</td>
+                            <td data-export-message-variable>@(message.PhinVar ?? "—")</td>
+                            <td data-export-message-text>@message.Message</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
 
     <MudText Typo="Typo.h6" GutterBottom="true">Generated message</MudText>
     @if (string.IsNullOrEmpty(detail.GeneratedMessage))

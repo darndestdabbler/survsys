@@ -99,7 +99,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 85 | Editor settings ignored, and the integration sign-in flake | no | 2026-10-20 |
 | 86 | Phase 10 walkthroughs | no | 2026-10-20 |
 | 87 | Release 0.11.0 (release: 0.11.0) | yes | 2026-10-21 |
-| 88 | The notification queue worker and the export log | — | not declared |
+| 88 | The notification queue worker and the export log | no | 2026-10-21 |
 | 89 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
 | 90 | Guide, rule set and value set administration | — | not declared |
 | 91 | Transport to CDC | — | not declared |
@@ -790,3 +790,13 @@ Write the four Phase 10 walkthroughs and the Playwright test named after each: f
 **Releasable: yes.**
 
 Release 0.11.0: the framework packs and publishes what is on the trunk.
+
+### Session 88 — The notification queue worker and the export log
+
+**Releasable: no.**
+
+Wire the notification pipeline that is built but unconnected. Survsys.Data gains nmi_log_detail (one row per message a run raised: the log row, the PHIN variable, the message and its severity error/warning/info) and two columns on nmi_log, processing_id and queue, in one migration. Survsys.Api gains NotificationMessageBuilder, which loads a case and the notification reference tables from SurvsysDbContext, projects them into the messaging records (PhinVariableCatalog, LoadedRuleSet, EpiTraxRecord), maps the case's PHIN variables with PhinVariableMapper, formats each with the formatter its rule_set label names (repeating-group variables through RepeatingGroupProcessor), and generates the ORU^R01 with OruR01Generator, returning the message and every formatter message with its severity. NotificationQueueService, a hosted service shaped like MessageProcessingService with NotificationQueueOptions (section NotificationQueue: PollIntervalSeconds, off when null as shipped; ProcessingId production/training/debug, written to MSH-11 as P/T/D; Queue production/onboarding/batch, recorded on each log row), has a static Process pass that takes each released (unheld) entry off nmi_export_queue, builds its message, sends it with CdcTransmitter, and writes an nmi_log row with outcome, detail, the generated message and its detail rows, removing the entry whatever the outcome; a build that raises an error is logged as a failure without a send. POST /api/notification-queue/process runs the same pass now and returns how many entries it processed, with a Process now button on the Notification queue screen. The export log's contracts, endpoint and screens carry each run's detail, processing id, queue and detail rows, and the generated-message screen shows them beside the message the worker made. Integration tests take a queued case through to its log row against a stub CDC endpoint, and log a refused send as a failure.
+
+**Amended after acceptance:**
+
+- 2026-10-21 — step 'export-log-detail-data': its checks: git grep reads only tracked files; the new migration is untracked until the commit, so the check needs --untracked (claude-code (anthropic, claude-opus-5-5))

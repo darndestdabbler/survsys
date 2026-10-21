@@ -31,10 +31,19 @@ namespace Survsys.Contracts;
 /// <param name="Outcome">
 /// The outcome of the export as a short code, or null while it is unsent.
 /// </param>
+/// <param name="Detail">The detail behind the outcome, or null where there is none.</param>
+/// <param name="ProcessingId">
+/// The processing id the message was generated under (<c>P</c>, <c>T</c> or
+/// <c>D</c>), or null where none was recorded.
+/// </param>
+/// <param name="Queue">The queue the export ran from, or null where none was recorded.</param>
 public record CdcExportLogItemResponse(
     int Id,
     string RecordNumber,
     int? GuideId,
     DateTime QueuedAt,
     DateTime? SentAt,
-    string? Outcome);
+    string? Outcome,
+    string? Detail,
+    string? ProcessingId,
+    string? Queue);

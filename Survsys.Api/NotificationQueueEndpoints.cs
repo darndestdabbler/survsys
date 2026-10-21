@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Survsys.Contracts;
 using Survsys.Data;
 
@@ -8,7 +9,8 @@ namespace Survsys.Api;
 /// <summary>
 /// <c>GET /api/notification-queue</c>: the outbound CDC notification queue,
 /// paged, oldest first. <c>PATCH /api/notification-queue/{id}/hold</c>: raises
-/// or lowers a queued case's hold.
+/// or lowers a queued case's hold. <c>POST /api/notification-queue/process</c>:
+/// builds, sends and logs every released case now.
 /// </summary>
 /// <remarks>
 /// The read side of the queue the auto-queue fills: <c>CaseNotificationQueue</c>
@@ -43,6 +45,11 @@ public static class NotificationQueueEndpoints
         routes.MapPatch("/api/notification-queue/{personConditionId:int}/hold", SetNotificationHold)
             .WithName("SetNotificationHold")
             .WithSummary("Raises or lowers a queued case's hold on export.");
+
+        routes.MapPost("/api/notification-queue/process", ProcessNotificationQueue)
+            .WithName("ProcessNotificationQueue")
+            .WithSummary("Builds, sends and logs every released queued case now, as the queue worker's "
+                + "pass does.");
 
         routes.MapPost("/api/person-conditions/{id:int}/notification-queue", QueueCaseForNotification)
             .WithName("QueueCaseForNotification")
@@ -88,6 +95,11 @@ public static class NotificationQueueEndpoints
         return TypedResults.Ok(row);
     }
 
+    private static async Task<Ok<NotificationQueueProcessResponse>> ProcessNotificationQueue(
+        NotificationQueueQueries queue,
+        CancellationToken cancellationToken = default) =>
+        TypedResults.Ok(new NotificationQueueProcessResponse(await queue.Process(cancellationToken)));
+
     private static async Task<Results<Ok<NotificationQueueItemResponse>, ProblemHttpResult>> QueueCaseForNotification(
         NotificationQueueQueries queue,
         int id,
@@ -118,8 +130,19 @@ public static class NotificationQueueEndpoints
 /// </remarks>
 internal sealed class NotificationQueueQueries(
     SurvsysDbContext database,
-    CaseNotificationQueue notifications)
+    CaseNotificationQueue notifications,
+    NotificationMessageBuilder builder,
+    CdcTransmitter transmitter,
+    IOptions<NotificationQueueOptions> options)
 {
+    /// <summary>
+    /// Runs the queue worker's pass now, under the configured processing id and
+    /// queue, and answers with how many entries it processed.
+    /// </summary>
+    public Task<int> Process(CancellationToken cancellationToken) =>
+        NotificationQueueService.Process(
+            database, builder, transmitter, options.Value, TimeProvider.System, cancellationToken);
+
     /// <summary>
     /// One page of the queue, oldest first by queued time, each entry joined to
     /// its case for the record number, patient name and condition.

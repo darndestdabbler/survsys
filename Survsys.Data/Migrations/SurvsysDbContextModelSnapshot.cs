@@ -351,6 +351,42 @@ namespace Survsys.Data.Migrations
                     b.ToTable("tasks", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.CdcExportLogDetail", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("LogId")
+                        .HasColumnType("int")
+                        .HasColumnName("log_id");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("message");
+
+                    b.Property<string>("PhinVar")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("phin_var");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("severity");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LogId");
+
+                    b.ToTable("nmi_log_detail", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.CdcExportLogEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -380,6 +416,16 @@ namespace Survsys.Data.Migrations
                     b.Property<int>("PersonConditionId")
                         .HasColumnType("int")
                         .HasColumnName("person_condition_id");
+
+                    b.Property<string>("ProcessingId")
+                        .HasMaxLength(1)
+                        .HasColumnType("nvarchar(1)")
+                        .HasColumnName("processing_id");
+
+                    b.Property<string>("Queue")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("queue");
 
                     b.Property<DateTime>("QueuedAt")
                         .HasColumnType("datetime2")
@@ -15380,6 +15426,15 @@ namespace Survsys.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
+            modelBuilder.Entity("Survsys.Data.CdcExportLogDetail", b =>
+                {
+                    b.HasOne("Survsys.Data.CdcExportLogEntry", null)
+                        .WithMany("Details")
+                        .HasForeignKey("LogId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Survsys.Data.CdcExportLogEntry", b =>
                 {
                     b.HasOne("Survsys.Data.PersonCondition", null)
@@ -15907,6 +15962,11 @@ namespace Survsys.Data.Migrations
                         .HasForeignKey("AgencyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.CdcExportLogEntry", b =>
+                {
+                    b.Navigation("Details");
                 });
 
             modelBuilder.Entity("Survsys.Data.Person", b =>

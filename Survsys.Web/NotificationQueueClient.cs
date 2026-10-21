@@ -32,6 +32,11 @@ public sealed class NotificationQueueClient(HttpClient http)
     /// <summary>How a failure to queue a case for notification by hand starts.</summary>
     public const string QueueingFailurePrefix = "The case could not be queued for notification";
 
+    /// <summary>How a failure to process the queue now starts.</summary>
+    public const string ProcessingFailurePrefix = "The notification queue could not be processed";
+
+    private static readonly ApiAsk Processing = new(ProcessingFailurePrefix, "how many cases were processed");
+
     private static readonly ApiAsk Listing = new(QueueFailurePrefix, "a page of the notification queue");
 
     private static readonly ApiAsk Holding = new(HoldFailurePrefix, "the queued case in its new state");
@@ -86,6 +91,17 @@ public sealed class NotificationQueueClient(HttpClient http)
         Queueing.Post<object?, NotificationQueueItemResponse>(
             http,
             $"api/person-conditions/{personConditionId}/notification-queue",
+            body: null,
+            cancellationToken);
+
+    /// <summary>
+    /// Processes the queue now — every released case built, sent and logged —
+    /// answering with how many were processed or with why none were.
+    /// </summary>
+    public Task<Asked<NotificationQueueProcessResponse>> ProcessNow(CancellationToken cancellationToken = default) =>
+        Processing.Post<object?, NotificationQueueProcessResponse>(
+            http,
+            "api/notification-queue/process",
             body: null,
             cancellationToken);
 }

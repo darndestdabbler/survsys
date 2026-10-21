@@ -63,6 +63,25 @@ public class NotificationQueueEndpointsTests(SqlServerFixture server) : IDisposa
     }
 
     /// <summary>
+    /// Processing an empty queue now answers that it processed nothing, and
+    /// writes nothing to the export log.
+    /// </summary>
+    [Fact]
+    public async Task ProcessingAnEmptyQueueProcessesNothing()
+    {
+        await Clear();
+
+        using var response = await api.CreateClient().PostAsync("/api/notification-queue/process", content: null);
+        response.EnsureSuccessStatusCode();
+
+        var done = (await response.Content.ReadFromJsonAsync<NotificationQueueProcessResponse>(Json))!;
+        Assert.Equal(0, done.Processed);
+
+        await using var context = server.NewContext();
+        Assert.False(await context.CdcExportLog.AnyAsync());
+    }
+
+    /// <summary>
     /// A hold is raised and then lowered: each PATCH answers with the entry in
     /// its new state, and a case that is not in the queue is a 404.
     /// </summary>

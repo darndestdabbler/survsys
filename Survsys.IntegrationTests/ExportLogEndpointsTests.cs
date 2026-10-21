@@ -62,6 +62,7 @@ public class ExportLogEndpointsTests(SqlServerFixture server) : IDisposable
             Assert.Equal(2, page.TotalCount);
             Assert.Equal("EXP-NEW", page.Items[0].RecordNumber);
             Assert.Equal("accepted", page.Items[0].Outcome);
+            Assert.Equal("The CDC endpoint answered 200.", page.Items[0].Detail);
             Assert.NotNull(page.Items[0].SentAt);
             Assert.Equal("EXP-OLD", page.Items[1].RecordNumber);
             Assert.Null(page.Items[1].SentAt);
@@ -73,8 +74,9 @@ public class ExportLogEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     /// <summary>
-    /// One export read whole carries the message generated for it, the summary
-    /// reading the same as it does in the list.
+    /// One export read whole carries the message generated for it and the
+    /// messages raised building it, the summary reading the same as it does in
+    /// the list.
     /// </summary>
     [Fact]
     public async Task OneExportIsReadWholeWithItsGeneratedMessage()
@@ -103,6 +105,11 @@ public class ExportLogEndpointsTests(SqlServerFixture server) : IDisposable
             Assert.Equal(id, detail.Entry.Id);
             Assert.Equal("EXP-ONE", detail.Entry.RecordNumber);
             Assert.Equal(message, detail.GeneratedMessage);
+            Assert.Equal("P", detail.Entry.ProcessingId);
+            Assert.Equal("production", detail.Entry.Queue);
+            var raised = Assert.Single(detail.Messages);
+            Assert.Equal("TST999", raised.PhinVar);
+            Assert.Equal("Warning", raised.Severity);
         }
         finally
         {
@@ -161,6 +168,10 @@ public class ExportLogEndpointsTests(SqlServerFixture server) : IDisposable
             GeneratedMessage = generatedMessage,
             SentAt = sentAt,
             Outcome = outcome,
+            Detail = outcome is null ? null : "The CDC endpoint answered 200.",
+            ProcessingId = "P",
+            Queue = "production",
+            Details = [new CdcExportLogDetail { PhinVar = "TST999", Message = "No rule set formats this variable.", Severity = "Warning" }],
         };
 
         context.CdcExportLog.Add(entry);

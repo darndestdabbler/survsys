@@ -6,7 +6,9 @@
    Every element a later walkthrough will name carries an identifier of its
    own — `notification-queue-heading`, `notification-queue-loading`,
    `notification-queue-error`, `notification-queue-total`,
-   `notification-queue-none`, `notification-queue-hold-error`, the table, and
+   `notification-queue-none`, `notification-queue-hold-error`, the
+   `notification-queue-process` button with its `-processed` count and
+   `-process-error`, the table, and
    one row per case keyed by its id with a hold button of its own. A test
    selects by those and not by a MudBlazor class or a cell's position. *@
 @page "/notification-queue"
@@ -22,6 +24,27 @@
     The cases waiting to be notified to CDC, oldest first. Hold a case to keep it
     back from export pending review, or release one to let it go.
 </MudText>
+
+<div class="d-flex align-center gap-4 mb-4">
+    <MudButton id="notification-queue-process" Variant="Variant.Filled" Color="Color.Primary"
+               Disabled="@working" OnClick="ProcessNow">
+        Process now
+    </MudButton>
+    @if (processed is { } count)
+    {
+        <MudText id="notification-queue-processed" Typo="Typo.body2">
+            @count case(s) processed; each is on the export log.
+        </MudText>
+    }
+</div>
+
+@if (processFailure is { } processWhyNot)
+{
+    <MudAlert id="notification-queue-process-error" Severity="Severity.Error"
+              Variant="Variant.Filled" Class="mb-4">
+        @processWhyNot
+    </MudAlert>
+}
 
 @if (asked is null)
 {
@@ -128,6 +151,10 @@ else
 
     private string? holdFailure;
 
+    private string? processFailure;
+
+    private int? processed;
+
     private Asked<PagedResult<NotificationQueueItemResponse>>? asked;
 
     private int LastPage => Math.Max(1, ((asked?.Value?.TotalCount ?? 0) + PageSize - 1) / PageSize);
@@ -161,6 +188,37 @@ else
             else
             {
                 holdFailure = changed.Failure;
+            }
+        }
+        finally
+        {
+            working = false;
+        }
+    }
+
+    /// <summary>
+    /// Processes the queue now, says how many cases went, and reloads the page
+    /// so the processed cases are gone from it — or shows why none went.
+    /// </summary>
+    private async Task ProcessNow()
+    {
+        processFailure = null;
+        processed = null;
+        working = true;
+
+        try
+        {
+            var done = await Client.ProcessNow();
+
+            if (done.Value is { } result)
+            {
+                processed = result.Processed;
+                page = 1;
+                await Load();
+            }
+            else
+            {
+                processFailure = done.Failure;
             }
         }
         finally

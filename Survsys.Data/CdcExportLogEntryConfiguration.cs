@@ -10,8 +10,9 @@ namespace Survsys.Data;
 /// <remarks>
 /// Internal, for the reason every configuration here is;
 /// <see cref="SurvsysDbContext"/> finds it by scanning the assembly. No
-/// navigation on either side: deleting the case cascades to its log rows, the
-/// export history being a detail of the case. The record number and the
+/// navigation to the case: deleting the case cascades to its log rows, the
+/// export history being a detail of the case. Its
+/// <see cref="CdcExportLogEntry.Details"/> are deleted with it in turn. The record number and the
 /// outcome code are short and bounded; the generated message and the detail
 /// are unbounded text, each as long as it is.
 /// </remarks>
@@ -20,6 +21,8 @@ internal sealed class CdcExportLogEntryConfiguration
 {
     private const int RecordNumberLength = 20;
     private const int OutcomeLength = 20;
+    private const int ProcessingIdLength = 1;
+    private const int QueueLength = 20;
 
     public void Configure(EntityTypeBuilder<CdcExportLogEntry> builder)
     {
@@ -40,6 +43,18 @@ internal sealed class CdcExportLogEntryConfiguration
             .HasColumnName("outcome")
             .HasMaxLength(OutcomeLength);
         builder.Property(entry => entry.Detail).HasColumnName("detail");
+        builder.Property(entry => entry.ProcessingId)
+            .HasColumnName("processing_id")
+            .HasMaxLength(ProcessingIdLength);
+        builder.Property(entry => entry.Queue)
+            .HasColumnName("queue")
+            .HasMaxLength(QueueLength);
+
+        builder.HasMany(entry => entry.Details)
+            .WithOne()
+            .HasForeignKey(detail => detail.LogId)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne<PersonCondition>()
             .WithMany()

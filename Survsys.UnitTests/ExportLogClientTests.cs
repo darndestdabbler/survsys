@@ -33,7 +33,10 @@ public class ExportLogClientTests
               "guideId": 3,
               "queuedAt": "2026-10-17T05:00:00Z",
               "sentAt": "2026-10-17T05:05:00Z",
-              "outcome": "accepted"
+              "outcome": "accepted",
+              "detail": "CDC accepted the message.",
+              "processingId": "P",
+              "queue": "production"
             },
             {
               "id": 6,
@@ -41,7 +44,10 @@ public class ExportLogClientTests
               "guideId": null,
               "queuedAt": "2026-10-17T04:00:00Z",
               "sentAt": null,
-              "outcome": null
+              "outcome": null,
+              "detail": null,
+              "processingId": null,
+              "queue": null
             }
           ],
           "page": 1,
@@ -59,9 +65,15 @@ public class ExportLogClientTests
             "guideId": 3,
             "queuedAt": "2026-10-17T05:00:00Z",
             "sentAt": "2026-10-17T05:05:00Z",
-            "outcome": "accepted"
+            "outcome": "accepted",
+            "detail": "CDC accepted the message.",
+            "processingId": "P",
+            "queue": "production"
           },
-          "generatedMessage": "MSH|^~\\&|SURVSYS|..."
+          "generatedMessage": "MSH|^~\\&|SURVSYS|...",
+          "messages": [
+            { "phinVar": "TST999", "message": "No rule set formats this variable.", "severity": "Warning" }
+          ]
         }
         """;
 
@@ -93,6 +105,9 @@ public class ExportLogClientTests
         Assert.Equal(2, log.Value?.TotalCount);
         Assert.Equal("202600042", log.Value?.Items[0].RecordNumber);
         Assert.Equal("accepted", log.Value?.Items[0].Outcome);
+        Assert.Equal("CDC accepted the message.", log.Value?.Items[0].Detail);
+        Assert.Equal("P", log.Value?.Items[0].ProcessingId);
+        Assert.Equal("production", log.Value?.Items[0].Queue);
         Assert.Null(log.Value?.Items[1].Outcome);
         Assert.Null(log.Value?.Items[1].GuideId);
     }
@@ -124,6 +139,9 @@ public class ExportLogClientTests
         Assert.Equal(7, detail.Value?.Entry.Id);
         Assert.Equal("accepted", detail.Value?.Entry.Outcome);
         Assert.StartsWith("MSH|", detail.Value?.GeneratedMessage);
+        var message = Assert.Single(detail.Value!.Messages);
+        Assert.Equal("TST999", message.PhinVar);
+        Assert.Equal("Warning", message.Severity);
     }
 
     /// <summary>

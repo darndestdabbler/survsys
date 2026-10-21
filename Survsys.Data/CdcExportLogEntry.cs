@@ -19,8 +19,12 @@ namespace Survsys.Data;
 /// of a log row: the case, its record number and guide, the generated message,
 /// the queued and sent times, and the outcome.
 ///
-/// A thin holder of cross-table ids with no navigation, as the reference rows
-/// are: the case is <see cref="PersonConditionId"/> and the guide is
+/// The per-variable messages are now its <see cref="Details"/>, the legacy
+/// <c>nmi.log_detail</c>; the processing id and queue the export ran under
+/// are recorded on the row.
+///
+/// Otherwise a thin holder of cross-table ids, as the reference rows are: the
+/// case is <see cref="PersonConditionId"/> and the guide is
 /// <see cref="GuideId"/>, each a bare int read elsewhere, not a link walked
 /// from here.
 /// </remarks>
@@ -78,4 +82,24 @@ public class CdcExportLogEntry
     /// carries whatever was said.
     /// </summary>
     public string? Detail { get; set; }
+
+    /// <summary>
+    /// The processing id the message was generated under — <c>P</c>
+    /// (production), <c>T</c> (training) or <c>D</c> (debug), as MSH-11 carries
+    /// it — or null where none was recorded.
+    /// </summary>
+    public string? ProcessingId { get; set; }
+
+    /// <summary>
+    /// The queue the export ran from — <c>production</c>, <c>onboarding</c> or
+    /// <c>batch</c> — or null where none was recorded.
+    /// </summary>
+    public string? Queue { get; set; }
+
+    /// <summary>
+    /// The messages building the export raised, each with its severity — the
+    /// legacy <c>nmi.log_detail</c> rows. The one navigation here, so a log row
+    /// and its details are written together.
+    /// </summary>
+    public List<CdcExportLogDetail> Details { get; set; } = [];
 }

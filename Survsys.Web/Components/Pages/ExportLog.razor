@@ -1,6 +1,7 @@
 @* The CDC export log: the history of case exports, as the export-log endpoint
-   returns them. One page of rows, newest first, each naming the export and
-   linking into the message that was generated for it.
+   returns them. One page of rows, newest first, each naming the export, its
+   run's outcome and detail, processing id and queue, and linking into the
+   message that was generated for it.
 
    Every element a later walkthrough will name carries an identifier of its
    own — `export-log-heading`, `export-log-loading`, `export-log-error`,
@@ -47,6 +48,9 @@ else if (asked.Value is { } result)
                         <th>Queued</th>
                         <th>Sent</th>
                         <th>Outcome</th>
+                        <th>Detail</th>
+                        <th>Processing</th>
+                        <th>Queue</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -59,6 +63,9 @@ else if (asked.Value is { } result)
                             <td data-export-queued>@export.QueuedAt.ToString("yyyy-MM-dd HH:mm")</td>
                             <td data-export-sent>@(export.SentAt is { } sent ? sent.ToString("yyyy-MM-dd HH:mm") : "—")</td>
                             <td data-export-outcome>@(string.IsNullOrWhiteSpace(export.Outcome) ? "—" : export.Outcome)</td>
+                            <td data-export-detail>@(string.IsNullOrWhiteSpace(export.Detail) ? "—" : export.Detail)</td>
+                            <td data-export-processing>@(string.IsNullOrWhiteSpace(export.ProcessingId) ? "—" : export.ProcessingId)</td>
+                            <td data-export-queue>@(string.IsNullOrWhiteSpace(export.Queue) ? "—" : export.Queue)</td>
                         </tr>
                     }
                 </tbody>

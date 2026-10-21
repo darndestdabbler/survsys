@@ -166,6 +166,40 @@ public class NotificationQueueClientTests
     }
 
     /// <summary>
+    /// Processing the queue now: a POST to the queue's process URL, and the
+    /// count processed comes back; a failure carries the processing prefix.
+    /// </summary>
+    [Fact]
+    public async Task ProcessNowPostsToTheProcessUrl()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new NotificationQueueClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, """{ "processed": 3 }""");
+        }));
+
+        var done = await client.ProcessNow();
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal(
+            "http://api.example.test/api/notification-queue/process",
+            sent?.RequestUri?.ToString());
+        Assert.True(done.Succeeded);
+        Assert.Equal(3, done.Value?.Processed);
+
+        var failing = new NotificationQueueClient(Transport(_ => Answer(
+            HttpStatusCode.Forbidden, """{ "status": 403 }""")));
+
+        var refused = await failing.ProcessNow();
+
+        Assert.False(refused.Succeeded);
+        Assert.StartsWith(NotificationQueueClient.ProcessingFailurePrefix, refused.Failure);
+        Assert.Contains("403", refused.Failure);
+    }
+
+    /// <summary>
     /// A case the API tier has no case for, answered 404: the message starts
     /// with this client's queueing prefix — not its queue or hold one — and
     /// names the status rather than the body.

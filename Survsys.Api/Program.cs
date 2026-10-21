@@ -141,6 +141,15 @@ builder.Services.AddHostedService<MessageNotificationService>();
 builder.Services.Configure<CdcTransmissionOptions>(
     builder.Configuration.GetSection(CdcTransmissionOptions.SectionName));
 builder.Services.AddHttpClient<CdcTransmitter>();
+// A case's notification message, built from its guide's PHIN variables and
+// their rule sets.
+builder.Services.AddScoped<NotificationMessageBuilder>();
+
+// The export queue worker: builds, sends and logs each released case's
+// notification. Off unless a poll interval is configured.
+builder.Services.Configure<NotificationQueueOptions>(
+    builder.Configuration.GetSection(NotificationQueueOptions.SectionName));
+builder.Services.AddHostedService<NotificationQueueService>();
 
 // Transmission of a case to IBIS, the external epidemiology reporting system:
 // the same shape as the CDC transmitter, and off the same way until an

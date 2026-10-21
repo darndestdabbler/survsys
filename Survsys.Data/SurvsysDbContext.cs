@@ -120,6 +120,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
 
     public DbSet<CdcExportLogEntry> CdcExportLog => Set<CdcExportLogEntry>();
 
+    public DbSet<CdcExportLogDetail> CdcExportLogDetails => Set<CdcExportLogDetail>();
+
     public DbSet<PhinVariable> PhinVariables => Set<PhinVariable>();
 
     public DbSet<NotificationGuide> NotificationGuides => Set<NotificationGuide>();
