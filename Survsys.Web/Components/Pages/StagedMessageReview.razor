@@ -1,0 +1,482 @@
+@* One staged message whole: its queue summary and the raw HL7 it arrived as,
+   read through the detail endpoint. This step shows it; the promote action a
+   reviewer takes from here is a later step's, added to this same screen.
+
+   Every element a later walkthrough will name carries an identifier of its
+   own — `staged-message-review-heading`, `-loading`, `-error`, `-source`,
+   `-received`, `-state`, `-qa`, `-exception` and `-raw`. A test selects by
+   those and not by a MudBlazor class or a cell's position.
+
+   The review state is the stored code the wire carries; this tier reads
+   Survsys.Contracts and not Survsys.Data, so the label is a handful of
+   literals, as the queue screen's is. *@
+@page "/staged-messages/{Id:int}"
+@inject MessageQueueClient Client
+@inject ConditionsClient Conditions
+@inject AgenciesClient Agencies
+@inject PersonsClient Persons
+
+<PageTitle>Staged message — Survsys</PageTitle>
+
+<MudText id="staged-message-review-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Staged message @Id
+</MudText>
+
+<MudButton id="staged-message-review-back" Variant="Variant.Text" Href="/staged-messages" Class="mb-4">
+    Back to the queue
+</MudButton>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="staged-message-review-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } detail)
+{
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        <MudSimpleTable Dense="true" Bordered="false" Striped="false">
+            <tbody>
+                <tr>
+                    <th scope="row">Source</th>
+                    <td id="staged-message-review-source">
+                        @(string.IsNullOrWhiteSpace(detail.Message.Source) ? "—" : detail.Message.Source)
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Received</th>
+                    <td id="staged-message-review-received">@detail.Message.ReceivedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                </tr>
+                <tr>
+                    <th scope="row">Review state</th>
+                    <td id="staged-message-review-state">@Label(detail.Message.ReviewStatus)</td>
+                </tr>
+                <tr>
+                    <th scope="row">QA</th>
+                    <td id="staged-message-review-qa">@(detail.Message.QaFlagged ? "Flagged for quality assurance" : "Not flagged")</td>
+                </tr>
+                <tr>
+                    <th scope="row">Exception</th>
+                    <td id="staged-message-review-exception">
+                        @(string.IsNullOrWhiteSpace(detail.Message.ExceptionDetail) ? "—" : detail.Message.ExceptionDetail)
+                    </td>
+                </tr>
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+
+    <MudText Typo="Typo.h6" GutterBottom="true">Raw message</MudText>
+    <MudText Typo="Typo.body2" Class="mb-2">
+        The message exactly as the lab sent it, the ER7 text a reviewer reads to
+        decide what to do with it.
+    </MudText>
+    <MudPaper Elevation="1" Class="pa-4">
+        <pre id="staged-message-review-raw" style="white-space: pre-wrap; word-break: break-word; margin: 0;">@detail.RawMessage</pre>
+    </MudPaper>
+
+    <MudDivider Class="my-6" />
+
+    @* Promotion: the human-reviewed half of case creation. A message already
+       promoted shows nothing to promote; a message just promoted shows the
+       case it became and the notification the promotion raised; otherwise the
+       reviewer confirms the person, the disease and the agency, and a case is
+       opened only from what they confirm. *@
+    @if (detail.Message.ReviewStatus == AssignedCode)
+    {
+        <MudAlert id="staged-message-promote-done" Severity="Severity.Info">
+            This message has already been promoted to a case.
+        </MudAlert>
+    }
+    else if (promoted is { } outcome)
+    {
+        <MudAlert id="staged-message-promoted" Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+            <div id="staged-message-promoted-notification" class="mb-2">@outcome.Notification</div>
+            <MudLink id="staged-message-promoted-link"
+                     Href="@($"/event/edit/{outcome.Report.Id}")"
+                     Style="color: inherit; text-decoration: underline;">
+                Open case @outcome.Report.RecordNumber
+            </MudLink>
+        </MudAlert>
+    }
+    else
+    {
+        <MudText id="staged-message-promote-heading" Typo="Typo.h6" GutterBottom="true">
+            Promote to a case
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">
+            Find the person this report is about, then confirm the disease and
+            the investigating agency. A case is opened only from what you
+            confirm here.
+        </MudText>
+
+        @* The proposal: the message's patient matched against the people on
+           file, the best candidate offered with its score and reasons and,
+           beside it, a new person made from the patient. A proposal only — the
+           search below stays for a reviewer who disagrees with it. *@
+        @if (matches?.Failure is { } whyNoMatches)
+        {
+            <MudAlert id="staged-message-match-error" Severity="Severity.Warning" Class="mb-4">
+                @whyNoMatches
+            </MudAlert>
+        }
+        else if (matches?.Value is { } proposal)
+        {
+            <MudPaper id="staged-message-match" Elevation="1" Class="pa-4 mb-4">
+                @if (BestMatch(proposal) is { } best)
+                {
+                    <MudText id="staged-message-match-person" Typo="Typo.body1">
+                        Proposed match: <strong>@Named(best.Person)</strong> (person @best.Person.Id),
+                        born @(best.Person.BirthDate?.ToString("yyyy-MM-dd") ?? "—")
+                    </MudText>
+                    <MudText id="staged-message-match-score" Typo="Typo.body2">
+                        Score @best.Score.ToString("0") — @best.Verdict match
+                    </MudText>
+                    <MudText id="staged-message-match-reasons" Typo="Typo.body2" Class="mb-2">
+                        @string.Join("; ", best.Reasons)
+                    </MudText>
+                }
+                else
+                {
+                    <MudText id="staged-message-match-none" Typo="Typo.body1" Class="mb-2">
+                        No person on file matches this message's patient.
+                    </MudText>
+                }
+
+                <div class="d-flex gap-2">
+                    @if (BestMatch(proposal) is { } chosen)
+                    {
+                        <MudButton id="staged-message-match-use" Variant="Variant.Filled" Color="Color.Primary"
+                                   Size="Size.Small" OnClick="@(() => SelectPerson(chosen.Person))">
+                            Use this person
+                        </MudButton>
+                    }
+                    @if (proposal.Patient is { LastName: { Length: > 0 } } patient)
+                    {
+                        <MudButton id="staged-message-match-create" Variant="Variant.Outlined" Color="Color.Primary"
+                                   Size="Size.Small" Disabled="@creating" OnClick="@(() => CreatePerson(patient))">
+                            Create new person
+                        </MudButton>
+                    }
+                </div>
+
+                @if (createFailure is { } whyNotCreated)
+                {
+                    <MudAlert id="staged-message-match-create-error" Severity="Severity.Error" Class="mt-2">
+                        @whyNotCreated
+                    </MudAlert>
+                }
+            </MudPaper>
+        }
+
+        @if (loadFailure is { } whyNotReady)
+        {
+            <MudAlert id="staged-message-promote-load-error" Severity="Severity.Error"
+                      Variant="Variant.Filled" Class="mb-4">
+                @whyNotReady
+            </MudAlert>
+        }
+
+        <PersonSearchPanel RowAction="@UseThisPerson" />
+
+        @if (selectedPersonId is { } personId)
+        {
+            <MudPaper id="staged-message-promote-form" Elevation="1" Class="pa-4 mt-4 mb-4">
+                <MudText id="staged-message-promote-person" Typo="Typo.body1" Class="mb-4">
+                    Reporting on <strong>@selectedPersonName</strong> (person @personId).
+                </MudText>
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="4">
+                        @* A native date input, for the reason the creation
+                           screen's is one: what it yields is what the other
+                           tier parses. *@
+                        <MudTextField @bind-Value="firstReported"
+                                      id="staged-message-promote-first-reported"
+                                      Label="First reported to public health"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Date" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        @* Each item names its type, as the creation screen's
+                           does: the list binds a nullable int, and an item
+                           inferred from a plain int is a different type that
+                           casts wrong on the first click. *@
+                        <MudSelect @bind-Value="conditionId" id="staged-message-promote-disease"
+                                   Label="Disease" Variant="Variant.Outlined">
+                            @foreach (var condition in diseases)
+                            {
+                                <MudSelectItem T="int?" Value="@condition.Id">@condition.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudSelect @bind-Value="agencyId" id="staged-message-promote-agency"
+                                   Label="Investigating agency" Variant="Variant.Outlined">
+                            @foreach (var agency in agencies)
+                            {
+                                <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+
+                @if (complaint is { } whyNotYet)
+                {
+                    <MudAlert id="staged-message-promote-complaint" Severity="Severity.Warning" Class="mt-4">
+                        @whyNotYet
+                    </MudAlert>
+                }
+
+                @if (promoteFailure is { } whyNot)
+                {
+                    @* The tier's contract: an API failure is a message on the
+                       screen. MessageQueueClient hands over the message, which
+                       includes the 409 a message not in a promotable state
+                       comes back as. *@
+                    <MudAlert id="staged-message-promote-error" Severity="Severity.Error"
+                              Variant="Variant.Filled" Class="mt-4">
+                        @whyNot
+                    </MudAlert>
+                }
+
+                <div class="d-flex gap-2 mt-4">
+                    <MudButton id="staged-message-promote-submit" Variant="Variant.Filled"
+                               Color="Color.Primary" Disabled="@promoting" OnClick="@Promote">
+                        Promote to a case
+                    </MudButton>
+                </div>
+            </MudPaper>
+        }
+    }
+}
+else
+{
+    @* The tier's contract: an API failure is a message on the screen, never
+       an unhandled exception in a circuit. MessageQueueClient hands over the
+       message; this is where it is shown — a message that is not there reads
+       as the client's not-found sentence. *@
+    <MudAlert id="staged-message-review-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    /// <summary>
+    /// The code a promoted message sits in, mirrored from the review
+    /// vocabulary the API tier owns. This tier reads Survsys.Contracts and not
+    /// Survsys.Data, so the code is a literal here, as the queue screen's
+    /// labels are — a message in it has already become a case and offers no
+    /// promote action.
+    /// </summary>
+    private const string AssignedCode = "assigned";
+
+    /// <summary>
+    /// How many conditions this screen asks for: the whole catalogue in one
+    /// page, as the creation screen reads it.
+    /// </summary>
+    private const int Catalogue = 200;
+
+    /// <summary>The message this screen reads, by its queue identifier.</summary>
+    [Parameter]
+    public int Id { get; set; }
+
+    private Asked<StagedMessageDetailResponse>? asked;
+
+    private IReadOnlyList<ConditionResponse> diseases = [];
+
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private int? selectedPersonId;
+
+    private string? selectedPersonName;
+
+    private int? conditionId;
+
+    private int? agencyId;
+
+    private string? firstReported;
+
+    private bool promoting;
+
+    private string? complaint;
+
+    private string? promoteFailure;
+
+    private string? loadFailure;
+
+    private PromoteMessageResponse? promoted;
+
+    private Asked<StagedMessagePersonMatchResponse>? matches;
+
+    private bool creating;
+
+    private string? createFailure;
+
+    /// <summary>
+    /// The conditions and agencies a promotion chooses from, read once: the
+    /// active conditions, because only those may be chosen for a new report,
+    /// and every agency. A failure to read either is shown where the promote
+    /// form is, so the reviewer is told rather than offered empty dropdowns.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        var conditions = await Conditions.Page(1, Catalogue);
+        var listed = await Agencies.All();
+
+        diseases = conditions.Value?.Items.Where(condition => condition.Active).ToList() ?? [];
+        agencies = listed.Value?.Items ?? [];
+
+        loadFailure = conditions.Failure ?? listed.Failure;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        asked = null;
+        matches = null;
+        asked = await Client.Find(Id);
+
+        if (asked.Value is { Message.ReviewStatus: not AssignedCode })
+        {
+            matches = await Client.PersonMatches(Id);
+        }
+    }
+
+    /// <summary>
+    /// The candidate to propose: the best one that is a match at all, or none.
+    /// </summary>
+    private static PersonMatchCandidateResponse? BestMatch(StagedMessagePersonMatchResponse proposal) =>
+        proposal.Candidates.FirstOrDefault(candidate => candidate.Verdict != PersonMatchCandidateResponse.None);
+
+    /// <summary>
+    /// Puts the message's patient on file as a new person and makes them the
+    /// person this message is promoted on behalf of.
+    /// </summary>
+    private async Task CreatePerson(CreatePersonRequest patient)
+    {
+        createFailure = null;
+        creating = true;
+
+        try
+        {
+            var created = await Persons.Create(patient);
+
+            if (created.Value is { } person)
+            {
+                SelectPerson(person);
+            }
+            else
+            {
+                createFailure = created.Failure;
+            }
+        }
+        finally
+        {
+            creating = false;
+        }
+    }
+
+    private static string Named(PersonResponse person) =>
+        string.IsNullOrWhiteSpace(person.FirstName)
+            ? person.LastName
+            : $"{person.LastName}, {person.FirstName}";
+
+    /// <summary>
+    /// What each person found offers: becoming the person this message is
+    /// promoted on behalf of. Choosing one reveals the disease and agency,
+    /// which is the rest of the reviewed decision.
+    /// </summary>
+    private RenderFragment<PersonResponse> UseThisPerson => person =>
+        @<MudButton id="@($"staged-message-promote-person-{person.Id}")"
+                    data-promote-person="@person.Id"
+                    Variant="Variant.Filled"
+                    Color="Color.Primary"
+                    Size="Size.Small"
+                    OnClick="@(() => SelectPerson(person))">
+            Use this person
+        </MudButton>;
+
+    private void SelectPerson(PersonResponse person)
+    {
+        selectedPersonId = person.Id;
+        selectedPersonName = Named(person);
+        complaint = null;
+        promoteFailure = null;
+    }
+
+    /// <summary>
+    /// Promotes the message to a case from the reviewer's confirmed decision,
+    /// refusing to send one that is not yet complete and showing the case and
+    /// its notification on success or the API tier's message on failure.
+    /// </summary>
+    private async Task Promote()
+    {
+        if (selectedPersonId is not { } personId)
+        {
+            complaint = "Choose the person this report is about.";
+
+            return;
+        }
+
+        if (conditionId is not { } disease)
+        {
+            complaint = "Choose the disease this report is for.";
+
+            return;
+        }
+
+        DateOnly? reported = null;
+
+        if (!string.IsNullOrWhiteSpace(firstReported))
+        {
+            if (!DateOnly.TryParse(
+                firstReported,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var parsed))
+            {
+                complaint = "Give the date first reported to public health as yyyy-mm-dd, "
+                    + "or leave it empty.";
+
+                return;
+            }
+
+            reported = parsed;
+        }
+
+        complaint = null;
+        promoteFailure = null;
+        promoting = true;
+
+        try
+        {
+            var outcome = await Client.Promote(Id, new PromoteMessageRequest(
+                PersonId: personId,
+                ConditionId: disease,
+                AgencyId: agencyId,
+                FirstReportedPhDate: reported));
+
+            if (outcome.Value is { } response)
+            {
+                promoted = response;
+            }
+            else
+            {
+                promoteFailure = outcome.Failure;
+            }
+        }
+        finally
+        {
+            promoting = false;
+        }
+    }
+
+    /// <summary>
+    /// A review-state code read as its label, falling back to the code itself
+    /// for one this screen does not list. The codes are the wire's; the API
+    /// tier owns the vocabulary, and this is display only.
+    /// </summary>
+    private static string Label(string reviewStatus) => reviewStatus switch
+    {
+        "entry" => "Queued for review",
+        "pending" => "Held for review",
+        "exception" => "Exception",
+        _ => reviewStatus,
+    };
+}

@@ -1,0 +1,249 @@
+@* The whole case on one page, for the browser to print or save as PDF.
+
+   Every section is read through the client its tab reads through, and shown
+   as plain label-and-value tables rather than as the tabs' forms: what is
+   printed is what is on file, field by field, so the tables are built from
+   each wire shape's own properties instead of being a second copy of every
+   tab's layout to keep in step. A nested list -- a specimen's tests, a
+   test's results, an exposure's contacts -- prints as a block per entry
+   under its parent. The notes are the ones the API tier lists to this user,
+   so another user's private note is not printed. The supplemental forms
+   print with their answers, and the attachments as the list the Notes tab
+   shows -- their names and categories, not the files themselves.
+
+   Print calls the browser's own window.print; the @media print style hides
+   the app bar, the drawer and the button, so the paper carries the case
+   alone. *@
+@page "/event/print/{ReportId:int}"
+@using System.Collections
+@using System.Globalization
+@using System.Text.RegularExpressions
+@using Microsoft.JSInterop
+@inject PersonConditionsClient Reports
+@inject PersonsClient Persons
+@inject ClinicalClient Clinical
+@inject InvestigationClient Investigation
+@inject AdministrativeClient Administrative
+@inject LabsClient Labs
+@inject ExposuresClient Exposures
+@inject TreatmentsClient Treatments
+@inject VaccinesClient Vaccines
+@inject EncountersClient Encounters
+@inject NotesClient Notes
+@inject FormsClient Forms
+@inject AttachmentsClient Attachments
+@inject IJSRuntime JS
+
+<PageTitle>@Title — Survsys</PageTitle>
+
+<style>
+    .print-table { border-collapse: collapse; margin-bottom: 12px; width: 100%; }
+    .print-table th, .print-table td { border: 1px solid #ccc; padding: 2px 6px; text-align: left; vertical-align: top; }
+    .print-table th { width: 30%; font-weight: 600; }
+    @@media print {
+        .mud-appbar, .mud-drawer, #print-report { display: none !important; }
+        .mud-main-content { padding: 0 !important; margin: 0 !important; }
+    }
+</style>
+
+<MudText id="print-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">@Title</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="print-busy" Color="Color.Primary" Indeterminate="true" />
+}
+else if (failure is { } whyNot)
+{
+    <MudAlert id="print-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@whyNot</MudAlert>
+}
+else
+{
+    <MudButton id="print-report" Variant="Variant.Filled" Color="Color.Primary" Class="mb-4" OnClick="@Print">
+        Print
+    </MudButton>
+
+    @foreach (var (id, heading, content) in sections)
+    {
+        <section id="@id">
+            <MudText HtmlTag="h2" Typo="Typo.h6" Class="mt-4">@heading</MudText>
+            @if (content is not string and IEnumerable entries)
+            {
+                var at = 0;
+                var any = false;
+                @foreach (var entry in entries)
+                {
+                    any = true;
+                    @Block($"{id}-{at++}", entry)
+                }
+                @if (!any)
+                {
+                    <MudText Typo="Typo.body2" id="@($"{id}-none")">None recorded.</MudText>
+                }
+            }
+            else if (content is not null)
+            {
+                @Block(id, content)
+            }
+        </section>
+    }
+}
+
+@code {
+    /// <summary>The report to print, from the address.</summary>
+    [Parameter]
+    public int ReportId { get; set; }
+
+    private bool loading = true;
+
+    private string? failure;
+
+    private string? recordNumber;
+
+    /// <summary>Each section's id, its heading, and what it prints: one record or a list of them.</summary>
+    private readonly List<(string Id, string Heading, object? Content)> sections = [];
+
+    private string Title => recordNumber is null
+        ? "Case morbidity report"
+        : $"Case morbidity report {recordNumber}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var found = await Reports.Find(ReportId);
+
+        if (found.Value is not { } report)
+        {
+            failure = found.Failure;
+            loading = false;
+
+            return;
+        }
+
+        recordNumber = report.RecordNumber;
+
+        var person = await Persons.Find(report.PersonId);
+        var clinical = await Clinical.Find(ReportId);
+        var investigation = await Investigation.Find(ReportId);
+        var administrative = await Administrative.Find(ReportId);
+        var labs = await Labs.Page(ReportId, 1, 200);
+        var exposures = await Exposures.All(ReportId);
+        var treatments = await Treatments.Records(ReportId);
+        var vaccines = await Vaccines.Records(ReportId);
+        var encounters = await Encounters.Records(ReportId);
+        var notes = await Notes.All(ReportId);
+        var assignments = await Forms.CaseForms(ReportId);
+        var attachments = await Attachments.All(ReportId);
+
+        // Each assigned form prints with its questions and the answers given.
+        var caseForms = new List<CaseFormResponse>();
+        foreach (var assignment in assignments.Value ?? [])
+        {
+            var form = await Forms.CaseForm(assignment.Id);
+            failure ??= form.Failure;
+            if (form.Value is { } read)
+            {
+                caseForms.Add(read);
+            }
+        }
+
+        // A specimen and an exposure print whole, with what hangs off them,
+        // so each is read in full.
+        var labDetails = new List<LabDetailResponse>();
+        foreach (var lab in labs.Value?.Items ?? [])
+        {
+            var detail = await Labs.Detail(lab.Id);
+            failure ??= detail.Failure;
+            if (detail.Value is { } read)
+            {
+                labDetails.Add(read);
+            }
+        }
+
+        var exposureDetails = new List<ExposureDetailResponse>();
+        foreach (var exposure in exposures.Value ?? [])
+        {
+            var detail = await Exposures.Detail(exposure.Id);
+            failure ??= detail.Failure;
+            if (detail.Value is { } read)
+            {
+                exposureDetails.Add(read);
+            }
+        }
+
+        failure = person.Failure ?? clinical.Failure ?? investigation.Failure ?? administrative.Failure
+            ?? labs.Failure ?? exposures.Failure ?? treatments.Failure ?? vaccines.Failure
+            ?? encounters.Failure ?? notes.Failure ?? assignments.Failure ?? attachments.Failure ?? failure;
+
+        sections.Add(("print-header", "Case", report));
+        sections.Add(("print-demographics", "Demographics", person.Value));
+        sections.Add(("print-clinical", "Clinical", clinical.Value));
+        sections.Add(("print-laboratory", "Laboratory", labDetails));
+        sections.Add(("print-investigation", "Investigation", investigation.Value));
+        sections.Add(("print-administrative", "Administrative", administrative.Value));
+        sections.Add(("print-forms", "Supplemental forms", caseForms));
+        sections.Add(("print-contacts", "Contacts and exposures", exposureDetails));
+        sections.Add(("print-treatments", "Treatments", treatments.Value));
+        sections.Add(("print-vaccines", "Vaccines", vaccines.Value));
+        sections.Add(("print-encounters", "Encounters", encounters.Value));
+        sections.Add(("print-notes", "Notes", notes.Value));
+        sections.Add(("print-attachments", "Attachments", attachments.Value));
+
+        loading = false;
+    }
+
+    private async Task Print() => await JS.InvokeVoidAsync("print");
+
+    /// <summary>
+    /// One record as a label-and-value table of its plain fields, followed by a
+    /// block per entry of each list it carries.
+    /// </summary>
+    private RenderFragment Block(string id, object record) =>
+        @<div>
+            <table id="@id" class="print-table">
+                @foreach (var property in Properties(record).Where(property => !IsList(property.PropertyType)))
+                {
+                    <tr>
+                        <th>@Label(property.Name)</th>
+                        <td>@Shown(property.GetValue(record))</td>
+                    </tr>
+                }
+            </table>
+            @foreach (var property in Properties(record).Where(property => IsList(property.PropertyType)))
+            {
+                var at = 0;
+                @foreach (var entry in (IEnumerable?)property.GetValue(record) ?? Array.Empty<object>())
+                {
+                    <MudText Typo="Typo.subtitle2">@Label(property.Name) @(at + 1)</MudText>
+                    @Block($"{id}-{Kebab(property.Name)}-{at++}", entry)
+                }
+            }
+        </div>;
+
+    private static IEnumerable<System.Reflection.PropertyInfo> Properties(object record) =>
+        record.GetType().GetProperties().Where(property => property.GetIndexParameters().Length == 0
+            && property.Name != "EqualityContract");
+
+    private static bool IsList(Type type) =>
+        type != typeof(string) && typeof(IEnumerable).IsAssignableFrom(type);
+
+    /// <summary>A property's name as words: <c>EventOnsetDate</c> as "Event onset date".</summary>
+    private static string Label(string name)
+    {
+        var words = Regex.Replace(name, "(?<=[a-z0-9])([A-Z])", " $1").ToLowerInvariant();
+
+        return char.ToUpperInvariant(words[0]) + words[1..];
+    }
+
+    private static string Kebab(string name) =>
+        Regex.Replace(name, "(?<=[a-z0-9])([A-Z])", "-$1").ToLowerInvariant();
+
+    /// <summary>A value as the page prints it: dates as the date boxes take them, a flag as Yes or No.</summary>
+    private static string Shown(object? value) => value switch
+    {
+        null => "",
+        bool flag => flag ? "Yes" : "No",
+        DateOnly date => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        DateTimeOffset moment => moment.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
+        IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+        _ => value.ToString() ?? "",
+    };
+}
