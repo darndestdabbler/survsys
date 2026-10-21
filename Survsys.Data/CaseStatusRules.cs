@@ -8,11 +8,10 @@ namespace Survsys.Data;
 /// <remarks>
 /// The statuses and their codes are EpiTrax's own, as
 /// <c>../nedss/docs/business-logic/CLASSIFICATION_RULES.md</c> section 1.2
-/// lists them, reduced to the five the session plan names:
-/// <see cref="Confirmed"/>, <see cref="Probable"/>, <see cref="Suspected"/>,
-/// <see cref="NotACase"/> and <see cref="Unknown"/>. The two legacy codes this
-/// installation does not use — <c>D</c> Discarded and <c>OS</c> Out of State —
-/// are not here.
+/// lists them: <see cref="Confirmed"/>, <see cref="Probable"/>,
+/// <see cref="Suspected"/>, <see cref="NotACase"/>, <see cref="OutOfState"/>
+/// and <see cref="Unknown"/>. The one legacy code this installation does not
+/// use — <c>D</c> Discarded — is not here.
 /// </remarks>
 public enum CaseStatus
 {
@@ -34,19 +33,26 @@ public enum CaseStatus
 
     /// <summary>Not a Case, the legacy <c>NC</c>.</summary>
     NotACase,
+
+    /// <summary>
+    /// Out of State, the legacy <c>OS</c>: the patient lives outside
+    /// Connecticut, which the classification rules assign on save.
+    /// </summary>
+    OutOfState,
 }
 
 /// <summary>
 /// The case status vocabulary, and the two rules a status field needs of
-/// itself: reading a stored code into one of the five, and whether an offered
+/// itself: reading a stored code into one of the six, and whether an offered
 /// code is one a report may be set to.
 /// </summary>
 /// <remarks>
 /// The codes are EpiTrax's own, as
 /// <c>../nedss/docs/business-logic/CLASSIFICATION_RULES.md</c> section 1.2
 /// dumps them on the <c>CaseStatus</c> table: <c>C</c> Confirmed, <c>P</c>
-/// Probable, <c>S</c> Suspected and <c>NC</c> Not a Case. The fifth,
-/// <see cref="CaseStatus.Unknown"/>, has no code and is the empty or absent
+/// Probable, <c>S</c> Suspected, <c>NC</c> Not a Case and <c>OS</c> Out of
+/// State. The sixth, <see cref="CaseStatus.Unknown"/>, has no code and is the
+/// empty or absent
 /// value: the legacy leaves an unclassified case's status empty, which section
 /// 3.7's override — "blocks auto-classification ... status stays empty" —
 /// shows is a state and not a mistake. There is no <c>CaseStatus</c> table in
@@ -54,12 +60,10 @@ public enum CaseStatus
 /// installation-configurable list, so they live here and the status column
 /// holds the code against this rule.
 ///
-/// This classifies nothing. The disease-specific validators that read a
-/// report's labs, address and exposures to decide a status are PostgreSQL
-/// functions in the legacy and Utah-specific, and section 8 defers them to a
-/// later service-layer, configurable rules engine; what is here is the
-/// vocabulary such a rule would assign from and the reading of a code, not the
-/// deciding of one.
+/// This classifies nothing. The disease-specific rules that read a report's
+/// labs and address to decide a status are <c>ClassificationRules</c>'; what
+/// is here is the vocabulary they assign from and the reading of a code, not
+/// the deciding of one.
 ///
 /// Pure, and public and static in the shape <c>Survsys.Api</c>'s record number
 /// rule has, because the unit suite proves it without starting a host. It
@@ -80,6 +84,9 @@ public static class CaseStatusRules
     /// <summary>The code <see cref="CaseStatus.NotACase"/> is stored under.</summary>
     public const string NotACaseCode = "NC";
 
+    /// <summary>The code <see cref="CaseStatus.OutOfState"/> is stored under.</summary>
+    public const string OutOfStateCode = "OS";
+
     /// <summary>
     /// The status a stored code names.
     /// </summary>
@@ -91,7 +98,7 @@ public static class CaseStatusRules
     /// <c>c</c> is not <c>C</c>.
     /// </remarks>
     /// <exception cref="InvalidOperationException">
-    /// The code is neither empty nor one of the four this vocabulary knows. A
+    /// The code is neither empty nor one of the five this vocabulary knows. A
     /// stored value like that was written by something that did not go through
     /// this rule — the shape <c>Survsys.Api</c>'s record number rule refuses a
     /// stored value it cannot read, and here for the same reason.
@@ -105,15 +112,15 @@ public static class CaseStatusRules
 
         throw new InvalidOperationException(
             $"'{storedCode}' is not a case status code this tier knows. A stored case "
-            + $"status is one of {ConfirmedCode}, {ProbableCode}, {SuspectedCode} or "
-            + $"{NotACaseCode}, or empty for an unclassified case read as Unknown. A row "
-            + "holding anything else was written by something that did not go through this "
+            + $"status is one of {ConfirmedCode}, {ProbableCode}, {SuspectedCode}, "
+            + $"{NotACaseCode} or {OutOfStateCode}, or empty for an unclassified case read as "
+            + "Unknown. A row holding anything else was written by something that did not go through this "
             + "vocabulary.");
     }
 
     /// <summary>
     /// Whether an offered code is one a report's status may be set to — one of
-    /// the four codes, or empty to clear the status to
+    /// the five codes, or empty to clear the status to
     /// <see cref="CaseStatus.Unknown"/>.
     /// </summary>
     /// <remarks>
@@ -128,7 +135,7 @@ public static class CaseStatusRules
 
     /// <summary>
     /// The status a code names, or null where a non-empty code is not one of
-    /// the four. The common core of <see cref="Read"/> and
+    /// the five. The common core of <see cref="Read"/> and
     /// <see cref="IsAssignable"/>, which differ only in what they do with a
     /// code the vocabulary does not know.
     /// </summary>
@@ -145,6 +152,7 @@ public static class CaseStatusRules
             ProbableCode => CaseStatus.Probable,
             SuspectedCode => CaseStatus.Suspected,
             NotACaseCode => CaseStatus.NotACase,
+            OutOfStateCode => CaseStatus.OutOfState,
             _ => null,
         };
     }

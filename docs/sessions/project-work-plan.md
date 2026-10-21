@@ -107,7 +107,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 93 | Release 0.12.0 (release: 0.12.0) | yes | 2026-10-21 |
 | 94 | Audit with its user and values, and its screens | no | 2026-10-21 |
 | 95 | Jurisdiction-scoped access and sign-in protection | no | 2026-10-21 |
-| 96 | Classification rules on save | — | not declared |
+| 96 | Classification rules on save | no | 2026-10-21 |
 | 97 | IBIS, ad-hoc reporting and system configuration | — | not declared |
 | 98 | Phase 12 walkthroughs | — | not declared |
 | 99 | Release 0.13.0 (release: 0.13.0) | — | not declared |
@@ -863,3 +863,9 @@ Scope a user's case access to their agencies' jurisdictions and to cases shared 
 
 - 2026-10-21 — step 'user-agencies': its files: UsersClientTests constructs UserResponse, which gains AgencyIds (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-21 — step 'access-integration-tests': its files: The integration tests found CaseAccess refusing a case id nobody has before the endpoint could answer its own 404; the fix leaves a missing case to the endpoint (claude-code (anthropic, claude-opus-5-5))
+
+### Session 96 — Classification rules on save
+
+**Releasable: no.**
+
+Run the validation and classification rules of CLASSIFICATION_RULES.md on every save of a case. The case status vocabulary gains Out of State (OS), shown and selectable wherever a status is. A pure, static ClassificationRules in Survsys.Data takes what a case's rules read (its condition, its event type, its workflow state, its current status, the state and resolved agency of the patient's current address, and its labs' organism, test type and result) and returns an outcome: a status to set (or none), an agency to set (or none), whether a contact is closed, and one line per rule saying what it found. Out-of-state: a patient whose current address is in a state other than Connecticut is OS, and a case leaving OS is reclassified. Jurisdiction: a case with no agency takes the agency its patient's zip resolves to through ZipAgencyRules. Chlamydia: a positive Chlamydia trachomatis result on an approved test type is Confirmed, and no such lab is reported as "No valid lab exists". Gonorrhea: a positive Neisseria gonorrhoeae result is Confirmed, or Probable when its only evidence is a Gram stain. Hepatitis C: a positive HCV RNA, antigen or genotype result is Confirmed. Influenza: a case is reported when its hospitalization is not recorded. Syphilis and measles: no status is assigned (the document leaves them to the investigation), and the rule reports that. COVID-19: a positive PCR/amplification or antigen result is Confirmed, a positive IgG antibody with an epidemiological link Probable, and a positive test with neither symptoms nor link Not a Case. A rule sets a status only where the case has none or is OS, so a status a person set is never overwritten. Contacts of chlamydia, gonorrhea and syphilis cases are closed when they reach the LHD's acceptance, this workflow's counterpart of the legacy approved_by_lhd. In Survsys.Api a CaseClassifier loads those inputs, applies the outcome and records each rule's line as an administrative note on the case, which is how the user sees it on save; it is called at the end of every route that saves a case (create, clinical, investigation, administrative, workflow, labs and contact events) and not from the manual status route, which is the person's own setting.

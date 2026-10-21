@@ -159,8 +159,9 @@ public static class PersonConditionEndpoints
         {
             return $"caseStatus '{request.CaseStatus}' is not a status a report may be set "
                 + $"to. A case status is one of {CaseStatusRules.ConfirmedCode}, "
-                + $"{CaseStatusRules.ProbableCode}, {CaseStatusRules.SuspectedCode} or "
-                + $"{CaseStatusRules.NotACaseCode}, or left out to clear the status to "
+                + $"{CaseStatusRules.ProbableCode}, {CaseStatusRules.SuspectedCode}, "
+                + $"{CaseStatusRules.NotACaseCode} or {CaseStatusRules.OutOfStateCode}, "
+                + "or left out to clear the status to "
                 + "Unknown.";
         }
 
@@ -453,9 +454,9 @@ public static class PersonConditionEndpoints
     }
 
     /// <remarks>
-    /// The status is set directly and not derived: the disease-specific
-    /// auto-classification is deferred, so a caller chooses the status, and
-    /// <see cref="WhyNotAStatus"/> refuses a code the vocabulary does not know
+    /// The status is set directly and not derived: a status a person chooses
+    /// is theirs, so this is the one case save <see cref="CaseClassifier"/>
+    /// does not follow, and <see cref="WhyNotAStatus"/> refuses a code the vocabulary does not know
     /// before the database is asked. A report id that names no report is a 404,
     /// the resource addressed being the report itself.
     /// </remarks>
@@ -864,6 +865,7 @@ internal sealed class PersonConditionQueries(
         await AutoAssignForms(report, cancellationToken);
         await QueueForNotification(report.Id, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
+        await new CaseClassifier(database).ClassifyAsync(report.Id, cancellationToken);
 
         return PersonConditionEndpoints.Respond(report);
     }
@@ -892,6 +894,7 @@ internal sealed class PersonConditionQueries(
         report.EventType = EventTypes.Morbidity;
         await QueueForNotification(report.Id, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
+        await new CaseClassifier(database).ClassifyAsync(report.Id, cancellationToken);
 
         return PersonConditionEndpoints.Respond(report);
     }
@@ -1112,6 +1115,7 @@ internal sealed class PersonConditionQueries(
 
         await QueueForNotification(report.Id, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
+        await new CaseClassifier(database).ClassifyAsync(report.Id, cancellationToken);
 
         return PersonConditionEndpoints.Respond(report);
     }

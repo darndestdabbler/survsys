@@ -13,10 +13,9 @@ namespace Survsys.UnitTests;
 /// or a host. The codes are EpiTrax's own, as
 /// <c>../nedss/docs/business-logic/CLASSIFICATION_RULES.md</c> section 1.2
 /// lists them — <c>C</c> Confirmed, <c>P</c> Probable, <c>S</c> Suspected,
-/// <c>NC</c> Not a Case — with Unknown the empty or absent value. The two
-/// legacy codes this installation does not use, <c>D</c> Discarded and
-/// <c>OS</c> Out of State, are among the values the rule refuses, because they
-/// are not among the five the session plan names.
+/// <c>NC</c> Not a Case, <c>OS</c> Out of State — with Unknown the empty or
+/// absent value. The one legacy code this installation does not use,
+/// <c>D</c> Discarded, is among the values the rule refuses.
 /// </remarks>
 public class CaseStatusRulesTests
 {
@@ -25,6 +24,7 @@ public class CaseStatusRulesTests
     [InlineData(CaseStatusRules.ProbableCode, CaseStatus.Probable)]
     [InlineData(CaseStatusRules.SuspectedCode, CaseStatus.Suspected)]
     [InlineData(CaseStatusRules.NotACaseCode, CaseStatus.NotACase)]
+    [InlineData(CaseStatusRules.OutOfStateCode, CaseStatus.OutOfState)]
     public void ReadNamesTheStatusEachCodeIsStoredUnder(string code, CaseStatus expected)
     {
         Assert.Equal(expected, CaseStatusRules.Read(code));
@@ -64,7 +64,7 @@ public class CaseStatusRulesTests
     /// </summary>
     [Theory]
     [InlineData("D")]
-    [InlineData("OS")]
+    [InlineData("os")]
     [InlineData("c")]
     [InlineData("nc")]
     [InlineData("Confirmed")]
@@ -78,7 +78,7 @@ public class CaseStatusRulesTests
     }
 
     /// <summary>
-    /// What a report's status may be set to: one of the four codes, or empty
+    /// What a report's status may be set to: one of the five codes, or empty
     /// to clear it to Unknown.
     /// </summary>
     [Theory]
@@ -86,24 +86,25 @@ public class CaseStatusRulesTests
     [InlineData(CaseStatusRules.ProbableCode)]
     [InlineData(CaseStatusRules.SuspectedCode)]
     [InlineData(CaseStatusRules.NotACaseCode)]
+    [InlineData(CaseStatusRules.OutOfStateCode)]
     [InlineData(" C ")]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void IsAssignableAcceptsTheFourCodesAndAnEmptyCode(string? offeredCode)
+    public void IsAssignableAcceptsTheFiveCodesAndAnEmptyCode(string? offeredCode)
     {
         Assert.True(CaseStatusRules.IsAssignable(offeredCode));
     }
 
     /// <summary>
-    /// What a report's status may not be set to: the legacy codes this
+    /// What a report's status may not be set to: the legacy code this
     /// installation does not use, a code in the wrong case, and anything that
     /// is not a code. The endpoint turns a false here into a 400 rather than
     /// writing the value.
     /// </summary>
     [Theory]
     [InlineData("D")]
-    [InlineData("OS")]
+    [InlineData("os")]
     [InlineData("c")]
     [InlineData("nc")]
     [InlineData("Confirmed")]

@@ -256,7 +256,8 @@ public static class ConditionEndpoints
             return TypedResults.Problem(
                 detail: $"'{bad}' is not a case status code; a print criterion is one of "
                     + $"{CaseStatusRules.ConfirmedCode}, {CaseStatusRules.ProbableCode}, "
-                    + $"{CaseStatusRules.SuspectedCode} or {CaseStatusRules.NotACaseCode}.",
+                    + $"{CaseStatusRules.SuspectedCode}, {CaseStatusRules.NotACaseCode} or "
+                    + $"{CaseStatusRules.OutOfStateCode}.",
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "The print criteria asked for are not ones this endpoint can save.");
         }

@@ -230,7 +230,7 @@ public class PersonConditionEndpointsTests
     }
 
     /// <summary>
-    /// Each status a report may be set to: the four known codes, and null,
+    /// Each status a report may be set to: the five known codes, and null,
     /// which clears the status to Unknown.
     /// </summary>
     [Theory]
@@ -238,6 +238,7 @@ public class PersonConditionEndpointsTests
     [InlineData(CaseStatusRules.ProbableCode)]
     [InlineData(CaseStatusRules.SuspectedCode)]
     [InlineData(CaseStatusRules.NotACaseCode)]
+    [InlineData(CaseStatusRules.OutOfStateCode)]
     [InlineData(null)]
     public void WhyNotAStatusAcceptsAKnownCodeOrNull(string? caseStatus)
     {
@@ -245,13 +246,13 @@ public class PersonConditionEndpointsTests
     }
 
     /// <summary>
-    /// A code no case may be set to: the legacy codes this installation does
+    /// A code no case may be set to: the legacy code this installation does
     /// not use, a code in the wrong case, and a value that is not a code. The
     /// message names the value the caller offered.
     /// </summary>
     [Theory]
     [InlineData("D")]
-    [InlineData("OS")]
+    [InlineData("os")]
     [InlineData("c")]
     [InlineData("X")]
     public void WhyNotAStatusRefusesACodeNoCaseMayBeSetTo(string caseStatus)

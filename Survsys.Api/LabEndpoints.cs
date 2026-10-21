@@ -444,6 +444,9 @@ public static class LabEndpoints
 /// </remarks>
 internal sealed class LabQueries(SurvsysDbContext database)
 {
+    /// <summary>The case the write in hand changes, as <see cref="QueueCase"/> last staged it.</summary>
+    private int? changedCase;
+
     /// <summary>
     /// Why the report a specimen would be recorded against is not one to record
     /// against, or null when it is.
@@ -556,7 +559,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         });
 
         await QueueCase(reportId, cancellationToken);
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAndClassify(cancellationToken);
 
         if (transaction is not null)
         {
@@ -674,7 +677,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         specimen.SpecimenSentToState = request.SpecimenSentToState;
 
         await QueueCase(specimen.PersonConditionId, cancellationToken);
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAndClassify(cancellationToken);
 
         return LabEndpoints.LabToResponse.Compile().Invoke(specimen);
     }
@@ -714,7 +717,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         database.Labs.Remove(specimen);
 
         await QueueCase(specimen.PersonConditionId, cancellationToken);
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAndClassify(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         return (true, null);
@@ -744,7 +747,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         test.LabTestDate = request.LabTestDate;
 
         await QueueCaseOfLab(test.LabId, cancellationToken);
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAndClassify(cancellationToken);
 
         var results = await database.LabTestResults
             .Where(result => result.LabTestId == testId)
@@ -781,7 +784,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
 
         database.LabTests.Remove(test);
         await QueueCaseOfLab(test.LabId, cancellationToken);
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAndClassify(cancellationToken);
 
         return (true, null);
     }
@@ -853,7 +856,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         result.PrimaryLabResult = request.PrimaryLabResult;
 
         await QueueCaseOfTest(result.LabTestId, cancellationToken);
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAndClassify(cancellationToken);
 
         return LabEndpoints.ResultToResponse.Compile().Invoke(result);
     }
@@ -871,7 +874,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
 
         database.LabTestResults.Remove(result);
         await QueueCaseOfTest(result.LabTestId, cancellationToken);
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAndClassify(cancellationToken);
 
         return true;
     }
@@ -899,7 +902,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         resist.TestDate = request.TestDate;
 
         await QueueCaseOfLab(resist.LabId, cancellationToken);
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAndClassify(cancellationToken);
 
         return LabEndpoints.ResistToResponse.Compile().Invoke(resist);
     }
@@ -917,7 +920,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
 
         database.LabResistTests.Remove(resist);
         await QueueCaseOfLab(resist.LabId, cancellationToken);
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAndClassify(cancellationToken);
 
         return true;
     }
@@ -928,10 +931,28 @@ internal sealed class LabQueries(SurvsysDbContext database)
     /// against no case queues nothing. Gated on the case's print criteria by
     /// <see cref="CaseNotificationQueue.QueueChangeAsync"/>.
     /// </summary>
-    private Task QueueCase(int? reportId, CancellationToken cancellationToken) =>
-        reportId is { } id
+    private Task QueueCase(int? reportId, CancellationToken cancellationToken)
+    {
+        changedCase = reportId;
+
+        return reportId is { } id
             ? new CaseNotificationQueue(database).QueueChangeAsync(new CaseChanged(id, DateTime.UtcNow), cancellationToken)
             : Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Saves, then runs <see cref="CaseClassifier"/> over the case
+    /// <see cref="QueueCase"/> staged, so the rules read the labs as stored.
+    /// </summary>
+    private async Task SaveAndClassify(CancellationToken cancellationToken)
+    {
+        await database.SaveChangesAsync(cancellationToken);
+
+        if (changedCase is { } id)
+        {
+            await new CaseClassifier(database).ClassifyAsync(id, cancellationToken);
+        }
+    }
 
     /// <summary><see cref="QueueCase"/> for the case of the specimen with that id.</summary>
     private async Task QueueCaseOfLab(int labId, CancellationToken cancellationToken) =>

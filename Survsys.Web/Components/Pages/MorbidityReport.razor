@@ -875,7 +875,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     /// The case status code, or "Unknown" where none is set — which is how the
     /// report carries an unclassified case.
     /// </summary>
-    private static readonly IReadOnlyList<string> ReportCaseStatuses = ["C", "P", "S", "NC"];
+    private static readonly IReadOnlyList<string> ReportCaseStatuses = ["C", "P", "S", "NC", "OS"];
 
     private string Status => report?.CaseStatus is { } code && !string.IsNullOrWhiteSpace(code)
         ? code

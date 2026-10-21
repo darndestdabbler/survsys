@@ -1976,7 +1976,29 @@
         "identityProvenance": "direct"
       },
       "verificationVerdict": "VERIFIED",
-      "startCommit": "465d39862454f8cc919df176a6aa4a0981d9649a",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.23.0",
+      "startCommit": "465d39862454f8cc919df176a6aa4a0981d9649a"
+    },
+    {
+      "number": 96,
+      "title": "Classification rules on save",
+      "status": "in-progress",
+      "startedAt": "2026-10-21T19:29:46.399000-04:00",
+      "completedAt": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "startCommit": "8689d32e27d0d25471a1f00eef2a08b0b6b493d1",
       "frameworkVersion": "3.23.0",
       "verification": {
         "rounds": 3,
@@ -1984,15 +2006,6 @@
         "verifierProvider": "openai",
         "transport": "api"
       }
-    },
-    {
-      "number": 96,
-      "title": "Classification rules on save",
-      "status": "not-started",
-      "startedAt": null,
-      "completedAt": null,
-      "orchestrator": null,
-      "verificationVerdict": null
     },
     {
       "number": 97,

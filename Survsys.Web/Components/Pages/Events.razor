@@ -231,7 +231,7 @@ else if (asked?.Value is { } cases)
     private static readonly string[] WorkflowCodes =
         ["assigned_to_lhd", "accepted", "under_investigation", "closed", "not_investigated", "approved_by_state", "rejected_by_state"];
 
-    private static readonly string[] StatusCodes = ["C", "P", "S", "NC"];
+    private static readonly string[] StatusCodes = ["C", "P", "S", "NC", "OS"];
 
     /// <summary>
     /// The Any row of a string-coded select: no code at all, which the client
@@ -462,6 +462,7 @@ else if (asked?.Value is { } cases)
         "P" => "Probable",
         "S" => "Suspected",
         "NC" => "Not a case",
+        "OS" => "Out of state",
         null => "Unknown",
         _ => caseStatus,
     };

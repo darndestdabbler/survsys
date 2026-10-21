@@ -254,6 +254,13 @@ internal sealed class ContactEventQueries(SurvsysDbContext database)
 
         database.ExposureContacts.AddRange(rows);
         await database.SaveChangesAsync(cancellationToken);
+
+        var classifier = new CaseClassifier(database);
+        foreach (var contactEvent in events)
+        {
+            await classifier.ClassifyAsync(contactEvent.Id, cancellationToken);
+        }
+
         await transaction.CommitAsync(cancellationToken);
 
         var respond = ExposureEndpoints.ContactToResponse.Compile();
