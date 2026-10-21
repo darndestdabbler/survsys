@@ -1,0 +1,150 @@
+# dabbler.yaml -- what this repository declares about itself.
+#
+# Tracked, unlike local-overrides.yaml, because CI reads these facts and so
+# does the next machine to pick up a session. Precedence is the packaged
+# router-config.yaml, then this file, then local-overrides.yaml. Providers,
+# models, roles and transports are deliberately absent: those are
+# distribution facts, and a repository that restated them here would fork
+# the model registry in order to say how to run a test suite.
+schema_version: 1
+
+# The three suites this repository runs, and how each one runs.
+#
+# `unit` is the run of record, which is what `expensive: true` says: it is the
+# suite a close demands green, so it covers the whole repository -- a change
+# anywhere makes its last run stale, which is the point of a run of record.
+# It is also the suite that holds the architecture tests, so the reference
+# graph between the modules is checked by the one suite that always runs.
+#
+# `integration` wants a reachable SQL Server and `e2e` wants Playwright
+# browsers with both tiers running, so neither is the mechanical gate on
+# every session. They are declared so that a change under the paths they
+# cover selects their tests, and so that the walkthrough suite has a name
+# before the release that gates on it.
+#
+# Every command carries its own hang limit, so every later run of a suite
+# inherits it rather than depending on who remembered to pass it.
+testing:
+  suites:
+    - name: unit
+      command: dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m
+      expensive: true
+      covers: ["."]
+      test_roots: [Survsys.UnitTests]
+      test_glob: "*Tests.cs"
+      test_name: "{name}Tests.cs"
+    - name: integration
+      command: dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --blame-hang-timeout 5m
+      covers: [Survsys.Data, Survsys.Api, Survsys.IntegrationTests]
+      test_roots: [Survsys.IntegrationTests]
+      test_glob: "*Tests.cs"
+      test_name: "{name}Tests.cs"
+    - name: e2e
+      command: dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --blame-hang-timeout 5m
+      covers: [Survsys.Web, Survsys.Api, Survsys.E2ETests]
+      test_roots: [Survsys.E2ETests]
+      test_glob: "*Tests.cs"
+      test_name: "{name}Tests.cs"
+
+# Step (f) of the lifecycle: pack, then push to a feed. Both are argv the
+# framework spawns directly -- never shell strings -- and the feed is a
+# folder on disk, so the push carries no credential at all.
+#
+# The three handoff artifacts are the ones the solution plan names: an IIS
+# site package for each tier, and the database's idempotent SQL script.
+#
+# `pack` is ONE `pwsh` invocation rather than three commands because the
+# framework spawns pack once, with no shell to chain them, and the packaging
+# session is allowed to write this file and no other -- so there is nowhere
+# else to put a pack script. The script stops on the first non-zero exit, so
+# a half-built handoff can never report success.
+#
+# Each tier is compressed to a single `.zip`. The framework walks `{output}`
+# and pushes once per file it finds: a bare `dotnet publish` folder would be
+# several hundred pushes for one site, where the thing actually handed over
+# is one package.
+#
+# Nothing but those three artifacts may land in `{output}`, and nothing may
+# still hold that directory open when the pack exits -- session 8's release
+# run stopped with `EPERM` on it because both were violated. The job runs with
+# `TEMP` pointed at `{output}` itself, so the script's first act is to
+# re-point `TEMP`, `TMP` and `TMPDIR` at a staging directory beside `{output}`
+# -- never under it -- and both tiers publish there; only the two zips and the
+# SQL script are ever written into `{output}`. The script also starts no
+# persistent build server (`UseSharedCompilation` and `UseRazorBuildServer`
+# off, MSBuild node reuse and the MSBuild server off), because Roslyn's
+# `VBCSCompiler`, a reused MSBuild node and NuGet's scratch lock each outlive
+# the `dotnet publish` that started them and keep writing into whatever `TEMP`
+# names. However it ends, the script shuts the build servers down and deletes
+# the staging directory, so nothing it started outlives it: a staging
+# directory a killed pack left behind is cleared before the publishes, rather
+# than published over, and one that survives the delete fails the pack instead
+# of being shrugged off -- the delete is suppressed only while an earlier
+# failure is on its way out, so the pack reports that failure and not this one.
+#
+# `feed` is the folder the handoff is dropped into, and it is the one value
+# to edit if that folder moves. It is a directory because that is what the
+# operator wants -- the three artifacts sitting in a folder, not continuous
+# deployment to a remote feed; the `artifacts.example.org` URL this block
+# used to name was a placeholder and never was a feed.
+#
+# A folder on disk -- a drive path, a UNC path or file:// -- authenticates
+# nothing, so `secret` and `--user` are gone together: nothing in this file
+# names a credential, and the push is a copy rather than an HTTPS upload. It
+# creates the folder when it is not there yet and overwrites a file of the
+# same name already in it, so handing the same artifact over twice replaces
+# it instead of failing. `{artifact}` is one file of the pack's output, and
+# the framework spawns the push once per file it finds.
+#
+# Both placeholders are arguments of their own rather than text inside the
+# script, which is what `-CommandWithArgs` is for: the framework substitutes
+# a placeholder wherever it appears, so a path interpolated into a quoted
+# PowerShell literal would be read as syntax instead of as a path the moment
+# it held an apostrophe -- `C:/Users/O'Connor/out` is a real home directory,
+# and quoting it is not this file's job. Passed as arguments they reach
+# `$args` as the bytes the framework substituted, whatever is in them.
+# `-CommandWithArgs` wants pwsh 7.4 or newer and refuses loudly on an older
+# one, which is the failure to have: the alternative is a path quietly cut
+# in half.
+#
+# `dabbler packaging --dry-run` rehearses the block and exits 0 when it
+# loads, in a session that may not publish too.
+packaging:
+  pack:
+    argv:
+      - pwsh
+      - -NoProfile
+      - -NonInteractive
+      - -Command
+      - |
+        $ErrorActionPreference = 'Stop'
+        $out = ('{output}').TrimEnd('\','/')
+        $stage = "$out.stage"
+        if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+        New-Item -ItemType Directory -Path $stage | Out-Null
+        $env:TEMP = $stage
+        $env:TMP = $stage
+        $env:TMPDIR = $stage
+        $env:UseSharedCompilation = 'false'
+        $env:UseRazorBuildServer = 'false'
+        $env:MSBUILDDISABLENODEREUSE = '1'
+        $env:DOTNET_CLI_USE_MSBUILD_SERVER = '0'
+        try {
+          foreach ($tier in 'Survsys.Web', 'Survsys.Api') {
+            $dir = Join-Path $stage $tier
+            dotnet publish "$tier/$tier.csproj" -c Release -o $dir
+            if ($LASTEXITCODE -ne 0) { throw "dotnet publish $tier exited $LASTEXITCODE" }
+            Compress-Archive -Path (Join-Path $dir '*') -DestinationPath (Join-Path $out "$tier.zip") -Force
+          }
+          dotnet ef migrations script --idempotent --project Survsys.Data --startup-project Survsys.Api --output (Join-Path $out 'Survsys.Database.sql')
+          if ($LASTEXITCODE -ne 0) { throw "dotnet ef migrations script exited $LASTEXITCODE" }
+        } finally {
+          $ErrorActionPreference = 'Continue'
+          dotnet build-server shutdown | Out-Null
+          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+        if (Test-Path $stage) { throw "the staging directory $stage could not be deleted" }
+        exit 0
+  push:
+    argv: ["pwsh", "-NoProfile", "-NonInteractive", "-CommandWithArgs", "$ErrorActionPreference = 'Stop'; New-Item -ItemType Directory -Force -Path $args[1] | Out-Null; Copy-Item -LiteralPath $args[0] -Destination $args[1] -Force", "{artifact}", "{feed}"]
+    feed: D:/handoff/survsys
