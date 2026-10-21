@@ -20,4 +20,11 @@ public class NotificationGuide
 
     /// <summary>The guide's name, as a screen shows it.</summary>
     public required string Name { get; set; }
+
+    /// <summary>
+    /// The guide's version (for example <c>Arbo_Case_Map_v1.0</c>), the
+    /// profile its message is generated for, where set. A guide is matched by
+    /// its name and version when one is imported.
+    /// </summary>
+    public string? Version { get; set; }
 }

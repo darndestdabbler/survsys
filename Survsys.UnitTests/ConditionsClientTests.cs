@@ -254,6 +254,35 @@ public class ConditionsClientTests
             (await Answering(HttpStatusCode.NotFound, "{}").PrintCriteria(99)).Failure);
     }
 
+    [Fact]
+    public async Task LabOverridesAreReadAndPutAtTheConditionsOwnUrl()
+    {
+        var sent = new List<HttpRequestMessage>();
+        var client = Recording(
+            sent.Add, HttpStatusCode.OK, """[ { "kind": "organism", "itemId": 5, "include": true } ]""");
+
+        var read = await client.LabOverrides(74);
+        var saved = await client.SetLabOverrides(74, [new ConditionLabOverrideRow("organism", 5, true)]);
+
+        Assert.Equal((HttpMethod.Get, "http://api.example.test/api/conditions/74/lab-overrides"),
+            (sent[0].Method, sent[0].RequestUri?.ToString()));
+        Assert.Equal((HttpMethod.Put, "http://api.example.test/api/conditions/74/lab-overrides"),
+            (sent[1].Method, sent[1].RequestUri?.ToString()));
+        Assert.Equal(new ConditionLabOverrideRow("organism", 5, true), Assert.Single(read.Value!));
+        Assert.Single(saved.Value!);
+    }
+
+    [Fact]
+    public async Task ALabOverridesFailureCarriesItsPrefix()
+    {
+        Assert.StartsWith(
+            ConditionsClient.LabOverridesFailurePrefix,
+            (await Answering(HttpStatusCode.NotFound, "{}").LabOverrides(99)).Failure);
+        Assert.StartsWith(
+            ConditionsClient.LabOverridesSaveFailurePrefix,
+            (await Answering(HttpStatusCode.BadRequest, "{}").SetLabOverrides(74, [])).Failure);
+    }
+
     private static ConditionsClient Recording(
         Action<HttpRequestMessage> record,
         HttpStatusCode status,

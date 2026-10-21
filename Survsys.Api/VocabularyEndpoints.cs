@@ -151,11 +151,11 @@ public static class VocabularyEndpoints
 
     public static IEndpointRouteBuilder MapVocabulary(this IEndpointRouteBuilder routes)
     {
-        MapTable(routes, MasterLoincs, VocabularyQueries.MasterLoincs, "master LOINC");
-        MapTable(routes, ChildLoincs, VocabularyQueries.ChildLoincs, "child LOINC");
-        MapTable(routes, Organisms, VocabularyQueries.Organisms, "master organism");
-        MapTable(routes, MasterValues, VocabularyQueries.MasterValues, "master value");
-        MapTable(routes, ChildValues, VocabularyQueries.ChildValues, "child code");
+        MapTable(routes, "/api/vocabulary", MasterLoincs, VocabularyQueries.MasterLoincs, "master LOINC");
+        MapTable(routes, "/api/vocabulary", ChildLoincs, VocabularyQueries.ChildLoincs, "child LOINC");
+        MapTable(routes, "/api/vocabulary", Organisms, VocabularyQueries.Organisms, "master organism");
+        MapTable(routes, "/api/vocabulary", MasterValues, VocabularyQueries.MasterValues, "master value");
+        MapTable(routes, "/api/vocabulary", ChildValues, VocabularyQueries.ChildValues, "child code");
 
         routes.MapGet("/api/conditions/{id:int}/rules", GetRules)
             .WithName("GetConditionRules")
@@ -168,12 +168,18 @@ public static class VocabularyEndpoints
         return routes;
     }
 
-    private static void MapTable<TEntity, TRow>(
-        IEndpointRouteBuilder routes, string table, VocabularyTable<TEntity, TRow> shape, string noun)
+    /// <summary>
+    /// Maps one reference table at <c>{root}/{table}</c>: listed, created,
+    /// saved over, deleted, exported as CSV and imported from it. Every
+    /// <see cref="VocabularyTable{TEntity, TRow}"/> is served this way, the
+    /// vocabulary's and the notification setup's alike.
+    /// </summary>
+    internal static void MapTable<TEntity, TRow>(
+        IEndpointRouteBuilder routes, string root, string table, VocabularyTable<TEntity, TRow> shape, string noun)
         where TEntity : class
         where TRow : class
     {
-        var path = $"/api/vocabulary/{table}";
+        var path = $"{root}/{table}";
 
         routes.MapGet(path, (VocabularyQueries vocabulary, CancellationToken cancellationToken) =>
                 vocabulary.List(shape, cancellationToken))
@@ -262,10 +268,10 @@ public static class VocabularyEndpoints
             : NoSuch("condition", id);
     }
 
-    private static string? Required(string field, string? value, int length) =>
+    internal static string? Required(string field, string? value, int length) =>
         string.IsNullOrWhiteSpace(value) ? $"{field} is required." : TooLong(field, value, length);
 
-    private static string? TooLong(string field, string? value, int length) =>
+    internal static string? TooLong(string field, string? value, int length) =>
         value?.Trim().Length > length ? $"{field} is longer than {length} characters." : null;
 
     private static string? OneOf(string field, string? value, string[] allowed) =>

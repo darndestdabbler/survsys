@@ -83,6 +83,37 @@ public sealed class ConditionsClient(HttpClient http)
             new ConditionPrintCriteriaRequest(caseStatuses),
             cancellationToken);
 
+    /// <summary>How a failure to load a condition's lab overrides starts.</summary>
+    public const string LabOverridesFailurePrefix = "The condition's lab overrides could not be loaded";
+
+    /// <summary>How a failure to save a condition's lab overrides starts.</summary>
+    public const string LabOverridesSaveFailurePrefix = "The condition's lab overrides could not be saved";
+
+    private static readonly ApiAsk ReadingOverrides = new(LabOverridesFailurePrefix, "the condition's lab overrides");
+
+    private static readonly ApiAsk SavingOverrides = new(LabOverridesSaveFailurePrefix, "the lab overrides as saved");
+
+    /// <summary>
+    /// The organisms and test types the condition's notification adds to or
+    /// takes out of its labs, or why there are none.
+    /// </summary>
+    public Task<Asked<IReadOnlyList<ConditionLabOverrideRow>>> LabOverrides(
+        int id,
+        CancellationToken cancellationToken = default) =>
+        ReadingOverrides.Get<IReadOnlyList<ConditionLabOverrideRow>>(
+            http, $"api/conditions/{id}/lab-overrides", cancellationToken);
+
+    /// <summary>
+    /// Replaces the condition's lab overrides, answering with them as saved or
+    /// with why they were not.
+    /// </summary>
+    public Task<Asked<IReadOnlyList<ConditionLabOverrideRow>>> SetLabOverrides(
+        int id,
+        IReadOnlyList<ConditionLabOverrideRow> overrides,
+        CancellationToken cancellationToken = default) =>
+        SavingOverrides.Put<IReadOnlyList<ConditionLabOverrideRow>, IReadOnlyList<ConditionLabOverrideRow>>(
+            http, $"api/conditions/{id}/lab-overrides", overrides, cancellationToken);
+
     /// <summary>Every condition as CSV, or why there is none.</summary>
     public Task<Asked<string>> Export(CancellationToken cancellationToken = default) =>
         Exporting.GetText(http, "api/conditions/csv", cancellationToken);

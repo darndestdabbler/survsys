@@ -122,6 +122,125 @@ public class OruR01GeneratorTests
         Assert.Equal("1", obx[2].Split('|')[4]);                           // the repeating-group sub-id
     }
 
+    [Fact]
+    public void WritesTheArboGuideAsAPersonSubjectAndANotificationObr()
+    {
+        var obr = Segments(new OruR01Generator().Generate(BuildLegacyExample(OruR01Generator.ArboGuideProfile)))
+            .Where(segment => segment.StartsWith("OBR", StringComparison.Ordinal))
+            .Select(segment => segment.Split('|'))
+            .ToList();
+
+        Assert.Equal(2, obr.Count);
+        Assert.Equal("1", obr[0][1]);
+        Assert.Equal("PERSUBJ^Person Subject^2.16.840.1.114222.4.5.274", obr[0][4]);
+        Assert.Equal("2", obr[1][1]);
+        Assert.Equal("NOTF^Individual Case Notification^2.16.840.1.114222.4.5.274", obr[1][4]);
+        Assert.All(obr, fields => Assert.Equal("F", fields[25]));   // NOT118 on each OBR
+    }
+
+    [Fact]
+    public void PutsTheArboGuidesDemographicObservationsUnderItsPersonSubjectObr()
+    {
+        var segments = Segments(new OruR01Generator().Generate(BuildLegacyExample(OruR01Generator.ArboGuideProfile)));
+        var notificationObr = Array.FindIndex(segments, segment => segment.StartsWith("OBR|2|", StringComparison.Ordinal));
+
+        var underPersonSubject = segments[..notificationObr].Where(IsObx).Select(segment => segment.Split('|')).ToList();
+        var underNotification = segments[notificationObr..].Where(IsObx).Select(segment => segment.Split('|')).ToList();
+
+        var demographic = Assert.Single(underPersonSubject);
+        Assert.Equal("1", demographic[1]);
+        Assert.StartsWith("DEM", demographic[3], StringComparison.Ordinal);
+        Assert.Equal(["1", "2"], underNotification.Select(fields => fields[1]));    // set ids restart per OBR
+        Assert.Equal(["INV163", "NOT116"], underNotification.Select(fields => fields[3].Split('^')[0]));
+    }
+
+    [Fact]
+    public void WritesTheDefaultGuideWithOneObrHoweverManyDemographicsItCarries()
+    {
+        var segments = Segments(new OruR01Generator().Generate(BuildLegacyExample("Generic MMG v2.0")));
+
+        Assert.Single(segments, segment => segment.StartsWith("OBR", StringComparison.Ordinal));
+        Assert.Equal(3, segments.Count(IsObx));
+    }
+
+    [Fact]
+    public void WritesTheMotherAsAnNk1SegmentAndNotAsObservations()
+    {
+        var example = BuildLegacyExample("Generic MMG v2.0");
+        var input = example with
+        {
+            Values =
+            [
+                .. example.Values,
+                new("MTH153", "Mother's Birth Date", "TS", "19700412", null, null, null, 0),
+                new("MTH157", "Mother's Race", "CWE", "White", "2106-3", "2.16.840.1.113883.6.238", null, 0),
+                new("MTH159", "Mother's Ethnicity", "CWE", "Not Hispanic or Latino", "2186-5", "2.16.840.1.113883.6.238", null, 0),
+                new("MTH165", "Mother's Marital Status", "CWE", "Married", "M", "2.16.840.1.113883.12.2", null, 0),
+                new("MTH166", "Mother's State", "CWE", "Connecticut", "09", "2.16.840.1.113883.6.92", null, 0),
+                new("MTH167", "Mother's Country", "CWE", "United States", "USA", "1.0.3166.1", null, 0),
+                new("MTH168", "Mother's County", "CWE", "Hartford", "09003", "2.16.840.1.113883.6.93", null, 0),
+                new("MTH169", "Mother's Zip Code", "ST", "06106", null, null, null, 0),
+            ],
+        };
+
+        var segments = Segments(new OruR01Generator().Generate(input));
+        var nk1 = Assert.Single(segments, segment => segment.StartsWith("NK1", StringComparison.Ordinal)).Split('|');
+
+        Assert.Equal("1", nk1[1]);
+        Assert.Equal("MTH^Mother^HL70063", nk1[3]);
+        Assert.Equal("^^^09^06106^USA^^^09003", nk1[4]);
+        Assert.Equal("M^Married^2.16.840.1.113883.12.2", nk1[14]);
+        Assert.Equal("19700412", nk1[16]);
+        Assert.Equal("2186-5^Not Hispanic or Latino^2.16.840.1.113883.6.238", nk1[28]);
+        Assert.Equal("2106-3^White^2.16.840.1.113883.6.238", nk1[35]);
+        Assert.DoesNotContain(segments, segment => IsObx(segment) && segment.Contains("|MTH", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void WritesNoNk1WhenNoMotherVariableHasAValue()
+    {
+        var example = BuildLegacyExample("Generic MMG v2.0");
+        var input = example with
+        {
+            Values = [.. example.Values, new("MTH169", "Mother's Zip Code", "ST", " ", null, null, null, 0)],
+        };
+
+        var segments = Segments(new OruR01Generator().Generate(input));
+
+        Assert.DoesNotContain(segments, segment => segment.StartsWith("NK1", StringComparison.Ordinal));
+        Assert.DoesNotContain(segments, segment => IsObx(segment) && segment.Contains("|MTH", StringComparison.Ordinal));
+    }
+
+    private static bool IsObx(string segment) => segment.StartsWith("OBX", StringComparison.Ordinal);
+
+    /// <summary>
+    /// The record in NMI_XML_GENERATION.md's <i>Complete Output Structure</i>:
+    /// its header and its INV163 and NOT116 variables, with a patient
+    /// identifier and a race so the person-subject OBR has an observation.
+    /// </summary>
+    private static OruR01GenerationInput BuildLegacyExample(string guideProfile)
+    {
+        var header = new NotificationHeader(
+            SendingApp: new NotificationIdentifier("ELR Application", "2.16.840.1.114222.X", "ISO"),
+            SendingFacility: new NotificationIdentifier("UT DOH", "2.16.840.1.114222.X", "ISO"),
+            ReceivingApp: new NotificationIdentifier("PHINCDS", "2.16.840.1.114222.X", "ISO"),
+            ReceivingFacility: new NotificationIdentifier("PHIN", "2.16.840.1.114222.X", "ISO"),
+            SendingTime: new DateTimeOffset(2026, 3, 13, 14, 30, 22, TimeSpan.Zero),
+            ProcessingId: "P",
+            Version: "2.5.1",
+            ProfileId: guideProfile == OruR01Generator.ArboGuideProfile ? OruR01Generator.ArboProfileId : "NOTF_ORU_v3.0",
+            ControlId: "SURVSYS0000000042");
+
+        return new OruR01GenerationInput(header, guideProfile,
+        [
+            new("DEM197", "Patient Identifier", "ST", "202600042", null, null, null, 0),
+            new("DEM2", "Age Reported at Time of Case Investigation", "NM", "35", null, null, null, 0),
+            new("NOT118", "Result Status", "ST", "F", null, null, null, 0),
+            new("INV163", "Age at time of case investigation", "CE", "35", "Y", "2.16.840.1.113883.6.1", null, 1),
+            new("NOT116", "Local Record ID", "ST", "202600042", null, null, null, 0),
+        ]);
+    }
+
     internal static OruR01GenerationInput BuildChlamydiaNotification()
     {
         var header = new NotificationHeader(

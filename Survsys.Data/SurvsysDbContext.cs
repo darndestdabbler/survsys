@@ -151,6 +151,22 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbCo
     public DbSet<RuleSetExpressionCondition> RuleSetExpressionConditions =>
         Set<RuleSetExpressionCondition>();
 
+    public DbSet<GuideVariableDefault> GuideVariableDefaults => Set<GuideVariableDefault>();
+
+    public DbSet<GuideVariableValue> GuideVariables => Set<GuideVariableValue>();
+
+    public DbSet<PhinValueSetConcept> PhinValueSets => Set<PhinValueSetConcept>();
+
+    public DbSet<PhinUnitOfMeasure> PhinUnitsOfMeasure => Set<PhinUnitOfMeasure>();
+
+    public DbSet<ConditionLabOverride> ConditionLabOverrides => Set<ConditionLabOverride>();
+
+    public DbSet<HepLabGroup> HepLabGroups => Set<HepLabGroup>();
+
+    public DbSet<HepLabGroupCondition> HepLabGroupConditions => Set<HepLabGroupCondition>();
+
+    public DbSet<HepLabGroupTestType> HepLabGroupTestTypes => Set<HepLabGroupTestType>();
+
     public DbSet<Outbreak> Outbreaks => Set<Outbreak>();
 
     public DbSet<OutbreakAccess> OutbreakAccess => Set<OutbreakAccess>();

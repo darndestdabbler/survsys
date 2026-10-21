@@ -62,6 +62,19 @@ public class RepeatingGroupProcessorTests
     }
 
     [Fact]
+    public void TheHepLabDatasetRepeatsLikeAnyOther()
+    {
+        var rows = new List<DatasetRow> { new(new Dictionary<string, string?> { ["result"] = "h1" }) };
+        var record = new EpiTraxRecord(
+            new Dictionary<string, string?>(),
+            new Dictionary<string, IReadOnlyList<DatasetRow>> { [HepatitisLabGrouping.DataSet] = rows });
+
+        var instance = Assert.Single(new RepeatingGroupProcessor().Process(LabGroup(HepatitisLabGrouping.DataSet), record));
+
+        Assert.Equal("h1", Assert.Single(instance.Values).Formatted.Single().Value);
+    }
+
+    [Fact]
     public void AnUnsupportedDatasetNameIsRejected()
     {
         var processor = new RepeatingGroupProcessor();

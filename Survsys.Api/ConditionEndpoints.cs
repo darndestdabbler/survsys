@@ -148,7 +148,77 @@ public static class ConditionEndpoints
             .WithName("SetConditionPrintCriteria")
             .WithSummary("Replaces the case statuses that make a condition's cases notifiable to CDC.");
 
+        routes.MapGet("/api/conditions/{id:int}/lab-overrides", GetLabOverrides)
+            .WithName("GetConditionLabOverrides")
+            .WithSummary("The organisms and test types a condition's notification adds to or takes out of its labs.");
+
+        routes.MapPut("/api/conditions/{id:int}/lab-overrides", SetLabOverrides)
+            .WithName("SetConditionLabOverrides")
+            .WithSummary("Replaces a condition's organism and test-type overrides.");
+
         return routes;
+    }
+
+    /// <summary>
+    /// Why these are not a condition's lab overrides this tier will save, or
+    /// null when they are: each names a kind, organism or test_type, and an
+    /// item, and overrides an item once.
+    /// </summary>
+    public static string? WhyNotLabOverrides(IReadOnlyList<ConditionLabOverrideRow> overrides)
+    {
+        ArgumentNullException.ThrowIfNull(overrides);
+
+        foreach (var item in overrides)
+        {
+            if (item is null)
+            {
+                return "an override is empty.";
+            }
+
+            if (item.Kind is not (ConditionLabOverride.OrganismKind or ConditionLabOverride.TestTypeKind))
+            {
+                return $"kind '{item.Kind}' is not {ConditionLabOverride.OrganismKind} or {ConditionLabOverride.TestTypeKind}.";
+            }
+
+            if (item.ItemId <= 0)
+            {
+                return "itemId is required: the organism or test type overridden.";
+            }
+        }
+
+        return overrides.GroupBy(item => (item.Kind, item.ItemId)).FirstOrDefault(group => group.Count() > 1) is { } twice
+            ? $"the {twice.Key.Kind} {twice.Key.ItemId} is overridden twice."
+            : null;
+    }
+
+    private static async Task<Results<Ok<IReadOnlyList<ConditionLabOverrideRow>>, ProblemHttpResult>> GetLabOverrides(
+        ConditionQueries conditions,
+        int id,
+        CancellationToken cancellationToken = default) =>
+        await conditions.LabOverrides(id, cancellationToken) is { } overrides
+            ? TypedResults.Ok(overrides)
+            : NoSuchCondition(id);
+
+    private static async Task<Results<Ok<IReadOnlyList<ConditionLabOverrideRow>>, ProblemHttpResult>> SetLabOverrides(
+        ConditionQueries conditions,
+        int id,
+        IReadOnlyList<ConditionLabOverrideRow> overrides,
+        CancellationToken cancellationToken = default)
+    {
+        if (!await conditions.Exists(id, cancellationToken))
+        {
+            return NoSuchCondition(id);
+        }
+
+        if ((WhyNotLabOverrides(overrides) ?? await conditions.WhyNotResolved(overrides, cancellationToken)) is { } why)
+        {
+            return TypedResults.Problem(
+                detail: why,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The lab overrides asked for are not ones this endpoint can save.");
+        }
+
+        return TypedResults.Ok((await conditions.SetLabOverrides(id, overrides, cancellationToken))!);
     }
 
     private static async Task<Results<Ok<ConditionPrintCriteriaResponse>, ProblemHttpResult>> GetPrintCriteria(
@@ -461,6 +531,61 @@ internal sealed class ConditionQueries(SurvsysDbContext database)
         await database.SaveChangesAsync(cancellationToken);
 
         return await PrintCriteria(id, cancellationToken);
+    }
+
+    public Task<bool> Exists(int id, CancellationToken cancellationToken) =>
+        database.Conditions.AnyAsync(condition => condition.Id == id, cancellationToken);
+
+    /// <summary>The condition's lab overrides, or null where no condition has that id.</summary>
+    public async Task<IReadOnlyList<ConditionLabOverrideRow>?> LabOverrides(int id, CancellationToken cancellationToken)
+    {
+        if (!await Exists(id, cancellationToken))
+        {
+            return null;
+        }
+
+        return await database.ConditionLabOverrides
+            .Where(item => item.ConditionId == id)
+            .OrderBy(item => item.Kind).ThenBy(item => item.ItemId)
+            .Select(item => new ConditionLabOverrideRow(item.Kind, item.ItemId, item.Include))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>Which overridden organism or test type is not on file, or null.</summary>
+    public async Task<string?> WhyNotResolved(
+        IReadOnlyList<ConditionLabOverrideRow> overrides, CancellationToken cancellationToken)
+    {
+        var organisms = overrides.Where(item => item.Kind == ConditionLabOverride.OrganismKind)
+            .Select(item => item.ItemId).ToList();
+        var testTypes = overrides.Where(item => item.Kind == ConditionLabOverride.TestTypeKind)
+            .Select(item => item.ItemId).ToList();
+        var knownOrganisms = await database.VocabMasterOrganisms.Where(item => organisms.Contains(item.Id))
+            .Select(item => item.Id).ToListAsync(cancellationToken);
+        var knownTestTypes = await database.CodeValues
+            .Where(item => item.List == CodeLists.TestType && testTypes.Contains(item.Id))
+            .Select(item => item.Id).ToListAsync(cancellationToken);
+
+        return organisms.Except(knownOrganisms).Select(item => (int?)item).FirstOrDefault() is { } organism
+            ? $"organism {organism} is not a master organism GET /api/vocabulary/organisms lists."
+            : testTypes.Except(knownTestTypes).Select(item => (int?)item).FirstOrDefault() is { } testType
+                ? $"test type {testType} is not a {CodeLists.TestType} code GET /api/codes lists."
+                : null;
+    }
+
+    /// <summary>Replaces the condition's lab overrides; the rows are the caller's to have checked.</summary>
+    public async Task<IReadOnlyList<ConditionLabOverrideRow>?> SetLabOverrides(
+        int id, IReadOnlyList<ConditionLabOverrideRow> overrides, CancellationToken cancellationToken)
+    {
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+        await database.ConditionLabOverrides.Where(item => item.ConditionId == id).ExecuteDeleteAsync(cancellationToken);
+        database.ConditionLabOverrides.AddRange(overrides.Select(item => new ConditionLabOverride
+        {
+            ConditionId = id, Kind = item.Kind, ItemId = item.ItemId, Include = item.Include,
+        }));
+        await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return await LabOverrides(id, cancellationToken);
     }
 
     /// <summary>

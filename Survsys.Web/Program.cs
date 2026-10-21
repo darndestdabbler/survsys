@@ -95,6 +95,11 @@ builder.Services.AddHttpClient<VaccinesClient>(http => http.BaseAddress = api).A
 builder.Services.AddHttpClient<EncountersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<CodesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<VocabularyClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<ValueSetsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<GuidesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<PhinVariablesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<RuleSetsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<HepLabGroupsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<PlacesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 
 var app = builder.Build();
@@ -176,6 +181,28 @@ app.MapGet("/saved-views/{id:int}/export", async (int id, SavedViewsClient views
 app.MapGet("/vocabulary/{table}/export", async (string table, VocabularyClient vocabulary, CancellationToken cancellationToken) =>
     await vocabulary.Export(table, cancellationToken) is var exported && exported.Value is { } csv
         ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"vocabulary-{table}.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// A PHIN value set or unit of measure table's CSV export, handed over the same way from the Value sets screen.
+app.MapGet("/value-sets/{table}/export", async (string table, ValueSetsClient valueSets, CancellationToken cancellationToken) =>
+    await valueSets.Export(table, cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"{table}.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// A notification guide's JSON, handed over the same way from its editor, and the
+// header variable defaults as CSV from the Notification guides screen.
+app.MapGet("/guides/{id:int}/export", async (int id, GuidesClient guides, CancellationToken cancellationToken) =>
+    await guides.Export(id, cancellationToken) is var exported && exported.Value is { } guide
+        ? Results.File(
+            System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+                guide, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web) { WriteIndented = true }),
+            "application/json",
+            $"guide-{id}.json")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+app.MapGet("/guides/variable-defaults/export", async (GuidesClient guides, CancellationToken cancellationToken) =>
+    await guides.ExportDefaults(cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "guide-variable-defaults.csv")
         : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
 
 // A code list's CSV export, handed over the same way from the Code lists screen.

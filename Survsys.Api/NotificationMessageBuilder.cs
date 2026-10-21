@@ -43,18 +43,24 @@ public sealed record NotificationBuild(
 /// under their snake_case names, the person's prefixed <c>person_</c>, with
 /// <c>cdc_first_sent_at</c> from the case's first accepted export. Its Lab
 /// dataset is one row per lab test result (the lab's, test's and result's
-/// columns together), and its Vaccine and Treatment datasets one row per
-/// vaccination and treatment; there is no travel table, so Travel is empty.
-/// A variable whose rule set data names a <c>dataSet</c> is formatted per row
-/// of that dataset by <see cref="RepeatingGroupProcessor"/>, each row's values
-/// carrying its instance number as the OBX sub-id. There are no value set
-/// tables yet, so a rule set's value set is empty.
+/// columns together) that the condition's organism and test-type overrides
+/// allow (<see cref="LabOverrides"/>), its HepLab dataset those rows grouped by
+/// the condition's hepatitis lab group (<see cref="HepatitisLabGrouping"/>),
+/// and its Vaccine and Treatment datasets one row per vaccination and
+/// treatment; there is no travel table, so Travel is empty. A variable whose
+/// rule set data names a <c>dataSet</c> is formatted per row of that dataset by
+/// <see cref="RepeatingGroupProcessor"/>, each row's values carrying its
+/// instance number as the OBX sub-id. A rule set's value set is read from the
+/// PHIN value sets, or the units of measure where its format type is
+/// <c>unitOfMeasure</c>. The header is the guide's variables over their
+/// defaults, and the guide's version is the profile it is generated for.
 /// </remarks>
 public sealed partial class NotificationMessageBuilder(SurvsysDbContext database)
 {
     private const string Version = "2.5.1";
     private const string ProfileId = "NOTF_ORU_v3.0";
     private const string DataSetKey = "dataSet";
+    private const string UnitOfMeasureFormat = "unitOfMeasure";
 
     // The notification status variable, and the status a retraction sends:
     // "results cannot be obtained", which CDC reads as the notification withdrawn.
@@ -124,6 +130,12 @@ public sealed partial class NotificationMessageBuilder(SurvsysDbContext database
                 continue;
             }
 
+            if (ruleSet.ValueSetName is { Length: > 0 } valueSetName && ruleSet.ValueSet.Count == 0)
+            {
+                messages.Add(new(
+                    variable.PhinVar, $"The value set '{valueSetName}' does not exist.", RuleSetMessageKind.Warning));
+            }
+
             if (ruleSet.Data.GetValueOrDefault(DataSetKey) is { Length: > 0 } dataSet)
             {
                 if (!groups.TryGetValue(dataSet, out var group))
@@ -175,24 +187,57 @@ public sealed partial class NotificationMessageBuilder(SurvsysDbContext database
                 null, null, 0));
         }
 
-        var guideName = await database.NotificationGuides.AsNoTracking()
-            .Where(guide => guide.Id == guideId)
-            .Select(guide => guide.Name)
-            .SingleOrDefaultAsync(cancellationToken);
+        var guide = await database.NotificationGuides.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.Id == guideId, cancellationToken);
+        var profile = guide?.Version ?? guide?.Name ?? ProfileId;
+        var headerVariable = await GuideVariables(guideId.Value, cancellationToken);
         var header = new NotificationHeader(
-            SendingApp,
-            SendingFacility,
-            ReceivingApp,
-            ReceivingFacility,
+            Identifier(headerVariable(GuideVariableDefault.SendingApp), SendingApp),
+            Identifier(headerVariable(GuideVariableDefault.SendingFacility), SendingFacility),
+            Identifier(headerVariable(GuideVariableDefault.ReceivingApp), ReceivingApp),
+            Identifier(headerVariable(GuideVariableDefault.ReceivingFacility), ReceivingFacility),
             at,
             processingId,
-            Version,
-            ProfileId,
+            headerVariable(GuideVariableDefault.Hl7Version) ?? Version,
+            profile == OruR01Generator.ArboGuideProfile ? OruR01Generator.ArboProfileId : ProfileId,
             string.Create(CultureInfo.InvariantCulture, $"SURVSYS{at:yyyyMMddHHmmss}{personConditionId}"));
-        var message = new OruR01Generator().Generate(
-            new OruR01GenerationInput(header, guideName ?? ProfileId, values));
+        var message = new OruR01Generator().Generate(new OruR01GenerationInput(header, profile, values));
 
         return new NotificationBuild(personCondition.RecordNumber, guideId, message, messages);
+    }
+
+    /// <summary>
+    /// The value of each header variable for <paramref name="guideId"/>: the
+    /// guide's own where it sets one, the variable's default otherwise, and
+    /// null for a variable not on file.
+    /// </summary>
+    private async Task<Func<string, string?>> GuideVariables(int guideId, CancellationToken cancellationToken)
+    {
+        var defaults = await database.GuideVariableDefaults.AsNoTracking().ToListAsync(cancellationToken);
+        var own = await database.GuideVariables.AsNoTracking()
+            .Where(item => item.GuideId == guideId && item.Value != null && item.Value != "")
+            .ToDictionaryAsync(item => item.GuideVariableDefaultId, item => item.Value, cancellationToken);
+
+        return name => defaults.FirstOrDefault(item => item.Name == name) is { } found
+            ? own.GetValueOrDefault(found.Id) ?? found.DefaultValue
+            : null;
+    }
+
+    /// <summary>
+    /// An HD held as <c>namespace^universal id^type</c>, or
+    /// <paramref name="fallback"/> where there is none.
+    /// </summary>
+    private static NotificationIdentifier Identifier(string? value, NotificationIdentifier fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        var parts = value.Split('^');
+        string? Part(int index) => parts.Length > index && parts[index].Length > 0 ? parts[index] : null;
+
+        return new NotificationIdentifier(parts[0], Part(1), Part(2));
     }
 
     /// <summary>
@@ -274,6 +319,25 @@ public sealed partial class NotificationMessageBuilder(SurvsysDbContext database
             .Where(condition => expressionIds.Contains(condition.RuleSetExpressionId)).OrderBy(condition => condition.Id)
             .ToListAsync(cancellationToken)).ToLookup(condition => condition.RuleSetExpressionId);
         var expressionsByConfig = expressions.ToLookup(expression => expression.RuleSetConfigId);
+        var valueSetNames = configs
+            .Where(config => config.ValueSetName != null && config.FormatType != UnitOfMeasureFormat)
+            .Select(config => config.ValueSetName!).Distinct().ToList();
+        var unitSetNames = configs
+            .Where(config => config.ValueSetName != null && config.FormatType == UnitOfMeasureFormat)
+            .Select(config => config.ValueSetName!).Distinct().ToList();
+        var valueSets = (await database.PhinValueSets.AsNoTracking()
+                .Where(concept => valueSetNames.Contains(concept.ValueSetName)).OrderBy(concept => concept.Id)
+                .ToListAsync(cancellationToken))
+            .ToLookup(
+                concept => concept.ValueSetName,
+                concept => new ValueSetConcept(
+                    concept.CdcName ?? concept.PreferredConceptName, concept.Hl7Code, concept.ConceptCode, concept.CodeSystemOid));
+        var unitSets = (await database.PhinUnitsOfMeasure.AsNoTracking()
+                .Where(unit => unitSetNames.Contains(unit.ValueSetName)).OrderBy(unit => unit.Id)
+                .ToListAsync(cancellationToken))
+            .ToLookup(
+                unit => unit.ValueSetName,
+                unit => new ValueSetConcept(unit.PreferredConceptName, unit.Hl7Code, unit.ConceptCode, unit.CodeSystemOid));
 
         // A config belongs to the rule set its variables name; the first one decides its label.
         var labelByConfig = variables
@@ -308,7 +372,9 @@ public sealed partial class NotificationMessageBuilder(SurvsysDbContext database
                                 condition.Field, condition.Operator, condition.Value, condition.AndOr, condition.ValueIsField))
                             .ToList()))
                     .ToList(),
-                []);
+                config.ValueSetName is not { } valueSetName
+                    ? []
+                    : (config.FormatType == UnitOfMeasureFormat ? unitSets : valueSets)[valueSetName].ToList());
         }
 
         return loaded;
@@ -347,12 +413,49 @@ public sealed partial class NotificationMessageBuilder(SurvsysDbContext database
             .Where(item => item.PersonConditionId == personCondition.Id).OrderBy(item => item.Id)
             .ToListAsync(cancellationToken);
 
+        var labs = LabOverrides.Apply(
+            labRows.Select(row => Row(row.lab, row.test, row.result)).ToList(),
+            await LabRule(personCondition.ConditionId, ConditionLabOverride.OrganismKind, cancellationToken),
+            await LabRule(personCondition.ConditionId, ConditionLabOverride.TestTypeKind, cancellationToken));
+        var hepTestTypes = await (
+            from member in database.HepLabGroupConditions.AsNoTracking()
+            where member.ConditionId == personCondition.ConditionId
+            join testType in database.HepLabGroupTestTypes.AsNoTracking()
+                on member.HepLabGroupId equals testType.HepLabGroupId
+            select new HepLabTestType(testType.TestTypeId, testType.TestGroupName, testType.SortOrder))
+            .ToListAsync(cancellationToken);
+
         return new EpiTraxRecord(fields, new Dictionary<string, IReadOnlyList<DatasetRow>>(StringComparer.Ordinal)
         {
-            ["Lab"] = labRows.Select(row => Row(row.lab, row.test, row.result)).ToList(),
+            ["Lab"] = labs,
+            [HepatitisLabGrouping.DataSet] = HepatitisLabGrouping.Group(labs, hepTestTypes),
             ["Vaccine"] = vaccines.Select(item => Row(item)).ToList(),
             ["Treatment"] = treatments.Select(item => Row(item)).ToList(),
         });
+    }
+
+    /// <summary>
+    /// Which organisms or test types the condition's labs are carried for: its
+    /// defaults — the organisms the vocabulary maps to it, or the test types
+    /// linked to it — and its overrides of <paramref name="kind"/>.
+    /// </summary>
+    private async Task<LabItemRule> LabRule(int conditionId, string kind, CancellationToken cancellationToken)
+    {
+        var defaults = kind == ConditionLabOverride.OrganismKind
+            ? await database.VocabMasterOrganisms.AsNoTracking()
+                .Where(organism => organism.ConditionId == conditionId)
+                .Select(organism => organism.Id).ToListAsync(cancellationToken)
+            : await (
+                from link in database.CodeValueConditions.AsNoTracking()
+                where link.ConditionId == conditionId
+                join code in database.CodeValues.AsNoTracking() on link.CodeValueId equals code.Id
+                where code.List == Contracts.CodeLists.TestType
+                select code.Id).ToListAsync(cancellationToken);
+        var overrides = await database.ConditionLabOverrides.AsNoTracking()
+            .Where(item => item.ConditionId == conditionId && item.Kind == kind)
+            .ToDictionaryAsync(item => item.ItemId, item => item.Include, cancellationToken);
+
+        return new LabItemRule(defaults.ToHashSet(), overrides);
     }
 
     /// <summary>One dataset row from the scalar columns of <paramref name="entities"/>, later ones winning.</summary>

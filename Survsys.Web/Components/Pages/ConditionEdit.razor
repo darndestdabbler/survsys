@@ -6,11 +6,14 @@
    one checkbox per status (`condition-print-criteria-{code}`). An existing
    condition also carries
    its ELR intake rules — the message filter and the case-management rules —
-   edited here and saved on their own, whole. *@
+   edited here and saved on their own, whole, and its lab overrides — the
+   organisms and test types its CDC notification adds to or takes out of its
+   labs — saved on their own the same way. *@
 @page "/conditions/new"
 @page "/conditions/{Id:int}/edit"
 @inject ConditionsClient Conditions
 @inject VocabularyClient Vocabulary
+@inject CodesClient Codes
 @inject NavigationManager Navigation
 
 <PageTitle>@Heading — Survsys</PageTitle>
@@ -199,10 +202,130 @@ else
                 </MudButton>
             </div>
         </MudPaper>
+
+        <MudPaper id="condition-lab-overrides" Elevation="1" Class="pa-4 mt-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">Labs carried in the CDC notification</MudText>
+            <MudText Typo="Typo.body2" Class="mb-4">
+                By default the notification carries labs whose organism the vocabulary maps to this condition
+                and whose test type is linked to it; with no default of a kind, every lab of that kind is
+                carried. Include adds an organism or test type to the defaults; exclude takes one out.
+            </MudText>
+
+            @if (overridesFailure is { } overridesWhyNot)
+            {
+                <MudAlert id="condition-lab-overrides-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                    @overridesWhyNot
+                </MudAlert>
+            }
+
+            @if (overridesSaved)
+            {
+                <MudAlert id="condition-lab-overrides-saved" Severity="Severity.Success" Class="mb-4">
+                    The lab overrides have been saved.
+                </MudAlert>
+            }
+
+            @foreach (var (item, at) in overrides.Select((item, at) => (item, at)))
+            {
+                <div class="d-flex gap-2 align-center mb-2" id="@($"condition-lab-override-{at}")">
+                    <MudSelect T="string" id="@($"condition-lab-override-kind-{at}")" Label="Kind" Variant="Variant.Outlined"
+                               Margin="Margin.Dense" Style="max-width: 10rem"
+                               Value="@item.Kind" ValueChanged="@((string kind) => { item.Kind = kind; item.ItemId = null; })">
+                        <MudSelectItem T="string" Value="@("organism")">Organism</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("test_type")">Test type</MudSelectItem>
+                    </MudSelect>
+                    <MudSelect T="int?" id="@($"condition-lab-override-item-{at}")"
+                               Label="@(item.Kind == "organism" ? "Organism" : "Test type")"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="item.ItemId">
+                        @foreach (var (value, label) in Choices(item.Kind))
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)value)">@label</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudSelect T="bool" id="@($"condition-lab-override-include-{at}")" Label="Override"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 10rem"
+                               @bind-Value="item.Include">
+                        <MudSelectItem T="bool" Value="true">Include</MudSelectItem>
+                        <MudSelectItem T="bool" Value="false">Exclude</MudSelectItem>
+                    </MudSelect>
+                    <MudButton id="@($"condition-lab-override-remove-{at}")" Size="Size.Small" Color="Color.Error"
+                               OnClick="@(() => { overrides.Remove(item); overridesSaved = false; })">
+                        Remove
+                    </MudButton>
+                </div>
+            }
+
+            <div class="d-flex gap-2 mt-4">
+                <MudButton id="condition-lab-overrides-add" Variant="Variant.Outlined"
+                           OnClick="@(() => { overrides.Add(new OverrideForm()); overridesSaved = false; })">
+                    Add override
+                </MudButton>
+                <MudButton id="condition-lab-overrides-save" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@savingOverrides" OnClick="@SaveOverrides">
+                    Save lab overrides
+                </MudButton>
+            </div>
+        </MudPaper>
     }
 }
 
 @code {
+    private List<OverrideForm> overrides = [];
+
+    private IReadOnlyList<VocabMasterOrganismRow> organisms = [];
+
+    private IReadOnlyList<CodeResponse> testTypes = [];
+
+    private bool savingOverrides;
+
+    private bool overridesSaved;
+
+    private string? overridesFailure;
+
+    /// <summary>The organisms or the test types an override of <paramref name="kind"/> may name.</summary>
+    private IEnumerable<(int Value, string Label)> Choices(string kind) =>
+        kind == "organism"
+            ? organisms.Select(organism => (organism.Id, $"{organism.OrganismName} ({organism.Snomed})"))
+            : testTypes.Select(testType => (testType.Id, $"{testType.Description ?? testType.Code} ({testType.Code})"));
+
+    private async Task SaveOverrides()
+    {
+        savingOverrides = true;
+        overridesSaved = false;
+        overridesFailure = null;
+
+        var saved = await Conditions.SetLabOverrides(
+            Id!.Value,
+            overrides.Select(item => new ConditionLabOverrideRow(item.Kind, item.ItemId ?? 0, item.Include)).ToList());
+
+        savingOverrides = false;
+
+        if (saved.Value is { } savedOverrides)
+        {
+            overrides = savedOverrides.Select(item => new OverrideForm(item)).ToList();
+            overridesSaved = true;
+            return;
+        }
+
+        overridesFailure = saved.Failure;
+    }
+
+    /// <summary>One lab override as the screen edits it.</summary>
+    private sealed class OverrideForm
+    {
+        public OverrideForm()
+        {
+        }
+
+        public OverrideForm(ConditionLabOverrideRow row) => (Kind, ItemId, Include) = (row.Kind, row.ItemId, row.Include);
+
+        public string Kind { get; set; } = "organism";
+
+        public int? ItemId { get; set; }
+
+        public bool Include { get; set; }
+    }
+
     /// <summary>The condition being edited, or null for a new one.</summary>
     [Parameter]
     public int? Id { get; set; }
@@ -290,6 +413,14 @@ else
             var loadedRules = await Vocabulary.Rules(id);
             rules = (loadedRules.Value ?? []).Select(rule => new RuleForm(rule)).ToList();
             rulesFailure = loadedRules.Failure;
+
+            var loadedOverrides = await Conditions.LabOverrides(id);
+            var loadedOrganisms = await Vocabulary.List<VocabMasterOrganismRow>(VocabularyClient.Organisms);
+            var loadedTestTypes = await Codes.List(CodeLists.TestType, inactive: true);
+            overrides = (loadedOverrides.Value ?? []).Select(item => new OverrideForm(item)).ToList();
+            organisms = loadedOrganisms.Value ?? [];
+            testTypes = loadedTestTypes.Value ?? [];
+            overridesFailure = loadedOverrides.Failure ?? loadedOrganisms.Failure ?? loadedTestTypes.Failure;
         }
 
         loading = false;

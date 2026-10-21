@@ -188,4 +188,21 @@ public class ConditionEndpointsTests
                 "Immune globulin within two weeks of exposure."),
             ConditionEndpoints.Request(HepatitisADetail));
     }
+
+    [Fact]
+    public void WhyNotLabOverridesAcceptsAnOrganismAndATestType()
+    {
+        Assert.Null(ConditionEndpoints.WhyNotLabOverrides(
+            [new ConditionLabOverrideRow("organism", 4, true), new ConditionLabOverrideRow("test_type", 4, false)]));
+        Assert.Null(ConditionEndpoints.WhyNotLabOverrides([]));
+    }
+
+    [Fact]
+    public void WhyNotLabOverridesRefusesAnUnknownKindNoItemOrAnItemTwice()
+    {
+        Assert.Contains("kind", ConditionEndpoints.WhyNotLabOverrides([new ConditionLabOverrideRow("treatment", 4, true)]));
+        Assert.Contains("itemId", ConditionEndpoints.WhyNotLabOverrides([new ConditionLabOverrideRow("organism", 0, true)]));
+        Assert.Contains("twice", ConditionEndpoints.WhyNotLabOverrides(
+            [new ConditionLabOverrideRow("organism", 4, true), new ConditionLabOverrideRow("organism", 4, false)]));
+    }
 }

@@ -13,20 +13,20 @@ namespace Survsys.Messaging;
 /// the case's core fields overlaid with that row's fields, as the legacy
 /// "single current object" record does, and tagged with an incrementing
 /// instance number. A dataset with no rows yields no instances; a dataset name
-/// that is not one of the four supported ones is rejected rather than silently
+/// that is not one of the five supported ones is rejected rather than silently
 /// producing nothing.
 /// </remarks>
 public sealed class RepeatingGroupProcessor
 {
     private static readonly IReadOnlySet<string> SupportedDataSets =
-        new HashSet<string>(StringComparer.Ordinal) { "Lab", "Vaccine", "Treatment", "Travel" };
+        new HashSet<string>(StringComparer.Ordinal) { "Lab", "Vaccine", "Treatment", "Travel", HepatitisLabGrouping.DataSet };
 
     /// <summary>
     /// Expands <paramref name="group"/> over <paramref name="record"/>, one
     /// instance per dataset row.
     /// </summary>
     /// <exception cref="ArgumentException">
-    /// The group's dataset is not one of <c>Lab</c>, <c>Vaccine</c>,
+    /// The group's dataset is not one of <c>Lab</c>, <c>Vaccine</c>, <c>HepLab</c>,
     /// <c>Treatment</c> or <c>Travel</c>.
     /// </exception>
     public IReadOnlyList<RepeatingGroupInstance> Process(RepeatingGroup group, EpiTraxRecord record)

@@ -1016,6 +1016,37 @@
       "what": "step 'queue-actions-web': its files",
       "reason": "Retract is by case and an export-log row does not carry its case id; the row gains PersonConditionId so the Export log screen can retract it",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 90,
+      "dateTime": "2026-10-21T08:10:12.534000-04:00",
+      "task": "Put the notification configuration in an administrator's hands and finish the generator's guide-specific shapes. Survsys.Data gains, in one migration (20261021180000_NotificationAdministration): a nullable version on guide; nmi_guide_variable_default (name, default value \u2014 seeded with the sending/receiving application and facility as namespace^oid^type and hl7_version 2.5.1, the values NotificationMessageBuilder hard-codes today) and nmi_guide_variable (a guide's override of a default); nmi_phin_value_set and nmi_phin_unit_of_measure (value set name, concept code, preferred concept name, HL7 code, code system OID, and the value set's CDC name); nmi_condition_lab_override (condition, kind organism or test_type, item id, include); and nmi_hep_lab_group with its conditions and its test types (test type id, test group name, sort order). Survsys.Messaging: OruR01Generator writes the arbovirus guide (profile Arbo_Case_Map_v1.0) as two OBRs, PERSUBJ carrying the DEM observations and NOTF carrying the rest, under NND_ORU_v2.0, and writes an NK1 mother segment (NK1-1 = 1, NK1-3 = MTH^Mother^HL70063) from the MTH153/157/159/165/166/167/168/169 variables when any has a value, those variables no longer becoming OBX; LabOverrides keeps a lab row unless its organism or test type is excluded or falls outside the condition's defaults-plus-inclusions (a kind with no defaults and no inclusions filters nothing); HepatitisLabGrouping turns the lab rows of a condition in a hepatitis group into the HepLab dataset \u2014 the rows whose test type the group maps, in the group's sort order, each carrying hep_test_group. NotificationMessageBuilder reads rule-set value sets and units of measure from the new tables, builds the header from the guide's variables over the defaults, passes the guide's version as its profile, filters the Lab dataset through the condition's overrides (defaults: organisms the vocabulary maps to the condition, test_type code values linked to it) and adds the HepLab dataset. Survsys.Api: PHIN value sets and units of measure listed, edited, exported as CSV and imported from CSV with a preview, through the existing VocabularyTable/ReferenceImport machinery; PHIN variables listed, created, saved and deleted when no guide carries them; rule set configurations read and replaced whole (format type, value set, repeating, fields, data, value maps, expressions with conditions) and the seven rule set types listed; guides listed, created, saved and deleted, a guide's PHIN variables, linked guides and variables replaced whole, the variable defaults edited as a table, and a guide exported as JSON (name, version, PHIN variables with their rule set configurations) and imported from it, matched by name and version; a condition's organism and test-type overrides read and replaced; hepatitis lab groups listed, created, saved and deleted. Survsys.Web: Value sets, Notification guides (with guide edit and the variable defaults), PHIN variables (with the rule set editor) and Hepatitis lab setup screens, and the overrides on the condition screen. Unit tests cover each generator change against the legacy example values in NMI_XML_GENERATION.md, the new Messaging classes, the endpoint validators and the new web clients; integration tests cover the builder wiring and each new endpoint group.",
+      "releasable": false
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 90,
+      "dateTime": "2026-10-21T08:13:05.960000-04:00",
+      "what": "step 'notification-admin-data': its files",
+      "reason": "The guide-variable entity is GuideVariableValue, not GuideVariable: Survsys.Messaging already has a GuideVariable record and the API sees both namespaces.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 90,
+      "dateTime": "2026-10-21T08:16:43.087000-04:00",
+      "what": "step 'builder-wiring': its files",
+      "reason": "RepeatingGroupProcessor accepts only Lab, Vaccine, Treatment and Travel, so a rule set naming the HepLab dataset would be refused; HepLab joins its supported datasets, with a test.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "amendment",
+      "sessionNumber": 90,
+      "dateTime": "2026-10-21T08:22:53.177000-04:00",
+      "what": "step 'value-set-api': its files",
+      "reason": "The notification setup endpoints live under /api/notification-setup, which PrivilegeRules must class as reference data (read by anyone signed in, written with ManageReferenceData) or every write would be held to EditCases.",
+      "by": "claude-code (anthropic, claude-opus-5-5)"
     }
   ]
 }

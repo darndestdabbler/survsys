@@ -23,5 +23,8 @@ internal sealed class NotificationGuideConfiguration : IEntityTypeConfiguration<
             .HasColumnName("name")
             .HasMaxLength(200)
             .IsRequired();
+        builder.Property(guide => guide.Version)
+            .HasColumnName("version")
+            .HasMaxLength(100);
     }
 }

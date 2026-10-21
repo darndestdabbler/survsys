@@ -263,6 +263,66 @@ public class ConditionEndpointsTests(SqlServerFixture server) : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, missingWrite.StatusCode);
     }
 
+    /// <summary>
+    /// A condition's organism and test-type overrides are replaced and read
+    /// back; an item not on file is refused, and an unknown condition is a 404.
+    /// </summary>
+    [Fact]
+    public async Task LabOverridesAreReplacedAndReadBack()
+    {
+        var client = api.CreateClient();
+        await ClearImported();
+        var (organismId, testTypeId) = await LabItems();
+
+        try
+        {
+            using var created = await client.PostAsJsonAsync(
+                "/api/conditions", new SaveConditionRequest("Itest condition overrides", true), Json);
+            var condition = (await created.Content.ReadFromJsonAsync<ConditionDetailResponse>(Json))!;
+            var url = $"/api/conditions/{condition.Id}/lab-overrides";
+
+            Assert.Empty((await client.GetFromJsonAsync<List<ConditionLabOverrideRow>>(url, Json))!);
+
+            using var first = await client.PutAsJsonAsync(
+                url,
+                new[] { new ConditionLabOverrideRow("test_type", testTypeId, false), new ConditionLabOverrideRow("organism", organismId, true) },
+                Json);
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+            Assert.Equal(
+                [new ConditionLabOverrideRow("organism", organismId, true), new ConditionLabOverrideRow("test_type", testTypeId, false)],
+                (await client.GetFromJsonAsync<List<ConditionLabOverrideRow>>(url, Json))!);
+
+            using var unknown = await client.PutAsJsonAsync(url, new[] { new ConditionLabOverrideRow("organism", 987654321, true) }, Json);
+            Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
+
+            using var cleared = await client.PutAsJsonAsync(url, Array.Empty<ConditionLabOverrideRow>(), Json);
+            Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+            Assert.Empty((await client.GetFromJsonAsync<List<ConditionLabOverrideRow>>(url, Json))!);
+
+            using var missing = await client.GetAsync("/api/conditions/987654321/lab-overrides");
+            Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        }
+        finally
+        {
+            await ClearImported();
+            await using var context = server.NewContext();
+            await context.VocabMasterOrganisms.Where(item => item.Snomed == "ITEST-ORG").ExecuteDeleteAsync();
+            await context.CodeValues.Where(item => item.List == CodeLists.TestType && item.Code == "ITEST-TT").ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>An organism and a test type to override, added under the test's marker where none is there yet.</summary>
+    private async Task<(int OrganismId, int TestTypeId)> LabItems()
+    {
+        await using var context = server.NewContext();
+        var organism = await context.VocabMasterOrganisms.FirstOrDefaultAsync(item => item.Snomed == "ITEST-ORG")
+            ?? context.VocabMasterOrganisms.Add(new Data.VocabMasterOrganism { Snomed = "ITEST-ORG", OrganismName = "Itest organism" }).Entity;
+        var testType = await context.CodeValues.FirstOrDefaultAsync(item => item.List == CodeLists.TestType && item.Code == "ITEST-TT")
+            ?? context.CodeValues.Add(new Data.CodeValue { List = CodeLists.TestType, Code = "ITEST-TT", Description = "Itest test type" }).Entity;
+        await context.SaveChangesAsync();
+        return (organism.Id, testType.Id);
+    }
+
     private static async Task<ReferenceImportResponse> Import(HttpClient client, string csv, bool confirm)
     {
         using var posted = await client.PostAsync(

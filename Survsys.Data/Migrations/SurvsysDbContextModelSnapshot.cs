@@ -10805,6 +10805,41 @@ namespace Survsys.Data.Migrations
                     b.ToTable("condition_detail", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.ConditionLabOverride", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<bool>("Include")
+                        .HasColumnType("bit")
+                        .HasColumnName("include");
+
+                    b.Property<int>("ItemId")
+                        .HasColumnType("int")
+                        .HasColumnName("item_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("kind");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConditionId", "Kind", "ItemId")
+                        .IsUnique();
+
+                    b.ToTable("nmi_condition_lab_override", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.ConditionPrintCriterion", b =>
                 {
                     b.Property<int>("Id")
@@ -12735,6 +12770,121 @@ namespace Survsys.Data.Migrations
                     b.ToTable("guide_phin_var", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.GuideVariableDefault", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DefaultValue")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("default_value");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("nmi_guide_variable_default", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.GuideVariableValue", b =>
+                {
+                    b.Property<int>("GuideId")
+                        .HasColumnType("int")
+                        .HasColumnName("guide_id");
+
+                    b.Property<int>("GuideVariableDefaultId")
+                        .HasColumnType("int")
+                        .HasColumnName("guide_variable_default_id");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("value");
+
+                    b.HasKey("GuideId", "GuideVariableDefaultId");
+
+                    b.HasIndex("GuideVariableDefaultId");
+
+                    b.ToTable("nmi_guide_variable", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.HepLabGroup", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("group_name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("nmi_hep_lab_group", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.HepLabGroupCondition", b =>
+                {
+                    b.Property<int>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<int>("HepLabGroupId")
+                        .HasColumnType("int")
+                        .HasColumnName("hep_lab_group_id");
+
+                    b.HasKey("ConditionId");
+
+                    b.HasIndex("HepLabGroupId");
+
+                    b.ToTable("nmi_hep_lab_group_condition", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.HepLabGroupTestType", b =>
+                {
+                    b.Property<int>("HepLabGroupId")
+                        .HasColumnType("int")
+                        .HasColumnName("hep_lab_group_id");
+
+                    b.Property<int>("TestTypeId")
+                        .HasColumnType("int")
+                        .HasColumnName("lab_test_type");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("TestGroupName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("test_group_name");
+
+                    b.HasKey("HepLabGroupId", "TestTypeId");
+
+                    b.ToTable("nmi_hep_lab_group_test_type", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.Lab", b =>
                 {
                     b.Property<int>("Id")
@@ -12982,6 +13132,11 @@ namespace Survsys.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("name");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("version");
 
                     b.HasKey("Id");
 
@@ -13945,6 +14100,101 @@ namespace Survsys.Data.Migrations
                     b.HasIndex("VaccineId");
 
                     b.ToTable("person_vaccines", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.PhinUnitOfMeasure", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CodeSystemOid")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("code_system_oid");
+
+                    b.Property<string>("ConceptCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("concept_code");
+
+                    b.Property<string>("Hl7Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("hl7_code");
+
+                    b.Property<string>("PreferredConceptName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("preferred_concept_name");
+
+                    b.Property<string>("ValueSetName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("value_set_name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ValueSetName", "ConceptCode")
+                        .IsUnique();
+
+                    b.ToTable("nmi_phin_unit_of_measure", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.PhinValueSetConcept", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CdcName")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("cdc_name");
+
+                    b.Property<string>("CodeSystemOid")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("code_system_oid");
+
+                    b.Property<string>("ConceptCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("concept_code");
+
+                    b.Property<string>("Hl7Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("hl7_code");
+
+                    b.Property<string>("PreferredConceptName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("preferred_concept_name");
+
+                    b.Property<string>("ValueSetName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("value_set_name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ValueSetName", "ConceptCode")
+                        .IsUnique();
+
+                    b.ToTable("nmi_phin_value_set", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.PhinVariable", b =>
@@ -15512,6 +15762,15 @@ namespace Survsys.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Survsys.Data.ConditionLabOverride", b =>
+                {
+                    b.HasOne("Survsys.Data.Condition", null)
+                        .WithMany()
+                        .HasForeignKey("ConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Survsys.Data.ConditionPrintCriterion", b =>
                 {
                     b.HasOne("Survsys.Data.Condition", null)
@@ -15669,6 +15928,45 @@ namespace Survsys.Data.Migrations
                     b.HasOne("Survsys.Data.Form", null)
                         .WithMany()
                         .HasForeignKey("FormId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.GuideVariableValue", b =>
+                {
+                    b.HasOne("Survsys.Data.NotificationGuide", null)
+                        .WithMany()
+                        .HasForeignKey("GuideId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.GuideVariableDefault", null)
+                        .WithMany()
+                        .HasForeignKey("GuideVariableDefaultId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.HepLabGroupCondition", b =>
+                {
+                    b.HasOne("Survsys.Data.Condition", null)
+                        .WithMany()
+                        .HasForeignKey("ConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.HepLabGroup", null)
+                        .WithMany()
+                        .HasForeignKey("HepLabGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.HepLabGroupTestType", b =>
+                {
+                    b.HasOne("Survsys.Data.HepLabGroup", null)
+                        .WithMany()
+                        .HasForeignKey("HepLabGroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

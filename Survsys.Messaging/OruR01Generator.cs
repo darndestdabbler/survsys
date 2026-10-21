@@ -2,6 +2,7 @@ using System.Globalization;
 using NHapi.Base.Parser;
 using NHapi.Base.Validation.Implementation;
 using NHapi.Model.V251.Datatype;
+using NHapi.Model.V251.Group;
 using NHapi.Model.V251.Message;
 using NHapi.Model.V251.Segment;
 
@@ -23,8 +24,11 @@ namespace Survsys.Messaging;
 /// <c>../nedss/docs/business-logic/HL7_FIELD_MAPPINGS.md</c> §2.2, for the
 /// default guide: MSH from the header, PID from the demographic and death-date
 /// variables, one OBR carrying the Epidemiologic Information service code, and
-/// one OBX for every remaining resolved variable. The Arbo guide's two-OBR
-/// variant and the conditional NK1 mother segment are a later concern.
+/// one OBX for every remaining resolved variable. The arbovirus guide
+/// (<see cref="ArboGuideProfile"/>) writes two OBRs instead — PERSUBJ, carrying
+/// the patient's DEM observations, and NOTF, carrying the rest — each with its
+/// own OBX set ids. Where any mother (MTH) variable has a value, an NK1 mother
+/// segment carries them.
 ///
 /// The message is deterministic: the control id and the sending time are the
 /// header's rather than a freshly generated id and the clock, so the same input
@@ -35,13 +39,28 @@ namespace Survsys.Messaging;
 /// </remarks>
 public sealed class OruR01Generator
 {
-    private const string DefaultGuideServiceCode = "68991-9";
-    private const string DefaultGuideServiceText = "Epidemiologic Information";
-    private const string DefaultGuideServiceCodingSystem = "LN";
+    /// <summary>The guide profile whose message carries two OBRs, per HL7_FIELD_MAPPINGS.md §2.4.</summary>
+    public const string ArboGuideProfile = "Arbo_Case_Map_v1.0";
+
+    /// <summary>The message profile (MSH-21) the arbovirus guide is sent under.</summary>
+    public const string ArboProfileId = "NND_ORU_v2.0";
+
+    private const string ArboCodingSystem = "2.16.840.1.114222.4.5.274";
+
+    private static readonly (string Code, string Text, string CodingSystem) DefaultGuideService =
+        ("68991-9", "Epidemiologic Information", "LN");
+
+    private static readonly (string Code, string Text, string CodingSystem) PersonSubjectService =
+        ("PERSUBJ", "Person Subject", ArboCodingSystem);
+
+    private static readonly (string Code, string Text, string CodingSystem) NotificationService =
+        ("NOTF", "Individual Case Notification", ArboCodingSystem);
 
     // The PHIN variables the mapping pre-processes into named PID or OBR fields
     // rather than OBX segments, per HL7_FIELD_MAPPINGS.md §2.2.
     private const string ResultStatusVariable = "NOT118";
+    private const string MotherPrefix = "MTH";
+    private const string DemographicPrefix = "DEM";
 
     // An empty validation context, as OruR01Parser reads with: the structure is
     // encoded but no conformance rule is enforced, so a notification that omits
@@ -60,25 +79,96 @@ public sealed class OruR01Generator
 
         var patientResult = message.GetPATIENT_RESULT(0);
         var pid = patientResult.PATIENT.PID;
-        var orderObservation = patientResult.GetORDER_OBSERVATION(0);
-        WriteOrder(orderObservation.OBR);
+        var arbo = input.GuideProfile == ArboGuideProfile;
+        var orders = arbo
+            ? new[] { patientResult.GetORDER_OBSERVATION(0), patientResult.GetORDER_OBSERVATION(1) }
+            : new[] { patientResult.GetORDER_OBSERVATION(0) };
+        if (arbo)
+        {
+            WriteOrder(orders[0].OBR, 1, PersonSubjectService);
+            WriteOrder(orders[1].OBR, 2, NotificationService);
+        }
+        else
+        {
+            WriteOrder(orders[0].OBR, 1, DefaultGuideService);
+        }
 
-        var observationIndex = 0;
+        if (input.Values.Any(value => IsMother(value) && HasValue(value)))
+        {
+            WriteMother(patientResult.PATIENT.GetNK1(0), input.Values.Where(IsMother));
+        }
+
+        var observationCounts = new int[orders.Length];
         var raceIndex = 0;
         var ethnicIndex = 0;
         foreach (var value in input.Values)
         {
-            if (PlaceInNamedField(pid, orderObservation.OBR, value, input.CountyFips, ref raceIndex, ref ethnicIndex))
+            if (IsMother(value)
+                || PlaceInNamedField(pid, orders, value, input.CountyFips, ref raceIndex, ref ethnicIndex))
             {
                 continue;
             }
 
-            var obx = orderObservation.GetOBSERVATION(observationIndex).OBX;
-            WriteObservation(message, obx, value, observationIndex + 1);
-            observationIndex++;
+            // The arbovirus guide's patient observations go under its person-subject OBR.
+            var order = arbo && !value.PhinVar.StartsWith(DemographicPrefix, StringComparison.Ordinal) ? 1 : 0;
+            var obx = orders[order].GetOBSERVATION(observationCounts[order]).OBX;
+            WriteObservation(message, obx, value, observationCounts[order] + 1);
+            observationCounts[order]++;
         }
 
         return _parser.Encode(message);
+    }
+
+    private static bool IsMother(NotificationValue value) =>
+        value.PhinVar.StartsWith(MotherPrefix, StringComparison.Ordinal);
+
+    private static bool HasValue(NotificationValue value) =>
+        !string.IsNullOrWhiteSpace(value.Value) || !string.IsNullOrWhiteSpace(value.Code);
+
+    /// <summary>
+    /// The NK1 mother segment, per HL7_FIELD_MAPPINGS.md §2.2: set id 1, the
+    /// mother relationship, and each MTH variable in its named field. A mother
+    /// variable the mapping does not name is not written.
+    /// </summary>
+    private static void WriteMother(NK1 nk1, IEnumerable<NotificationValue> values)
+    {
+        nk1.SetIDNK1.Value = "1";
+        nk1.Relationship.Identifier.Value = "MTH";
+        nk1.Relationship.Text.Value = "Mother";
+        nk1.Relationship.NameOfCodingSystem.Value = "HL70063";
+
+        var address = nk1.GetAddress(0);
+        var raceIndex = 0;
+        foreach (var value in values)
+        {
+            switch (value.PhinVar)
+            {
+                case "MTH153":
+                    nk1.DateTimeOfBirth.Time.Value = value.Value;
+                    break;
+                case "MTH157":
+                    WriteCoded(nk1.GetRace(raceIndex++), value);
+                    break;
+                case "MTH159":
+                    WriteCoded(nk1.GetEthnicGroup(0), value);
+                    break;
+                case "MTH165":
+                    WriteCoded(nk1.MaritalStatus, value);
+                    break;
+                case "MTH166":
+                    address.StateOrProvince.Value = value.Code ?? value.Value;
+                    break;
+                case "MTH167":
+                    address.Country.Value = value.Code ?? value.Value;
+                    break;
+                case "MTH168":
+                    address.CountyParishCode.Value = value.Code ?? value.Value;
+                    break;
+                case "MTH169":
+                    address.ZipOrPostalCode.Value = value.Value;
+                    break;
+            }
+        }
     }
 
     /// <summary>
@@ -108,24 +198,25 @@ public sealed class OruR01Generator
         msh.GetMessageProfileIdentifier(0).EntityIdentifier.Value = header.ProfileId;
     }
 
-    /// <summary>One OBR for the default guide: its set id and the Epidemiologic Information service code.</summary>
-    private static void WriteOrder(OBR obr)
+    /// <summary>One OBR: its set id and the service it carries.</summary>
+    private static void WriteOrder(OBR obr, int setId, (string Code, string Text, string CodingSystem) service)
     {
-        obr.SetIDOBR.Value = "1";
-        obr.UniversalServiceIdentifier.Identifier.Value = DefaultGuideServiceCode;
-        obr.UniversalServiceIdentifier.Text.Value = DefaultGuideServiceText;
-        obr.UniversalServiceIdentifier.NameOfCodingSystem.Value = DefaultGuideServiceCodingSystem;
+        obr.SetIDOBR.Value = setId.ToString(CultureInfo.InvariantCulture);
+        obr.UniversalServiceIdentifier.Identifier.Value = service.Code;
+        obr.UniversalServiceIdentifier.Text.Value = service.Text;
+        obr.UniversalServiceIdentifier.NameOfCodingSystem.Value = service.CodingSystem;
     }
 
     /// <summary>
     /// Places <paramref name="value"/> into its named PID or OBR field when the
     /// mapping names one, returning whether it did. A named value is consumed
-    /// here and not emitted as an OBX. The county is written as its FIPS code
-    /// where <paramref name="countyFips"/> has one, and as given otherwise.
+    /// here and not emitted as an OBX; an OBR field is written on every OBR.
+    /// The county is written as its FIPS code where <paramref name="countyFips"/>
+    /// has one, and as given otherwise.
     /// </summary>
     private static bool PlaceInNamedField(
         PID pid,
-        OBR obr,
+        ORU_R01_ORDER_OBSERVATION[] orders,
         NotificationValue value,
         IReadOnlyDictionary<string, string>? countyFips,
         ref int raceIndex,
@@ -165,7 +256,11 @@ public sealed class OruR01Generator
                 pid.PatientDeathDateAndTime.Time.Value = value.Value;
                 return true;
             case ResultStatusVariable:
-                obr.ResultStatus.Value = value.Value;
+                foreach (var order in orders)
+                {
+                    order.OBR.ResultStatus.Value = value.Value;
+                }
+
                 return true;
             default:
                 return false;
