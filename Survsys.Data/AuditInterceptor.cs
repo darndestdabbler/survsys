@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -27,7 +28,8 @@ namespace Survsys.Data;
 /// </remarks>
 public sealed class AuditInterceptor : SaveChangesInterceptor
 {
-    private sealed record Change(string TableName, string Operation, EntityEntry Source, string? DeletedKey);
+    private sealed record Change(
+        string TableName, string Operation, EntityEntry Source, string? DeletedKey, string? OldValues, int? UserId);
 
     private sealed class Pending
     {
@@ -171,11 +173,14 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
             // rendered now, while the entry still carries one; an inserted row's
             // key is assigned by the save, so it is left to be rendered after.
             var deletedKey = entry.State is EntityState.Deleted ? RenderKey(entry) : null;
+            var oldValues = entry.State is EntityState.Added ? null : Render(entry, original: true);
             changes.Add(new Change(
                 entry.Metadata.GetTableName() ?? entry.Metadata.Name,
                 operation,
                 entry,
-                deletedKey));
+                deletedKey,
+                oldValues,
+                (context as SurvsysDbContext)?.AuditUserId));
         }
 
         if (changes.Count == 0)
@@ -206,8 +211,19 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
     private static FormattableString InsertSql(Change change, DateTime occurredAt)
     {
         var key = change.DeletedKey ?? RenderKey(change.Source);
-        return $"INSERT INTO audit_entries (table_name, key_values, operation, occurred_at) VALUES ({change.TableName}, {key}, {change.Operation}, {occurredAt})";
+        var newValues = change.Operation == "Delete" ? null : Render(change.Source, original: false);
+        return $"INSERT INTO audit_entries (table_name, key_values, operation, occurred_at, user_id, old_values, new_values) VALUES ({change.TableName}, {key}, {change.Operation}, {occurredAt}, {change.UserId}, {change.OldValues}, {newValues})";
     }
+
+    // The row's mapped columns as a JSON object of column name to value. A
+    // password hash is left out: the audit is read on a screen, and a hash is
+    // not for anyone to read.
+    private static string Render(EntityEntry entry, bool original) =>
+        JsonSerializer.Serialize(entry.Properties
+            .Where(property => property.Metadata.Name != "PasswordHash")
+            .ToDictionary(
+                property => property.Metadata.GetColumnName(),
+                property => original ? property.OriginalValue : property.CurrentValue));
 
     private static string RenderKey(EntityEntry entry)
     {

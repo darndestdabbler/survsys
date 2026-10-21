@@ -16,8 +16,12 @@ namespace Survsys.Data;
 /// module never translates a failure into an HTTP concern, because it does
 /// not know there is one.
 /// </remarks>
-public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options) : DbContext(options)
+public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options, IAuditUser? auditUser = null)
+    : DbContext(options)
 {
+    /// <summary>The user the change audit names for this context's saves, if any.</summary>
+    public int? AuditUserId => auditUser?.UserId;
+
     public DbSet<Condition> Conditions => Set<Condition>();
 
     public DbSet<Agency> Agencies => Set<Agency>();

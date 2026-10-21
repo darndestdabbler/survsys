@@ -59,6 +59,13 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
        does. Somebody else's live lock is named, and refuses Edit. A deleted
        case offers Restore in place of Edit, and stays read-only. *@
     <MudPaper id="report-actions" Elevation="1" Class="pa-4 mb-4">
+        @if (canSeeHistory)
+        {
+            <MudLink id="report-history" Href="@($"/audit?table=person_conditions&key={shown.Id}")" Class="mb-2">
+                History of changes
+            </MudLink>
+        }
+
         @if (shown.DeletedAt is not null)
         {
             <MudAlert id="report-deleted" Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-2">
@@ -491,6 +498,12 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     [Parameter]
     public int ReportId { get; set; }
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    /// <summary>Whether the signed-in user may read the change audit, which is what the history link opens.</summary>
+    private bool canSeeHistory;
+
     private PersonConditionResponse? report;
 
     private PersonDetailResponse? person;
@@ -583,6 +596,9 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
 
     protected override async Task OnParametersSetAsync()
     {
+        canSeeHistory = AuthenticationState is { } state
+            && (await state).User.HasClaim(AccountClient.PrivilegeClaim, Privileges.ManageUsers);
+
         if (loadedId == ReportId)
         {
             return;

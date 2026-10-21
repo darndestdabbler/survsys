@@ -17,6 +17,8 @@ internal sealed class AccessRecordConfiguration : IEntityTypeConfiguration<Acces
         builder.Property(record => record.Id).HasColumnName("id");
         builder.Property(record => record.UserId).HasColumnName("user_id");
         builder.Property(record => record.PersonConditionId).HasColumnName("person_condition_id");
+        builder.Property(record => record.Action).HasColumnName("action").HasMaxLength(16).IsRequired();
+        builder.Property(record => record.Detail).HasColumnName("detail").HasMaxLength(256);
         builder.Property(record => record.AccessedAt).HasColumnName("accessed_at");
 
         builder.HasIndex(record => new { record.PersonConditionId, record.AccessedAt });

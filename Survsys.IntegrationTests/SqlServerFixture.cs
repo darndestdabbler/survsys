@@ -148,10 +148,16 @@ public sealed class SqlServerFixture : IDisposable
     /// <summary>
     /// A context over the suite's database. The caller disposes it.
     /// </summary>
-    public SurvsysDbContext NewContext() => new(
+    /// <remarks>
+    /// Its changes are audited as made by <paramref name="userId"/>, when given.
+    /// </remarks>
+    public SurvsysDbContext NewContext(int? userId = null) => new(
         new DbContextOptionsBuilder<SurvsysDbContext>()
             .UseSqlServer(ConnectionString, sqlServer => sqlServer.CommandTimeout(60))
-            .Options);
+            .Options,
+        userId is null ? null : new FixedAuditUser(userId));
+
+    private sealed record FixedAuditUser(int? UserId) : IAuditUser;
 
     public void Dispose() => SqlConnection.ClearAllPools();
 

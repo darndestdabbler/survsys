@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -118,6 +119,8 @@ public static class CaseSearchEndpoints
 
     private static async Task<Results<Ok<PagedResult<CaseSearchItemResponse>>, ProblemHttpResult>> GetCases(
         CaseSearchQueries cases,
+        AccessAuditQueries audit,
+        ClaimsPrincipal user,
         [AsParameters] CaseSearch search,
         int page = Paging.DefaultPage,
         int pageSize = Paging.DefaultPageSize,
@@ -131,7 +134,27 @@ public static class CaseSearchEndpoints
                 title: "The page asked for is not one this endpoint can return.");
         }
 
-        return TypedResults.Ok(await cases.Page(search, page, pageSize, cancellationToken));
+        var found = await cases.Page(search, page, pageSize, cancellationToken);
+
+        if (AccountEndpoints.UserIdOf(user) is { } userId)
+        {
+            await audit.Record(userId, null, "Search", Describe(search), cancellationToken);
+        }
+
+        return TypedResults.Ok(found);
+    }
+
+    /// <summary>The criteria given, as <c>Name=value</c> pairs; null where none was.</summary>
+    private static string? Describe(CaseSearch search)
+    {
+        var given = typeof(CaseSearch).GetProperties()
+            .Where(property => property.Name != nameof(CaseSearch.IsEmpty))
+            .Select(property => (property.Name, Value: property.GetValue(search)))
+            .Where(pair => pair.Value is not (null or false or ""))
+            .Select(pair => $"{pair.Name}={pair.Value}")
+            .ToList();
+
+        return given.Count == 0 ? null : string.Join(", ", given);
     }
 }
 

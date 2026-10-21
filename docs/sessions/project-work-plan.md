@@ -105,7 +105,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 91 | Transport to CDC | no | 2026-10-21 |
 | 92 | Phase 11 walkthroughs | no | 2026-10-21 |
 | 93 | Release 0.12.0 (release: 0.12.0) | yes | 2026-10-21 |
-| 94 | Audit with its user and values, and its screens | — | not declared |
+| 94 | Audit with its user and values, and its screens | no | 2026-10-21 |
 | 95 | Jurisdiction-scoped access and sign-in protection | — | not declared |
 | 96 | Classification rules on save | — | not declared |
 | 97 | IBIS, ad-hoc reporting and system configuration | — | not declared |
@@ -846,3 +846,9 @@ Write the Phase 11 walkthroughs and the Playwright tests that perform them. The 
 **Releasable: yes.**
 
 Release 0.12.0: the framework packs and publishes what is on the trunk.
+
+### Session 94 — Audit with its user and values, and its screens
+
+**Releasable: no.**
+
+Extend the existing change audit so each row records who made the change and the values before and after as JSON, and widen the access audit to cover sign-ins, exports and searches. In Survsys.Data, AuditEntry gains a nullable UserId and nullable OldValues/NewValues JSON columns; the context takes an optional IAuditUser (null in tests and tools) that the AuditInterceptor reads, and AccessRecord gains an Action and a Detail with PersonConditionId made nullable, all in one migration. In Survsys.Api the signed-in user feeds IAuditUser, sign-in, saved-view export and case search call the existing AccessAuditQueries.Record, and a privilege-gated GET /api/audit pages the change audit for a table (and optionally a key). In Survsys.Web an audit screen (a case's history by default, or any table's) and an access-audit screen are added behind ManageUsers. Integration tests prove an insert, update and delete each carry user and values, that a rolled-back save records nothing, and that vocabulary tables are audited.

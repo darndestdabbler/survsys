@@ -92,6 +92,61 @@ public class PrivilegeRulesTests(SqlServerFixture server) : IDisposable
         Assert.InRange(newest.AccessedAt, DateTime.UtcNow.AddMinutes(-5), DateTime.UtcNow.AddMinutes(5));
     }
 
+    [Fact]
+    public async Task SigningInWritesASignInAccessRecordNamingTheAdministrator()
+    {
+        var client = api.CreateClient();
+        var before = await Newest(client);
+
+        await api.SignIn(api.CreateAnonymousClient(), SurvsysApi.AdministratorUserName, SurvsysApi.AdministratorPassword);
+
+        var after = await Newest(client);
+        Assert.True(after.Id > before.Id);
+        Assert.Equal("SignIn", after.Action);
+        Assert.Equal(SurvsysApi.AdministratorUserName, after.UserName);
+        Assert.Null(after.PersonConditionId);
+    }
+
+    [Fact]
+    public async Task ExportingASavedViewWritesAnExportAccessRecordNamingTheView()
+    {
+        var client = api.CreateClient();
+        var view = await Created<SavedViewResponse>(
+            client, "/api/saved-views", new SaveSavedViewRequest("Audit export " + Guid.NewGuid(), [ExportColumns.RecordNumber]));
+        var before = await Newest(client);
+
+        using (var exported = await client.GetAsync($"/api/saved-views/{view.Id}/export"))
+        {
+            exported.EnsureSuccessStatusCode();
+        }
+
+        var after = await Newest(client);
+        Assert.True(after.Id > before.Id);
+        Assert.Equal("Export", after.Action);
+        Assert.Equal($"saved view {view.Id}", after.Detail);
+    }
+
+    [Fact]
+    public async Task SearchingCasesWritesASearchAccessRecordNamingTheCriteria()
+    {
+        var client = api.CreateClient();
+        var before = await Newest(client);
+
+        using (var searched = await client.GetAsync("/api/cases?LastName=Lovelace"))
+        {
+            searched.EnsureSuccessStatusCode();
+        }
+
+        var after = await Newest(client);
+        Assert.True(after.Id > before.Id);
+        Assert.Equal("Search", after.Action);
+        Assert.Contains("LastName=Lovelace", after.Detail);
+    }
+
+    /// <summary>The newest access record, which is the one the request just made wrote.</summary>
+    private static async Task<AccessRecordResponse> Newest(HttpClient client) =>
+        (await client.GetFromJsonAsync<PagedResult<AccessRecordResponse>>("/api/access-audit?pageSize=1", Json))!.Items[0];
+
     /// <summary>
     /// A client signed in as a user whose one role holds no privilege at all,
     /// created by the administrator over the wire. The role and the user are

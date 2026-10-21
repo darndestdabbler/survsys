@@ -60,6 +60,7 @@ public class PrivilegeRulesTests
     [InlineData("POST", "/api/roles")]
     [InlineData("GET", "/api/privileges")]
     [InlineData("GET", "/api/access-audit")]
+    [InlineData("GET", "/api/audit")]
     public void RequiredForUsersRolesAndTheAccessAuditIsManageUsers(string method, string path)
     {
         Assert.Equal(Privileges.ManageUsers, PrivilegeRules.RequiredFor(method, path));

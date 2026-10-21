@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Data;
 using Xunit;
@@ -23,6 +24,8 @@ namespace Survsys.IntegrationTests;
 public class AuditInterceptorTests(SqlServerFixture server)
 {
     private const string Table = "treatments";
+
+    private const int AuditUser = 4242;
 
     [Fact]
     public async Task AnInsertWritesOneInsertRowForTheTreatmentKey()
@@ -136,9 +139,91 @@ public class AuditInterceptorTests(SqlServerFixture server)
         Assert.Equal(["Insert"], await AuditOperations(key));
     }
 
-    private async Task<string> Insert()
+    [Fact]
+    public async Task AnInsertRecordsTheUserAndOnlyTheNewValues()
     {
-        await using var context = server.NewContext();
+        var key = await Insert(AuditUser);
+
+        var entry = Assert.Single(await Entries(Table, key));
+
+        Assert.Equal(AuditUser, entry.UserId);
+        Assert.Null(entry.OldValues);
+        Assert.Equal(true, Value(entry.NewValues, "active").GetBoolean());
+        Assert.StartsWith("Audit subject ", Value(entry.NewValues, "treatment_name").GetString());
+    }
+
+    [Fact]
+    public async Task AnUpdateRecordsTheUserAndTheValuesBeforeAndAfter()
+    {
+        var key = await Insert();
+
+        await using (var context = server.NewContext(AuditUser))
+        {
+            var treatment = await context.Treatments.SingleAsync(t => t.Id == int.Parse(key));
+            treatment.Active = false;
+            await context.SaveChangesAsync();
+        }
+
+        var update = (await Entries(Table, key)).Single(entry => entry.Operation == "Update");
+
+        Assert.Equal(AuditUser, update.UserId);
+        Assert.True(Value(update.OldValues, "active").GetBoolean());
+        Assert.False(Value(update.NewValues, "active").GetBoolean());
+    }
+
+    [Fact]
+    public async Task ADeleteRecordsTheUserAndOnlyTheOldValues()
+    {
+        var key = await Insert();
+
+        await using (var context = server.NewContext(AuditUser))
+        {
+            context.Treatments.Remove(await context.Treatments.SingleAsync(t => t.Id == int.Parse(key)));
+            await context.SaveChangesAsync();
+        }
+
+        var delete = (await Entries(Table, key)).Single(entry => entry.Operation == "Delete");
+
+        Assert.Equal(AuditUser, delete.UserId);
+        Assert.Null(delete.NewValues);
+        Assert.StartsWith("Audit subject ", Value(delete.OldValues, "treatment_name").GetString());
+    }
+
+    [Fact]
+    public async Task AChangeSavedWithNoUserRecordsNone()
+    {
+        var key = await Insert();
+
+        Assert.Null(Assert.Single(await Entries(Table, key)).UserId);
+    }
+
+    [Fact]
+    public async Task AVocabularyRowInsertedIsAudited()
+    {
+        string key;
+
+        await using (var context = server.NewContext(AuditUser))
+        {
+            var organism = new VocabMasterOrganism
+            {
+                Snomed = "AUDIT-" + Guid.NewGuid().ToString("N")[..8],
+                OrganismName = "Audit organism",
+            };
+            context.VocabMasterOrganisms.Add(organism);
+            await context.SaveChangesAsync();
+            key = organism.Id.ToString();
+        }
+
+        var entry = Assert.Single(await Entries("vocab_master_organism", key));
+
+        Assert.Equal("Insert", entry.Operation);
+        Assert.Equal(AuditUser, entry.UserId);
+        Assert.Equal("Audit organism", Value(entry.NewValues, "organism").GetString());
+    }
+
+    private async Task<string> Insert(int? userId = null)
+    {
+        await using var context = server.NewContext(userId);
 
         var treatment = NewTreatment();
         context.Treatments.Add(treatment);
@@ -152,6 +237,19 @@ public class AuditInterceptorTests(SqlServerFixture server)
         Name = "Audit subject " + Guid.NewGuid(),
         CreatedAt = DateTimeOffset.UtcNow,
     };
+
+    private async Task<List<AuditEntry>> Entries(string table, string key)
+    {
+        await using var context = server.NewContext();
+
+        return await context.Set<AuditEntry>()
+            .Where(entry => entry.TableName == table && entry.KeyValues == key)
+            .OrderBy(entry => entry.Id)
+            .ToListAsync();
+    }
+
+    private static JsonElement Value(string? json, string column) =>
+        JsonDocument.Parse(json!).RootElement.GetProperty(column);
 
     /// <summary>
     /// The operations audited against the <c>treatments</c> table for one key,

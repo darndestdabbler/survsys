@@ -1937,19 +1937,31 @@
         "engine": "framework",
         "identityProvenance": "direct"
       },
-      "verificationVerdict": null,
-      "startCommit": "e29ebf37c830a848658079ae5f3fe738d347c159",
       "frameworkVersion": "3.23.0",
-      "noChange": true
+      "startCommit": "e29ebf37c830a848658079ae5f3fe738d347c159",
+      "verificationVerdict": null
     },
     {
       "number": 94,
       "title": "Audit with its user and values, and its screens",
-      "status": "not-started",
-      "startedAt": null,
+      "status": "in-progress",
+      "startedAt": "2026-10-21T16:09:11.846000-04:00",
       "completedAt": null,
-      "orchestrator": null,
-      "verificationVerdict": null
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "startCommit": "9c59c050344ff1d20538a55167014031b84013a4",
+      "frameworkVersion": "3.23.0",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      }
     },
     {
       "number": 95,

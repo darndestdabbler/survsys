@@ -407,7 +407,7 @@ public static class PersonConditionEndpoints
 
         if (AccountEndpoints.UserIdOf(user) is { } userId)
         {
-            await audit.Record(userId, id, cancellationToken);
+            await audit.Record(userId, id, "View", null, cancellationToken);
         }
 
         return TypedResults.Ok(report);

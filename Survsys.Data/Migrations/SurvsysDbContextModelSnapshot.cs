@@ -35,7 +35,18 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("accessed_at");
 
-                    b.Property<int>("PersonConditionId")
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("action");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("detail");
+
+                    b.Property<int?>("PersonConditionId")
                         .HasColumnType("int")
                         .HasColumnName("person_condition_id");
 
@@ -259,9 +270,17 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(256)")
                         .HasColumnName("key_values");
 
+                    b.Property<string>("NewValues")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("new_values");
+
                     b.Property<DateTime>("OccurredAt")
                         .HasColumnType("datetime2")
                         .HasColumnName("occurred_at");
+
+                    b.Property<string>("OldValues")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("old_values");
 
                     b.Property<string>("Operation")
                         .IsRequired()
@@ -274,6 +293,10 @@ namespace Survsys.Data.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)")
                         .HasColumnName("table_name");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id");
 

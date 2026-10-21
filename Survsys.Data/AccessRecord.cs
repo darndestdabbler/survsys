@@ -16,8 +16,14 @@ public class AccessRecord
     /// <summary>The user who opened the report.</summary>
     public int UserId { get; set; }
 
-    /// <summary>The report that was opened.</summary>
-    public int PersonConditionId { get; set; }
+    /// <summary>The report that was opened; null for an action not on one report.</summary>
+    public int? PersonConditionId { get; set; }
+
+    /// <summary>What the user did: <c>View</c>, <c>SignIn</c>, <c>Export</c> or <c>Search</c>.</summary>
+    public string Action { get; set; } = "View";
+
+    /// <summary>What the action was on, such as the view exported or the criteria searched.</summary>
+    public string? Detail { get; set; }
 
     /// <summary>When it was opened, in UTC.</summary>
     public DateTime AccessedAt { get; set; }

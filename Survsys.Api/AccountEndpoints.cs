@@ -107,6 +107,7 @@ public static class AccountEndpoints
 
     private static async Task<Results<SignInHttpResult, ProblemHttpResult>> SignIn(
         AccountQueries accounts,
+        AccessAuditQueries audit,
         SignInRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -116,6 +117,11 @@ public static class AccountEndpoints
                 detail: "The user name or password is not right, or the user may not sign in.",
                 statusCode: StatusCodes.Status401Unauthorized,
                 title: "Signing in was refused.");
+        }
+
+        if (UserIdOf(principal) is { } userId)
+        {
+            await audit.Record(userId, null, "SignIn", null, cancellationToken);
         }
 
         return TypedResults.SignIn(principal, authenticationScheme: BearerTokenDefaults.AuthenticationScheme);

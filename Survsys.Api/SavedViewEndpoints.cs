@@ -183,12 +183,22 @@ public static class SavedViewEndpoints
 
     private static async Task<Results<ContentHttpResult, ProblemHttpResult>> ExportSavedView(
         SavedViewQueries views,
+        AccessAuditQueries audit,
         ClaimsPrincipal user,
         int id,
-        CancellationToken cancellationToken = default) =>
-        await views.Export(Caller(user), id, cancellationToken) is { } csv
-            ? TypedResults.Text(csv, "text/csv; charset=utf-8")
-            : NotFound(id);
+        CancellationToken cancellationToken = default)
+    {
+        var caller = Caller(user);
+
+        if (await views.Export(caller, id, cancellationToken) is not { } csv)
+        {
+            return NotFound(id);
+        }
+
+        await audit.Record(caller, null, "Export", $"saved view {id}", cancellationToken);
+
+        return TypedResults.Text(csv, "text/csv; charset=utf-8");
+    }
 
     /// <summary>
     /// The signed-in caller's id. The fallback policy has already refused a

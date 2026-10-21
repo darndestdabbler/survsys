@@ -6,8 +6,8 @@ using Survsys.Data;
 namespace Survsys.Api;
 
 /// <summary>
-/// <c>/api/access-audit</c>: who opened which case morbidity report, and when,
-/// newest first.
+/// <c>/api/access-audit</c>: who opened which case morbidity report, signed in,
+/// exported or searched, and when, newest first.
 /// </summary>
 /// <remarks>
 /// The legacy <c>access_records</c>. A record is written by
@@ -25,7 +25,7 @@ public static class AccessAuditEndpoints
     {
         ArgumentNullException.ThrowIfNull(record);
 
-        return new AccessRecordResponse(record.Id, record.UserId, userName, record.PersonConditionId, record.AccessedAt);
+        return new AccessRecordResponse(record.Id, record.UserId, userName, record.PersonConditionId, record.Action, record.Detail, record.AccessedAt);
     }
 
     /// <summary>
@@ -70,13 +70,20 @@ public static class AccessAuditEndpoints
 /// </summary>
 internal sealed class AccessAuditQueries(SurvsysDbContext database)
 {
-    /// <summary>Records that the user opened the report, now.</summary>
-    public async Task Record(int userId, int personConditionId, CancellationToken cancellationToken)
+    /// <summary>Records that the user did something, now: opened a report, signed in, exported or searched.</summary>
+    public async Task Record(
+        int userId,
+        int? personConditionId,
+        string action,
+        string? detail,
+        CancellationToken cancellationToken)
     {
         database.AccessRecords.Add(new AccessRecord
         {
             UserId = userId,
             PersonConditionId = personConditionId,
+            Action = action,
+            Detail = detail?.Length > 256 ? detail[..256] : detail,
             AccessedAt = DateTime.UtcNow,
         });
         await database.SaveChangesAsync(cancellationToken);

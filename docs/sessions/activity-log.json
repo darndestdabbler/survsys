@@ -1084,6 +1084,13 @@
       "dateTime": "2026-10-21T15:56:39.324000-04:00",
       "task": "Release 0.12.0: the framework packs and publishes what is on the trunk.",
       "releasable": true
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 94,
+      "dateTime": "2026-10-21T16:11:07.016000-04:00",
+      "task": "Extend the existing change audit so each row records who made the change and the values before and after as JSON, and widen the access audit to cover sign-ins, exports and searches. In Survsys.Data, AuditEntry gains a nullable UserId and nullable OldValues/NewValues JSON columns; the context takes an optional IAuditUser (null in tests and tools) that the AuditInterceptor reads, and AccessRecord gains an Action and a Detail with PersonConditionId made nullable, all in one migration. In Survsys.Api the signed-in user feeds IAuditUser, sign-in, saved-view export and case search call the existing AccessAuditQueries.Record, and a privilege-gated GET /api/audit pages the change audit for a table (and optionally a key). In Survsys.Web an audit screen (a case's history by default, or any table's) and an access-audit screen are added behind ManageUsers. Integration tests prove an insert, update and delete each carry user and values, that a rolled-back save records nothing, and that vocabulary tables are audited.",
+      "releasable": false
     }
   ]
 }

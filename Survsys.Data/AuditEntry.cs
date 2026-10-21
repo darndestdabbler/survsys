@@ -8,10 +8,9 @@ namespace Survsys.Data;
 /// </summary>
 /// <remarks>
 /// Written and never changed. A row records the table it audits, the primary
-/// key of the affected row rendered to text, the operation and the time — not
-/// the before-and-after of each column, and not who did it: who-viewed-what is
-/// the access audit's (<see cref="AccessRecord"/>), and this row knows only
-/// that the change happened.
+/// key of the affected row rendered to text, the operation, the time, who made
+/// the change and the row's values before and after as JSON. Who-viewed-what is
+/// the access audit's (<see cref="AccessRecord"/>).
 /// </remarks>
 public class AuditEntry
 {
@@ -28,4 +27,16 @@ public class AuditEntry
 
     /// <summary>When the change was saved, in UTC.</summary>
     public DateTime OccurredAt { get; set; }
+
+    /// <summary>
+    /// The user who made the change, or null where none was signed in. A plain
+    /// id with no foreign key, so the audit outlives the user.
+    /// </summary>
+    public int? UserId { get; set; }
+
+    /// <summary>The row's values before the change, as JSON; null for an insert.</summary>
+    public string? OldValues { get; set; }
+
+    /// <summary>The row's values after the change, as JSON; null for a delete.</summary>
+    public string? NewValues { get; set; }
 }

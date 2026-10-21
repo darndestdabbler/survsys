@@ -43,6 +43,10 @@ internal sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEn
             .HasColumnName("occurred_at")
             .IsRequired();
 
+        builder.Property(entry => entry.UserId).HasColumnName("user_id");
+        builder.Property(entry => entry.OldValues).HasColumnName("old_values");
+        builder.Property(entry => entry.NewValues).HasColumnName("new_values");
+
         builder.HasIndex(entry => new { entry.TableName, entry.OccurredAt });
     }
 }
