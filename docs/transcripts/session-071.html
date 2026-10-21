@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 071 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 071 transcript</h1>
+<p class="stamp">Rendered 2026-10-19T17:20:14.856Z by dabbler-ai-router 3.21.0 at 6a6b77dc1e0788ab79cad91d41cb8b43aa5bbdc6.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-19T13:02:29.497-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 71: Duplicate persons and merging them</h3>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: candidate duplicate pairs found by the matcher, and a merge that keeps one person, moves the other's cases, labs, contacts, vaccines, identifiers, names and addresses onto them, keeps the merged-away record as a merged tombstone, and audits the merge, in one transaction.</li><li><code>Survsys.Web</code>: a duplicates screen and a side-by-side merge screen, privilege-gated.</li><li><code>Survsys.IntegrationTests</code>: a merge's every moved row, and a failed merge leaving both persons unchanged.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Find duplicate persons with the session-70 matcher and merge them. Survsys.Data's Person gains MergedIntoPersonId and MergedAt, the merged-away record's tombstone (a self-referencing foreign key, restrict on delete), added by a PersonMerges migration that also grants a new merge_persons privilege (Privileges.MergePersons) to the Administrator role; PrivilegeRules requires it for everything under /api/person-merges. Survsys.Api adds PersonMergeEndpoints: GET /api/person-merges/candidates returns candidate duplicate pairs among live persons (blocked on a shared last name, birth date or identifier value, scored and classified by PersonMatchRules with the configured PersonMatchThresholds, Probable or Exact only, best first, capped); POST /api/person-merges takes a PersonMergeRequest (the person kept and the person merged away) and, in one transaction, moves the merged person's cases (their vaccines, treatments and everything else travel with the case), labs, contact and exposure-source links, parent/guardian links, identifiers, aliases, name history, races, telephones, emails and addresses onto the kept person (composite-keyed aliases and races re-inserted only where the kept person lacks them, and the merged person's current address closed as of the merge when the kept person already has one), then marks the merged person a tombstone; the AuditInterceptor audits every one of those row changes inside the same transaction, so a failure leaves nothing changed and no audit. Person search and match candidates exclude tombstones. Survsys.Web adds a duplicates screen listing the pairs and a side-by-side merge screen comparing the two records, choosing which to keep and merging, both shown and linked only to a user holding MergePersons. Unit tests cover the privilege rule, request validation, pairing and the client calls; integration tests check every moved row after a merge and that a merge made to fail partway leaves both persons and their rows unchanged.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/43042c19fb5198fbd1c190fe26f278cb2e6a43e6"><code>43042c19fb5198fbd1c190fe26f278cb2e6a43e6</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Data</td><td><p>Person gains MergedIntoPersonId (nullable, a foreign key to persons with restrict on delete, column merged_into_person_id) and MergedAt (nullable DateTime, column merged_at), configured in PersonConfiguration. Add migration 20261019040000_PersonMerges with its designer and the updated model snapshot, adding both columns and the index on merged_into_person_id, and inserting the merge_persons privilege for role 1 as the InvestigationWorkflow migration did. Privileges gains MergePersons = &quot;merge_persons&quot; (appended to All). PrivilegeRules requires MergePersons for every method under /api/person-merges. PrivilegeRulesTests covers the new rule.</p></td><td><span class="mono">Survsys.Data/Person.cs</span><br><span class="mono">Survsys.Data/PersonConfiguration.cs</span><br><span class="mono">Survsys.Data/Migrations/20261019040000_PersonMerges.cs</span><br><span class="mono">Survsys.Data/Migrations/20261019040000_PersonMerges.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span><br><span class="mono">Survsys.Contracts/Privileges.cs</span><br><span class="mono">Survsys.Api/PrivilegeRules.cs</span><br><span class="mono">Survsys.UnitTests/PrivilegeRulesTests.cs</span></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Api</td><td><p>Add contracts DuplicatePersonPairResponse (both persons as PersonResponse, score, verdict, reasons) and PersonMergeRequest (KeepPersonId, MergePersonId). Add Survsys.Api/PersonMergeEndpoints.cs mapping GET /api/person-merges/candidates and POST /api/person-merges, with a PersonMergeQueries that pairs live persons sharing a last name, birth date or identifier value, scores each pair once with PersonMatchRules and the configured thresholds, keeps Probable and Exact pairs best first, capped; and that merges in one explicit transaction as the task describes, answering 404 for an unknown person and 409 where the two are the same person or either is already a tombstone, and returning the kept person. WhyNotAMergeRequest validates the request. Register it in Program.cs. PersonEndpoints search and PersonMatchQueries candidates exclude persons with MergedIntoPersonId set. Note the merge in docs/technical/README.md. Survsys.UnitTests/PersonMergeEndpointsTests.cs covers the validation and pairing.</p></td><td><span class="mono">Survsys.Contracts/DuplicatePersonPairResponse.cs</span><br><span class="mono">Survsys.Contracts/PersonMergeRequest.cs</span><br><span class="mono">Survsys.Api/PersonMergeEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.Api/PersonEndpoints.cs</span><br><span class="mono">Survsys.Api/PersonMatchEndpoints.cs</span><br><span class="mono">Survsys.UnitTests/PersonMergeEndpointsTests.cs</span><br><span class="mono">docs/technical/README.md</span></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Web</td><td><p>PersonsClient gains DuplicateCandidates() and Merge(PersonMergeRequest). Add Survsys.Web/Components/Pages/PersonDuplicates.razor (/persons/duplicates): the candidate pairs with both names, birth dates, score and reasons, each linking to the merge screen. Add Survsys.Web/Components/Pages/PersonMerge.razor (/persons/merge/{firstId:int}/{secondId:int}): the two persons' records side by side, a choice of which to keep, and a Merge button that merges, then goes to the kept person's record and shows an error on failure. Both pages require MergePersons, and MainLayout shows a Duplicate persons entry only to a user holding it. PersonsClientTests covers the new calls.</p></td><td><span class="mono">Survsys.Web/PersonsClient.cs</span><br><span class="mono">Survsys.Web/Components/Pages/PersonDuplicates.razor</span><br><span class="mono">Survsys.Web/Components/Pages/PersonMerge.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span><br><span class="mono">Survsys.UnitTests/PersonsClientTests.cs</span></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Integration tests</td><td><p>Add Survsys.IntegrationTests/PersonMergeEndpointsTests.cs: against the real database, the candidates route pairing two matching persons and not a dissimilar one; a merge moving every row kind (case with its vaccine, lab, exposure contact and source, guardian link, identifier, alias, name history, race, telephone, email, and addresses with the merged current address closed) onto the kept person, marking the tombstone, and leaving audit entries for the changes; the merged person gone from search; 409 for a self-merge or a tombstone; 403 without merge_persons; and a merge made to fail partway (a test interceptor throwing on a save inside it) leaving both persons and all their rows unchanged.</p></td><td><span class="mono">Survsys.IntegrationTests/PersonMergeEndpointsTests.cs</span></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No field-by-field choice of demographics: the kept person's own demographic values are kept as they are, and the merged person's are not copied over</li><li>No unmerge, no automatic merging during ELR intake or anywhere else, and no scheduled duplicate scan: a person decides each merge</li><li>No change to PersonMatchRules scoring or thresholds, no fuzzy or phonetic comparison, and no phone or email promotion</li><li>No change to how GET /api/persons/{id} answers for a tombstone, and no change to existing element ids, E2E tests or walkthroughs</li><li>No release and no packaging</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[17:02:29]</span> <span class="muted">run-started</span> session=071 mode=pull</div>
+<div class="line"><span class="at">[17:02:29]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[17:04:12]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[17:04:12]</span> <span class="muted">plan-accepted</span> steps=[&quot;data&quot;,&quot;api&quot;,&quot;web&quot;,&quot;integration-tests&quot;] non_goals=5</div>
+<div class="line"><span class="at">[17:04:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[17:04:13]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=data</div>
+<div class="line"><span class="at">[17:05:37]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:05:40]</span> <span class="muted">check-passed</span> step=data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[17:05:41]</span> <span class="muted">report-accepted</span> seq=2 step=data files=[&quot;Survsys.Data/Person.cs&quot;,&quot;Survsys.Data/PersonConfiguration.cs&quot;,&quot;Survsys.Data/Migrations/20261019040000_PersonMerges.cs&quot;,&quot;Survsys.Data/Migrations/20261019040000_PersonMerges.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;,&quot;Survsys.Contracts/Privileges.cs&quot;,&quot;Survsys.Api/PrivilegeRules.cs&quot;,&quot;Survsys.UnitTests/PrivilegeRulesTests.cs&quot;] notes=Person tombstone columns and FK, PersonMerges migration seeding merge_persons for role 1, MergePersons privilege gating /api/person-merges</div>
+<div class="line"><span class="at">[17:05:41]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=api</div>
+<div class="line"><span class="at">[17:08:39]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:08:42]</span> <span class="muted">check-passed</span> step=api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[17:08:42]</span> <span class="muted">report-accepted</span> seq=3 step=api files=[&quot;Survsys.Contracts/DuplicatePersonPairResponse.cs&quot;,&quot;Survsys.Contracts/PersonMergeRequest.cs&quot;,&quot;Survsys.Api/PersonMergeEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.Api/PersonEndpoints.cs&quot;,&quot;Survsys.Api/PersonMatchEndpoints.cs&quot;,&quot;Survsys.UnitTests/PersonMergeEndpointsTests.cs&quot;,&quot;docs/technical/README.md&quot;] notes=Duplicate candidate pairs and transactional merge endpoints under /api/person-merges; search and matching skip tombstones</div>
+<div class="line"><span class="at">[17:08:42]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=web</div>
+<div class="line"><span class="at">[17:10:20]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:10:23]</span> <span class="muted">check-passed</span> step=web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[17:10:23]</span> <span class="muted">report-accepted</span> seq=4 step=web files=[&quot;Survsys.Web/PersonsClient.cs&quot;,&quot;Survsys.Web/Components/Pages/PersonDuplicates.razor&quot;,&quot;Survsys.Web/Components/Pages/PersonMerge.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;,&quot;Survsys.UnitTests/PersonsClientTests.cs&quot;] notes=Duplicates and side-by-side merge screens gated on merge_persons, nav entry, client calls with tests</div>
+<div class="line"><span class="at">[17:10:23]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=integration-tests</div>
+<div class="line"><span class="at">[17:14:11]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:14:14]</span> <span class="muted">check-passed</span> step=integration-tests argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[17:14:14]</span> <span class="muted">report-accepted</span> seq=5 step=integration-tests files=[&quot;Survsys.IntegrationTests/PersonMergeEndpointsTests.cs&quot;] notes=Integration tests: candidate pairing, every moved row with tombstone and audit, 409/404, 403 without merge_persons, partway failure rolls back</div>
+<div class="line"><span class="at">[17:14:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[17:14:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[17:14:16]</span> <span class="muted">job-started</span> name=verification pid=56632 log=.dabbler/runs/s71/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[17:16:01]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s71/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[17:16:01]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[17:16:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[17:16:01]</span> <span class="muted">instruction-issued</span> seq=6 kind=rejection reasons=1</div>
+<div class="line"><span class="at">[17:16:14]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[17:16:14]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[17:16:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[17:16:14]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[17:16:39]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[17:16:44]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=data</div>
+<div class="line"><span class="at">[17:16:46]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=api</div>
+<div class="line"><span class="at">[17:16:47]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=web</div>
+<div class="line"><span class="at">[17:16:49]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;] owner=integration-tests</div>
+<div class="line"><span class="at">[17:16:50]</span> <span class="muted">report-accepted</span> seq=7 step=fix-round-1 files=[&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;,&quot;Survsys.Web/Components/Pages/PersonDuplicates.razor&quot;,&quot;Survsys.Web/Components/Pages/PersonMerge.razor&quot;] notes=Duplicates and merge screens and their nav entry now require view_cases as well as merge_persons, since the merge screen reads both records</div>
+<div class="line"><span class="at">[17:16:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[17:16:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[17:16:51]</span> <span class="muted">job-started</span> name=verification pid=57792 log=.dabbler/runs/s71/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[17:17:22]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s71/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[17:17:22]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[17:17:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[17:17:22]</span> <span class="muted">instruction-issued</span> seq=8 kind=rejection reasons=1</div>
+<div class="line"><span class="at">[17:17:33]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[17:17:33]</span> <span class="muted">dispositions-accepted</span> round=2 fix=[0] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[17:17:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[17:17:33]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=fix-round-2</div>
+<div class="line"><span class="at">[17:19:02]</span> <span class="muted">run-resumed</span> session=071 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[17:19:05]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=data</div>
+<div class="line"><span class="at">[17:19:07]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=api</div>
+<div class="line"><span class="at">[17:19:09]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=web</div>
+<div class="line"><span class="at">[17:19:11]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;] owner=integration-tests</div>
+<div class="line"><span class="at">[17:19:12]</span> <span class="muted">report-accepted</span> seq=9 step=fix-round-2 files=[&quot;Survsys.Api/PersonMergeEndpoints.cs&quot;,&quot;Survsys.Web/PersonsClient.cs&quot;,&quot;Survsys.Web/Components/Pages/PersonMerge.razor&quot;,&quot;Survsys.Web/Components/Pages/PersonDuplicates.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;,&quot;Survsys.UnitTests/PrivilegeRulesTests.cs&quot;,&quot;Survsys.UnitTests/PersonsClientTests.cs&quot;,&quot;Survsys.IntegrationTests/PersonMergeEndpointsTests.cs&quot;,&quot;docs/technical/README.md&quot;] notes=merge_persons alone now suffices: GET /api/person-merges/persons/{id} serves the merge screen's records; view_cases gating removed; merge-only user integration test</div>
+<div class="line"><span class="at">[17:19:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[17:19:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[17:19:13]</span> <span class="muted">job-started</span> name=verification pid=38544 log=.dabbler/runs/s71/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[17:19:47]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s71/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[17:19:47]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[17:19:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[17:19:48]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[17:19:49]</span> <span class="muted">job-started</span> name=run of record: unit pid=58712 log=.dabbler/runs/s71/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[17:19:57]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s71/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[17:19:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[17:20:03]</span> <span class="muted">landed</span> commit=43042c19fb5198fbd1c190fe26f278cb2e6a43e6</div>
+<div class="line"><span class="at">[17:20:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[17:20:03]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[17:20:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[17:20:04]</span> <span class="muted">job-started</span> name=close pid=47664 log=.dabbler/runs/s71/driver/jobs/close.log</div>
+<div class="line"><span class="at">[17:20:14]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s71/driver/jobs/close.log</div>
+<div class="line"><span class="at">[17:20:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Merge-only users can open the duplicates list but cannot load the side-by-side records needed to perform a merge.</td><td>fixed — Duplicates and merge screens and their nav entry now require view_cases as well as merge_persons, since the merge screen reads both records — (Survsys.Web/Components/Layout/MainLayout.razor, Survsys.Web/Components/Pages/PersonDuplicates.razor, Survsys.Web/Components/Pages/PersonMerge.razor)</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The round-1 merge-only access failure persists: the remediation now hides and disables the duplicate/merge workflow for users holding only `merge_persons`, rather than allowing that privilege to perform its stated purpose.</td><td>fixed — merge_persons alone now suffices: GET /api/person-merges/persons/{id} serves the merge screen's records; view_cases gating removed; merge-only user integration test — (Survsys.Api/PersonMergeEndpoints.cs, Survsys.Web/PersonsClient.cs, Survsys.Web/Components/Pages/PersonMerge.razor, Survsys.Web/Components/Pages/PersonDuplicates.razor, Survsys.Web/Components/Layout/MainLayout.razor, Survsys.UnitTests/PrivilegeRulesTests.cs, Survsys.UnitTests/PersonsClientTests.cs, Survsys.IntegrationTests/PersonMergeEndpointsTests.cs, docs/technical/README.md)</td></tr>
+</table></td></tr>
+<tr><td>3</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>1481</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

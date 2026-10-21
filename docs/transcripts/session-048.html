@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 048 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 048 transcript</h1>
+<p class="stamp">Rendered 2026-10-17T15:13:44.288Z by dabbler-ai-router 3.21.0 at 565b1c06fbdd2ffe11906267e3ba515c32100d68.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-17T08:41:07.378-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 48: Phase 6 walkthroughs</h3>
+<ol><li>Register.</li><li><code>docs/walkthroughs/</code>: three documents — queue a case for notification, review a generated message, inspect the export log.</li><li><code>Survsys.E2ETests</code>: the three Playwright tests named after them, recording video.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Document the Phase 6 outbound CDC notification workflow sessions 45 to 47 shipped, as three walkthroughs under docs/walkthroughs/ with the one Playwright test named after each, video recording left on through the harness. First give the end-to-end suite a CDC export log to read: nothing writes the nmi_log table yet, so an export-log SQL fixture seeds a small, self-contained case and its log rows into nmi_log, linked into Survsys.E2ETests and cleared and reseeded by the harness the way the conditions, people and staged messages already are. Then write, in turn, queue-a-case-for-notification (an investigator opens a case morbidity report, queues it for CDC by hand, reads the queued confirmation, and finds the case waiting on the notification queue screen), review-a-generated-message (a reviewer opens the export log, opens one export, and reads its record number, guide, queued and sent times, outcome and the generated message whole) and inspect-the-export-log (a reviewer opens the export log and reads the history of exports, newest first, each with its record number, queued and sent times and outcome). Each document is numbered steps naming controls by the words the MorbidityReport, NotificationQueue, ExportLog and GeneratedMessageReview screens show, and each test performs those steps in their written order and asserts the outcome by the screens' stable identifiers, never by a MudBlazor class or a cell's position.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/fda6bd80e6513d1e225542d64a3e792a4c4b5527"><code>fda6bd80e6513d1e225542d64a3e792a4c4b5527</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Seed the export log</td><td><p>Give the end-to-end suite a CDC export log to read. Nothing writes the nmi_log table yet, so add Survsys.IntegrationTests/Fixtures/nmi-log.sql seeding a small, self-contained history: one case morbidity report inserted into person_conditions against a person persons.sql seeds and a condition conditions.sql seeds, left unassigned (agency_id NULL) and carrying a distinctive record number a test finds it by, then two rows into nmi_log against that case under the same record number — one sent, with an outcome and a generated message in the xml column, and one queued with no message yet, so the inspect walkthrough reads two rows and the review walkthrough reads both a generated message and the no-message-yet line. Find the person and condition by name as person-conditions.sql does, since identity assigns the ids. Link the fixture into the Survsys.E2ETests output beside conditions.sql, persons.sql and staged-messages.sql in Survsys.E2ETests.csproj, add it to the harness Fixtures list after the others so its person and condition already exist, and add nmi_log (and nmi_export_queue, which the queue-a-case walkthrough fills) to SurvsysHarness.TablesInDeletionOrder in their correct order before person_conditions so the seed is cleared and reseeded idempotently. Add a SeededExportLog constant stating the fixture's record number as the other seeded-fixture constants state their handles, and confirm or extend SurvsysHarnessTests to cover nmi_log being cleared and the export log reseeded. Write no Survsys.Web or Survsys.Api code.</p></td><td><span class="mono">Survsys.IntegrationTests/Fixtures/nmi-log.sql</span><br><span class="mono">Survsys.E2ETests/Survsys.E2ETests.csproj</span><br><span class="mono">Survsys.E2ETests/SurvsysHarness.cs</span><br><span class="mono">Survsys.E2ETests/SurvsysHarnessTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code></td><td>yes</td></tr>
+<tr><td>Queue a case for notification</td><td><p>Write docs/walkthroughs/queue-a-case-for-notification.md as one user story: an investigator opens a case morbidity report, queues it for CDC notification by hand from the report's CDC notification panel, reads the queued confirmation, then opens the notification queue screen and finds the case waiting there. Create the case within the walkthrough through the New CMR screens on a person and condition no other walkthrough reports on, so the queued row is found deterministically however many cases earlier tests left behind, the way export-a-dataset does. Write it as numbered steps naming each control by the words the MorbidityReport and NotificationQueue screens show — report-notify-queue, report-notify-queued, nav-notification-queue, the queue total and the case's row — with the Before-you-start and What-you-should-see sections the other walkthroughs carry, and add its row to the index docs/walkthroughs/README.md. Write Survsys.E2ETests/QueueACaseForNotificationTests.cs performing those steps in their written order and asserting the outcome by the screens' stable identifiers, never by a MudBlazor class or a cell's position.</p></td><td><span class="mono">docs/walkthroughs/queue-a-case-for-notification.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/QueueACaseForNotificationTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContract</code></td><td>yes</td></tr>
+<tr><td>Review a generated message</td><td><p>Write docs/walkthroughs/review-a-generated-message.md as one user story: a reviewer opens the CDC export log, opens the seeded export that carries a generated message, and reads its record number, guide, queued time, sent time and outcome, then the generated message whole in the preformatted block. Find the export from the log list by the fixture's distinctive record number rather than by a log id, since identity assigns the ids, and follow the record-number link into the generated-message review screen. Write it as numbered steps naming each control by the words the ExportLog and GeneratedMessageReview screens show — export-log-table, the record-number link, generated-message-review-heading, -record, -guide, -queued, -sent, -outcome and -message — with the usual Before-you-start and What-you-should-see sections, and add its row to the index docs/walkthroughs/README.md. Write Survsys.E2ETests/ReviewAGeneratedMessageTests.cs performing those steps in order against the seeded export, asserting the summary and the generated message by the screens' stable identifiers.</p></td><td><span class="mono">docs/walkthroughs/review-a-generated-message.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/ReviewAGeneratedMessageTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContract</code></td><td>yes</td></tr>
+<tr><td>Inspect the export log</td><td><p>Write docs/walkthroughs/inspect-the-export-log.md as one user story: a reviewer opens the CDC export log and reads the history of case exports, newest first, each row carrying its record number, queued time, sent time and outcome, with the sent time and outcome reading as a dash on the export not yet sent. Ground every step in what the seeded log shows — the two rows the fixture leaves against its one case, the one sent and the one still queued — and name the export log's total line and its empty-log line as the screen shows them. Write it as numbered steps naming each control by the words the ExportLog screen shows — export-log-heading, export-log-total, export-log-table and the seeded rows by their record number — with the usual Before-you-start and What-you-should-see sections, and add its row to the index docs/walkthroughs/README.md. Write Survsys.E2ETests/InspectTheExportLogTests.cs performing those steps in order against the seeded log, asserting the rows and their values by the screen's stable identifiers.</p></td><td><span class="mono">docs/walkthroughs/inspect-the-export-log.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/InspectTheExportLogTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContract</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No application change: the queue-for-notification action, the notification queue, the export log and the generated-message review screens are sessions 45 to 47's, and the endpoints behind them are documented as they already stand, so no Survsys.Web Razor and no Survsys.Api endpoint is written or altered in this session.</li><li>No message generation or direct transmission is exercised to fill the export log: nothing writes nmi_log yet, so the log rows the review and inspect walkthroughs read come from the SQL fixture, not from a generated or transmitted message.</li><li>No new migration, column or configuration on the nmi_log or nmi_export_queue tables: the fixture seeds the tables as sessions 45 and 46 created them.</li><li>Only the three named walkthroughs: no fourth walkthrough is written, and the existing walkthrough documents and their tests are left unchanged.</li><li>No release packaging or publishing: that is session 49.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[12:41:07]</span> <span class="muted">run-started</span> session=048 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[12:41:07]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[12:41:07]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[12:50:41]</span> <span class="muted">run-resumed</span> session=048 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[12:50:41]</span> <span class="muted">plan-accepted</span> steps=[&quot;seed-the-export-log&quot;,&quot;queue-a-case-for-notification&quot;,&quot;review-a-generated-message&quot;,&quot;inspect-the-export-log&quot;] non_goals=5</div>
+<div class="line"><span class="at">[12:50:41]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[12:50:42]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=seed-the-export-log</div>
+<div class="line"><span class="at">[15:01:40]</span> <span class="muted">run-resumed</span> session=048 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:01:42]</span> <span class="muted">check-passed</span> step=seed-the-export-log argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[15:01:43]</span> <span class="muted">report-accepted</span> seq=2 step=seed-the-export-log files=[&quot;Survsys.IntegrationTests/Fixtures/nmi-log.sql&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;Survsys.E2ETests/SurvsysHarness.cs&quot;,&quot;Survsys.E2ETests/SurvsysHarnessTests.cs&quot;] notes=nmi-log.sql seeds case 202500048 (An Nguyen, Influenza animal isolates, unassigned) with one accepted export carrying its ORU message and one queued export with none; linked into E2E output, last in harness Fixtures; nmi_log and nmi_export_queue cleared before person_conditions; SeededExportLog constant; harness tests allow the seeded case and assert the log reseeds.</div>
+<div class="line"><span class="at">[15:01:43]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=queue-a-case-for-notification</div>
+<div class="line"><span class="at">[15:03:57]</span> <span class="muted">run-resumed</span> session=048 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:03:59]</span> <span class="muted">check-passed</span> step=queue-a-case-for-notification argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[15:04:03]</span> <span class="muted">check-passed</span> step=queue-a-case-for-notification argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContract&quot;]</div>
+<div class="line"><span class="at">[15:04:03]</span> <span class="muted">report-accepted</span> seq=3 step=queue-a-case-for-notification files=[&quot;docs/walkthroughs/queue-a-case-for-notification.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/QueueACaseForNotificationTests.cs&quot;] notes=Walkthrough creates Okafor, Chidi / Lyme disease / Davis County through New CMR, queues it from the CDC notification panel, reads the confirmation, and finds its row on the notification queue by report id; index row added; test passed locally with video.</div>
+<div class="line"><span class="at">[15:04:03]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=review-a-generated-message</div>
+<div class="line"><span class="at">[15:05:33]</span> <span class="muted">run-resumed</span> session=048 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:05:35]</span> <span class="muted">check-passed</span> step=review-a-generated-message argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[15:05:38]</span> <span class="muted">check-passed</span> step=review-a-generated-message argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContract&quot;]</div>
+<div class="line"><span class="at">[15:05:38]</span> <span class="muted">report-accepted</span> seq=4 step=review-a-generated-message files=[&quot;docs/walkthroughs/review-a-generated-message.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/ReviewAGeneratedMessageTests.cs&quot;] notes=Walkthrough opens the export log, finds the seeded 202500048 accepted export by record number and outcome, follows its link, and reads the summary (guide -, queued, sent, accepted) and the four-segment ORU message line by line; index row added; passed locally.</div>
+<div class="line"><span class="at">[15:05:39]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=inspect-the-export-log</div>
+<div class="line"><span class="at">[15:12:15]</span> <span class="muted">run-resumed</span> session=048 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:12:17]</span> <span class="muted">check-passed</span> step=inspect-the-export-log argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[15:12:20]</span> <span class="muted">check-passed</span> step=inspect-the-export-log argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContract&quot;]</div>
+<div class="line"><span class="at">[15:12:21]</span> <span class="muted">report-accepted</span> seq=5 step=inspect-the-export-log files=[&quot;docs/walkthroughs/inspect-the-export-log.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/InspectTheExportLogTests.cs&quot;] notes=Walkthrough reads the seeded export log: 2 export(s), showing 2., rows for 202500048 newest first (queued, dash, dash; then sent, accepted); index row added. The four new walkthroughs and harness tests pass; a full e2e run also shows 5 failures outside this session (SaveAView, ExportADataset, ReviewAStagedMessage, PromoteAMessageToACase, ResolveADuplicate) where MudSelect's id lands on a hidden input.</div>
+<div class="line"><span class="at">[15:12:21]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[15:12:21]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[15:12:22]</span> <span class="muted">job-started</span> name=verification pid=43076 log=.dabbler/runs/s48/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:13:22]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s48/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:13:22]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[15:13:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[15:13:22]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[15:13:24]</span> <span class="muted">job-started</span> name=run of record: unit pid=41900 log=.dabbler/runs/s48/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[15:13:31]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s48/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[15:13:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[15:13:35]</span> <span class="muted">landed</span> commit=fda6bd80e6513d1e225542d64a3e792a4c4b5527</div>
+<div class="line"><span class="at">[15:13:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[15:13:35]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[15:13:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[15:13:36]</span> <span class="muted">job-started</span> name=close pid=33704 log=.dabbler/runs/s48/driver/jobs/close.log</div>
+<div class="line"><span class="at">[15:13:44]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s48/driver/jobs/close.log</div>
+<div class="line"><span class="at">[15:13:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `QueueACaseForNotificationTests` proves the case is queued and a confirmation is displayed, but not that pressing **Queue for notification** refreshed the already-existing automatic queue entry.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** `ReviewAGeneratedMessageTests` removes empty lines before comparison, so it does not strictly assert the promised message is displayed “whole” as exactly four lines.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** The three new walkthroughs identify legacy sources as `../nedss/...`, which resolves relative to `docs/walkthroughs/` as `docs/nedss/...`, not the declared legacy location under `../../../nedss/`. The source references should use the actual repository-relative path or be clarified as non-relative labels.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>5s</td><td>910</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
