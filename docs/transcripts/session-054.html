@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 054 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 054 transcript</h1>
+<p class="stamp">Rendered 2026-10-18T01:22:10.658Z by dabbler-ai-router 3.21.0 at f59b89b3b50de7506ae904242849686de0c76d1e.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-17T15:41:54.514-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 54: Audit by EF Core interceptors</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code>: audit as EF Core <code>SaveChanges</code> interceptors, in place of the legacy PostgreSQL triggers.</li><li><code>Survsys.IntegrationTests</code>: an audit row written for each of insert, update and delete, and none written when a save is rolled back.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Give Survsys.Data a change audit driven by an EF Core SaveChanges interceptor, in place of the legacy PostgreSQL row triggers, and prove it in Survsys.IntegrationTests. Survsys.Data gains a lean AuditEntry entity (its IEntityTypeConfiguration mapping it to the audit_entries table: the audited table name, the primary key of the affected row, the operation -- Insert, Update or Delete -- and the UTC time it occurred), registered as a DbSet on SurvsysDbContext and created by one migration (20261017100000_AuditEntries) that sorts after 20261017090000_TreatmentsAndVaccines. An AuditInterceptor, an ISaveChangesInterceptor registered in SurvsysDbContext.OnConfiguring so it applies to every context the application and the suite build alike, snapshots the ChangeTracker's Added, Modified and Deleted entries before the save, and adds one AuditEntry per entry (skipping AuditEntry itself) carrying that entry's table name, primary key, operation and the current UTC time -- so each audit row is saved inside the same SaveChanges and the same transaction as the change it records. Survsys.IntegrationTests gains AuditInterceptorTests proving an audit row is written for each of an insert, an update and a delete carrying the right table, key and operation, and that no audit row persists when the save is enrolled in a transaction that is rolled back.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/7f180567f90ece267d5c39ea03241996128f19e4"><code>7f180567f90ece267d5c39ea03241996128f19e4</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Audit entry entity</td><td><p>Add the AuditEntry domain to Survsys.Data as an entity and its IEntityTypeConfiguration, and nothing of the migration or the interceptor yet. AuditEntry is the change-audit row kept lean: Id (int identity primary key), TableName (required, the audited table's name as the model maps it), KeyValues (required, the affected row's primary key rendered to text), Operation (required, one of Insert, Update or Delete), OccurredAt (DateTime, UTC). Add AuditEntryConfiguration (internal sealed, as the other configurations are) mapping AuditEntry to the audit_entries table with its snake_case column names (id, table_name, key_values, operation, occurred_at) and an index on (table_name, occurred_at), which is how an audit is read; follow AccessRecordConfiguration for the write-only reference-row shape and the legacy grounding in the entity's XML doc. Register AuditEntry as a DbSet named AuditEntries on SurvsysDbContext. Change no other entity or configuration.</p></td><td><span class="mono">Survsys.Data/AuditEntry.cs</span><br><span class="mono">Survsys.Data/AuditEntryConfiguration.cs</span><br><span class="mono">Survsys.Data/SurvsysDbContext.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Audit entry migration</td><td><p>Add the one migration for the AuditEntry entity with the EF Core tooling (dotnet ef migrations add AuditEntries) against SurvsysDbContext, named 20261017100000_AuditEntries so it sorts after 20261017090000_TreatmentsAndVaccines, and let the tool regenerate SurvsysDbContextModelSnapshot. The migration creates the audit_entries table with its identity key, its columns and the (table_name, occurred_at) index exactly as AuditEntryConfiguration declares them, and its Down reverses the Up. Change no entity, configuration or interceptor in this step: it is the generated migration and the snapshot only.</p></td><td><span class="mono">Survsys.Data/Migrations/20261017100000_AuditEntries.cs</span><br><span class="mono">Survsys.Data/Migrations/20261017100000_AuditEntries.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Audit interceptor</td><td><p>Add AuditInterceptor to Survsys.Data and wire it into SurvsysDbContext. AuditInterceptor is a SaveChangesInterceptor (overriding both SavingChanges and SavingChangesAsync) that, given the saving context, snapshots the ChangeTracker.Entries() whose State is Added, Modified or Deleted into a list first -- skipping any entry whose entity is an AuditEntry, so the audit never audits itself -- then for each snapshotted entry adds one AuditEntry to that same context carrying the entry's table name (entry.Metadata.GetTableName()), its primary key rendered from the key properties' current values (entry.Metadata.FindPrimaryKey()), the operation mapped from the state (Added-&gt;Insert, Modified-&gt;Update, Deleted-&gt;Delete) and DateTime.UtcNow, before returning the base result; snapshot before adding so the newly added AuditEntry rows are not themselves iterated. Because the AuditEntry rows are added to the saving context, they are written in the same SaveChanges and the same transaction as the change they record -- a rolled-back save takes its audit rows with it. Wire it by overriding SurvsysDbContext.OnConfiguring to call optionsBuilder.AddInterceptors(new AuditInterceptor()), so every context the application and the suite build carries the audit without either call site changing; document in the class XML doc that this stands in for the legacy PostgreSQL row triggers. Change no entity, configuration or migration in this step.</p></td><td><span class="mono">Survsys.Data/AuditInterceptor.cs</span><br><span class="mono">Survsys.Data/SurvsysDbContext.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Audit integration tests</td><td><p>Add Survsys.IntegrationTests/AuditInterceptorTests.cs proving the AuditInterceptor against the real SQL Server fixture, following the existing integration tests (SurvsysDbContextTests and TreatmentEndpointsTests) for the SqlServerFixture harness and the NewContext pattern. Use a Treatment as the subject because it has no foreign keys. Assert: inserting a Treatment through a context and saving writes exactly one audit_entries row for the treatments table and that treatment's key with operation Insert; updating that treatment and saving writes an Update row for the same table and key; deleting it and saving writes a Delete row; and, enrolling an insert in an explicit transaction (context.Database.BeginTransaction) that is rolled back rather than committed, no audit row for that treatment's table and key persists when read back through a fresh context. Scope every assertion to the audited table name and the subject's key rather than to a global row count, because the fixture's database is shared across the suite. The suite's own seed data is loaded by raw SQL and so is not audited, which the test may rely on but should not assert. Register nothing and change no other file.</p></td><td><span class="mono">Survsys.IntegrationTests/AuditInterceptorTests.cs</span><br><span class="mono">Survsys.Data/AuditInterceptor.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code><br><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo --filter FullyQualifiedName~AuditInterceptorTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No application or presentation change: Survsys.Api, Survsys.Web and Survsys.Contracts are untouched; the audit lives entirely in Survsys.Data and is exercised only through Survsys.IntegrationTests.</li><li>No per-column before/after value capture: an audit row records the audited table, the affected row's primary key, the operation and the time it occurred, not the old and new values of each column.</li><li>No acting-user attribution on the change-audit row: who-viewed-what stays the existing access audit (AccessRecord); this row-change audit records the operation and the time and does not reach for an HttpContext or the current user, so Survsys.Data takes on no new dependency.</li><li>No per-table opt-in or exclusion configuration: the interceptor audits every tracked entity uniformly, excepting only AuditEntry itself; there is no per-entity on/off list and no attribute to annotate entities with.</li><li>No release or packaging: this session ships Survsys.Data and Survsys.IntegrationTests code only, adds no packaging block to dabbler.yaml and publishes nothing.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[19:41:54]</span> <span class="muted">run-started</span> session=054 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[19:41:54]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[19:41:54]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[19:47:08]</span> <span class="muted">engine-session</span> id=07c10701-8ea1-4f3c-a582-7697d4e3b9ba</div>
+<div class="line"><span class="at">[19:47:08]</span> <span class="muted">engine-returned</span> seq=1 exit=<span class="good">0</span> seconds=314 transcript=.dabbler/runs/s54/driver/engine-01.log</div>
+<div class="line"><span class="at">[19:47:08]</span> <span class="muted">plan-accepted</span> steps=[&quot;audit-entry-entity&quot;,&quot;audit-entry-migration&quot;,&quot;audit-interceptor&quot;,&quot;audit-integration-tests&quot;] non_goals=5</div>
+<div class="line"><span class="at">[19:47:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[19:47:08]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=audit-entry-entity</div>
+<div class="line"><span class="at">[19:47:08]</span> <span class="muted">engine-invoked</span> seq=2 invocation=2/24 first=false output=stream</div>
+<div class="line"><span class="at">[19:48:09]</span> <span class="muted">engine-returned</span> seq=2 exit=<span class="good">0</span> seconds=60 transcript=.dabbler/runs/s54/driver/engine-02.log</div>
+<div class="line"><span class="at">[19:48:11]</span> <span class="muted">check-passed</span> step=audit-entry-entity argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[19:48:11]</span> <span class="muted">report-accepted</span> seq=2 step=audit-entry-entity files=[&quot;Survsys.Data/AuditEntry.cs&quot;,&quot;Survsys.Data/AuditEntryConfiguration.cs&quot;,&quot;Survsys.Data/SurvsysDbContext.cs&quot;] notes=Added AuditEntry entity and its internal sealed configuration (audit_entries, indexed by table_name and occurred_at), and the AuditEntries DbSet; no migration or interceptor yet.</div>
+<div class="line"><span class="at">[19:48:11]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=audit-entry-migration</div>
+<div class="line"><span class="at">[19:48:11]</span> <span class="muted">engine-invoked</span> seq=3 invocation=3/24 first=false output=stream</div>
+<div class="line"><span class="at">[19:49:40]</span> <span class="muted">engine-returned</span> seq=3 exit=<span class="good">0</span> seconds=89 transcript=.dabbler/runs/s54/driver/engine-03.log</div>
+<div class="line"><span class="at">[19:49:42]</span> <span class="muted">check-passed</span> step=audit-entry-migration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[19:49:43]</span> <span class="muted">report-accepted</span> seq=3 step=audit-entry-migration files=[&quot;Survsys.Data/Migrations/20261017100000_AuditEntries.cs&quot;,&quot;Survsys.Data/Migrations/20261017100000_AuditEntries.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=Generated the AuditEntries migration via dotnet ef (startup Survsys.Api), renamed it to 20261017100000 to sort after TreatmentsAndVaccines; creates audit_entries with identity key, bounded columns and the (table_name, occurred_at) index, Down drops the table.</div>
+<div class="line"><span class="at">[19:49:43]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=audit-interceptor</div>
+<div class="line"><span class="at">[19:49:43]</span> <span class="muted">engine-invoked</span> seq=4 invocation=4/24 first=false output=stream</div>
+<div class="line"><span class="at">[19:51:22]</span> <span class="muted">engine-returned</span> seq=4 exit=<span class="good">0</span> seconds=99 transcript=.dabbler/runs/s54/driver/engine-04.log</div>
+<div class="line"><span class="at">[19:51:24]</span> <span class="muted">check-passed</span> step=audit-interceptor argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[19:51:24]</span> <span class="muted">report-accepted</span> seq=4 step=audit-interceptor files=[&quot;Survsys.Data/AuditInterceptor.cs&quot;,&quot;Survsys.Data/SurvsysDbContext.cs&quot;] notes=Added AuditInterceptor (SaveChangesInterceptor) that snapshots changed entries before adding one AuditEntry each, skipping AuditEntry itself, mapping state to Insert/Update/Delete with the rendered primary key and UtcNow; wired via SurvsysDbContext.OnConfiguring so every context carries it.</div>
+<div class="line"><span class="at">[19:51:24]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=audit-integration-tests</div>
+<div class="line"><span class="at">[19:51:24]</span> <span class="muted">engine-invoked</span> seq=5 invocation=5/24 first=false output=stream</div>
+<div class="line"><span class="at">[19:55:56]</span> <span class="muted">engine-returned</span> seq=5 exit=<span class="good">0</span> seconds=272 transcript=.dabbler/runs/s54/driver/engine-05.log</div>
+<div class="line"><span class="at">[00:53:02]</span> <span class="muted">run-resumed</span> session=054 phase=<span class="milestone">work</span> mode=pull after=blocked</div>
+<div class="line"><span class="at">[00:53:14]</span> <span class="muted">run-resumed</span> session=054 phase=<span class="milestone">work</span> invocations=5 max_invocations=24 after=blocked</div>
+<div class="line"><span class="at">[00:53:14]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=audit-integration-tests</div>
+<div class="line"><span class="at">[00:53:14]</span> <span class="muted">engine-invoked</span> seq=6 invocation=6/24 first=false output=stream</div>
+<div class="line"><span class="at">[01:04:50]</span> <span class="muted">engine-returned</span> seq=6 exit=<span class="good">0</span> seconds=696 transcript=.dabbler/runs/s54/driver/engine-06.log</div>
+<div class="line"><span class="at">[01:04:53]</span> <span class="muted">check-passed</span> step=audit-integration-tests argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[01:04:59]</span> <span class="muted">check-passed</span> step=audit-integration-tests argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~AuditInterceptorTests&quot;]</div>
+<div class="line"><span class="at">[01:04:59]</span> <span class="muted">report-accepted</span> seq=6 step=audit-integration-tests files=[&quot;Survsys.IntegrationTests/AuditInterceptorTests.cs&quot;,&quot;Survsys.Data/AuditInterceptor.cs&quot;] notes=Added AuditInterceptorTests (insert, update, delete each write one audit row for the treatments table scoped to the subject key; a rolled-back insert writes none) and fixed AuditInterceptor to record the real store-generated insert key: the audit row still goes in on the same save/transaction, and SavedChanges writes the real key over EF temporary one within that transaction. All 4 pass. Note: full suite has 20 pre-existing failures in Outbreak/Form endpoints (LINQ translation errors, unrelated to audit, identical with the seq-4 interceptor).</div>
+<div class="line"><span class="at">[01:04:59]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[01:04:59]</span> <span class="good">progress-resumed</span> past=blocked from=work phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[01:04:59]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[01:05:01]</span> <span class="muted">job-started</span> name=verification pid=43684 log=.dabbler/runs/s54/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[01:07:13]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s54/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[01:07:13]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[01:07:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[01:07:13]</span> <span class="muted">instruction-issued</span> seq=7 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[01:07:13]</span> <span class="muted">engine-invoked</span> seq=7 invocation=7/24 first=false output=stream</div>
+<div class="line"><span class="at">[01:11:33]</span> <span class="muted">engine-returned</span> seq=7 exit=<span class="good">0</span> seconds=261 transcript=.dabbler/runs/s54/driver/engine-07.log</div>
+<div class="line"><span class="at">[01:11:33]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0,1,2] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[01:11:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[01:11:33]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[01:11:33]</span> <span class="muted">engine-invoked</span> seq=8 invocation=8/24 first=false output=stream</div>
+<div class="line"><span class="at">[01:20:20]</span> <span class="muted">engine-returned</span> seq=8 exit=<span class="good">0</span> seconds=527 transcript=.dabbler/runs/s54/driver/engine-08.log</div>
+<div class="line"><span class="at">[01:20:22]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;] owner=audit-entry-entity</div>
+<div class="line"><span class="at">[01:20:23]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;] owner=audit-entry-migration</div>
+<div class="line"><span class="at">[01:20:25]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;] owner=audit-interceptor</div>
+<div class="line"><span class="at">[01:20:26]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;] owner=audit-integration-tests</div>
+<div class="line"><span class="at">[01:20:32]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~AuditInterceptorTests&quot;] owner=audit-integration-tests</div>
+<div class="line"><span class="at">[01:20:33]</span> <span class="muted">report-accepted</span> seq=8 step=fix-round-1 files=[&quot;Survsys.Data/AuditInterceptor.cs&quot;,&quot;Survsys.IntegrationTests/AuditInterceptorTests.cs&quot;] notes=Redesigned AuditInterceptor: capture changes as the save begins, write audit rows via raw parameterized SQL in SavedChanges (real store-generated keys), inside the change transaction - the callers when open, else one the interceptor opens and commits only after the audit is in. Fixes [0] atomic insert key, [1] no tracked audit so a failed save writes none and a retry cannot duplicate (SaveChangesFailed rolls back its own transaction), [2] no second SaveChanges so the source insert is never replayed. Added retry-after-failure and no-accept tests; all 6 audit tests pass. The 20 unrelated pre-existing LINQ-translation failures in Outbreak/Form/Treatment endpoints are unchanged by this work.</div>
+<div class="line"><span class="at">[01:20:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[01:20:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[01:20:34]</span> <span class="muted">job-started</span> name=verification pid=40180 log=.dabbler/runs/s54/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[01:21:47]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s54/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[01:21:47]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[01:21:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[01:21:47]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[01:21:49]</span> <span class="muted">job-started</span> name=run of record: unit pid=6056 log=.dabbler/runs/s54/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[01:21:57]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s54/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[01:21:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[01:22:01]</span> <span class="muted">landed</span> commit=7f180567f90ece267d5c39ea03241996128f19e4</div>
+<div class="line"><span class="at">[01:22:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[01:22:01]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[01:22:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[01:22:02]</span> <span class="muted">job-started</span> name=close pid=23776 log=.dabbler/runs/s54/driver/jobs/close.log</div>
+<div class="line"><span class="at">[01:22:10]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s54/driver/jobs/close.log</div>
+<div class="line"><span class="at">[01:22:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Insert audit records with store-generated keys are not finalized in the same save or transaction as the audited insert.</td><td>fixed — Redesigned AuditInterceptor: capture changes as the save begins, write audit rows via raw parameterized SQL in SavedChanges (real store-generated keys), inside the change transaction - the callers when open, else one the interceptor opens and commits only after the audit is in. Fixes [0] atomic insert key, [1] no tracked audit so a failed save writes none and a retry cannot duplicate (SaveChangesFailed rolls back its own transaction), [2] no second SaveChanges so the source insert is never replayed. Added retry-after-failure and no-accept tests; all 6 audit tests pass. The 20 unrelated pre-existing LINQ-translation failures in Outbreak/Form/Treatment endpoints are unchanged by this work. — (Survsys.Data/AuditInterceptor.cs, Survsys.IntegrationTests/AuditInterceptorTests.cs)</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** Failed-save retries on the same context can create duplicate audit rows, including one retaining a temporary key. `AuditInterceptor` never clears `_pendingKeyFixes` in `SaveChangesFailed`, and a failed attempt’s added `AuditEntry` remains tracked while the retry adds another. Test case: with a new `Treatment` and a command interceptor that throws before the first insert executes, call `SaveChangesAsync()`, catch the failure, then retry `SaveChangesAsync()` on that same context; expect exactly one insert audit row with the final treatment key. Today the first pending audit remains tracked, a second audit is added on retry, and only the latter is corrected by `TakePending`.</td><td>fixed — Redesigned AuditInterceptor: capture changes as the save begins, write audit rows via raw parameterized SQL in SavedChanges (real store-generated keys), inside the change transaction - the callers when open, else one the interceptor opens and commits only after the audit is in. Fixes [0] atomic insert key, [1] no tracked audit so a failed save writes none and a retry cannot duplicate (SaveChangesFailed rolls back its own transaction), [2] no second SaveChanges so the source insert is never replayed. Added retry-after-failure and no-accept tests; all 6 audit tests pass. The 20 unrelated pre-existing LINQ-translation failures in Outbreak/Form/Treatment endpoints are unchanged by this work. — (Survsys.Data/AuditInterceptor.cs, Survsys.IntegrationTests/AuditInterceptorTests.cs)</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** `SaveChangesAsync(acceptAllChangesOnSuccess: false)` is not safe for inserted entities. Test case: add a valid `Treatment`, call `SaveChangesAsync(false)`, and expect the requested no-accept behavior without replaying the source insert. Today `SavedChangesAsync` invokes a default `context.SaveChangesAsync()`, which sees the original `Treatment` still in `Added` state and attempts to save it again, potentially duplicating it or failing on its generated key.</td><td>fixed — Redesigned AuditInterceptor: capture changes as the save begins, write audit rows via raw parameterized SQL in SavedChanges (real store-generated keys), inside the change transaction - the callers when open, else one the interceptor opens and commits only after the audit is in. Fixes [0] atomic insert key, [1] no tracked audit so a failed save writes none and a retry cannot duplicate (SaveChangesFailed rolls back its own transaction), [2] no second SaveChanges so the source insert is never replayed. Added retry-after-failure and no-accept tests; all 6 audit tests pass. The 20 unrelated pre-existing LINQ-translation failures in Outbreak/Form/Treatment endpoints are unchanged by this work. — (Survsys.Data/AuditInterceptor.cs, Survsys.IntegrationTests/AuditInterceptorTests.cs)</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** An exception while inserting an audit row can leave the interceptor-owned transaction active. `SavedChanges` / `SavedChangesAsync` call `TakePending` before executing the raw audit inserts; this removes the `Pending` containing `OwnedTransaction`. If `ExecuteSqlInterpolated*` or commit then throws, `SaveChangesFailed*` cannot retrieve and roll back/dispose that transaction.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>1007</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
