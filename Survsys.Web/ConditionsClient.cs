@@ -49,6 +49,40 @@ public sealed class ConditionsClient(HttpClient http)
 
     private static readonly ApiAsk Exporting = new(ExportFailurePrefix, "the conditions as CSV");
 
+    /// <summary>How a failure to load a condition's print criteria starts.</summary>
+    public const string PrintCriteriaFailurePrefix = "The condition's print criteria could not be loaded";
+
+    /// <summary>How a failure to save a condition's print criteria starts.</summary>
+    public const string PrintCriteriaSaveFailurePrefix = "The condition's print criteria could not be saved";
+
+    private static readonly ApiAsk ReadingCriteria = new(PrintCriteriaFailurePrefix, "the condition's print criteria");
+
+    private static readonly ApiAsk SavingCriteria = new(PrintCriteriaSaveFailurePrefix, "the print criteria as saved");
+
+    /// <summary>
+    /// The case statuses that make the condition's cases notifiable to CDC, or
+    /// why there are none.
+    /// </summary>
+    public Task<Asked<ConditionPrintCriteriaResponse>> PrintCriteria(
+        int id,
+        CancellationToken cancellationToken = default) =>
+        ReadingCriteria.Get<ConditionPrintCriteriaResponse>(
+            http, $"api/conditions/{id}/print-criteria", cancellationToken);
+
+    /// <summary>
+    /// Replaces the case statuses that make the condition's cases notifiable,
+    /// answering with them as saved or with why they were not.
+    /// </summary>
+    public Task<Asked<ConditionPrintCriteriaResponse>> SetPrintCriteria(
+        int id,
+        IReadOnlyList<string> caseStatuses,
+        CancellationToken cancellationToken = default) =>
+        SavingCriteria.Put<ConditionPrintCriteriaRequest, ConditionPrintCriteriaResponse>(
+            http,
+            $"api/conditions/{id}/print-criteria",
+            new ConditionPrintCriteriaRequest(caseStatuses),
+            cancellationToken);
+
     /// <summary>Every condition as CSV, or why there is none.</summary>
     public Task<Asked<string>> Export(CancellationToken cancellationToken = default) =>
         Exporting.GetText(http, "api/conditions/csv", cancellationToken);

@@ -26,10 +26,12 @@ namespace Survsys.Contracts;
 /// <param name="Condition">The disease or condition the case is for, by name.</param>
 /// <param name="QueuedAt">When the case was last queued for notification, in UTC.</param>
 /// <param name="Hold">Whether the entry is held back from export pending review.</param>
+/// <param name="Retract">Whether the entry retracts a notification CDC accepted before, sent with NOT118 = X.</param>
 public record NotificationQueueItemResponse(
     int PersonConditionId,
     string RecordNumber,
     string PatientName,
     string Condition,
     DateTime QueuedAt,
-    bool Hold);
+    bool Hold,
+    bool Retract = false);

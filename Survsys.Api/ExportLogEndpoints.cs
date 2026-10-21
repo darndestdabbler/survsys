@@ -45,7 +45,8 @@ public static class ExportLogEndpoints
             entry.Outcome,
             entry.Detail,
             entry.ProcessingId,
-            entry.Queue);
+            entry.Queue,
+            entry.PersonConditionId);
 
     /// <summary>
     /// Registers what the export-log endpoints need of the container. Kept here
@@ -64,7 +65,29 @@ public static class ExportLogEndpoints
             .WithName("GetExportLogEntry")
             .WithSummary("One CDC export, with the message that was generated for it.");
 
+        routes.MapPost("/api/export-log/{id:int}/resend", ResendExport)
+            .WithName("ResendExport")
+            .WithSummary("Queues the case of a logged export for CDC notification again.");
+
         return routes;
+    }
+
+    private static async Task<Results<Ok<NotificationQueueItemResponse>, ProblemHttpResult>> ResendExport(
+        ExportLogQueries log,
+        NotificationQueueQueries queue,
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        if (await log.PersonConditionIdOf(id, cancellationToken) is not { } personConditionId
+            || await queue.Queue(personConditionId, cancellationToken) is not { } row)
+        {
+            return TypedResults.Problem(
+                detail: $"No export has id {id}, or its case is no longer on file.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "There is no such export to resend.");
+        }
+
+        return TypedResults.Ok(row);
     }
 
     private static async Task<Results<Ok<PagedResult<CdcExportLogItemResponse>>, ProblemHttpResult>> GetExportLog(
@@ -114,6 +137,13 @@ public static class ExportLogEndpoints
 /// </remarks>
 internal sealed class ExportLogQueries(SurvsysDbContext database)
 {
+    /// <summary>The case a logged export was for, or null where no export has that id.</summary>
+    public Task<int?> PersonConditionIdOf(int id, CancellationToken cancellationToken) =>
+        database.CdcExportLog
+            .Where(entry => entry.Id == id)
+            .Select(entry => (int?)entry.PersonConditionId)
+            .SingleOrDefaultAsync(cancellationToken);
+
     /// <summary>
     /// One page of the log, newest first by queued time — a total order, so an
     /// export cannot appear on two pages or on neither: the queued time breaks
@@ -160,7 +190,8 @@ internal sealed class ExportLogQueries(SurvsysDbContext database)
                     entry.Outcome,
                     entry.Detail,
                     entry.ProcessingId,
-                    entry.Queue),
+                    entry.Queue,
+                    entry.PersonConditionId),
                 entry.GeneratedMessage,
                 entry.Details
                     .OrderBy(detail => detail.Id)

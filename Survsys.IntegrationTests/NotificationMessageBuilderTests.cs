@@ -60,6 +60,35 @@ public class NotificationMessageBuilderTests(SqlServerFixture server) : IDisposa
         }
     }
 
+    /// <summary>
+    /// A retraction is built with its notification status NOT118 set to X,
+    /// which the generator writes to OBR-25.
+    /// </summary>
+    [Fact]
+    public async Task ARetractionSetsTheNotificationStatusToX()
+    {
+        await using var context = server.NewContext();
+        var report = await Open(api);
+
+        try
+        {
+            await NotificationReference.Seed(context, report.ConditionId);
+
+            var build = await new NotificationMessageBuilder(context).Build(
+                report.Id, "T", new DateTimeOffset(2026, 10, 21, 9, 0, 0, TimeSpan.Zero), CancellationToken.None,
+                retract: true);
+
+            var obr = build.Message!.Split('\r', StringSplitOptions.RemoveEmptyEntries)
+                .Single(segment => segment.StartsWith("OBR", StringComparison.Ordinal)).Split('|');
+            Assert.Equal("X", obr[25]);
+        }
+        finally
+        {
+            await NotificationReference.Clear(context);
+            await Close(context, report.Id);
+        }
+    }
+
     /// <summary>A guide variable no rule set formats is a warning, and the message is still built.</summary>
     [Fact]
     public async Task AVariableWithNoRuleSetIsAWarning()

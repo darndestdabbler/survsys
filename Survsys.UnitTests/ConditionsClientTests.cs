@@ -212,6 +212,48 @@ public class ConditionsClientTests
         Assert.StartsWith(ConditionsClient.ImportFailurePrefix, (await client.Import("id\r\n", true)).Failure);
     }
 
+    [Fact]
+    public async Task PrintCriteriaAreReadFromTheConditionsOwnUrl()
+    {
+        HttpRequestMessage? sent = null;
+        var client = Recording(
+            request => sent = request, HttpStatusCode.OK, """{ "conditionId": 74, "caseStatuses": ["C", "P"] }""");
+
+        var asked = await client.PrintCriteria(74);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal("http://api.example.test/api/conditions/74/print-criteria", sent?.RequestUri?.ToString());
+        Assert.Equal(["C", "P"], asked.Value!.CaseStatuses);
+    }
+
+    [Fact]
+    public async Task SetPrintCriteriaPutsTheStatusesAndAFailureCarriesItsPrefix()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+        var client = Recording(
+            request =>
+            {
+                sent = request;
+                body = request.Content!.ReadAsStringAsync().Result;
+            },
+            HttpStatusCode.OK,
+            """{ "conditionId": 74, "caseStatuses": ["C"] }""");
+
+        var saved = await client.SetPrintCriteria(74, ["C"]);
+
+        Assert.Equal(HttpMethod.Put, sent?.Method);
+        Assert.Equal("http://api.example.test/api/conditions/74/print-criteria", sent?.RequestUri?.ToString());
+        Assert.Contains("\"caseStatuses\":[\"C\"]", body, StringComparison.Ordinal);
+        Assert.Equal(["C"], saved.Value!.CaseStatuses);
+
+        var refused = await Answering(HttpStatusCode.BadRequest, "{}").SetPrintCriteria(74, ["X"]);
+        Assert.StartsWith(ConditionsClient.PrintCriteriaSaveFailurePrefix, refused.Failure);
+        Assert.StartsWith(
+            ConditionsClient.PrintCriteriaFailurePrefix,
+            (await Answering(HttpStatusCode.NotFound, "{}").PrintCriteria(99)).Failure);
+    }
+
     private static ConditionsClient Recording(
         Action<HttpRequestMessage> record,
         HttpStatusCode status,

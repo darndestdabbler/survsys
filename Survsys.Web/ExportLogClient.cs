@@ -30,7 +30,17 @@ public sealed class ExportLogClient(HttpClient http)
 
     private static readonly ApiAsk Listing = new(LogFailurePrefix, "a page of the export log");
 
+    /// <summary>How a failure to resend an export starts.</summary>
+    public const string ResendFailurePrefix = "The export could not be resent";
+
+    /// <summary>How a failure to retract a sent notification starts.</summary>
+    public const string RetractFailurePrefix = "The notification could not be retracted";
+
     private static readonly ApiAsk Reading = new(ExportFailurePrefix, "the export");
+
+    private static readonly ApiAsk Resending = new(ResendFailurePrefix, "the queued case");
+
+    private static readonly ApiAsk Retracting = new(RetractFailurePrefix, "the queued retraction");
 
     /// <summary>
     /// One page of the export log, newest first, or why there is none.
@@ -52,4 +62,25 @@ public sealed class ExportLogClient(HttpClient http)
         int id,
         CancellationToken cancellationToken = default) =>
         Reading.Get<CdcExportLogDetailResponse>(http, $"api/export-log/{id}", cancellationToken);
+
+    /// <summary>
+    /// Queues the case of an export for notification again, answering with the
+    /// queued entry or with why it was not queued.
+    /// </summary>
+    public Task<Asked<NotificationQueueItemResponse>> Resend(
+        int id,
+        CancellationToken cancellationToken = default) =>
+        Resending.Post<object?, NotificationQueueItemResponse>(
+            http, $"api/export-log/{id}/resend", body: null, cancellationToken);
+
+    /// <summary>
+    /// Queues a retraction of the case's accepted notification, sent with
+    /// NOT118 = X, answering with the queued entry or with why it was not —
+    /// a case CDC never accepted is refused 409.
+    /// </summary>
+    public Task<Asked<NotificationQueueItemResponse>> Retract(
+        int personConditionId,
+        CancellationToken cancellationToken = default) =>
+        Retracting.Post<object?, NotificationQueueItemResponse>(
+            http, $"api/notification-queue/{personConditionId}/retract", body: null, cancellationToken);
 }

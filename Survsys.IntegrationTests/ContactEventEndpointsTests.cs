@@ -136,7 +136,8 @@ public class ContactEventEndpointsTests(SqlServerFixture server) : IDisposable
 
     /// <summary>
     /// The contact event promoted is a morbidity report from then on, read
-    /// back as one, and queued for notification as a newly opened report is.
+    /// back as one, and queued for notification, its confirmed status meeting
+    /// its condition's print criteria.
     /// </summary>
     [Fact]
     public async Task AContactEventPromotedIsAMorbidityReportAndIsQueued()
@@ -153,6 +154,11 @@ public class ContactEventEndpointsTests(SqlServerFixture server) : IDisposable
             await using (var before = server.NewContext())
             {
                 Assert.False(await before.NotificationQueue.AnyAsync(entry => entry.PersonConditionId == eventId));
+
+                // Confirmed, so the seeded print criteria notify it once it is
+                // a morbidity report.
+                await before.PersonConditions.Where(report => report.Id == eventId)
+                    .ExecuteUpdateAsync(set => set.SetProperty(report => report.CaseStatus, CaseStatusRules.ConfirmedCode));
             }
 
             using var promoted = await client.PostAsync($"/api/person-conditions/{eventId}/promote", null);

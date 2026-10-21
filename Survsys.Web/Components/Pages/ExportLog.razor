@@ -5,8 +5,10 @@
 
    Every element a later walkthrough will name carries an identifier of its
    own — `export-log-heading`, `export-log-loading`, `export-log-error`,
-   `export-log-total`, `export-log-none`, the table, and one row per export
-   keyed by its id. A test selects by those and not by a MudBlazor class or a
+   `export-log-total`, `export-log-none`, `export-log-action-done` and
+   `export-log-action-error`, the table, and one row per export keyed by its
+   id with a resend button of its own and, on an accepted export, a retract
+   button. A test selects by those and not by a MudBlazor class or a
    cell's position. *@
 @page "/export-log"
 @inject ExportLogClient Client
@@ -19,8 +21,21 @@
 
 <MudText Typo="Typo.body2" Class="mb-4">
     The history of case exports to CDC, newest first. Open an export to read the
-    message that was generated for it.
+    message that was generated for it, resend its case, or retract a notification
+    CDC accepted.
 </MudText>
+
+@if (actionDone is { } done)
+{
+    <MudAlert id="export-log-action-done" Severity="Severity.Success" Class="mb-4">@done</MudAlert>
+}
+
+@if (actionFailure is { } failed)
+{
+    <MudAlert id="export-log-action-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @failed
+    </MudAlert>
+}
 
 @if (asked is null)
 {
@@ -51,6 +66,7 @@ else if (asked.Value is { } result)
                         <th>Detail</th>
                         <th>Processing</th>
                         <th>Queue</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -66,6 +82,20 @@ else if (asked.Value is { } result)
                             <td data-export-detail>@(string.IsNullOrWhiteSpace(export.Detail) ? "—" : export.Detail)</td>
                             <td data-export-processing>@(string.IsNullOrWhiteSpace(export.ProcessingId) ? "—" : export.ProcessingId)</td>
                             <td data-export-queue>@(string.IsNullOrWhiteSpace(export.Queue) ? "—" : export.Queue)</td>
+                            <td class="d-flex gap-2">
+                                <MudButton id="@($"export-log-resend-{export.Id}")" Variant="Variant.Outlined"
+                                           Size="Size.Small" Disabled="@working" OnClick="@(() => Resend(export))">
+                                    Resend
+                                </MudButton>
+                                @if (export.Outcome == AcceptedOutcome)
+                                {
+                                    <MudButton id="@($"export-log-retract-{export.Id}")" Variant="Variant.Outlined"
+                                               Color="Color.Error" Size="Size.Small" Disabled="@working"
+                                               OnClick="@(() => Retract(export))">
+                                        Retract
+                                    </MudButton>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -106,7 +136,16 @@ else
     /// </summary>
     private const int PageSize = 50;
 
+    /// <summary>The outcome the queue worker logs an export CDC accepted under.</summary>
+    private const string AcceptedOutcome = "accepted";
+
     private int page = 1;
+
+    private bool working;
+
+    private string? actionDone;
+
+    private string? actionFailure;
 
     private Asked<PagedResult<CdcExportLogItemResponse>>? asked;
 
@@ -118,6 +157,44 @@ else
     {
         asked = null;
         asked = await Client.Page(page, PageSize);
+    }
+
+    /// <summary>
+    /// Queues the export's case again and says so, or shows why it was not.
+    /// </summary>
+    private Task Resend(CdcExportLogItemResponse export) =>
+        Act(() => Client.Resend(export.Id), $"Case {export.RecordNumber} is queued to be sent again.");
+
+    /// <summary>
+    /// Queues a retraction of the export's case and says so, or shows why it
+    /// was not.
+    /// </summary>
+    private Task Retract(CdcExportLogItemResponse export) =>
+        Act(() => Client.Retract(export.PersonConditionId),
+            $"A retraction of case {export.RecordNumber} is queued (NOT118 = X).");
+
+    private async Task Act(Func<Task<Asked<NotificationQueueItemResponse>>> ask, string done)
+    {
+        actionDone = null;
+        actionFailure = null;
+        working = true;
+
+        try
+        {
+            var asked = await ask();
+            if (asked.Succeeded)
+            {
+                actionDone = done;
+            }
+            else
+            {
+                actionFailure = asked.Failure;
+            }
+        }
+        finally
+        {
+            working = false;
+        }
     }
 
     private async Task PreviousPage()

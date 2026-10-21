@@ -100,7 +100,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 86 | Phase 10 walkthroughs | no | 2026-10-20 |
 | 87 | Release 0.11.0 (release: 0.11.0) | yes | 2026-10-21 |
 | 88 | The notification queue worker and the export log | no | 2026-10-21 |
-| 89 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
+| 89 | Auto-queue on every change, queue actions and reconciliation | no | 2026-10-21 |
 | 90 | Guide, rule set and value set administration | — | not declared |
 | 91 | Transport to CDC | — | not declared |
 | 92 | Phase 11 walkthroughs | — | not declared |
@@ -800,3 +800,14 @@ Wire the notification pipeline that is built but unconnected. Survsys.Data gains
 **Amended after acceptance:**
 
 - 2026-10-21 — step 'export-log-detail-data': its checks: git grep reads only tracked files; the new migration is untracked until the commit, so the check needs --untracked (claude-code (anthropic, claude-opus-5-5))
+
+### Session 89 — Auto-queue on every change, queue actions and reconciliation
+
+**Releasable: no.**
+
+Finish the notification queue's review side. Survsys.Data gains nmi_condition_print_criteria (a condition and a case status code from CaseStatusRules that makes it notifiable), a single-row nmi_reconciliation_cutoff (MMWR year and week, read as the existing ReconciliationCutoff struct), and a Retract flag on nmi_export_queue, in one migration that seeds Confirmed and Probable for every existing condition. CaseNotificationQueue gains QueueChangeAsync, which stages the existing upsert only when the case's condition's print criteria pass its current case status; the case write paths that reach a notified variable call it in the same unit of work â€” case create, update, status and promote in PersonConditionEndpoints, labs (including those the ELR writer adds through LabQueries), clinical, investigation, administrative, and a person's demographics for each of the person's cases. The print criteria are read and replaced per condition (GET and PUT /api/conditions/{id}/print-criteria) and edited on the condition screen. Queue actions: DELETE /api/notification-queue/{personConditionId} removes an entry; POST /api/notification-queue/{personConditionId}/retract queues a case CDC accepted before as a retraction, which the builder sends with NOT118 = X; POST /api/export-log/{id}/resend queues a logged case again; POST /api/notification-queue/records queues cases by record number, answering with how many were queued and which numbers are unknown; POST /api/notification-queue/mmwr-range queues the morbidity cases of an MMWR year and week range, optionally one condition, whose print criteria pass. The reconciliation cutoff is read and set at GET and PUT /api/reconciliation-cutoff, and GET /api/reconciliation-cutoff/totals counts, by condition and MMWR year, the cases CDC accepted whose MMWR position the cutoff counts â€” the legacy verification totals and the cutoff's effect. The Notification queue screen gains remove and the record and MMWR-range exports, the Export log screen gains resend and retract, and a Reconciliation cutoff admin screen sets the cutoff and shows the totals. Integration tests cover each queue action, the print-criteria gate on each write path, and the cutoff's effect on the totals.
+
+**Amended after acceptance:**
+
+- 2026-10-21 — step 'auto-queue-on-change': its files: The test fixture loads conditions after migrating, so it needs the migration's print-criteria seed; the queue worker and endpoint tests open cases expecting auto-queue and now need a notifiable status (claude-code (anthropic, claude-opus-5-5))
+- 2026-10-21 — step 'queue-actions-web': its files: Retract is by case and an export-log row does not carry its case id; the row gains PersonConditionId so the Export log screen can retract it (claude-code (anthropic, claude-opus-5-5))

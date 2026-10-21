@@ -354,4 +354,61 @@ public class InvestigationAdministrativeEndpointsTests(SqlServerFixture server) 
                 .SetProperty(column => column.CdcFirstVerballyNotifiedDate, (DateOnly?)null)
                 .SetProperty(column => column.OutbreakId, (int?)null));
     }
+
+    /// <summary>
+    /// An investigation save and an administrative save on a case its print
+    /// criteria notify each queue the case.
+    /// </summary>
+    [Fact]
+    public async Task InvestigationAndAdministrativeSavesQueueANotifiableCase()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+        await MakeNotifiable(reportId);
+
+        try
+        {
+            using var investigation = await client.PutAsJsonAsync($"/api/person-conditions/{reportId}/investigation",
+                new UpdateInvestigationRequest(null, null, null, null, null, null, null, null, null, null), Json);
+            Assert.Equal(HttpStatusCode.OK, investigation.StatusCode);
+            Assert.True(await IsQueued(reportId));
+
+            await MakeNotifiable(reportId);
+            using var administrative = await client.PutAsJsonAsync($"/api/person-conditions/{reportId}/administrative",
+                new UpdateAdministrativeRequest(null, null, null, null, null, null, null, null, null), Json);
+            Assert.Equal(HttpStatusCode.OK, administrative.StatusCode);
+            Assert.True(await IsQueued(reportId));
+        }
+        finally
+        {
+            await MakeUnclassified(reportId);
+        }
+    }
+
+    /// <summary>
+    /// Gives the report a status its seeded print criteria notify and takes it
+    /// off the queue, so a write that follows is what queues it.
+    /// </summary>
+    private async Task MakeNotifiable(int reportId)
+    {
+        await using var context = server.NewContext();
+        await context.PersonConditions.Where(report => report.Id == reportId)
+            .ExecuteUpdateAsync(set => set.SetProperty(report => report.CaseStatus, CaseStatusRules.ConfirmedCode));
+        await context.NotificationQueue.Where(entry => entry.PersonConditionId == reportId).ExecuteDeleteAsync();
+    }
+
+    /// <summary>Puts the report back unclassified and off the queue.</summary>
+    private async Task MakeUnclassified(int reportId)
+    {
+        await using var context = server.NewContext();
+        await context.PersonConditions.Where(report => report.Id == reportId)
+            .ExecuteUpdateAsync(set => set.SetProperty(report => report.CaseStatus, (string?)null));
+        await context.NotificationQueue.Where(entry => entry.PersonConditionId == reportId).ExecuteDeleteAsync();
+    }
+
+    private async Task<bool> IsQueued(int reportId)
+    {
+        await using var context = server.NewContext();
+        return await context.NotificationQueue.AnyAsync(entry => entry.PersonConditionId == reportId);
+    }
 }

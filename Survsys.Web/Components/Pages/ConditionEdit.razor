@@ -1,7 +1,10 @@
 @* A condition's administration screen: every column the API puts on the wire,
    the three lead-in paragraphs included. One screen for both a new condition
    and an existing one; which it is, is whether the address carries an id.
-   A save goes back to the conditions list. An existing condition also carries
+   A save goes back to the conditions list, the print criteria — the case
+   statuses that make the condition's cases notifiable to CDC — saved with it,
+   one checkbox per status (`condition-print-criteria-{code}`). An existing
+   condition also carries
    its ELR intake rules — the message filter and the case-management rules —
    edited here and saved on their own, whole. *@
 @page "/conditions/new"
@@ -41,6 +44,17 @@ else
             </MudItem>
             <MudItem xs="12">
                 <MudCheckBox @bind-Value="active" id="condition-active" Label="Active" />
+            </MudItem>
+            <MudItem xs="12" id="condition-print-criteria">
+                <MudText Typo="Typo.subtitle2">Notified to CDC when the case status is</MudText>
+                <div class="d-flex gap-2">
+                    @foreach (var (code, label) in Statuses)
+                    {
+                        <MudCheckBox T="bool" id="@($"condition-print-criteria-{code}")" Label="@label"
+                                     Value="@printCriteria.Contains(code)"
+                                     ValueChanged="@(on => SetCriterion(code, on))" />
+                    }
+                </div>
             </MudItem>
             <MudItem xs="12">
                 <MudTextField @bind-Value="contactLeadIn" id="condition-contact-lead-in"
@@ -232,7 +246,25 @@ else
 
     private string? rulesFailure;
 
+    /// <summary>The case statuses a print criterion may name, by code, in the order they are offered.</summary>
+    private static readonly (string Code, string Label)[] Statuses =
+        [("C", "Confirmed"), ("P", "Probable"), ("S", "Suspected"), ("NC", "Not a case")];
+
+    private HashSet<string> printCriteria = [];
+
     private string Heading => Id is null ? "New condition" : "Edit condition";
+
+    private void SetCriterion(string code, bool on)
+    {
+        if (on)
+        {
+            printCriteria.Add(code);
+        }
+        else
+        {
+            printCriteria.Remove(code);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -250,7 +282,10 @@ else
                 treatmentLeadIn = condition.TreatmentLeadIn;
             }
 
-            failure = found.Failure;
+            var criteria = await Conditions.PrintCriteria(id);
+            printCriteria = criteria.Value?.CaseStatuses.ToHashSet() ?? [];
+
+            failure = found.Failure ?? criteria.Failure;
 
             var loadedRules = await Vocabulary.Rules(id);
             rules = (loadedRules.Value ?? []).Select(rule => new RuleForm(rule)).ToList();
@@ -371,15 +406,20 @@ else
             ? await Conditions.Update(id, request)
             : await Conditions.Create(request);
 
+        // The print criteria are saved with the condition, once it has an id.
+        var criteriaFailure = saved.Value is { } condition
+            ? (await Conditions.SetPrintCriteria(condition.Id, printCriteria.ToList())).Failure
+            : null;
+
         saving = false;
 
-        if (saved.Succeeded)
+        if (saved.Succeeded && criteriaFailure is null)
         {
             Navigation.NavigateTo("/conditions");
 
             return;
         }
 
-        failure = saved.Failure;
+        failure = saved.Failure ?? criteriaFailure;
     }
 }

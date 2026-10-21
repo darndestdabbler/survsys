@@ -743,4 +743,130 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
             await context.Labs.Where(lab => labIds.Contains(lab.Id)).ExecuteDeleteAsync();
         }
     }
+
+    /// <summary>
+    /// Recording a specimen on a case its print criteria notify queues the
+    /// case, and so does deleting it again.
+    /// </summary>
+    [Fact]
+    public async Task ALabWriteQueuesANotifiableCase()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+        await MakeNotifiable(reportId);
+        int? labId = null;
+
+        try
+        {
+            labId = (await Record(client, reportId, new CreateLabRequest(AccessionNo: "LAB-QUEUE-1"))).Specimen.Id;
+            Assert.True(await IsQueued(reportId));
+
+            await MakeNotifiable(reportId);
+            using var deleted = await client.DeleteAsync($"/api/labs/{labId}");
+            Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+            labId = null;
+            Assert.True(await IsQueued(reportId));
+        }
+        finally
+        {
+            if (labId is { } id)
+            {
+                await client.DeleteAsync($"/api/labs/{id}");
+            }
+
+            await MakeUnclassified(reportId);
+        }
+    }
+
+    /// <summary>
+    /// Every lab edit and delete route — specimen, test, result and
+    /// susceptibility — queues a case its print criteria notify, and the same
+    /// writes on an unclassified case leave it off the queue.
+    /// </summary>
+    [Fact]
+    public async Task EachLabEditAndDeleteQueuesOnlyANotifiableCase()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            foreach (var notifiable in new[] { true, false })
+            {
+                var detail = await Record(client, reportId, new CreateLabRequest(
+                    AccessionNo: "LAB-QUEUE-2",
+                    Tests:
+                    [
+                        new CreateLabTestRequest(
+                            TestTypeId: 3,
+                            Results: [new CreateLabTestResultRequest(TestResult: "Positive/Reactive")]),
+                    ],
+                    ResistTests: [new CreateLabResistTestRequest(OrganismId: 5)]));
+                var labId = detail.Specimen.Id;
+                var testId = detail.Tests.Single().Id;
+                var resultId = detail.Tests.Single().Results.Single().Id;
+                var resistId = detail.ResistTests.Single().Id;
+
+                var writes = new (string Route, Func<Task<HttpResponseMessage>> Write)[]
+                {
+                    ("PUT lab", () => client.PutAsJsonAsync($"/api/labs/{labId}", new UpdateLabRequest(AccessionNo: "LAB-QUEUE-3"), Json)),
+                    ("PUT test", () => client.PutAsJsonAsync($"/api/lab-tests/{testId}", new UpdateLabTestRequest(TestTypeId: 4), Json)),
+                    ("PUT result", () => client.PutAsJsonAsync($"/api/lab-test-results/{resultId}", new CreateLabTestResultRequest(TestResult: "Negative"), Json)),
+                    ("PUT resist", () => client.PutAsJsonAsync($"/api/lab-resist-tests/{resistId}", new CreateLabResistTestRequest(OrganismId: 6), Json)),
+                    ("DELETE result", () => client.DeleteAsync($"/api/lab-test-results/{resultId}")),
+                    ("DELETE resist", () => client.DeleteAsync($"/api/lab-resist-tests/{resistId}")),
+                    ("DELETE test", () => client.DeleteAsync($"/api/lab-tests/{testId}")),
+                    ("DELETE lab", () => client.DeleteAsync($"/api/labs/{labId}")),
+                };
+
+                foreach (var (route, write) in writes)
+                {
+                    if (notifiable)
+                    {
+                        await MakeNotifiable(reportId);
+                    }
+                    else
+                    {
+                        await MakeUnclassified(reportId);
+                    }
+
+                    using var response = await write();
+                    Assert.True(response.IsSuccessStatusCode, $"{route} answered {(int)response.StatusCode}");
+                    Assert.True(await IsQueued(reportId) == notifiable, $"{route} on a {(notifiable ? "notifiable" : "unclassified")} case");
+                }
+            }
+        }
+        finally
+        {
+            await ClearSpecimensOf(reportId);
+            await MakeUnclassified(reportId);
+        }
+    }
+
+    /// <summary>
+    /// Gives the report a status its seeded print criteria notify and takes it
+    /// off the queue, so a write that follows is what queues it.
+    /// </summary>
+    private async Task MakeNotifiable(int reportId)
+    {
+        await using var context = server.NewContext();
+        await context.PersonConditions.Where(report => report.Id == reportId)
+            .ExecuteUpdateAsync(set => set.SetProperty(report => report.CaseStatus, CaseStatusRules.ConfirmedCode));
+        await context.NotificationQueue.Where(entry => entry.PersonConditionId == reportId).ExecuteDeleteAsync();
+    }
+
+    /// <summary>Puts the report back unclassified and off the queue.</summary>
+    private async Task MakeUnclassified(int reportId)
+    {
+        await using var context = server.NewContext();
+        await context.PersonConditions.Where(report => report.Id == reportId)
+            .ExecuteUpdateAsync(set => set.SetProperty(report => report.CaseStatus, (string?)null));
+        await context.NotificationQueue.Where(entry => entry.PersonConditionId == reportId).ExecuteDeleteAsync();
+    }
+
+    private async Task<bool> IsQueued(int reportId)
+    {
+        await using var context = server.NewContext();
+        return await context.NotificationQueue.AnyAsync(entry => entry.PersonConditionId == reportId);
+    }
 }

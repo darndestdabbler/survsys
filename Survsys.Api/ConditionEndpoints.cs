@@ -140,7 +140,63 @@ public static class ConditionEndpoints
             .WithSummary("Previews, or with confirm=true saves, each condition of a CSV file, added where its id "
                 + "is blank and saved over by its id otherwise.");
 
+        routes.MapGet("/api/conditions/{id:int}/print-criteria", GetPrintCriteria)
+            .WithName("GetConditionPrintCriteria")
+            .WithSummary("The case statuses that make a condition's cases notifiable to CDC.");
+
+        routes.MapPut("/api/conditions/{id:int}/print-criteria", SetPrintCriteria)
+            .WithName("SetConditionPrintCriteria")
+            .WithSummary("Replaces the case statuses that make a condition's cases notifiable to CDC.");
+
         return routes;
+    }
+
+    private static async Task<Results<Ok<ConditionPrintCriteriaResponse>, ProblemHttpResult>> GetPrintCriteria(
+        ConditionQueries conditions,
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        if (await conditions.PrintCriteria(id, cancellationToken) is not { } criteria)
+        {
+            return NoSuchCondition(id);
+        }
+
+        return TypedResults.Ok(criteria);
+    }
+
+    private static async Task<Results<Ok<ConditionPrintCriteriaResponse>, ProblemHttpResult>> SetPrintCriteria(
+        ConditionQueries conditions,
+        int id,
+        ConditionPrintCriteriaRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request.CaseStatuses is null)
+        {
+            return TypedResults.Problem(
+                detail: "caseStatuses is required: the list of notifiable case status codes, empty for none.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The print criteria asked for are not ones this endpoint can save.");
+        }
+
+        if (request.CaseStatuses.FirstOrDefault(code =>
+            string.IsNullOrWhiteSpace(code) || !CaseStatusRules.IsAssignable(code)) is { } bad)
+        {
+            return TypedResults.Problem(
+                detail: $"'{bad}' is not a case status code; a print criterion is one of "
+                    + $"{CaseStatusRules.ConfirmedCode}, {CaseStatusRules.ProbableCode}, "
+                    + $"{CaseStatusRules.SuspectedCode} or {CaseStatusRules.NotACaseCode}.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The print criteria asked for are not ones this endpoint can save.");
+        }
+
+        if (await conditions.SetPrintCriteria(id, request.CaseStatuses, cancellationToken) is not { } criteria)
+        {
+            return NoSuchCondition(id);
+        }
+
+        return TypedResults.Ok(criteria);
     }
 
     /// <summary>The conditions' CSV columns, in the order an export writes them.</summary>
@@ -359,6 +415,52 @@ internal sealed class ConditionQueries(SurvsysDbContext database)
         await database.SaveChangesAsync(cancellationToken);
 
         return ConditionEndpoints.Detail(condition);
+    }
+
+    /// <summary>
+    /// The condition's print criteria, or null where no condition has that id.
+    /// </summary>
+    public async Task<ConditionPrintCriteriaResponse?> PrintCriteria(int id, CancellationToken cancellationToken)
+    {
+        if (!await database.Conditions.AnyAsync(condition => condition.Id == id, cancellationToken))
+        {
+            return null;
+        }
+
+        var statuses = await database.ConditionPrintCriteria
+            .Where(criterion => criterion.ConditionId == id)
+            .OrderBy(criterion => criterion.CaseStatus)
+            .Select(criterion => criterion.CaseStatus)
+            .ToListAsync(cancellationToken);
+
+        return new ConditionPrintCriteriaResponse(id, statuses);
+    }
+
+    /// <summary>
+    /// Replaces the condition's print criteria with <paramref name="statuses"/>,
+    /// trimmed and each once, or answers null where no condition has that id.
+    /// The codes are the caller's to have checked.
+    /// </summary>
+    public async Task<ConditionPrintCriteriaResponse?> SetPrintCriteria(
+        int id,
+        IEnumerable<string> statuses,
+        CancellationToken cancellationToken)
+    {
+        if (!await database.Conditions.AnyAsync(condition => condition.Id == id, cancellationToken))
+        {
+            return null;
+        }
+
+        database.ConditionPrintCriteria.RemoveRange(
+            await database.ConditionPrintCriteria.Where(criterion => criterion.ConditionId == id)
+                .ToListAsync(cancellationToken));
+        database.ConditionPrintCriteria.AddRange(statuses
+            .Select(status => status.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .Select(status => new ConditionPrintCriterion { ConditionId = id, CaseStatus = status }));
+        await database.SaveChangesAsync(cancellationToken);
+
+        return await PrintCriteria(id, cancellationToken);
     }
 
     /// <summary>

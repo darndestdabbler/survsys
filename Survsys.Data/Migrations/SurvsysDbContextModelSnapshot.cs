@@ -10805,6 +10805,33 @@ namespace Survsys.Data.Migrations
                     b.ToTable("condition_detail", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.ConditionPrintCriterion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CaseStatus")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("nvarchar(2)")
+                        .HasColumnName("case_status");
+
+                    b.Property<int>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConditionId", "CaseStatus")
+                        .IsUnique();
+
+                    b.ToTable("nmi_condition_print_criteria", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.ConditionTreatment", b =>
                 {
                     b.Property<int>("ConditionId")
@@ -12982,6 +13009,10 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("queued_at");
 
+                    b.Property<bool>("Retract")
+                        .HasColumnType("bit")
+                        .HasColumnName("retract");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PersonConditionId")
@@ -13970,6 +14001,28 @@ namespace Survsys.Data.Migrations
                     b.HasKey("PhinVar");
 
                     b.ToTable("phin_var", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.ReconciliationCutoffSetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("MmwrWeek")
+                        .HasColumnType("int")
+                        .HasColumnName("mmwr_week");
+
+                    b.Property<int>("MmwrYear")
+                        .HasColumnType("int")
+                        .HasColumnName("mmwr_year");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("nmi_reconciliation_cutoff", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.ReportSection", b =>
@@ -15452,6 +15505,15 @@ namespace Survsys.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Survsys.Data.Condition", null)
+                        .WithMany()
+                        .HasForeignKey("ConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.ConditionPrintCriterion", b =>
+                {
                     b.HasOne("Survsys.Data.Condition", null)
                         .WithMany()
                         .HasForeignKey("ConditionId")

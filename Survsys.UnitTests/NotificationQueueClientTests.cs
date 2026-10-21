@@ -265,6 +265,95 @@ public class NotificationQueueClientTests
         Assert.DoesNotContain("id 99", held.Failure, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Removing a case: a DELETE to the case's queue URL, answered with no
+    /// body; a failure carries the removal prefix and names the status.
+    /// </summary>
+    [Fact]
+    public async Task RemoveDeletesTheCasesQueueEntry()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new NotificationQueueClient(Transport(request =>
+        {
+            sent = request;
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }));
+
+        Assert.Null(await client.Remove(42));
+        Assert.Equal(HttpMethod.Delete, sent?.Method);
+        Assert.Equal("http://api.example.test/api/notification-queue/42", sent?.RequestUri?.ToString());
+
+        var failing = new NotificationQueueClient(Transport(_ => Answer(
+            HttpStatusCode.NotFound, """{ "status": 404, "detail": "No case with id 42 is queued." }""")));
+
+        var refused = await failing.Remove(42);
+
+        Assert.StartsWith(NotificationQueueClient.RemovalFailurePrefix, refused);
+        Assert.Contains("404", refused);
+    }
+
+    /// <summary>
+    /// Exporting records: a POST of the record numbers to the records URL, and
+    /// the count queued and the unknown numbers come back.
+    /// </summary>
+    [Fact]
+    public async Task ExportRecordsPostsTheRecordNumbers()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new NotificationQueueClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+            return Answer(HttpStatusCode.OK, """{ "queued": 1, "unknown": ["NOPE-1"] }""");
+        }));
+
+        var done = await client.ExportRecords(["202600042", "NOPE-1"]);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/notification-queue/records", sent?.RequestUri?.ToString());
+        Assert.Contains("\"recordNumbers\":[\"202600042\",\"NOPE-1\"]", body, StringComparison.Ordinal);
+        Assert.Equal(1, done.Value?.Queued);
+        Assert.Equal(["NOPE-1"], done.Value?.Unknown);
+    }
+
+    /// <summary>
+    /// Exporting an MMWR range: a POST of the range to the range URL; a failure
+    /// carries the export prefix and names the status.
+    /// </summary>
+    [Fact]
+    public async Task ExportMmwrRangePostsTheRange()
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+
+        var client = new NotificationQueueClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().Result;
+            return Answer(HttpStatusCode.OK, """{ "queued": 3, "unknown": [] }""");
+        }));
+
+        var done = await client.ExportMmwrRange(new ExportMmwrRangeRequest(2026, 9, 12, 7));
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/notification-queue/mmwr-range", sent?.RequestUri?.ToString());
+        Assert.Contains("\"mmwrYear\":2026", body, StringComparison.Ordinal);
+        Assert.Contains("\"conditionId\":7", body, StringComparison.Ordinal);
+        Assert.Equal(3, done.Value?.Queued);
+
+        var failing = new NotificationQueueClient(Transport(_ => Answer(
+            HttpStatusCode.BadRequest, """{ "status": 400, "detail": "Weeks 12 to 9 are not an MMWR range." }""")));
+
+        var refused = await failing.ExportMmwrRange(new ExportMmwrRangeRequest(2026, 12, 9));
+
+        Assert.StartsWith(NotificationQueueClient.ExportFailurePrefix, refused.Failure);
+        Assert.Contains("400", refused.Failure);
+        Assert.DoesNotContain("Weeks 12", refused.Failure, StringComparison.Ordinal);
+    }
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 

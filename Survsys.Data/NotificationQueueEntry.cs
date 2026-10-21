@@ -48,4 +48,12 @@ public class NotificationQueueEntry
     /// screen. The legacy <c>hold</c>.
     /// </summary>
     public bool Hold { get; set; }
+
+    /// <summary>
+    /// Whether the entry retracts a notification CDC accepted before: its
+    /// message is sent with NOT118 set to <c>X</c>. Set only by the retract
+    /// action, and cleared when the case is queued again by a change. The
+    /// legacy delete flag on the <c>nmi.log</c> row a CDC delete request made.
+    /// </summary>
+    public bool Retract { get; set; }
 }

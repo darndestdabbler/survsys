@@ -1082,6 +1082,52 @@ public class PersonEndpointsTests(SqlServerFixture server) : IDisposable
         }
     }
 
+    /// <summary>
+    /// A demographics save queues each of the person's cases its print criteria
+    /// notify — the confirmed one — and leaves the suspected one off the queue.
+    /// </summary>
+    [Fact]
+    public async Task APutQueuesThePersonsNotifiableCases()
+    {
+        var client = api.CreateClient();
+        var id = await Created("Queueton");
+        var confirmed = new PersonCondition { RecordNumber = "ITEST-Q-PC", CaseStatus = CaseStatusRules.ConfirmedCode };
+        var suspected = new PersonCondition { RecordNumber = "ITEST-Q-PS", CaseStatus = CaseStatusRules.SuspectedCode };
+
+        try
+        {
+            await using (var seeding = server.NewContext())
+            {
+                var malaria = await seeding.Conditions.Where(condition => condition.Name == "Malaria")
+                    .Select(condition => condition.Id).SingleAsync();
+                foreach (var report in new[] { confirmed, suspected })
+                {
+                    report.PersonId = id;
+                    report.ConditionId = malaria;
+                    report.CreatedAt = DateTimeOffset.Now;
+                    seeding.PersonConditions.Add(report);
+                }
+
+                await seeding.SaveChangesAsync();
+            }
+
+            await Put(client, id, new UpdatePersonRequest("Queueton", "Quinn"));
+
+            await using var context = server.NewContext();
+            Assert.True(await context.NotificationQueue.AnyAsync(entry => entry.PersonConditionId == confirmed.Id));
+            Assert.False(await context.NotificationQueue.AnyAsync(entry => entry.PersonConditionId == suspected.Id));
+        }
+        finally
+        {
+            await using (var context = server.NewContext())
+            {
+                await context.PersonConditions.Where(report => report.PersonId == id).ExecuteDeleteAsync();
+            }
+
+            await Forget(id);
+        }
+    }
+
     [Fact]
     public async Task APutOnAnIdNobodyHasIsAProblemDetails()
     {

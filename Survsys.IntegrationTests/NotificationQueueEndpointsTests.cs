@@ -2,7 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Survsys.Api;
 using Survsys.Contracts;
+using Survsys.Data;
 using Xunit;
 
 namespace Survsys.IntegrationTests;
@@ -138,7 +140,7 @@ public class NotificationQueueEndpointsTests(SqlServerFixture server) : IDisposa
         {
             var report = await Open();
 
-            // Opening auto-queues the case; take its entry out so the manual
+            // Confirming auto-queues the case; take its entry out so the manual
             // queue has something to re-create rather than only to refresh.
             await using (var context = server.NewContext())
             {
@@ -175,8 +177,177 @@ public class NotificationQueueEndpointsTests(SqlServerFixture server) : IDisposa
     }
 
     /// <summary>
+    /// Removing a queued case takes its entry off the queue, and removing it
+    /// again is a 404.
+    /// </summary>
+    [Fact]
+    public async Task ARemovedCaseLeavesTheQueue()
+    {
+        await Clear();
+
+        try
+        {
+            var report = await Open();
+            var client = api.CreateClient();
+
+            using var removed = await client.DeleteAsync($"/api/notification-queue/{report.Id}");
+            Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
+            Assert.False(await IsQueued(report.Id));
+
+            using var again = await client.DeleteAsync($"/api/notification-queue/{report.Id}");
+            Assert.Equal(HttpStatusCode.NotFound, again.StatusCode);
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    /// <summary>
+    /// A case CDC never accepted cannot be retracted; once an accepted export
+    /// is logged, a held entry is queued again as a released retraction.
+    /// </summary>
+    [Fact]
+    public async Task ARetractionNeedsAnAcceptedNotificationAndIsQueuedReleased()
+    {
+        await Clear();
+
+        try
+        {
+            var report = await Open();
+            var client = api.CreateClient();
+            using var hold = await client.PatchAsJsonAsync(
+                $"/api/notification-queue/{report.Id}/hold", new SetNotificationHoldRequest(true), Json);
+            hold.EnsureSuccessStatusCode();
+
+            using var refused = await client.PostAsync($"/api/notification-queue/{report.Id}/retract", null);
+            Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+
+            await using (var context = server.NewContext())
+            {
+                context.CdcExportLog.Add(new CdcExportLogEntry
+                {
+                    PersonConditionId = report.Id,
+                    RecordNumber = report.RecordNumber,
+                    QueuedAt = DateTime.UtcNow,
+                    SentAt = DateTime.UtcNow,
+                    Outcome = NotificationQueueService.AcceptedOutcome,
+                });
+                await context.SaveChangesAsync();
+            }
+
+            using var retracted = await client.PostAsync($"/api/notification-queue/{report.Id}/retract", null);
+            Assert.Equal(HttpStatusCode.OK, retracted.StatusCode);
+            var row = (await retracted.Content.ReadFromJsonAsync<NotificationQueueItemResponse>(Json))!;
+            Assert.True(row.Retract);
+            Assert.False(row.Hold);
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    /// <summary>
+    /// Exporting by record number queues each case on file, whatever its status,
+    /// and names the numbers no case has.
+    /// </summary>
+    [Fact]
+    public async Task ExportingRecordsQueuesTheKnownCasesAndNamesTheRest()
+    {
+        await Clear();
+
+        try
+        {
+            var report = await Open();
+            await Unqueue(report.Id);
+
+            using var response = await api.CreateClient().PostAsJsonAsync(
+                "/api/notification-queue/records",
+                new ExportRecordsRequest([report.RecordNumber, " ", "NOPE-1", report.RecordNumber]),
+                Json);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var done = (await response.Content.ReadFromJsonAsync<NotificationExportResponse>(Json))!;
+            Assert.Equal(1, done.Queued);
+            Assert.Equal(["NOPE-1"], done.Unknown);
+            Assert.True(await IsQueued(report.Id));
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    /// <summary>
+    /// Exporting an MMWR range queues the cases of the range whose status their
+    /// print criteria hold — the confirmed one, not the suspected one or the one
+    /// outside the range — and a range that runs backwards is refused.
+    /// </summary>
+    [Fact]
+    public async Task ExportingAnMmwrRangeQueuesItsNotifiableCases()
+    {
+        await Clear();
+
+        try
+        {
+            var inRange = await Open();
+            var suspected = await Open();
+            var outside = await Open();
+            await using (var context = server.NewContext())
+            {
+                foreach (var (id, week, status) in new[]
+                {
+                    (inRange.Id, 10, CaseStatusRules.ConfirmedCode),
+                    (suspected.Id, 11, CaseStatusRules.SuspectedCode),
+                    (outside.Id, 20, CaseStatusRules.ConfirmedCode),
+                })
+                {
+                    await context.PersonConditions.Where(report => report.Id == id).ExecuteUpdateAsync(set => set
+                        .SetProperty(report => report.MmwrYear, 2026)
+                        .SetProperty(report => report.MmwrWeek, week)
+                        .SetProperty(report => report.CaseStatus, status));
+                }
+
+                await context.NotificationQueue.ExecuteDeleteAsync();
+            }
+
+            var client = api.CreateClient();
+            using var response = await client.PostAsJsonAsync(
+                "/api/notification-queue/mmwr-range", new ExportMmwrRangeRequest(2026, 9, 12, inRange.ConditionId), Json);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            Assert.Equal(1, (await response.Content.ReadFromJsonAsync<NotificationExportResponse>(Json))!.Queued);
+            Assert.True(await IsQueued(inRange.Id));
+            Assert.False(await IsQueued(suspected.Id));
+            Assert.False(await IsQueued(outside.Id));
+
+            using var backwards = await client.PostAsJsonAsync(
+                "/api/notification-queue/mmwr-range", new ExportMmwrRangeRequest(2026, 12, 9), Json);
+            Assert.Equal(HttpStatusCode.BadRequest, backwards.StatusCode);
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    private async Task<bool> IsQueued(int reportId)
+    {
+        await using var context = server.NewContext();
+        return await context.NotificationQueue.AnyAsync(entry => entry.PersonConditionId == reportId);
+    }
+
+    private async Task Unqueue(int reportId)
+    {
+        await using var context = server.NewContext();
+        await context.NotificationQueue.Where(entry => entry.PersonConditionId == reportId).ExecuteDeleteAsync();
+    }
+
+    /// <summary>
     /// Opens a case about a seeded person for a seeded active condition, and
-    /// answers with it. Opening it queues it for notification unheld.
+    /// answers with it, confirmed: the change queues it for notification unheld,
+    /// its condition's seeded print criteria notifying a confirmed case.
     /// </summary>
     private async Task<PersonConditionResponse> Open()
     {
@@ -189,8 +360,15 @@ public class NotificationQueueEndpointsTests(SqlServerFixture server) : IDisposa
             Json);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var report = (await response.Content.ReadFromJsonAsync<PersonConditionResponse>(Json))!;
 
-        return (await response.Content.ReadFromJsonAsync<PersonConditionResponse>(Json))!;
+        using var status = await api.CreateClient().PutAsJsonAsync(
+            $"/api/person-conditions/{report.Id}/status",
+            new UpdateCaseStatusRequest(CaseStatusRules.ConfirmedCode),
+            Json);
+        Assert.Equal(HttpStatusCode.OK, status.StatusCode);
+
+        return report;
     }
 
     private async Task<int> PersonId(string named)

@@ -131,6 +131,36 @@ public class ExportLogEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     /// <summary>
+    /// Resending a logged export queues its case again, released; an export
+    /// that is not on file is a 404.
+    /// </summary>
+    [Fact]
+    public async Task ResendingAnExportQueuesItsCaseAgain()
+    {
+        await Clear();
+
+        try
+        {
+            var report = await Open();
+            var id = await Seed(report.Id, report.RecordNumber, DateTime.UtcNow, null, null, "failed");
+            var client = api.CreateClient();
+
+            using var resent = await client.PostAsync($"/api/export-log/{id}/resend", null);
+            Assert.Equal(HttpStatusCode.OK, resent.StatusCode);
+            var row = (await resent.Content.ReadFromJsonAsync<NotificationQueueItemResponse>(Json))!;
+            Assert.Equal(report.Id, row.PersonConditionId);
+            Assert.False(row.Hold);
+
+            using var missing = await client.PostAsync("/api/export-log/987654321/resend", null);
+            Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    /// <summary>
     /// Opens a case about a seeded person for a seeded active condition, and
     /// answers with it — a real case for the log rows' foreign key.
     /// </summary>

@@ -301,6 +301,8 @@ internal sealed class ClinicalQueries(SurvsysDbContext database)
             report.MmwrYear = mmwr.Year;
         }
 
+        await new CaseNotificationQueue(database).QueueChangeAsync(
+            new CaseChanged(report.Id, DateTime.UtcNow), cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         return ClinicalEndpoints.Respond(report, person);

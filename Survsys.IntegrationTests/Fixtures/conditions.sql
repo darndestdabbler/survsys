@@ -33,3 +33,9 @@ VALUES
     (N'Listeriosis', N'Listeria is rarely transmitted from person to person.  Identifying contacts for this disease is at the discretion of the local health department.', NULL, NULL, 1, N'10640', NULL),
     (N'Hepatitis A', N'There will be two separate questions. The first is "Was patient a contact of a person with confirmed or suspected Hepatitis A infection?" If yes, contact info will be entered in the Contacts tab. The next question isn''t really a question, it''s an instruction: "Obtain information for all contacts exposed to case during the communicable period".', NULL, NULL, 1, N'10110', NULL),
     (N'Influenza, animal isolates', NULL, NULL, NULL, 0, N'11070', NULL);
+
+-- The print criteria the NotificationReview migration gives every condition
+-- already on file, given here to the conditions this fixture loads after the
+-- migrations have run: confirmed and probable cases are notified.
+INSERT INTO nmi_condition_print_criteria (condition_id, case_status)
+SELECT id, N'C' FROM conditions UNION ALL SELECT id, N'P' FROM conditions;

@@ -37,6 +37,7 @@ namespace Survsys.Contracts;
 /// <c>D</c>), or null where none was recorded.
 /// </param>
 /// <param name="Queue">The queue the export ran from, or null where none was recorded.</param>
+/// <param name="PersonConditionId">The case the export was for, by which it is retracted.</param>
 public record CdcExportLogItemResponse(
     int Id,
     string RecordNumber,
@@ -46,4 +47,5 @@ public record CdcExportLogItemResponse(
     string? Outcome,
     string? Detail,
     string? ProcessingId,
-    string? Queue);
+    string? Queue,
+    int PersonConditionId = 0);

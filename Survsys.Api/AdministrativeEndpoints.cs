@@ -264,6 +264,8 @@ internal sealed class AdministrativeQueries(SurvsysDbContext database)
         report.CdcFirstVerballyNotifiedDate = request.CdcFirstVerballyNotifiedDate;
         report.OutbreakId = request.OutbreakId;
 
+        await new CaseNotificationQueue(database).QueueChangeAsync(
+            new CaseChanged(report.Id, DateTime.UtcNow), cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         var outbreakName = report.OutbreakId is { } outbreakId

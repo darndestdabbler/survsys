@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -5,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Survsys.Api;
+using Survsys.Contracts;
 using Survsys.Data;
 using Xunit;
 
@@ -53,7 +57,7 @@ public class NotificationQueueServiceTests(SqlServerFixture server) : IDisposabl
 
         try
         {
-            var report = await NotificationMessageBuilderTests.Open(api);
+            var report = await OpenQueued();
             await NotificationReference.Seed(context, report.ConditionId);
 
             var processed = await Process(context, url);
@@ -97,7 +101,7 @@ public class NotificationQueueServiceTests(SqlServerFixture server) : IDisposabl
 
         try
         {
-            var report = await NotificationMessageBuilderTests.Open(api);
+            var report = await OpenQueued();
             await NotificationReference.Seed(context, report.ConditionId);
 
             Assert.Equal(1, await Process(context, url));
@@ -136,7 +140,7 @@ public class NotificationQueueServiceTests(SqlServerFixture server) : IDisposabl
 
         try
         {
-            var report = await NotificationMessageBuilderTests.Open(api);
+            var report = await OpenQueued();
             await NotificationReference.Seed(context, report.ConditionId);
 
             await using var first = server.NewContext();
@@ -178,7 +182,7 @@ public class NotificationQueueServiceTests(SqlServerFixture server) : IDisposabl
 
         try
         {
-            var report = await NotificationMessageBuilderTests.Open(api);
+            var report = await OpenQueued();
             await NotificationReference.Seed(context, report.ConditionId);
 
             await using (var cancelledContext = server.NewContext())
@@ -225,7 +229,7 @@ public class NotificationQueueServiceTests(SqlServerFixture server) : IDisposabl
 
         try
         {
-            var report = await NotificationMessageBuilderTests.Open(api);
+            var report = await OpenQueued();
             await context.NotificationQueue
                 .Where(entry => entry.PersonConditionId == report.Id)
                 .ExecuteUpdateAsync(entry => entry.SetProperty(item => item.Hold, true));
@@ -275,4 +279,22 @@ public class NotificationQueueServiceTests(SqlServerFixture server) : IDisposabl
 
     /// <summary>Takes every case out, which cascades to the queue and the export log.</summary>
     private static Task Clear(SurvsysDbContext context) => context.PersonConditions.ExecuteDeleteAsync();
+
+    /// <summary>
+    /// Opens a case as <see cref="NotificationMessageBuilderTests.Open"/> does and
+    /// confirms it, which its condition's seeded print criteria notify, so the
+    /// change queues it unheld.
+    /// </summary>
+    private async Task<PersonConditionResponse> OpenQueued()
+    {
+        var report = await NotificationMessageBuilderTests.Open(api);
+
+        using var status = await api.CreateClient().PutAsJsonAsync(
+            $"/api/person-conditions/{report.Id}/status",
+            new UpdateCaseStatusRequest(CaseStatusRules.ConfirmedCode),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Equal(HttpStatusCode.OK, status.StatusCode);
+
+        return report;
+    }
 }

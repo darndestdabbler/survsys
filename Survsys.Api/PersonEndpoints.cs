@@ -786,6 +786,19 @@ internal sealed class PersonQueries(SurvsysDbContext database)
 
         PersonEndpoints.Apply(
             stored, request, DateOnly.FromDateTime(DateTimeOffset.Now.Date), countiesByZip, towns);
+
+        // Demographics are notified on every case of the person, so each of
+        // them is queued with the save, as its print criteria allow.
+        var notifications = new CaseNotificationQueue(database);
+        var changedAt = DateTime.UtcNow;
+        foreach (var reportId in await database.PersonConditions
+            .Where(report => report.PersonId == id)
+            .Select(report => report.Id)
+            .ToListAsync(cancellationToken))
+        {
+            await notifications.QueueChangeAsync(new CaseChanged(reportId, changedAt), cancellationToken);
+        }
+
         await database.SaveChangesAsync(cancellationToken);
 
         return await Find(id, cancellationToken);

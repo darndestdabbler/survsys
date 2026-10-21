@@ -241,6 +241,8 @@ internal sealed class InvestigationQueries(SurvsysDbContext database)
             ? null
             : request.Occupation.Trim();
 
+        await new CaseNotificationQueue(database).QueueChangeAsync(
+            new CaseChanged(report.Id, DateTime.UtcNow), cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         return InvestigationEndpoints.Respond(report);

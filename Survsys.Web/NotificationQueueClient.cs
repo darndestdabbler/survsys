@@ -35,7 +35,17 @@ public sealed class NotificationQueueClient(HttpClient http)
     /// <summary>How a failure to process the queue now starts.</summary>
     public const string ProcessingFailurePrefix = "The notification queue could not be processed";
 
+    /// <summary>How a failure to take a case off the queue starts.</summary>
+    public const string RemovalFailurePrefix = "The case could not be taken off the notification queue";
+
+    /// <summary>How a failure to queue cases by record number or MMWR range starts.</summary>
+    public const string ExportFailurePrefix = "The cases could not be queued for export";
+
     private static readonly ApiAsk Processing = new(ProcessingFailurePrefix, "how many cases were processed");
+
+    private static readonly ApiAsk Removing = new(RemovalFailurePrefix, "no body");
+
+    private static readonly ApiAsk Exporting = new(ExportFailurePrefix, "how many cases were queued");
 
     private static readonly ApiAsk Listing = new(QueueFailurePrefix, "a page of the notification queue");
 
@@ -103,5 +113,38 @@ public sealed class NotificationQueueClient(HttpClient http)
             http,
             "api/notification-queue/process",
             body: null,
+            cancellationToken);
+
+    /// <summary>
+    /// Takes a case off the queue so it is not exported, answering with null
+    /// where it was or with why it was not.
+    /// </summary>
+    public Task<string?> Remove(int personConditionId, CancellationToken cancellationToken = default) =>
+        Removing.Delete(http, $"api/notification-queue/{personConditionId}", cancellationToken);
+
+    /// <summary>
+    /// Queues the cases with the record numbers given, answering with how many
+    /// were queued and the numbers no case has, or with why none were.
+    /// </summary>
+    public Task<Asked<NotificationExportResponse>> ExportRecords(
+        IReadOnlyList<string> recordNumbers,
+        CancellationToken cancellationToken = default) =>
+        Exporting.Post<ExportRecordsRequest, NotificationExportResponse>(
+            http,
+            "api/notification-queue/records",
+            new ExportRecordsRequest(recordNumbers),
+            cancellationToken);
+
+    /// <summary>
+    /// Queues the notifiable morbidity cases of an MMWR range, answering with
+    /// how many were queued or with why none were.
+    /// </summary>
+    public Task<Asked<NotificationExportResponse>> ExportMmwrRange(
+        ExportMmwrRangeRequest range,
+        CancellationToken cancellationToken = default) =>
+        Exporting.Post<ExportMmwrRangeRequest, NotificationExportResponse>(
+            http,
+            "api/notification-queue/mmwr-range",
+            range,
             cancellationToken);
 }

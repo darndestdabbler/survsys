@@ -64,6 +64,35 @@ public sealed class CaseNotificationQueue(SurvsysDbContext database)
         else
         {
             existing.QueuedAt = change.ChangedAt;
+            existing.Retract = false;
+        }
+    }
+
+    /// <summary>
+    /// Stages <see cref="EnqueueAsync"/> for a case write that reaches a
+    /// notified variable, but only where the case's condition's print criteria
+    /// hold its case status; a case they do not hold is left as it is.
+    /// </summary>
+    /// <remarks>
+    /// The case is found through the context's tracker first, so a status the
+    /// caller changed in the same unit of work and has not yet saved is the one
+    /// weighed. A case with no status matches no criterion, so an unclassified
+    /// case is never queued by a change.
+    /// </remarks>
+    public async Task QueueChangeAsync(CaseChanged change, CancellationToken cancellationToken)
+    {
+        var report = await database.PersonConditions.FindAsync([change.PersonConditionId], cancellationToken);
+        if (report is null || string.IsNullOrWhiteSpace(report.CaseStatus))
+        {
+            return;
+        }
+
+        var status = report.CaseStatus.Trim();
+        if (await database.ConditionPrintCriteria.AnyAsync(
+            criterion => criterion.ConditionId == report.ConditionId && criterion.CaseStatus == status,
+            cancellationToken))
+        {
+            await EnqueueAsync(change, cancellationToken);
         }
     }
 }

@@ -56,6 +56,11 @@ public sealed partial class NotificationMessageBuilder(SurvsysDbContext database
     private const string ProfileId = "NOTF_ORU_v3.0";
     private const string DataSetKey = "dataSet";
 
+    // The notification status variable, and the status a retraction sends:
+    // "results cannot be obtained", which CDC reads as the notification withdrawn.
+    private const string NotificationStatusVariable = "NOT118";
+    private const string RetractedStatus = "X";
+
     private static readonly NotificationIdentifier SendingApp = new("Survsys", "2.16.840.1.114222.4.3.3.2.1", "ISO");
     private static readonly NotificationIdentifier SendingFacility = new("CTDPH", "2.16.840.1.114222.4.1.3650", "ISO");
     private static readonly NotificationIdentifier ReceivingApp = new("CDC", "2.16.840.1.114222.4.3.2.10", "ISO");
@@ -64,10 +69,16 @@ public sealed partial class NotificationMessageBuilder(SurvsysDbContext database
     /// <summary>
     /// Builds the notification of case <paramref name="personConditionId"/>
     /// under <paramref name="processingId"/> (<c>P</c>, <c>T</c> or <c>D</c>),
-    /// sent at <paramref name="at"/>.
+    /// sent at <paramref name="at"/>; where <paramref name="retract"/> is set,
+    /// with its notification status NOT118 set to <c>X</c>, which retracts a
+    /// notification CDC accepted before.
     /// </summary>
     public async Task<NotificationBuild> Build(
-        int personConditionId, string processingId, DateTimeOffset at, CancellationToken cancellationToken)
+        int personConditionId,
+        string processingId,
+        DateTimeOffset at,
+        CancellationToken cancellationToken,
+        bool retract = false)
     {
         var personCondition = await database.PersonConditions.AsNoTracking()
             .SingleAsync(item => item.Id == personConditionId, cancellationToken);
@@ -154,6 +165,14 @@ public sealed partial class NotificationMessageBuilder(SurvsysDbContext database
         if (messages.Any(message => message.Severity == RuleSetMessageKind.Error))
         {
             return new NotificationBuild(personCondition.RecordNumber, guideId, null, messages);
+        }
+
+        if (retract)
+        {
+            values.RemoveAll(value => value.PhinVar == NotificationStatusVariable);
+            values.Add(new NotificationValue(
+                NotificationStatusVariable, "Notification Result Status", "ID", RetractedStatus, RetractedStatus,
+                null, null, 0));
         }
 
         var guideName = await database.NotificationGuides.AsNoTracking()

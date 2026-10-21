@@ -8,11 +8,16 @@
    `notification-queue-error`, `notification-queue-total`,
    `notification-queue-none`, `notification-queue-hold-error`, the
    `notification-queue-process` button with its `-processed` count and
-   `-process-error`, the table, and
-   one row per case keyed by its id with a hold button of its own. A test
+   `-process-error`, the export-records field
+   `notification-queue-records` with its `-records-export` button, the MMWR
+   range fields `notification-queue-mmwr-year`, `-mmwr-start`, `-mmwr-end` and
+   `-mmwr-condition` with their `-mmwr-export` button, `notification-queue-exported`
+   and `notification-queue-export-error`, the table, and one row per case keyed
+   by its id with a hold button and a remove button of its own. A test
    selects by those and not by a MudBlazor class or a cell's position. *@
 @page "/notification-queue"
 @inject NotificationQueueClient Client
+@inject ConditionsClient Conditions
 
 <PageTitle>Notification queue — Survsys</PageTitle>
 
@@ -22,8 +27,63 @@
 
 <MudText Typo="Typo.body2" Class="mb-4">
     The cases waiting to be notified to CDC, oldest first. Hold a case to keep it
-    back from export pending review, or release one to let it go.
+    back from export pending review, release one to let it go, or remove it so it
+    is not exported. Queue cases by record number, or every notifiable case of an
+    MMWR range.
 </MudText>
+
+<MudGrid Spacing="2" Class="mb-4">
+    <MudItem xs="12" md="5">
+        <MudTextField T="string" @bind-Value="recordNumbers" id="notification-queue-records"
+                      Label="Record numbers (separated by commas or lines)" Lines="3"
+                      Variant="Variant.Outlined" />
+        <MudButton id="notification-queue-records-export" Variant="Variant.Outlined" Class="mt-2"
+                   Disabled="@(working || string.IsNullOrWhiteSpace(recordNumbers))" OnClick="ExportRecords">
+            Queue records
+        </MudButton>
+    </MudItem>
+    <MudItem xs="12" md="7">
+        <MudGrid Spacing="2">
+            <MudItem xs="4">
+                <MudNumericField T="int" @bind-Value="mmwrYear" id="notification-queue-mmwr-year"
+                                 Label="MMWR year" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudNumericField T="int" @bind-Value="mmwrStart" id="notification-queue-mmwr-start"
+                                 Label="From week" Min="1" Max="53" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudNumericField T="int" @bind-Value="mmwrEnd" id="notification-queue-mmwr-end"
+                                 Label="To week" Min="1" Max="53" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudSelect T="int?" @bind-Value="mmwrCondition" id="notification-queue-mmwr-condition"
+                           Label="Condition" Clearable="true" Variant="Variant.Outlined">
+                    @foreach (var condition in conditions)
+                    {
+                        <MudSelectItem T="int?" Value="@condition.Id">@condition.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+        <MudButton id="notification-queue-mmwr-export" Variant="Variant.Outlined" Class="mt-2"
+                   Disabled="@working" OnClick="ExportMmwrRange">
+            Queue MMWR range
+        </MudButton>
+    </MudItem>
+</MudGrid>
+
+@if (exported is { } exportedText)
+{
+    <MudAlert id="notification-queue-exported" Severity="Severity.Success" Class="mb-4">@exportedText</MudAlert>
+}
+
+@if (exportFailure is { } exportWhyNot)
+{
+    <MudAlert id="notification-queue-export-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @exportWhyNot
+    </MudAlert>
+}
 
 <div class="d-flex align-center gap-4 mb-4">
     <MudButton id="notification-queue-process" Variant="Variant.Filled" Color="Color.Primary"
@@ -95,14 +155,28 @@ else if (asked.Value is { } result)
                             <td data-notification-patient>@item.PatientName</td>
                             <td data-notification-condition>@item.Condition</td>
                             <td data-notification-queued>@item.QueuedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                            <td data-notification-hold>@(item.Hold ? "Held" : "—")</td>
-                            <td>
+                            <td data-notification-hold>
+                                @(item.Hold ? "Held" : "—")
+                                @if (item.Retract)
+                                {
+                                    <MudChip T="string" data-notification-retract Size="Size.Small" Color="Color.Error">
+                                        Retraction
+                                    </MudChip>
+                                }
+                            </td>
+                            <td class="d-flex gap-2">
                                 <MudButton id="@($"notification-queue-hold-{item.PersonConditionId}")"
                                            data-notification-hold-toggle="@item.PersonConditionId"
                                            Variant="Variant.Outlined" Size="Size.Small"
                                            Disabled="@working"
                                            OnClick="@(() => ToggleHold(item))">
                                     @(item.Hold ? "Release" : "Hold")
+                                </MudButton>
+                                <MudButton id="@($"notification-queue-remove-{item.PersonConditionId}")"
+                                           Variant="Variant.Outlined" Size="Size.Small" Color="Color.Error"
+                                           Disabled="@working"
+                                           OnClick="@(() => Remove(item))">
+                                    Remove
                                 </MudButton>
                             </td>
                         </tr>
@@ -155,11 +229,33 @@ else
 
     private int? processed;
 
+    private string? recordNumbers;
+
+    private int mmwrYear = DateTime.Today.Year;
+
+    private int mmwrStart = 1;
+
+    private int mmwrEnd = 53;
+
+    private int? mmwrCondition;
+
+    private IReadOnlyList<ConditionResponse> conditions = [];
+
+    private string? exported;
+
+    private string? exportFailure;
+
     private Asked<PagedResult<NotificationQueueItemResponse>>? asked;
 
     private int LastPage => Math.Max(1, ((asked?.Value?.TotalCount ?? 0) + PageSize - 1) / PageSize);
 
-    protected override Task OnInitializedAsync() => Load();
+    protected override async Task OnInitializedAsync()
+    {
+        // The condition filter is a convenience: with no conditions loaded the
+        // range still exports every condition.
+        conditions = (await Conditions.Page(1, 200)).Value?.Items ?? [];
+        await Load();
+    }
 
     private async Task Load()
     {
@@ -219,6 +315,73 @@ else
             else
             {
                 processFailure = done.Failure;
+            }
+        }
+        finally
+        {
+            working = false;
+        }
+    }
+
+    /// <summary>
+    /// Takes a case off the queue, then reloads the page — or shows why it was
+    /// not removed, where a hold failure is shown.
+    /// </summary>
+    private async Task Remove(NotificationQueueItemResponse item)
+    {
+        holdFailure = null;
+        working = true;
+
+        try
+        {
+            if (await Client.Remove(item.PersonConditionId) is { } failure)
+            {
+                holdFailure = failure;
+            }
+            else
+            {
+                await Load();
+            }
+        }
+        finally
+        {
+            working = false;
+        }
+    }
+
+    /// <summary>Queues the cases the record numbers name, split on commas, semicolons and lines.</summary>
+    private Task ExportRecords() =>
+        Export(() => Client.ExportRecords(
+            (recordNumbers ?? "").Split([',', ';', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)));
+
+    /// <summary>Queues the notifiable morbidity cases of the MMWR range, of the one condition where one is chosen.</summary>
+    private Task ExportMmwrRange() =>
+        Export(() => Client.ExportMmwrRange(new ExportMmwrRangeRequest(mmwrYear, mmwrStart, mmwrEnd, mmwrCondition)));
+
+    /// <summary>
+    /// Runs an export, says how many cases it queued and which record numbers
+    /// are not on file, and reloads the page — or shows why none were queued.
+    /// </summary>
+    private async Task Export(Func<Task<Asked<NotificationExportResponse>>> ask)
+    {
+        exported = null;
+        exportFailure = null;
+        working = true;
+
+        try
+        {
+            var done = await ask();
+            if (done.Value is { } result)
+            {
+                exported = result.Unknown.Count == 0
+                    ? $"{result.Queued} case(s) queued."
+                    : $"{result.Queued} case(s) queued; not on file: {string.Join(", ", result.Unknown)}.";
+                page = 1;
+                await Load();
+            }
+            else
+            {
+                exportFailure = done.Failure;
             }
         }
         finally

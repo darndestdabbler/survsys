@@ -28,6 +28,7 @@ internal sealed class NotificationQueueEntryConfiguration
         builder.Property(entry => entry.PersonConditionId).HasColumnName("person_condition_id");
         builder.Property(entry => entry.QueuedAt).HasColumnName("queued_at");
         builder.Property(entry => entry.Hold).HasColumnName("hold");
+        builder.Property(entry => entry.Retract).HasColumnName("retract");
 
         builder.HasIndex(entry => entry.PersonConditionId).IsUnique();
 

@@ -131,7 +131,8 @@ public sealed class NotificationQueueService(
             NotificationBuild build;
             try
             {
-                build = await builder.Build(entry.PersonConditionId, processingId, time.GetUtcNow(), cancellationToken);
+                build = await builder.Build(
+                    entry.PersonConditionId, processingId, time.GetUtcNow(), cancellationToken, entry.Retract);
             }
             catch (Exception failure) when (failure is not OperationCanceledException)
             {

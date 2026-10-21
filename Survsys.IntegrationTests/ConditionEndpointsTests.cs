@@ -203,6 +203,66 @@ public class ConditionEndpointsTests(SqlServerFixture server) : IDisposable
         }
     }
 
+    /// <summary>
+    /// A new condition has no print criteria; put, they read back in code order
+    /// each once, and put again they replace what was there.
+    /// </summary>
+    [Fact]
+    public async Task PrintCriteriaAreReplacedAndReadBack()
+    {
+        var client = api.CreateClient();
+        await ClearImported();
+
+        try
+        {
+            using var created = await client.PostAsJsonAsync(
+                "/api/conditions", new SaveConditionRequest("Itest condition criteria", true), Json);
+            var condition = (await created.Content.ReadFromJsonAsync<ConditionDetailResponse>(Json))!;
+            var url = $"/api/conditions/{condition.Id}/print-criteria";
+
+            Assert.Empty((await client.GetFromJsonAsync<ConditionPrintCriteriaResponse>(url, Json))!.CaseStatuses);
+
+            using var first = await client.PutAsJsonAsync(url, new ConditionPrintCriteriaRequest(["P", "C", "P"]), Json);
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+            Assert.Equal(["C", "P"], (await first.Content.ReadFromJsonAsync<ConditionPrintCriteriaResponse>(Json))!.CaseStatuses);
+
+            using var second = await client.PutAsJsonAsync(url, new ConditionPrintCriteriaRequest(["C", "S"]), Json);
+            Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+            Assert.Equal(["C", "S"], (await client.GetFromJsonAsync<ConditionPrintCriteriaResponse>(url, Json))!.CaseStatuses);
+        }
+        finally
+        {
+            await ClearImported();
+        }
+    }
+
+    /// <summary>
+    /// A code that is not a case status, or no list at all, is refused, and an unknown condition is
+    /// a 404 for both the read and the write.
+    /// </summary>
+    [Fact]
+    public async Task PrintCriteriaRefuseAnUnknownStatusOrCondition()
+    {
+        var client = api.CreateClient();
+        var someCondition = (await Conditions("/api/conditions?pageSize=1")).Items[0].Id;
+
+        using var refused = await client.PutAsJsonAsync(
+            $"/api/conditions/{someCondition}/print-criteria", new ConditionPrintCriteriaRequest(["X"]), Json);
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+
+        using var nullList = await client.PutAsync(
+            $"/api/conditions/{someCondition}/print-criteria",
+            new StringContent("""{ "caseStatuses": null }""", Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.BadRequest, nullList.StatusCode);
+
+        using var missingRead = await client.GetAsync("/api/conditions/987654321/print-criteria");
+        Assert.Equal(HttpStatusCode.NotFound, missingRead.StatusCode);
+
+        using var missingWrite = await client.PutAsJsonAsync(
+            "/api/conditions/987654321/print-criteria", new ConditionPrintCriteriaRequest(["C"]), Json);
+        Assert.Equal(HttpStatusCode.NotFound, missingWrite.StatusCode);
+    }
+
     private static async Task<ReferenceImportResponse> Import(HttpClient client, string csv, bool confirm)
     {
         using var posted = await client.PostAsync(

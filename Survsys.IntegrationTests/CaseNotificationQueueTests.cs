@@ -9,10 +9,10 @@ using Xunit;
 namespace Survsys.IntegrationTests;
 
 /// <summary>
-/// The auto-queue, against the real database: that opening a case and then
-/// changing it leaves the case queued for CDC notification, as the legacy
-/// database trigger did, but written here in application code off a domain
-/// event rather than by a trigger.
+/// The auto-queue, against the real database: that changing a case whose
+/// status meets its condition's print criteria leaves it queued for CDC
+/// notification, as the legacy database trigger did, but written here in
+/// application code off a domain event rather than by a trigger.
 /// </summary>
 /// <remarks>
 /// Driven through the case endpoints, not the queue service directly, so what
@@ -32,21 +32,27 @@ public class CaseNotificationQueueTests(SqlServerFixture server) : IDisposable
     public void Dispose() => api.Dispose();
 
     /// <summary>
-    /// Opening a case queues it exactly once: one entry, naming the case, not
-    /// held back from export.
+    /// A case is queued only once its status meets its condition's print
+    /// criteria: opened unclassified it is not queued, set to Suspected — not
+    /// among the seeded Confirmed and Probable — it still is not, and set to
+    /// Confirmed it is queued exactly once, unheld.
     /// </summary>
     [Fact]
-    public async Task ACreatedCaseIsQueuedExactlyOnceUnheld()
+    public async Task ACaseIsQueuedOnlyWhenItsStatusMeetsItsPrintCriteria()
     {
         await Clear();
 
         try
         {
             var report = await Open();
+            Assert.Empty(await QueueFor(report.Id));
 
-            var queued = await QueueFor(report.Id);
+            await SetStatus(report.Id, CaseStatusRules.SuspectedCode);
+            Assert.Empty(await QueueFor(report.Id));
 
-            var entry = Assert.Single(queued);
+            await SetStatus(report.Id, CaseStatusRules.ConfirmedCode);
+
+            var entry = Assert.Single(await QueueFor(report.Id));
             Assert.Equal(report.Id, entry.PersonConditionId);
             Assert.False(entry.Hold);
         }
@@ -57,9 +63,9 @@ public class CaseNotificationQueueTests(SqlServerFixture server) : IDisposable
     }
 
     /// <summary>
-    /// Changing a case again refreshes its one entry rather than adding a
-    /// second: the queue stays one-to-a-case, and the queued time moves to the
-    /// later change.
+    /// Changing a queued case again refreshes its one entry rather than adding
+    /// a second: the queue stays one-to-a-case, and the queued time moves to
+    /// the later change.
     /// </summary>
     [Fact]
     public async Task ChangingACaseRefreshesItsOneEntryRatherThanDuplicating()
@@ -69,17 +75,12 @@ public class CaseNotificationQueueTests(SqlServerFixture server) : IDisposable
         try
         {
             var report = await Open();
+            await SetStatus(report.Id, CaseStatusRules.ConfirmedCode);
             var first = Assert.Single(await QueueFor(report.Id)).QueuedAt;
 
-            using var status = await api.CreateClient().PutAsJsonAsync(
-                $"/api/person-conditions/{report.Id}/status",
-                new UpdateCaseStatusRequest(CaseStatusRules.ConfirmedCode),
-                Json);
-            Assert.Equal(HttpStatusCode.OK, status.StatusCode);
+            await SetStatus(report.Id, CaseStatusRules.ProbableCode);
 
-            var queued = await QueueFor(report.Id);
-
-            var entry = Assert.Single(queued);
+            var entry = Assert.Single(await QueueFor(report.Id));
             Assert.True(
                 entry.QueuedAt >= first,
                 $"the refreshed queued time {entry.QueuedAt:O} is before the first {first:O}");
@@ -88,6 +89,48 @@ public class CaseNotificationQueueTests(SqlServerFixture server) : IDisposable
         {
             await Clear();
         }
+    }
+
+    /// <summary>
+    /// A workflow move queues a case its print criteria notify, and leaves an
+    /// unclassified case — which no criterion holds — off the queue.
+    /// </summary>
+    [Fact]
+    public async Task AWorkflowMoveQueuesOnlyANotifiableCase()
+    {
+        await Clear();
+
+        try
+        {
+            var notifiable = await Open();
+            await SetStatus(notifiable.Id, CaseStatusRules.ConfirmedCode);
+            var unclassified = await Open();
+            await using (var context = server.NewContext())
+            {
+                await context.NotificationQueue.ExecuteDeleteAsync();
+            }
+
+            foreach (var id in new[] { notifiable.Id, unclassified.Id })
+            {
+                using var moved = await api.CreateClient().PutAsJsonAsync(
+                    $"/api/person-conditions/{id}/workflow", new WorkflowTransitionRequest(WorkflowRules.AcceptCode), Json);
+                Assert.Equal(HttpStatusCode.OK, moved.StatusCode);
+            }
+
+            Assert.Single(await QueueFor(notifiable.Id));
+            Assert.Empty(await QueueFor(unclassified.Id));
+        }
+        finally
+        {
+            await Clear();
+        }
+    }
+
+    private async Task SetStatus(int reportId, string code)
+    {
+        using var status = await api.CreateClient().PutAsJsonAsync(
+            $"/api/person-conditions/{reportId}/status", new UpdateCaseStatusRequest(code), Json);
+        Assert.Equal(HttpStatusCode.OK, status.StatusCode);
     }
 
     /// <summary>

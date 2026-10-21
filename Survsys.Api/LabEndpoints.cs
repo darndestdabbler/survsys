@@ -555,6 +555,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
             LabId = specimen.Id,
         });
 
+        await QueueCase(reportId, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         if (transaction is not null)
@@ -672,6 +673,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         specimen.AccessionNo = request.AccessionNo;
         specimen.SpecimenSentToState = request.SpecimenSentToState;
 
+        await QueueCase(specimen.PersonConditionId, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         return LabEndpoints.LabToResponse.Compile().Invoke(specimen);
@@ -711,6 +713,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
             database.PersonConditionLabs.Where(link => link.LabId == labId));
         database.Labs.Remove(specimen);
 
+        await QueueCase(specimen.PersonConditionId, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -740,6 +743,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         test.ReferenceRange = request.ReferenceRange;
         test.LabTestDate = request.LabTestDate;
 
+        await QueueCaseOfLab(test.LabId, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         var results = await database.LabTestResults
@@ -776,6 +780,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         }
 
         database.LabTests.Remove(test);
+        await QueueCaseOfLab(test.LabId, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         return (true, null);
@@ -847,6 +852,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         result.Units = request.Units;
         result.PrimaryLabResult = request.PrimaryLabResult;
 
+        await QueueCaseOfTest(result.LabTestId, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         return LabEndpoints.ResultToResponse.Compile().Invoke(result);
@@ -864,6 +870,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         }
 
         database.LabTestResults.Remove(result);
+        await QueueCaseOfTest(result.LabTestId, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         return true;
@@ -891,6 +898,7 @@ internal sealed class LabQueries(SurvsysDbContext database)
         resist.ResistTestResultId = request.ResistTestResultId;
         resist.TestDate = request.TestDate;
 
+        await QueueCaseOfLab(resist.LabId, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         return LabEndpoints.ResistToResponse.Compile().Invoke(resist);
@@ -908,8 +916,34 @@ internal sealed class LabQueries(SurvsysDbContext database)
         }
 
         database.LabResistTests.Remove(resist);
+        await QueueCaseOfLab(resist.LabId, cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
 
         return true;
     }
+
+    /// <summary>
+    /// Stages the auto-queue of the case a specimen is filed against, so the
+    /// lab write and the case's queue entry land in one save; a specimen filed
+    /// against no case queues nothing. Gated on the case's print criteria by
+    /// <see cref="CaseNotificationQueue.QueueChangeAsync"/>.
+    /// </summary>
+    private Task QueueCase(int? reportId, CancellationToken cancellationToken) =>
+        reportId is { } id
+            ? new CaseNotificationQueue(database).QueueChangeAsync(new CaseChanged(id, DateTime.UtcNow), cancellationToken)
+            : Task.CompletedTask;
+
+    /// <summary><see cref="QueueCase"/> for the case of the specimen with that id.</summary>
+    private async Task QueueCaseOfLab(int labId, CancellationToken cancellationToken) =>
+        await QueueCase(
+            await database.Labs.Where(lab => lab.Id == labId).Select(lab => lab.PersonConditionId)
+                .SingleOrDefaultAsync(cancellationToken),
+            cancellationToken);
+
+    /// <summary><see cref="QueueCase"/> for the case of the specimen the test with that id is on.</summary>
+    private async Task QueueCaseOfTest(int testId, CancellationToken cancellationToken) =>
+        await QueueCaseOfLab(
+            await database.LabTests.Where(test => test.Id == testId).Select(test => test.LabId)
+                .SingleOrDefaultAsync(cancellationToken),
+            cancellationToken);
 }

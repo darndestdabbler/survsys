@@ -186,6 +186,72 @@ public class ExportLogClientTests
         Assert.DoesNotContain("id 99", detail.Failure, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Resending an export: a POST to the export's resend URL, and the queued
+    /// case comes back.
+    /// </summary>
+    [Fact]
+    public async Task ResendPostsToTheExportsResendUrl()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new ExportLogClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, QueuedEntry);
+        }));
+
+        var resent = await client.Resend(7);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/export-log/7/resend", sent?.RequestUri?.ToString());
+        Assert.Equal(42, resent.Value?.PersonConditionId);
+    }
+
+    /// <summary>
+    /// Retracting a notification: a POST to the case's retract URL; the 409 a
+    /// case CDC never accepted answers with carries the retract prefix and
+    /// names the status rather than the body.
+    /// </summary>
+    [Fact]
+    public async Task RetractPostsToTheCasesRetractUrl()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new ExportLogClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, QueuedEntry.Replace("\"hold\": false", "\"hold\": false, \"retract\": true", StringComparison.Ordinal));
+        }));
+
+        var retracted = await client.Retract(42);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/notification-queue/42/retract", sent?.RequestUri?.ToString());
+        Assert.True(retracted.Value?.Retract);
+
+        var failing = new ExportLogClient(Transport(_ => Answer(
+            HttpStatusCode.Conflict, """{ "status": 409, "detail": "CDC has accepted no notification of case 42." }""")));
+
+        var refused = await failing.Retract(42);
+
+        Assert.StartsWith(ExportLogClient.RetractFailurePrefix, refused.Failure);
+        Assert.Contains("409", refused.Failure);
+        Assert.DoesNotContain("case 42", refused.Failure, StringComparison.Ordinal);
+    }
+
+    private const string QueuedEntry =
+        """
+        {
+          "personConditionId": 42,
+          "recordNumber": "202600042",
+          "patientName": "Rodriguez, Maria",
+          "condition": "Malaria",
+          "queuedAt": "2026-10-17T03:30:00Z",
+          "hold": false
+        }
+        """;
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 

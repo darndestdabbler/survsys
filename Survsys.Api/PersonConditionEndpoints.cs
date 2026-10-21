@@ -690,7 +690,7 @@ internal sealed class PersonConditionQueries(
     /// <c>Add</c> reads it once for the record number.
     /// </summary>
     private Task QueueForNotification(int reportId, CancellationToken cancellationToken) =>
-        notifications.EnqueueAsync(new CaseChanged(reportId, DateTime.UtcNow), cancellationToken);
+        notifications.QueueChangeAsync(new CaseChanged(reportId, DateTime.UtcNow), cancellationToken);
 
     /// <summary>
     /// Stages the assignment of the new case's condition's auto-assign forms on
