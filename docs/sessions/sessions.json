@@ -1820,9 +1820,9 @@
     {
       "number": 88,
       "title": "The notification queue worker and the export log",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-21T05:05:31.486000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-21T05:32:03.319000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
