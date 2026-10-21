@@ -1784,9 +1784,9 @@
     {
       "number": 86,
       "title": "Phase 10 walkthroughs",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-20T18:56:40.659000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-21T04:28:12.503000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
