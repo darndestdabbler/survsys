@@ -1047,6 +1047,13 @@
       "what": "step 'value-set-api': its files",
       "reason": "The notification setup endpoints live under /api/notification-setup, which PrivilegeRules must class as reference data (read by anyone signed in, written with ManageReferenceData) or every write would be held to EditCases.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 91,
+      "dateTime": "2026-10-21T09:35:21.522000-04:00",
+      "task": "Give the CDC export a transport chosen in configuration, batch-file tracking, export-log retention and credentials read from configuration. Survsys.Data: CdcExportLogEntry gains a nullable BatchFile (the legacy cdc_batch_file) in one migration (20261021200000_ExportLogBatchFile) with its designer and the snapshot. Survsys.Api: CdcTransmissionOptions gains Transport (Http, the default, or File), OutboxDirectory, UserName and Password; CdcTransmitter either POSTs as today, now with HTTP Basic credentials when a user name is configured (the password supplied by the deployment's environment or secret store, never appsettings), or writes the message as one .hl7 file into the outbox folder that a PHINMS or AIMS sender picks up, its result carrying the file name; NotificationQueueService records that file name on the log row as its BatchFile, so each file is traced to the export it carried, and GET /api/export-log/{id} returns it. NotificationQueueOptions gains ExportLogRetentionDays (null keeps everything), and each worker pass first deletes log rows (and, by cascade, their details) queued longer ago than that, through a public static PruneExportLog. The shipped appsettings leave the endpoint and the outbox empty, so transmission stays off. Tests: option binding in unit tests; the file transport's output, the credential header against a local stub, the batch file on the log row and the pruning in integration tests.",
+      "releasable": false
     }
   ]
 }

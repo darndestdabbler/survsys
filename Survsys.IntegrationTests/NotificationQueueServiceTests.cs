@@ -72,6 +72,7 @@ public class NotificationQueueServiceTests(SqlServerFixture server) : IDisposabl
             Assert.Equal(received, log.GeneratedMessage);
             Assert.Equal("T", log.ProcessingId);
             Assert.Equal("onboarding", log.Queue);
+            Assert.Null(log.BatchFile);
             var detail = Assert.Single(log.Details);
             Assert.Equal(NotificationReference.UnformattedVariable, detail.PhinVar);
             Assert.Equal("Warning", detail.Severity);
@@ -79,6 +80,45 @@ public class NotificationQueueServiceTests(SqlServerFixture server) : IDisposabl
         finally
         {
             await app.DisposeAsync();
+            await NotificationReference.Clear(context);
+            await Clear(context);
+        }
+    }
+
+    /// <summary>
+    /// The file transport into a test folder: the case's log row is accepted
+    /// and names, as its batch file, the one file written, which carries the
+    /// row's generated message.
+    /// </summary>
+    [Fact]
+    public async Task AFileTransportLogsTheBatchFileItWrote()
+    {
+        await using var context = server.NewContext();
+        await Clear(context);
+        var outbox = Directory.CreateTempSubdirectory("survsys-outbox-").FullName;
+
+        try
+        {
+            var report = await OpenQueued();
+            await NotificationReference.Seed(context, report.ConditionId);
+
+            var transmitter = new CdcTransmitter(
+                new HttpClient(),
+                Microsoft.Extensions.Options.Options.Create(
+                    new CdcTransmissionOptions { Transport = CdcTransport.File, OutboxDirectory = outbox }),
+                NullLogger<CdcTransmitter>.Instance);
+            Assert.Equal(1, await NotificationQueueService.Process(
+                context, new NotificationMessageBuilder(context), transmitter, Options, TimeProvider.System, default));
+
+            var log = await context.CdcExportLog.SingleAsync(entry => entry.PersonConditionId == report.Id);
+            Assert.Equal(NotificationQueueService.AcceptedOutcome, log.Outcome);
+            var written = Assert.Single(Directory.GetFiles(outbox));
+            Assert.Equal(Path.GetFileName(written), log.BatchFile);
+            Assert.Equal(log.GeneratedMessage, await File.ReadAllTextAsync(written));
+        }
+        finally
+        {
+            Directory.Delete(outbox, recursive: true);
             await NotificationReference.Clear(context);
             await Clear(context);
         }
@@ -211,6 +251,93 @@ public class NotificationQueueServiceTests(SqlServerFixture server) : IDisposabl
         {
             await app.DisposeAsync();
             await NotificationReference.Clear(context);
+            await Clear(context);
+        }
+    }
+
+    /// <summary>
+    /// Pruning under a retention deletes the rows queued before it, with their
+    /// details, and keeps the rows within it; no retention keeps every row.
+    /// </summary>
+    [Fact]
+    public async Task PruneExportLogDeletesRowsOlderThanTheRetention()
+    {
+        await using var context = server.NewContext();
+        await Clear(context);
+
+        try
+        {
+            var report = await OpenQueued();
+            var now = DateTime.UtcNow;
+            CdcExportLogEntry Row(DateTime queuedAt) => new()
+            {
+                PersonConditionId = report.Id,
+                RecordNumber = report.RecordNumber,
+                QueuedAt = queuedAt,
+                Details = [new CdcExportLogDetail { Message = "A message.", Severity = "Info" }],
+            };
+            var old = Row(now.AddDays(-40));
+            var recent = Row(now.AddDays(-5));
+            context.CdcExportLog.AddRange(old, recent);
+            await context.SaveChangesAsync();
+
+            Assert.Equal(0, await NotificationQueueService.PruneExportLog(context, null, TimeProvider.System, default));
+            Assert.Equal(1, await NotificationQueueService.PruneExportLog(context, 30, TimeProvider.System, default));
+
+            var kept = await context.CdcExportLog.AsNoTracking()
+                .Where(entry => entry.PersonConditionId == report.Id)
+                .Select(entry => entry.Id)
+                .ToListAsync();
+            Assert.Equal([recent.Id], kept);
+            Assert.False(await context.Set<CdcExportLogDetail>().AnyAsync(detail => detail.LogId == old.Id));
+            Assert.True(await context.Set<CdcExportLogDetail>().AnyAsync(detail => detail.LogId == recent.Id));
+        }
+        finally
+        {
+            await Clear(context);
+        }
+    }
+
+    /// <summary>
+    /// A pass — the worker's or "process queue now", which run the same pass —
+    /// prunes the export log to the configured retention before it exports.
+    /// </summary>
+    [Fact]
+    public async Task APassPrunesTheExportLogToTheRetention()
+    {
+        await using var context = server.NewContext();
+        await Clear(context);
+
+        try
+        {
+            var report = await OpenQueued();
+            await context.NotificationQueue
+                .Where(entry => entry.PersonConditionId == report.Id)
+                .ExecuteUpdateAsync(entry => entry.SetProperty(item => item.Hold, true));
+            context.CdcExportLog.Add(new CdcExportLogEntry
+            {
+                PersonConditionId = report.Id,
+                RecordNumber = report.RecordNumber,
+                QueuedAt = DateTime.UtcNow.AddDays(-40),
+            });
+            await context.SaveChangesAsync();
+
+            var retained = new NotificationQueueOptions { ExportLogRetentionDays = 30 };
+            Assert.Equal(0, await NotificationQueueService.Process(
+                context,
+                new NotificationMessageBuilder(context),
+                new CdcTransmitter(
+                    new HttpClient(),
+                    Microsoft.Extensions.Options.Options.Create(new CdcTransmissionOptions()),
+                    NullLogger<CdcTransmitter>.Instance),
+                retained,
+                TimeProvider.System,
+                default));
+
+            Assert.False(await context.CdcExportLog.AnyAsync(entry => entry.PersonConditionId == report.Id));
+        }
+        finally
+        {
             await Clear(context);
         }
     }

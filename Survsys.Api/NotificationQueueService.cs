@@ -50,6 +50,12 @@ public sealed class NotificationQueueOptions
 
     /// <summary>The queue this deployment exports from, recorded on each log row; production by default.</summary>
     public NotificationQueueType Queue { get; set; } = NotificationQueueType.Production;
+
+    /// <summary>
+    /// Days an export-log row is kept, counted from when its case was queued.
+    /// Null keeps every row.
+    /// </summary>
+    public int? ExportLogRetentionDays { get; set; }
 }
 
 /// <summary>
@@ -63,7 +69,8 @@ public sealed class NotificationQueueOptions
 /// integration suite runs directly. An entry leaves the queue whatever its
 /// outcome: an accepted send is logged <c>accepted</c>, and a build stopped by
 /// an error or a send that was rejected, timed out or faulted is logged
-/// <c>failed</c> with its detail. Off unless
+/// <c>failed</c> with its detail. A message written to the outbox carries the
+/// file's name on its log row. Off unless
 /// <see cref="NotificationQueueOptions.PollIntervalSeconds"/> is configured.
 /// </remarks>
 public sealed class NotificationQueueService(
@@ -83,8 +90,36 @@ public sealed class NotificationQueueService(
     };
 
     /// <summary>
-    /// Takes each unheld entry off the queue, oldest first, builds and sends
-    /// its notification, and logs the outcome; answers with how many it took.
+    /// Deletes the export-log rows, with their details, queued longer ago than
+    /// <paramref name="retentionDays"/>; answers with how many went. Null keeps
+    /// every row.
+    /// </summary>
+    /// <remarks>
+    /// A case's CDC first-sent date is read from its oldest accepted row, so a
+    /// row pruned takes that history with it; a deployment keeps the log at
+    /// least as long as it needs that date.
+    /// </remarks>
+    public static async Task<int> PruneExportLog(
+        SurvsysDbContext database,
+        int? retentionDays,
+        TimeProvider time,
+        CancellationToken cancellationToken)
+    {
+        if (retentionDays is not { } days)
+        {
+            return 0;
+        }
+
+        var cutoff = time.GetUtcNow().UtcDateTime.AddDays(-days);
+        return await database.CdcExportLog
+            .Where(entry => entry.QueuedAt < cutoff)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Prunes the export log to its retention, then takes each unheld entry off
+    /// the queue, oldest first, builds and sends its notification, and logs the
+    /// outcome; answers with how many it took.
     /// </summary>
     /// <remarks>
     /// Safe beside another pass: each entry is claimed by deleting it before
@@ -101,6 +136,8 @@ public sealed class NotificationQueueService(
         TimeProvider time,
         CancellationToken cancellationToken)
     {
+        await PruneExportLog(database, options.ExportLogRetentionDays, time, cancellationToken);
+
         var entries = await database.NotificationQueue.AsNoTracking()
             .Where(entry => !entry.Hold)
             .OrderBy(entry => entry.QueuedAt)
@@ -191,7 +228,10 @@ public sealed class NotificationQueueService(
                 var accepted = result.Status == CdcTransmissionStatus.Accepted;
                 log.Outcome = accepted ? AcceptedOutcome : FailedOutcome;
                 log.SentAt = accepted ? result.AttemptedAt.UtcDateTime : null;
-                log.Detail = accepted ? "CDC accepted the message." : $"{result.Status}: {result.Detail}";
+                log.Detail = accepted
+                    ? result.Detail ?? "CDC accepted the message."
+                    : $"{result.Status}: {result.Detail}";
+                log.BatchFile = result.BatchFile;
             }
 
             // The outcome is written uncancelled too, so a send is never left

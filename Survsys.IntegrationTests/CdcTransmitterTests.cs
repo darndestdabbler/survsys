@@ -15,7 +15,8 @@ namespace Survsys.IntegrationTests;
 /// proved end to end — the POST, the body and the recorded outcome — without a
 /// credential and without reaching CDC. The message transmitted is the
 /// generated default-guide notification fixture, read as text, so the suite
-/// needs neither <c>Survsys.Messaging</c> nor the database.
+/// needs neither <c>Survsys.Messaging</c> nor the database. The file transport
+/// writes only into a temporary test folder.
 /// </summary>
 public sealed class CdcTransmitterTests
 {
@@ -95,6 +96,116 @@ public sealed class CdcTransmitterTests
         {
             await app.DisposeAsync();
         }
+    }
+
+    [Fact]
+    public async Task AConfiguredUserNameSignsThePostInWithBasicCredentials()
+    {
+        var message = await FixtureMessage();
+        string? authorization = null;
+
+        var (app, url) = await StartStub(context =>
+        {
+            authorization = context.Request.Headers.Authorization;
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            return Task.CompletedTask;
+        });
+
+        try
+        {
+            var transmitter = new CdcTransmitter(
+                new HttpClient(),
+                Options.Create(new CdcTransmissionOptions
+                {
+                    Endpoint = url,
+                    UserName = "survsys",
+                    Password = "stub-password",
+                }),
+                NullLogger<CdcTransmitter>.Instance);
+
+            var result = await transmitter.Transmit(message);
+
+            Assert.Equal(CdcTransmissionStatus.Accepted, result.Status);
+            Assert.Equal(
+                "Basic " + Convert.ToBase64String("survsys:stub-password"u8.ToArray()),
+                authorization);
+        }
+        finally
+        {
+            await app.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task WithoutAUserNameThePostCarriesNoCredentials()
+    {
+        var message = await FixtureMessage();
+        var authorized = true;
+
+        var (app, url) = await StartStub(context =>
+        {
+            authorized = context.Request.Headers.ContainsKey("Authorization");
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            return Task.CompletedTask;
+        });
+
+        try
+        {
+            await Transmitter(url, timeoutSeconds: 30).Transmit(message);
+
+            Assert.False(authorized);
+        }
+        finally
+        {
+            await app.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// The file transport into a test folder: one .hl7 file holding the message
+    /// unchanged, named by the result's batch file, and nothing left partial.
+    /// </summary>
+    [Fact]
+    public async Task TheFileTransportWritesTheMessageIntoTheOutbox()
+    {
+        var message = await FixtureMessage();
+        var outbox = Directory.CreateTempSubdirectory("survsys-outbox-").FullName;
+
+        try
+        {
+            var transmitter = new CdcTransmitter(
+                new HttpClient(),
+                Options.Create(new CdcTransmissionOptions { Transport = CdcTransport.File, OutboxDirectory = outbox }),
+                NullLogger<CdcTransmitter>.Instance);
+
+            var result = await transmitter.Transmit(message);
+
+            Assert.Equal(CdcTransmissionStatus.Accepted, result.Status);
+            var written = Assert.Single(Directory.GetFiles(outbox));
+            Assert.Equal(result.BatchFile, Path.GetFileName(written));
+            Assert.EndsWith(".hl7", written, StringComparison.Ordinal);
+            Assert.Equal(message, await File.ReadAllTextAsync(written));
+        }
+        finally
+        {
+            Directory.Delete(outbox, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AnOutboxThatIsNotThereRecordsFaulted()
+    {
+        var outbox = Path.Combine(Path.GetTempPath(), $"survsys-missing-{Guid.NewGuid():N}");
+        var transmitter = new CdcTransmitter(
+            new HttpClient(),
+            Options.Create(new CdcTransmissionOptions { Transport = CdcTransport.File, OutboxDirectory = outbox }),
+            NullLogger<CdcTransmitter>.Instance);
+
+        var result = await transmitter.Transmit(await FixtureMessage());
+
+        Assert.Equal(CdcTransmissionStatus.Faulted, result.Status);
+        Assert.Null(result.BatchFile);
+        Assert.False(Directory.Exists(outbox));
     }
 
     [Fact]

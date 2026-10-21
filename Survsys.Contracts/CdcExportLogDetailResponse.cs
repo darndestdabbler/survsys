@@ -18,7 +18,12 @@ namespace Survsys.Contracts;
 /// yet.
 /// </param>
 /// <param name="Messages">The messages building the export raised, each with its severity.</param>
+/// <param name="BatchFile">
+/// The file the export was written to for a PHINMS or AIMS sender, or null
+/// where it was posted directly or not sent.
+/// </param>
 public record CdcExportLogDetailResponse(
     CdcExportLogItemResponse Entry,
     string? GeneratedMessage,
-    IReadOnlyList<CdcExportLogMessageResponse> Messages);
+    IReadOnlyList<CdcExportLogMessageResponse> Messages,
+    string? BatchFile = null);

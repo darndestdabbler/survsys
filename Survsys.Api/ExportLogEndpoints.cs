@@ -196,6 +196,7 @@ internal sealed class ExportLogQueries(SurvsysDbContext database)
                 entry.Details
                     .OrderBy(detail => detail.Id)
                     .Select(detail => new CdcExportLogMessageResponse(detail.PhinVar, detail.Message, detail.Severity))
-                    .ToList()))
+                    .ToList(),
+                entry.BatchFile))
             .SingleOrDefaultAsync(cancellationToken);
 }

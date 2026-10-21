@@ -23,6 +23,7 @@ internal sealed class CdcExportLogEntryConfiguration
     private const int OutcomeLength = 20;
     private const int ProcessingIdLength = 1;
     private const int QueueLength = 20;
+    private const int BatchFileLength = 260;
 
     public void Configure(EntityTypeBuilder<CdcExportLogEntry> builder)
     {
@@ -49,6 +50,9 @@ internal sealed class CdcExportLogEntryConfiguration
         builder.Property(entry => entry.Queue)
             .HasColumnName("queue")
             .HasMaxLength(QueueLength);
+        builder.Property(entry => entry.BatchFile)
+            .HasColumnName("cdc_batch_file")
+            .HasMaxLength(BatchFileLength);
 
         builder.HasMany(entry => entry.Details)
             .WithOne()

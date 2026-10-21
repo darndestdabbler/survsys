@@ -21,7 +21,8 @@ namespace Survsys.Data;
 ///
 /// The per-variable messages are now its <see cref="Details"/>, the legacy
 /// <c>nmi.log_detail</c>; the processing id and queue the export ran under
-/// are recorded on the row.
+/// are recorded on the row, and the <c>cdc_batch_file</c> is its
+/// <see cref="BatchFile"/>.
 ///
 /// Otherwise a thin holder of cross-table ids, as the reference rows are: the
 /// case is <see cref="PersonConditionId"/> and the guide is
@@ -95,6 +96,14 @@ public class CdcExportLogEntry
     /// <c>batch</c> — or null where none was recorded.
     /// </summary>
     public string? Queue { get; set; }
+
+    /// <summary>
+    /// The file the export was written to for a PHINMS or AIMS sender to pick
+    /// up, or null where it was posted directly or not sent. Each file carries
+    /// one message, so this names what the file carried. The legacy
+    /// <c>cdc_batch_file</c>.
+    /// </summary>
+    public string? BatchFile { get; set; }
 
     /// <summary>
     /// The messages building the export raised, each with its severity — the

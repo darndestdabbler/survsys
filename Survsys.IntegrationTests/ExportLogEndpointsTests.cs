@@ -107,6 +107,7 @@ public class ExportLogEndpointsTests(SqlServerFixture server) : IDisposable
             Assert.Equal(message, detail.GeneratedMessage);
             Assert.Equal("P", detail.Entry.ProcessingId);
             Assert.Equal("production", detail.Entry.Queue);
+            Assert.Equal("survsys-20261017040000000-test.hl7", detail.BatchFile);
             var raised = Assert.Single(detail.Messages);
             Assert.Equal("TST999", raised.PhinVar);
             Assert.Equal("Warning", raised.Severity);
@@ -201,7 +202,8 @@ public class ExportLogEndpointsTests(SqlServerFixture server) : IDisposable
             Detail = outcome is null ? null : "The CDC endpoint answered 200.",
             ProcessingId = "P",
             Queue = "production",
-            Details = [new CdcExportLogDetail { PhinVar = "TST999", Message = "No rule set formats this variable.", Severity = "Warning" }],
+            BatchFile = generatedMessage is null ? null : "survsys-20261017040000000-test.hl7",
+            Details =[new CdcExportLogDetail { PhinVar = "TST999", Message = "No rule set formats this variable.", Severity = "Warning" }],
         };
 
         context.CdcExportLog.Add(entry);

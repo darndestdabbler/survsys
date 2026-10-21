@@ -102,7 +102,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 88 | The notification queue worker and the export log | no | 2026-10-21 |
 | 89 | Auto-queue on every change, queue actions and reconciliation | no | 2026-10-21 |
 | 90 | Guide, rule set and value set administration | no | 2026-10-21 |
-| 91 | Transport to CDC | — | not declared |
+| 91 | Transport to CDC | no | 2026-10-21 |
 | 92 | Phase 11 walkthroughs | — | not declared |
 | 93 | Release 0.12.0 (release: 0.12.0) | — | not declared |
 | 94 | Audit with its user and values, and its screens | — | not declared |
@@ -823,3 +823,9 @@ Put the notification configuration in an administrator's hands and finish the ge
 - 2026-10-21 — step 'notification-admin-data': its files: The guide-variable entity is GuideVariableValue, not GuideVariable: Survsys.Messaging already has a GuideVariable record and the API sees both namespaces. (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-21 — step 'builder-wiring': its files: RepeatingGroupProcessor accepts only Lab, Vaccine, Treatment and Travel, so a rule set naming the HepLab dataset would be refused; HepLab joins its supported datasets, with a test. (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-21 — step 'value-set-api': its files: The notification setup endpoints live under /api/notification-setup, which PrivilegeRules must class as reference data (read by anyone signed in, written with ManageReferenceData) or every write would be held to EditCases. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 91 — Transport to CDC
+
+**Releasable: no.**
+
+Give the CDC export a transport chosen in configuration, batch-file tracking, export-log retention and credentials read from configuration. Survsys.Data: CdcExportLogEntry gains a nullable BatchFile (the legacy cdc_batch_file) in one migration (20261021200000_ExportLogBatchFile) with its designer and the snapshot. Survsys.Api: CdcTransmissionOptions gains Transport (Http, the default, or File), OutboxDirectory, UserName and Password; CdcTransmitter either POSTs as today, now with HTTP Basic credentials when a user name is configured (the password supplied by the deployment's environment or secret store, never appsettings), or writes the message as one .hl7 file into the outbox folder that a PHINMS or AIMS sender picks up, its result carrying the file name; NotificationQueueService records that file name on the log row as its BatchFile, so each file is traced to the export it carried, and GET /api/export-log/{id} returns it. NotificationQueueOptions gains ExportLogRetentionDays (null keeps everything), and each worker pass first deletes log rows (and, by cascade, their details) queued longer ago than that, through a public static PruneExportLog. The shipped appsettings leave the endpoint and the outbox empty, so transmission stays off. Tests: option binding in unit tests; the file transport's output, the credential header against a local stub, the batch file on the log row and the pruning in integration tests.

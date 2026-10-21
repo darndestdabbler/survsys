@@ -396,6 +396,11 @@ namespace Survsys.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("BatchFile")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)")
+                        .HasColumnName("cdc_batch_file");
+
                     b.Property<string>("Detail")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("detail");
