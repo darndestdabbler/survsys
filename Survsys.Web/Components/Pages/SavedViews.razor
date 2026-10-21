@@ -1,0 +1,333 @@
+@* The signed-in person's saved views of the case morbidity reports: each view
+   by name with the columns it exports and the filters it selects by, one form
+   that saves a view or, with Edit, saves over one, and an Export CSV link per
+   view. The columns are the catalogue the API tier knows how to read; every
+   filter left at Any selects every report.
+
+   The export is a plain link to this tier's /saved-views/{id}/export, so the
+   browser downloads the file itself.
+
+   Every element a walkthrough would name carries a stable identifier. *@
+@page "/saved-views"
+@using System.Globalization
+@inject SavedViewsClient Client
+@inject ConditionsClient Conditions
+@inject AgenciesClient Agencies
+
+<PageTitle>Saved views — Survsys</PageTitle>
+
+<MudText id="saved-views-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Saved views
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="saved-views-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (views is null)
+{
+    @if (failure is null)
+    {
+        <MudProgressCircular id="saved-views-loading" Color="Color.Primary" Indeterminate="true" />
+    }
+}
+else
+{
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        <MudText id="saved-view-form-heading" Typo="Typo.h6" GutterBottom="true">
+            @(editingId is null ? "New saved view" : $"Edit {name}")
+        </MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="name" id="saved-view-name" Label="Name" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle2">Columns</MudText>
+                @foreach (var column in ExportColumns.All)
+                {
+                    <MudCheckBox T="bool" Value="@chosen.Contains(column)" id="@($"saved-view-column-{column}")"
+                                 Label="@column" ValueChanged="@(choose => Choose(column, choose))" />
+                }
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="string" @bind-Value="conditionId" id="saved-view-condition" Label="Condition"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem T="string" Value="@Any">Any</MudSelectItem>
+                    @foreach (var condition in conditions)
+                    {
+                        <MudSelectItem T="string" Value="@condition.Id.ToString(CultureInfo.InvariantCulture)">@condition.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="string" @bind-Value="agencyId" id="saved-view-agency" Label="Investigating agency"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem T="string" Value="@Any">Any</MudSelectItem>
+                    @foreach (var agency in agencies)
+                    {
+                        <MudSelectItem T="string" Value="@agency.Id.ToString(CultureInfo.InvariantCulture)">@agency.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="string" @bind-Value="workflowState" id="saved-view-workflow-state" Label="Workflow state"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem T="string" Value="@Any">Any</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("assigned_to_lhd")">Assigned to LHD</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("accepted")">Accepted</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("under_investigation")">Under investigation</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("closed")">Closed</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="string" @bind-Value="caseStatus" id="saved-view-case-status" Label="Case status"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem T="string" Value="@Any">Any</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("C")">Confirmed</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("P")">Probable</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("S")">Suspected</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("NC")">Not a case</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                @* Native date inputs, as the report screens' are: what they
+                   yield is what this screen parses. *@
+                <MudTextField @bind-Value="onsetFrom" id="saved-view-onset-from" Label="Onset from"
+                              Variant="Variant.Outlined" InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="onsetTo" id="saved-view-onset-to" Label="Onset to"
+                              Variant="Variant.Outlined" InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudButton id="saved-view-save" Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save">
+                    Save view
+                </MudButton>
+                <MudButton id="saved-view-new" Variant="Variant.Text" OnClick="@Clear">
+                    New view
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Elevation="1">
+        <MudSimpleTable id="saved-views-table" Hover="true" Striped="true" Dense="true">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Columns</th>
+                    <th>Filters</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var view in views)
+                {
+                    <tr data-saved-view="@view.Name">
+                        <td>@view.Name</td>
+                        <td>@string.Join(", ", view.Columns)</td>
+                        <td>@Filters(view)</td>
+                        <td>
+                            <MudButton id="@($"saved-view-export-{view.Id}")" Size="Size.Small" Variant="Variant.Text"
+                                       Href="@($"/saved-views/{view.Id}/export")" Target="_blank">
+                                Export CSV
+                            </MudButton>
+                            <MudButton id="@($"saved-view-edit-{view.Id}")" Size="Size.Small" Variant="Variant.Text"
+                                       OnClick="@(() => Edit(view))">
+                                Edit
+                            </MudButton>
+                            <MudButton id="@($"saved-view-delete-{view.Id}")" Size="Size.Small" Variant="Variant.Text"
+                                       Color="Color.Error" OnClick="@(() => Delete(view))">
+                                Delete
+                            </MudButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>What a filter left at Any holds.</summary>
+    private const string Any = "";
+
+    private List<SavedViewResponse>? views;
+
+    private IReadOnlyList<ConditionResponse> conditions = [];
+
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private string? failure;
+
+    private int? editingId;
+
+    private string name = "";
+
+    private HashSet<string> chosen = [];
+
+    private string conditionId = Any;
+
+    private string agencyId = Any;
+
+    private string workflowState = Any;
+
+    private string caseStatus = Any;
+
+    private string? onsetFrom;
+
+    private string? onsetTo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var askedViews = await Client.All();
+        var askedConditions = await Conditions.Page(1, 200);
+        var askedAgencies = await Agencies.All();
+
+        failure = askedViews.Failure ?? askedConditions.Failure ?? askedAgencies.Failure;
+
+        if (failure is null)
+        {
+            views = [.. askedViews.Value!.Items];
+            conditions = askedConditions.Value!.Items;
+            agencies = askedAgencies.Value!.Items;
+        }
+    }
+
+    /// <summary>A view's filters, read as names, or "Every report" where it has none.</summary>
+    private string Filters(SavedViewResponse view)
+    {
+        var filters = new List<string>();
+
+        if (view.ConditionId is { } condition)
+        {
+            filters.Add(conditions.FirstOrDefault(c => c.Id == condition)?.Name ?? $"condition {condition}");
+        }
+
+        if (view.AgencyId is { } agency)
+        {
+            filters.Add(agencies.FirstOrDefault(a => a.Id == agency)?.Name ?? $"agency {agency}");
+        }
+
+        if (view.WorkflowState is { } state)
+        {
+            filters.Add(state);
+        }
+
+        if (view.CaseStatus is { } status)
+        {
+            filters.Add($"status {status}");
+        }
+
+        if (view.OnsetFrom is not null || view.OnsetTo is not null)
+        {
+            filters.Add($"onset {view.OnsetFrom:yyyy-MM-dd} to {view.OnsetTo:yyyy-MM-dd}");
+        }
+
+        return filters.Count == 0 ? "Every report" : string.Join("; ", filters);
+    }
+
+    private void Choose(string column, bool choose)
+    {
+        if (choose)
+        {
+            chosen.Add(column);
+        }
+        else
+        {
+            chosen.Remove(column);
+        }
+    }
+
+    private void Edit(SavedViewResponse view)
+    {
+        editingId = view.Id;
+        name = view.Name;
+        chosen = [.. view.Columns];
+        conditionId = view.ConditionId?.ToString(CultureInfo.InvariantCulture) ?? Any;
+        agencyId = view.AgencyId?.ToString(CultureInfo.InvariantCulture) ?? Any;
+        workflowState = view.WorkflowState ?? Any;
+        caseStatus = view.CaseStatus ?? Any;
+        onsetFrom = view.OnsetFrom?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        onsetTo = view.OnsetTo?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    }
+
+    private void Clear()
+    {
+        editingId = null;
+        name = "";
+        chosen = [];
+        conditionId = Any;
+        agencyId = Any;
+        workflowState = Any;
+        caseStatus = Any;
+        onsetFrom = null;
+        onsetTo = null;
+    }
+
+    private async Task Save()
+    {
+        if (!TryDate(onsetFrom, out var from) || !TryDate(onsetTo, out var to))
+        {
+            failure = "Give the onset dates as yyyy-mm-dd, or leave them empty.";
+            return;
+        }
+
+        var request = new SaveSavedViewRequest(
+            name,
+            ExportColumns.All.Where(chosen.Contains).ToList(),
+            conditionId == Any ? null : int.Parse(conditionId, CultureInfo.InvariantCulture),
+            agencyId == Any ? null : int.Parse(agencyId, CultureInfo.InvariantCulture),
+            workflowState == Any ? null : workflowState,
+            caseStatus == Any ? null : caseStatus,
+            from,
+            to);
+        var saved = editingId is { } id ? await Client.Update(id, request) : await Client.Create(request);
+        failure = saved.Failure;
+
+        if (saved.Value is { } stored)
+        {
+            views!.RemoveAll(view => view.Id == stored.Id);
+            views.Add(stored);
+            views.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
+            Clear();
+        }
+    }
+
+    private async Task Delete(SavedViewResponse view)
+    {
+        failure = await Client.Delete(view.Id);
+
+        if (failure is null)
+        {
+            views!.RemoveAll(listed => listed.Id == view.Id);
+
+            if (editingId == view.Id)
+            {
+                Clear();
+            }
+        }
+    }
+
+    /// <summary>An empty box as no date, or the date it holds; false where it holds something else.</summary>
+    private static bool TryDate(string? text, out DateOnly? date)
+    {
+        date = null;
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParse(text, CultureInfo.InvariantCulture, out var parsed))
+        {
+            date = parsed;
+            return true;
+        }
+
+        return false;
+    }
+}
