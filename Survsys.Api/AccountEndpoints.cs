@@ -19,13 +19,17 @@ namespace Survsys.Api;
 /// privileges on every later request, so a request costs no query to
 /// authorise, and a change to a user's roles is felt at their next sign-in.
 ///
-/// A wrong password, an unknown user name and a deactivated user are refused
-/// in the same words, so the answer does not say which user names exist.
+/// A wrong password, an unknown user name, a deactivated user and a user
+/// locked out after too many wrong passwords are refused in the same words, so
+/// the answer does not say which user names exist.
 /// </remarks>
 public static class AccountEndpoints
 {
     /// <summary>The claim type a signed-in caller's display name travels as.</summary>
     public const string DisplayNameClaim = "display_name";
+
+    /// <summary>The claim type each agency a signed-in caller works for travels as.</summary>
+    public const string AgencyClaim = "agency";
 
     /// <summary>
     /// The one password hasher: the framework's, whose hash carries its own
@@ -34,13 +38,16 @@ public static class AccountEndpoints
     internal static readonly PasswordHasher<User> Hasher = new();
 
     /// <summary>
-    /// The principal a user signs in as: their id, user name, display name and
-    /// one claim per privilege.
+    /// The principal a user signs in as: their id, user name, display name,
+    /// one claim per privilege and one per agency they work for.
     /// </summary>
-    public static ClaimsPrincipal ClaimsFor(User user, IEnumerable<string> privileges)
+    public static ClaimsPrincipal ClaimsFor(User user, IEnumerable<string> privileges, IEnumerable<int>? agencyIds = null)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(privileges);
+
+        var agencies = (agencyIds ?? []).Distinct().Select(id =>
+            new Claim(AgencyClaim, id.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
         Claim[] identity =
         [
@@ -50,7 +57,7 @@ public static class AccountEndpoints
         ];
 
         return new ClaimsPrincipal(new ClaimsIdentity(
-            identity.Concat(privileges.Distinct().Select(p => new Claim(PrivilegeRules.PrivilegeClaim, p))),
+            identity.Concat(privileges.Distinct().Select(p => new Claim(PrivilegeRules.PrivilegeClaim, p))).Concat(agencies),
             BearerTokenDefaults.AuthenticationScheme));
     }
 
@@ -83,6 +90,17 @@ public static class AccountEndpoints
             && int.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
                 ? id
                 : null;
+    }
+
+    /// <summary>The agencies a principal <see cref="ClaimsFor"/> built says the caller works for.</summary>
+    public static IReadOnlyList<int> AgencyIdsOf(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        return principal.FindAll(AgencyClaim)
+            .Select(claim => int.TryParse(claim.Value, out var id) ? id : (int?)null)
+            .OfType<int>()
+            .ToList();
     }
 
     /// <summary>
@@ -137,9 +155,15 @@ public static class AccountEndpoints
 /// </summary>
 internal sealed class AccountQueries(SurvsysDbContext database)
 {
+    /// <summary>The wrong passwords in a row that lock a user out.</summary>
+    public const int MaximumFailedSignIns = 5;
+
+    /// <summary>How long a lockout lasts.</summary>
+    public static readonly TimeSpan Lockout = TimeSpan.FromMinutes(15);
+
     /// <summary>
     /// The principal the user signs in as, or null where the user name, the
-    /// password or the user's being active says no.
+    /// password, the user's being active or their being locked out says no.
     /// </summary>
     public async Task<ClaimsPrincipal?> SignIn(SignInRequest request, CancellationToken cancellationToken)
     {
@@ -147,14 +171,49 @@ internal sealed class AccountQueries(SurvsysDbContext database)
             user => user.UserName == request.UserName && user.Active,
             cancellationToken);
 
-        if (user is null || string.IsNullOrEmpty(request.Password))
+        if (user is null || string.IsNullOrEmpty(request.Password)
+            || user.LockedOutUntil > DateTimeOffset.UtcNow)
         {
             return null;
         }
 
         var verified = AccountEndpoints.Hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
 
+        var now = DateTimeOffset.UtcNow;
+        var row = database.Users.Where(candidate => candidate.Id == user.Id);
+
         if (verified == PasswordVerificationResult.Failed)
+        {
+            // Too many wrong passwords in a row lock the user out for a while,
+            // so a password cannot be guessed at the speed of a script. One
+            // UPDATE counts the failure and locks on the last, so failures
+            // arriving together are each counted; one landing after another
+            // began a lockout is not, so it cannot count toward the next.
+            var lockedUntil = now + Lockout;
+            await row
+                .Where(candidate => candidate.LockedOutUntil == null || candidate.LockedOutUntil <= now)
+                .ExecuteUpdateAsync(set => set
+                    .SetProperty(
+                        candidate => candidate.FailedSignInCount,
+                        candidate => candidate.FailedSignInCount + 1 >= MaximumFailedSignIns ? 0 : candidate.FailedSignInCount + 1)
+                    .SetProperty(
+                        candidate => candidate.LockedOutUntil,
+                        candidate => candidate.FailedSignInCount + 1 >= MaximumFailedSignIns ? lockedUntil : candidate.LockedOutUntil),
+                cancellationToken);
+
+            return null;
+        }
+
+        // The count is cleared only where no lockout began since the user was
+        // read; a lockout a parallel failure began refuses this sign-in too.
+        var cleared = await row
+            .Where(candidate => candidate.LockedOutUntil == null || candidate.LockedOutUntil <= now)
+            .ExecuteUpdateAsync(set => set
+                    .SetProperty(candidate => candidate.FailedSignInCount, 0)
+                    .SetProperty(candidate => candidate.LockedOutUntil, (DateTimeOffset?)null),
+                cancellationToken);
+
+        if (cleared == 0)
         {
             return null;
         }
@@ -171,7 +230,12 @@ internal sealed class AccountQueries(SurvsysDbContext database)
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        return AccountEndpoints.ClaimsFor(user, privileges);
+        var agencyIds = await database.UserAgencies
+            .Where(userAgency => userAgency.UserId == user.Id)
+            .Select(userAgency => userAgency.AgencyId)
+            .ToListAsync(cancellationToken);
+
+        return AccountEndpoints.ClaimsFor(user, privileges, agencyIds);
     }
 
     /// <summary>

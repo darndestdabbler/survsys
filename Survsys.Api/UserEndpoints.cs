@@ -19,15 +19,17 @@ namespace Survsys.Api;
 public static class UserEndpoints
 {
     /// <summary>
-    /// The wire shape of a user and the roles they hold. Public because the
-    /// unit suite proves it.
+    /// The wire shape of a user, the roles they hold and the agencies they
+    /// work for. Public because the unit suite proves it.
     /// </summary>
-    public static UserResponse ToResponse(User user, IEnumerable<int> roleIds)
+    public static UserResponse ToResponse(User user, IEnumerable<int> roleIds, IEnumerable<int> agencyIds)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(roleIds);
+        ArgumentNullException.ThrowIfNull(agencyIds);
 
-        return new UserResponse(user.Id, user.UserName, user.DisplayName, user.Active, roleIds.Order().ToList());
+        return new UserResponse(
+            user.Id, user.UserName, user.DisplayName, user.Active, roleIds.Order().ToList(), agencyIds.Order().ToList());
     }
 
     /// <summary>
@@ -78,8 +80,13 @@ public static class UserEndpoints
             return "password is empty: leave it out to keep the user's password.";
         }
 
-        return request.RoleIds?.Where(id => id <= 0).Select(id => (int?)id).FirstOrDefault() is { } bad
-            ? $"roleIds holds {bad}, which is not a role this tier knows."
+        if (request.RoleIds?.Where(id => id <= 0).Select(id => (int?)id).FirstOrDefault() is { } bad)
+        {
+            return $"roleIds holds {bad}, which is not a role this tier knows.";
+        }
+
+        return request.AgencyIds?.Where(id => id <= 0).Select(id => (int?)id).FirstOrDefault() is { } badAgency
+            ? $"agencyIds holds {badAgency}, which is not an agency this tier knows."
             : null;
     }
 
@@ -101,7 +108,7 @@ public static class UserEndpoints
 
         routes.MapPut("/api/users/{id:int}", UpdateUser)
             .WithName("UpdateUser")
-            .WithSummary("Saves a user's names, roles and active flag, and a new password where one is given.");
+            .WithSummary("Saves a user's names, roles, agencies and active flag, and a new password where one is given.");
 
         // A read under /api, so the privilege rule asks view_cases of it rather
         // than the manage_users /api/users needs: an investigator picker on a
@@ -181,8 +188,11 @@ internal sealed class UserQueries(SurvsysDbContext database)
     {
         var users = await database.Users.OrderBy(user => user.UserName).ToListAsync(cancellationToken);
         var roles = (await database.UserRoles.ToListAsync(cancellationToken)).ToLookup(userRole => userRole.UserId);
+        var agencies = (await database.UserAgencies.ToListAsync(cancellationToken)).ToLookup(userAgency => userAgency.UserId);
 
-        return users.Select(user => UserEndpoints.ToResponse(user, roles[user.Id].Select(r => r.RoleId))).ToList();
+        return users.Select(user => UserEndpoints.ToResponse(
+                user, roles[user.Id].Select(r => r.RoleId), agencies[user.Id].Select(a => a.AgencyId)))
+            .ToList();
     }
 
     /// <summary>Every active user as an investigator, by display name then id.</summary>
@@ -210,8 +220,19 @@ internal sealed class UserQueries(SurvsysDbContext database)
         var roleIds = request.RoleIds ?? [];
         var known = await database.Roles.Where(role => roleIds.Contains(role.Id)).Select(role => role.Id).ToListAsync(cancellationToken);
 
-        return roleIds.Where(roleId => !known.Contains(roleId)).Select(roleId => (int?)roleId).FirstOrDefault() is { } unknown
-            ? $"roleIds holds {unknown}, which is not one of the roles GET /api/roles lists."
+        if (roleIds.Where(roleId => !known.Contains(roleId)).Select(roleId => (int?)roleId).FirstOrDefault() is { } unknown)
+        {
+            return $"roleIds holds {unknown}, which is not one of the roles GET /api/roles lists.";
+        }
+
+        var agencyIds = request.AgencyIds ?? [];
+        var knownAgencies = await database.Agencies
+            .Where(agency => agencyIds.Contains(agency.Id))
+            .Select(agency => agency.Id)
+            .ToListAsync(cancellationToken);
+
+        return agencyIds.Where(agencyId => !knownAgencies.Contains(agencyId)).Select(agencyId => (int?)agencyId).FirstOrDefault() is { } unknownAgency
+            ? $"agencyIds holds {unknownAgency}, which is not one of the agencies GET /api/agencies lists."
             : null;
     }
 
@@ -246,8 +267,12 @@ internal sealed class UserQueries(SurvsysDbContext database)
         var roleIds = (request.RoleIds ?? []).Distinct().ToList();
         await database.UserRoles.Where(userRole => userRole.UserId == user.Id).ExecuteDeleteAsync(cancellationToken);
         database.UserRoles.AddRange(roleIds.Select(roleId => new UserRole { UserId = user.Id, RoleId = roleId }));
+
+        var agencyIds = (request.AgencyIds ?? []).Distinct().ToList();
+        await database.UserAgencies.Where(userAgency => userAgency.UserId == user.Id).ExecuteDeleteAsync(cancellationToken);
+        database.UserAgencies.AddRange(agencyIds.Select(agencyId => new UserAgency { UserId = user.Id, AgencyId = agencyId }));
         await database.SaveChangesAsync(cancellationToken);
 
-        return UserEndpoints.ToResponse(user, roleIds);
+        return UserEndpoints.ToResponse(user, roleIds, agencyIds);
     }
 }

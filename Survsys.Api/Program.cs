@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Api;
 using Survsys.Data;
@@ -23,6 +24,9 @@ const string applyMigrationsKey = "Survsys:ApplyMigrations";
 const string administratorUserNameKey = "Survsys:Administrator:UserName";
 const string administratorPasswordKey = "Survsys:Administrator:Password";
 
+// The folder this tier's data protection keys are kept in, where it is set.
+const string dataProtectionKeysPathKey = "Survsys:DataProtectionKeysPath";
+
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString(connectionStringName);
@@ -36,6 +40,18 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddDbContext<SurvsysDbContext>(options => options.UseSqlServer(connectionString));
+
+// The keys that protect bearer tokens, in the folder configuration names, so
+// a token outlives an app-pool recycle and is read by every server of this
+// tier. The application name is fixed because the default is the content
+// root, which differs from one server to the next. Unset, the keys are the
+// framework's default and a recycle signs everyone out.
+if (builder.Configuration[dataProtectionKeysPathKey] is { Length: > 0 } keysPath)
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
+        .SetApplicationName("Survsys.Api");
+}
 
 // Every failure leaves as Problem Details (RFC 7807), carrying a correlation
 // id the caller can quote back and nothing else: no exception text, no SQL,
@@ -203,6 +219,10 @@ app.UseStatusCodePages();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// A case the caller's agencies neither own nor have been shared is answered
+// 404 on every route about it; CaseAccess says which routes those are.
+app.UseCaseAccess();
 
 // What the walkthrough harness waits on before its first click. This tier
 // answers here only once startup has finished -- the migration gate above

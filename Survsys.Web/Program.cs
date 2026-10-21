@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using MudBlazor.Services;
 using Survsys.Contracts;
@@ -18,6 +19,9 @@ const string apiBaseAddressKey = "Survsys:ApiBaseAddress";
 const string signInPage = "/sign-in";
 const string signInPost = "/account/sign-in";
 
+// The folder this tier's data protection keys are kept in, where it is set.
+const string dataProtectionKeysPathKey = "Survsys:DataProtectionKeysPath";
+
 var builder = WebApplication.CreateBuilder(args);
 
 var apiBaseAddress = builder.Configuration[apiBaseAddressKey];
@@ -33,6 +37,18 @@ if (string.IsNullOrWhiteSpace(apiBaseAddress))
 
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddMudServices();
+
+// The keys that protect the sign-in cookie and the antiforgery tokens, in the
+// folder configuration names, so a sign-in outlives an app-pool recycle and is
+// read by every server of this tier. The application name is fixed because
+// the default is the content root, which differs from one server to the next.
+// Unset, the keys are the framework's default and a recycle signs everyone out.
+if (builder.Configuration[dataProtectionKeysPathKey] is { Length: > 0 } keysPath)
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
+        .SetApplicationName("Survsys.Web");
+}
 
 // A person signs in once, here, and this tier's cookie then carries who they
 // are, their privileges and the API tier's token for them. Every screen needs

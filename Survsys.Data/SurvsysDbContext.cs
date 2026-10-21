@@ -92,6 +92,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options, IAudit
 
     public DbSet<UserRole> UserRoles => Set<UserRole>();
 
+    public DbSet<UserAgency> UserAgencies => Set<UserAgency>();
+
     public DbSet<RolePrivilege> RolePrivileges => Set<RolePrivilege>();
 
     public DbSet<AccessRecord> AccessRecords => Set<AccessRecord>();

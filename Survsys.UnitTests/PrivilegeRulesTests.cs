@@ -23,6 +23,8 @@ public class PrivilegeRulesTests
     [InlineData("GET", "/api/ct-towns")]
     [InlineData("GET", "/api/zip-codes/csv")]
     [InlineData("GET", "/api/vaccines")]
+    [InlineData("GET", "/api/forms/2")]
+    [InlineData("GET", "/api/treatments")]
     [InlineData("GET", "/api/me")]
     public void RequiredForAReferenceDataReadOrWhoAmIIsNothingBeyondSigningIn(string method, string path)
     {
@@ -49,6 +51,10 @@ public class PrivilegeRulesTests
     [InlineData("POST", "/api/vaccines")]
     [InlineData("PUT", "/api/vaccines/3")]
     [InlineData("POST", "/api/vaccines/csv")]
+    [InlineData("POST", "/api/forms")]
+    [InlineData("PUT", "/api/forms/2")]
+    [InlineData("PUT", "/api/treatments/4")]
+    [InlineData("POST", "/api/treatments/csv")]
     public void RequiredForAReferenceDataWriteIsManageReferenceData(string method, string path)
     {
         Assert.Equal(Privileges.ManageReferenceData, PrivilegeRules.RequiredFor(method, path));
@@ -82,6 +88,8 @@ public class PrivilegeRulesTests
     [InlineData("PUT", "/api/person-conditions/7/clinical")]
     [InlineData("POST", "/api/person-conditions/7/contacts/import")]
     [InlineData("PUT", "/api/tasks/3/status")]
+    [InlineData("PUT", "/api/cases/forms/5/answers")]
+    [InlineData("POST", "/api/cases/7/treatments")]
     public void RequiredForACaseWriteIsEditCases(string method, string path)
     {
         Assert.Equal(Privileges.EditCases, PrivilegeRules.RequiredFor(method, path));

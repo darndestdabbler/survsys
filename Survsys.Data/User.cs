@@ -25,4 +25,15 @@ public class User
 
     /// <summary>Whether the user may sign in.</summary>
     public bool Active { get; set; } = true;
+
+    /// <summary>
+    /// The wrong passwords given in a row since the last sign-in or lockout.
+    /// </summary>
+    public int FailedSignInCount { get; set; }
+
+    /// <summary>
+    /// When the lockout that too many wrong passwords began ends, or null for
+    /// a user who is not locked out.
+    /// </summary>
+    public DateTimeOffset? LockedOutUntil { get; set; }
 }

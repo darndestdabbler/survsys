@@ -106,7 +106,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 92 | Phase 11 walkthroughs | no | 2026-10-21 |
 | 93 | Release 0.12.0 (release: 0.12.0) | yes | 2026-10-21 |
 | 94 | Audit with its user and values, and its screens | no | 2026-10-21 |
-| 95 | Jurisdiction-scoped access and sign-in protection | — | not declared |
+| 95 | Jurisdiction-scoped access and sign-in protection | no | 2026-10-21 |
 | 96 | Classification rules on save | — | not declared |
 | 97 | IBIS, ad-hoc reporting and system configuration | — | not declared |
 | 98 | Phase 12 walkthroughs | — | not declared |
@@ -852,3 +852,14 @@ Release 0.12.0: the framework packs and publishes what is on the trunk.
 **Releasable: no.**
 
 Extend the existing change audit so each row records who made the change and the values before and after as JSON, and widen the access audit to cover sign-ins, exports and searches. In Survsys.Data, AuditEntry gains a nullable UserId and nullable OldValues/NewValues JSON columns; the context takes an optional IAuditUser (null in tests and tools) that the AuditInterceptor reads, and AccessRecord gains an Action and a Detail with PersonConditionId made nullable, all in one migration. In Survsys.Api the signed-in user feeds IAuditUser, sign-in, saved-view export and case search call the existing AccessAuditQueries.Record, and a privilege-gated GET /api/audit pages the change audit for a table (and optionally a key). In Survsys.Web an audit screen (a case's history by default, or any table's) and an access-audit screen are added behind ManageUsers. Integration tests prove an insert, update and delete each carry user and values, that a rolled-back save records nothing, and that vocabulary tables are audited.
+
+### Session 95 — Jurisdiction-scoped access and sign-in protection
+
+**Releasable: no.**
+
+Scope a user's case access to their agencies' jurisdictions and to cases shared with those agencies, and protect signing in. Survsys.Data gains a user_agencies join (a user's agencies) and two lockout columns on users (failed sign-in count, locked-out-until), in one migration that also gives the Administrator role a new all_jurisdictions privilege (the statewide user, added to Survsys.Contracts.Privileges). At sign-in the API tier puts the user's agencies on the token beside their privileges; one CaseAccess rule in Survsys.Api, run as middleware after authorisation, resolves the case a request is about from its route (/api/person-conditions/{id}, /api/cases/{personConditionId}, /api/notification-queue/{personConditionId}, and the child records -- labs and their tests, results and resistance tests, exposures and their places, contacts, sources and contact events, notes, attachments, tasks, encounters, case treatments, case vaccines and case forms -- by their owning case) and answers 404 unless the caller holds all_jurisdictions, the case's agency is one of theirs, or the case is shared with one of theirs; the case search is filtered by the same predicate. PrivilegeRules treats /api/forms and /api/treatments as reference data, so their writes need manage_reference_data as the navigation bar already asks. The Users screen and /api/users carry a user's agencies so an administrator can assign them. Sign-in locks a user out for 15 minutes after 5 consecutive failures, refused in the same words as any other refusal, and a success resets the count. Both tiers persist their data protection keys to the folder Survsys:DataProtectionKeysPath names, under a fixed application name, when it is configured. Integration tests prove an out-of-jurisdiction case refused on every case route and in the search, a shared and an in-jurisdiction case served, and lockout; existing tests whose non-administrator users read cases are given all_jurisdictions.
+
+**Amended after acceptance:**
+
+- 2026-10-21 — step 'user-agencies': its files: UsersClientTests constructs UserResponse, which gains AgencyIds (claude-code (anthropic, claude-opus-5-5))
+- 2026-10-21 — step 'access-integration-tests': its files: The integration tests found CaseAccess refusing a case id nobody has before the endpoint could answer its own 404; the fix leaves a missing case to the endpoint (claude-code (anthropic, claude-opus-5-5))

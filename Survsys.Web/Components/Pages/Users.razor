@@ -1,5 +1,5 @@
 @* The users, for their administration: every user by user name with their
-   roles and whether they may sign in, and one form that adds a user or, with
+   roles, the agencies whose cases they may reach and whether they may sign in, and one form that adds a user or, with
    Edit, saves over one. A user is deactivated rather than deleted, because
    the access audit names them. A new user needs a password; an existing
    user's password changes only where a new one is typed.
@@ -8,6 +8,7 @@
 @page "/users"
 @inject UsersClient Client
 @inject RolesClient Roles
+@inject AgenciesClient Agencies
 
 <PageTitle>Users — Survsys</PageTitle>
 
@@ -52,7 +53,15 @@ else
                 @foreach (var role in roles)
                 {
                     <MudCheckBox T="bool" Value="@roleIds.Contains(role.Id)" id="@($"user-role-{role.Id}")"
-                                 Label="@role.Name" ValueChanged="@(held => Hold(role.Id, held))" />
+                                 Label="@role.Name" ValueChanged="@(held => Hold(roleIds, role.Id, held))" />
+                }
+            </MudItem>
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle2">Agencies</MudText>
+                @foreach (var agency in agencies)
+                {
+                    <MudCheckBox T="bool" Value="@agencyIds.Contains(agency.Id)" id="@($"user-agency-{agency.Id}")"
+                                 Label="@agency.Name" ValueChanged="@(held => Hold(agencyIds, agency.Id, held))" />
                 }
             </MudItem>
             <MudItem xs="12">
@@ -73,6 +82,7 @@ else
                     <th>User name</th>
                     <th>Display name</th>
                     <th>Roles</th>
+                    <th>Agencies</th>
                     <th>May sign in</th>
                     <th></th>
                 </tr>
@@ -84,6 +94,7 @@ else
                         <td>@user.UserName</td>
                         <td>@user.DisplayName</td>
                         <td>@string.Join(", ", user.RoleIds.Select(RoleName))</td>
+                        <td>@string.Join(", ", user.AgencyIds.Select(AgencyName))</td>
                         <td>@(user.Active ? "Yes" : "No")</td>
                         <td>
                             <MudButton id="@($"user-edit-{user.Id}")" Size="Size.Small" Variant="Variant.Text"
@@ -103,6 +114,8 @@ else
 
     private IReadOnlyList<RoleResponse> roles = [];
 
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
     private string? failure;
 
     private int? editingId;
@@ -117,29 +130,33 @@ else
 
     private HashSet<int> roleIds = [];
 
+    private HashSet<int> agencyIds = [];
+
     protected override async Task OnInitializedAsync()
     {
         var askedUsers = await Client.All();
         var askedRoles = await Roles.All();
+        var askedAgencies = await Agencies.All();
 
-        failure = askedUsers.Failure ?? askedRoles.Failure;
+        failure = askedUsers.Failure ?? askedRoles.Failure ?? askedAgencies.Failure;
 
         if (failure is null)
         {
             users = [.. askedUsers.Value!.Items];
             roles = askedRoles.Value!.Items;
+            agencies = askedAgencies.Value!.Items;
         }
     }
 
-    private void Hold(int roleId, bool held)
+    private static void Hold(HashSet<int> ids, int id, bool held)
     {
         if (held)
         {
-            roleIds.Add(roleId);
+            ids.Add(id);
         }
         else
         {
-            roleIds.Remove(roleId);
+            ids.Remove(id);
         }
     }
 
@@ -151,6 +168,7 @@ else
         password = "";
         active = user.Active;
         roleIds = [.. user.RoleIds];
+        agencyIds = [.. user.AgencyIds];
     }
 
     private void Clear()
@@ -161,12 +179,13 @@ else
         password = "";
         active = true;
         roleIds = [];
+        agencyIds = [];
     }
 
     private async Task Save()
     {
         var request = new SaveUserRequest(
-            userName, displayName, active, [.. roleIds], string.IsNullOrEmpty(password) ? null : password);
+            userName, displayName, active, [.. roleIds], string.IsNullOrEmpty(password) ? null : password, [.. agencyIds]);
         var saved = editingId is { } id ? await Client.Update(id, request) : await Client.Create(request);
         failure = saved.Failure;
 
@@ -180,4 +199,6 @@ else
     }
 
     private string RoleName(int id) => roles.FirstOrDefault(role => role.Id == id)?.Name ?? $"role {id}";
+
+    private string AgencyName(int id) => agencies.FirstOrDefault(agency => agency.Id == id)?.Name ?? $"agency {id}";
 }

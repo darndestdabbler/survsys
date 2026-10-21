@@ -12,17 +12,18 @@ namespace Survsys.UnitTests;
 public class UserEndpointsTests
 {
     [Fact]
-    public void ToResponseCarriesTheUserAndTheirRolesInOrderAndNeverThePasswordHash()
+    public void ToResponseCarriesTheUserTheirRolesAndAgenciesInOrderAndNeverThePasswordHash()
     {
         var user = new User { Id = 4, UserName = "ada", DisplayName = "Ada Lovelace", PasswordHash = "secret", Active = false };
 
-        var response = UserEndpoints.ToResponse(user, [3, 1]);
+        var response = UserEndpoints.ToResponse(user, [3, 1], [9, 2]);
 
         Assert.Equal(4, response.Id);
         Assert.Equal("ada", response.UserName);
         Assert.Equal("Ada Lovelace", response.DisplayName);
         Assert.False(response.Active);
         Assert.Equal([1, 3], response.RoleIds);
+        Assert.Equal([2, 9], response.AgencyIds);
         Assert.DoesNotContain("secret", response.ToString(), StringComparison.Ordinal);
     }
 
@@ -110,6 +111,14 @@ public class UserEndpointsTests
     {
         Assert.Contains("roleIds holds 0",
             UserEndpoints.WhyNotAUser(new SaveUserRequest("ada", "Ada", true, [1, 0]), creating: false),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotAUserRefusesAnAgencyIdThatIsNotOne()
+    {
+        Assert.Contains("agencyIds holds -2",
+            UserEndpoints.WhyNotAUser(new SaveUserRequest("ada", "Ada", true, [1], AgencyIds: [3, -2]), creating: false),
             StringComparison.Ordinal);
     }
 }

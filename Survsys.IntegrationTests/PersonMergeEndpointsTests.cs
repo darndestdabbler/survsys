@@ -156,7 +156,7 @@ public class PersonMergeEndpointsTests(SqlServerFixture server) : IDisposable
         // A user of its own: PersonConditionEndpointsTests creates "case-editor"
         // with another password, and whichever class ran first would decide it.
         using var editor = await SignedIn(
-            "Merge case editor", "merge-case-editor", [Privileges.ViewCases, Privileges.EditCases]);
+            "Merge case editor", "merge-case-editor", [Privileges.ViewCases, Privileges.EditCases, Privileges.AllJurisdictions]);
 
         using var candidates = await editor.GetAsync("/api/person-merges/candidates");
         Assert.Equal(HttpStatusCode.Forbidden, candidates.StatusCode);
@@ -204,16 +204,19 @@ public class PersonMergeEndpointsTests(SqlServerFixture server) : IDisposable
         var merge = Mergewell("Hedda", BirthDate);
         await Add(keep, merge);
         var rows = await Seed(merge.Id);
-        var auditsBefore = await AuditCount();
 
         // The rows are moved by the first save inside the merge; the tombstone
         // is marked by the second, which this throws on.
         using var failing = api.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
             services.ConfigureDbContext<SurvsysDbContext>(options => options.AddInterceptors(new FailOnTombstone()))));
 
+        // Signed in before the count, because a sign-in is itself audited.
+        using var client = failing.CreateClient();
+        var auditsBefore = await AuditCount();
+
         try
         {
-            using var response = await failing.CreateClient().PostAsJsonAsync(
+            using var response = await client.PostAsJsonAsync(
                 "/api/person-merges", new PersonMergeRequest(keep.Id, merge.Id), Json);
 
             Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);

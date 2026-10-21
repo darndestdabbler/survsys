@@ -1954,7 +1954,29 @@
         "identityProvenance": "direct"
       },
       "verificationVerdict": "VERIFIED",
-      "startCommit": "9c59c050344ff1d20538a55167014031b84013a4",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.23.0",
+      "startCommit": "9c59c050344ff1d20538a55167014031b84013a4"
+    },
+    {
+      "number": 95,
+      "title": "Jurisdiction-scoped access and sign-in protection",
+      "status": "in-progress",
+      "startedAt": "2026-10-21T18:47:31.601000-04:00",
+      "completedAt": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "startCommit": "465d39862454f8cc919df176a6aa4a0981d9649a",
       "frameworkVersion": "3.23.0",
       "verification": {
         "rounds": 3,
@@ -1962,15 +1984,6 @@
         "verifierProvider": "openai",
         "transport": "api"
       }
-    },
-    {
-      "number": 95,
-      "title": "Jurisdiction-scoped access and sign-in protection",
-      "status": "not-started",
-      "startedAt": null,
-      "completedAt": null,
-      "orchestrator": null,
-      "verificationVerdict": null
     },
     {
       "number": 96,

@@ -92,7 +92,7 @@ public class SavedViewEndpointsTests(SqlServerFixture server) : IDisposable
         var admin = api.CreateClient();
         var roles = (await admin.GetFromJsonAsync<PagedResult<RoleResponse>>("/api/roles", Json))!;
         var role = roles.Items.SingleOrDefault(role => role.Name == "Case viewer")
-            ?? await Created<RoleResponse>(admin, "/api/roles", new SaveRoleRequest("Case viewer", [Privileges.ViewCases]));
+            ?? await Created<RoleResponse>(admin, "/api/roles", new SaveRoleRequest("Case viewer", [Privileges.ViewCases, Privileges.AllJurisdictions]));
 
         var users = (await admin.GetFromJsonAsync<PagedResult<UserResponse>>("/api/users", Json))!;
         if (users.Items.All(user => user.UserName != "saved-view-other"))

@@ -41,6 +41,18 @@ public class AccountEndpointsTests
     }
 
     [Fact]
+    public void AgencyIdsOfReadsBackEachAgencyClaimsForWroteOnce()
+    {
+        Assert.Equal([3, 5], AccountEndpoints.AgencyIdsOf(AccountEndpoints.ClaimsFor(Ada, [], [3, 5, 3])));
+    }
+
+    [Fact]
+    public void AgencyIdsOfAUserOfNoAgencyIsEmpty()
+    {
+        Assert.Empty(AccountEndpoints.AgencyIdsOf(AccountEndpoints.ClaimsFor(Ada, [Privileges.ViewCases])));
+    }
+
+    [Fact]
     public void CurrentUserOfACallerNotSignedInIsNull()
     {
         Assert.Null(AccountEndpoints.CurrentUser(new ClaimsPrincipal(new ClaimsIdentity())));

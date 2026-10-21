@@ -17,9 +17,9 @@ public class UsersClientTests
     private const string Json = "application/json";
 
     private const string Ada =
-        """{ "id": 7, "userName": "ada", "displayName": "Ada Lovelace", "active": true, "roleIds": [1] }""";
+        """{ "id": 7, "userName": "ada", "displayName": "Ada Lovelace", "active": true, "roleIds": [1], "agencyIds": [4] }""";
 
-    private static readonly UserResponse AdaResponse = new(7, "ada", "Ada Lovelace", true, [1]);
+    private static readonly UserResponse AdaResponse = new(7, "ada", "Ada Lovelace", true, [1], [4]);
 
     [Fact]
     public async Task AllAsksForTheUsers()
@@ -35,6 +35,7 @@ public class UsersClientTests
         var user = Assert.Single(asked.Value!.Items);
         Assert.Equal(AdaResponse.UserName, user.UserName);
         Assert.Equal(AdaResponse.RoleIds, user.RoleIds);
+        Assert.Equal(AdaResponse.AgencyIds, user.AgencyIds);
     }
 
     [Fact]

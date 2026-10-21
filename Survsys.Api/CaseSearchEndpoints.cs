@@ -134,7 +134,7 @@ public static class CaseSearchEndpoints
                 title: "The page asked for is not one this endpoint can return.");
         }
 
-        var found = await cases.Page(search, page, pageSize, cancellationToken);
+        var found = await cases.Page(search, user, page, pageSize, cancellationToken);
 
         if (AccountEndpoints.UserIdOf(user) is { } userId)
         {
@@ -165,11 +165,12 @@ internal sealed class CaseSearchQueries(SurvsysDbContext database)
 {
     public async Task<PagedResult<CaseSearchItemResponse>> Page(
         CaseSearch search,
+        ClaimsPrincipal caller,
         int page,
         int pageSize,
         CancellationToken cancellationToken)
     {
-        var matching = Matching(search);
+        var matching = Matching(search, caller);
 
         var total = await matching.CountAsync(cancellationToken);
 
@@ -185,8 +186,8 @@ internal sealed class CaseSearchQueries(SurvsysDbContext database)
     }
 
     /// <summary>
-    /// The reports matching the criteria, joined to their patient, condition
-    /// and agency.
+    /// The reports matching the criteria, of those the caller may reach, joined
+    /// to their patient, condition and agency.
     /// </summary>
     /// <remarks>
     /// The criteria on the report are applied before the joins and the two on
@@ -194,11 +195,11 @@ internal sealed class CaseSearchQueries(SurvsysDbContext database)
     /// applied only where it was given, so the query for no criteria is the
     /// plain join.
     /// </remarks>
-    private IQueryable<JoinedCase> Matching(CaseSearch criteria)
+    private IQueryable<JoinedCase> Matching(CaseSearch criteria, ClaimsPrincipal caller)
     {
         var search = criteria.Trimmed();
 
-        var reports = database.PersonConditions.AsQueryable();
+        var reports = CaseAccess.Visible(database, database.PersonConditions, caller);
 
         if (!search.ShowDeleted)
         {

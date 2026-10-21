@@ -17,7 +17,8 @@ namespace Survsys.Api;
 /// users, roles, the privilege catalogue and the access and change audits need
 /// <see cref="Privileges.ManageUsers"/>; the reference data — conditions,
 /// agencies, facilities, core elements, the code lists, the ELR vocabulary,
-/// the Connecticut towns, the zip codes, the vaccine catalogue and the
+/// the Connecticut towns, the zip codes, the vaccine catalogue, the form and
+/// treatment catalogues and the
 /// notification setup (guides, PHIN variables, rule sets, value sets and
 /// hepatitis lab groups) — is readable by anyone signed in,
 /// because every case screen reads it, and changed with
@@ -46,7 +47,7 @@ public static class PrivilegeRules
     private static readonly string[] ReferenceData =
     [
         "/api/conditions", "/api/agencies", "/api/facilities", "/api/core-elements", "/api/codes", "/api/vocabulary",
-        "/api/ct-towns", "/api/zip-codes", "/api/vaccines", "/api/notification-setup",
+        "/api/ct-towns", "/api/zip-codes", "/api/vaccines", "/api/notification-setup", "/api/forms", "/api/treatments",
     ];
 
     private static readonly string[] AnySignedIn = ["/api/me"];

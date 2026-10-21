@@ -15094,6 +15094,14 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("display_name");
 
+                    b.Property<int>("FailedSignInCount")
+                        .HasColumnType("int")
+                        .HasColumnName("failed_sign_in_count");
+
+                    b.Property<DateTimeOffset?>("LockedOutUntil")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("locked_out_until");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -15112,6 +15120,23 @@ namespace Survsys.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.UserAgency", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("AgencyId")
+                        .HasColumnType("int")
+                        .HasColumnName("agency_id");
+
+                    b.HasKey("UserId", "AgencyId");
+
+                    b.HasIndex("AgencyId");
+
+                    b.ToTable("user_agencies", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.UserRole", b =>
@@ -16309,6 +16334,21 @@ namespace Survsys.Data.Migrations
                     b.HasOne("Survsys.Data.StagedMessage", null)
                         .WithMany("Results")
                         .HasForeignKey("StagedMessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.UserAgency", b =>
+                {
+                    b.HasOne("Survsys.Data.Agency", null)
+                        .WithMany()
+                        .HasForeignKey("AgencyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

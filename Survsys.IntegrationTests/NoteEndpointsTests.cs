@@ -113,7 +113,7 @@ public class NoteEndpointsTests(SqlServerFixture server) : IDisposable
 
         var roles = (await admin.GetFromJsonAsync<PagedResult<RoleResponse>>("/api/roles", Json))!;
         var role = roles.Items.SingleOrDefault(role => role.Name == "Case editor")
-            ?? await Created<RoleResponse>(admin, "/api/roles", new SaveRoleRequest("Case editor", [Privileges.ViewCases, Privileges.EditCases]));
+            ?? await Created<RoleResponse>(admin, "/api/roles", new SaveRoleRequest("Case editor", [Privileges.ViewCases, Privileges.EditCases, Privileges.AllJurisdictions]));
 
         var users = (await admin.GetFromJsonAsync<PagedResult<UserResponse>>("/api/users", Json))!;
         if (users.Items.All(user => user.UserName != "note-editor"))

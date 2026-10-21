@@ -59,7 +59,13 @@ public static class Privileges
     /// </summary>
     public const string MergePersons = "merge_persons";
 
+    /// <summary>
+    /// Seeing every agency's cases, where a user without it sees only the
+    /// cases of the agencies they work for and the cases shared with those.
+    /// </summary>
+    public const string AllJurisdictions = "all_jurisdictions";
+
     /// <summary>Every privilege there is, in the order a screen lists them.</summary>
     public static IReadOnlyList<string> All { get; } =
-        [ViewCases, EditCases, ManageReferenceData, ManageUsers, RunReports, RouteCases, AssignInvestigators, ApproveCases, MergePersons];
+        [ViewCases, EditCases, ManageReferenceData, ManageUsers, RunReports, RouteCases, AssignInvestigators, ApproveCases, MergePersons, AllJurisdictions];
 }

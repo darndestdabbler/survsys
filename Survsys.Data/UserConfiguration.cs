@@ -27,6 +27,8 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(500)
             .IsRequired();
         builder.Property(user => user.Active).HasColumnName("active");
+        builder.Property(user => user.FailedSignInCount).HasColumnName("failed_sign_in_count");
+        builder.Property(user => user.LockedOutUntil).HasColumnName("locked_out_until");
 
         builder.HasIndex(user => user.UserName).IsUnique();
     }
