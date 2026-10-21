@@ -98,7 +98,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 84 | Reference data administration — facilities, conditions, treatments and vaccines | no | 2026-10-20 |
 | 85 | Editor settings ignored, and the integration sign-in flake | no | 2026-10-20 |
 | 86 | Phase 10 walkthroughs | no | 2026-10-20 |
-| 87 | Release 0.11.0 (release: 0.11.0) | — | not declared |
+| 87 | Release 0.11.0 (release: 0.11.0) | yes | 2026-10-21 |
 | 88 | The notification queue worker and the export log | — | not declared |
 | 89 | Auto-queue on every change, queue actions and reconciliation | — | not declared |
 | 90 | Guide, rule set and value set administration | — | not declared |
@@ -784,3 +784,9 @@ Write the four Phase 10 walkthroughs and the Playwright test named after each: f
 **Amended after acceptance:**
 
 - 2026-10-21 — step 'maintain-a-loinc-mapping': its files: The Vocabulary screen renders none of its helper fragments (Condition and Sending lab lists, Save/New, row Edit/Delete, CSV transfer) because they are written to the outer render tree builder from inside child content; the operator approved repairing it in this session so the LOINC walkthrough can be performed (claude-code (anthropic, claude-opus-5-5))
+
+### Session 87 — Release 0.11.0 (release: 0.11.0)
+
+**Releasable: yes.**
+
+Release 0.11.0: the framework packs and publishes what is on the trunk.

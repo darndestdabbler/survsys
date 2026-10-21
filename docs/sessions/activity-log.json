@@ -971,6 +971,13 @@
       "what": "step 'maintain-a-loinc-mapping': its files",
       "reason": "The Vocabulary screen renders none of its helper fragments (Condition and Sending lab lists, Save/New, row Edit/Delete, CSV transfer) because they are written to the outer render tree builder from inside child content; the operator approved repairing it in this session so the LOINC walkthrough can be performed",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 87,
+      "dateTime": "2026-10-21T04:44:16.419000-04:00",
+      "task": "Release 0.11.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }
