@@ -1552,6 +1552,12 @@ answer in `docs/planning/netss-export-question.md`.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
+**Non-goals.** No live transmission to CDC: nothing in this session — code,
+test or configuration — sends to a real CDC, PHINMS or AIMS endpoint. The HTTP
+transport is exercised only against a local stub, the file transport writes
+only to a test folder, and the shipped configuration leaves the endpoint empty
+so transmission stays off.
+
 ### Session 92: Phase 11 walkthroughs
 
 1. Register.
