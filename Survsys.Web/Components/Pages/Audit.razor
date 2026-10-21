@@ -1,0 +1,154 @@
+@* The change audit: every change saved to one table, or to one row of it,
+   newest first, with who made it and the row before and after. A case's
+   history is the table person_conditions at the case's id, which is what the
+   screen opens on.
+
+   Elements a later walkthrough will name carry identifiers of their own —
+   `audit-heading`, `audit-table`, `audit-key`, `audit-show`, `audit-loading`,
+   `audit-error`, `audit-total`, `audit-none`, the results table, and one row
+   per entry keyed by its id. *@
+@page "/audit"
+@inject AuditClient Client
+
+<PageTitle>Audit — Survsys</PageTitle>
+
+<MudText id="audit-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Audit
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    The changes saved to a table, newest first. Give a key to see one row's
+    history; a case's is the table person_conditions at its id.
+</MudText>
+
+<div class="d-flex align-center gap-4 mb-4">
+    <MudTextField id="audit-table" @bind-Value="table" Label="Table" Variant="Variant.Outlined" Margin="Margin.Dense" />
+    <MudTextField id="audit-key" @bind-Value="key" Label="Key" Variant="Variant.Outlined" Margin="Margin.Dense" />
+    <MudButton id="audit-show" Variant="Variant.Filled" Color="Color.Primary" OnClick="Show">Show</MudButton>
+</div>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="audit-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result)
+{
+    <MudText id="audit-total" Typo="Typo.body2" Class="mb-4">
+        @result.TotalCount change(s), showing @result.Items.Count.
+    </MudText>
+
+    @if (result.Items.Count == 0)
+    {
+        <MudText id="audit-none" Typo="Typo.body2">No changes have been audited there.</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="audit-results" Hover="true" Striped="true" Dense="true">
+                <thead>
+                    <tr>
+                        <th>When (UTC)</th>
+                        <th>User</th>
+                        <th>Operation</th>
+                        <th>Key</th>
+                        <th>Before</th>
+                        <th>After</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in result.Items)
+                    {
+                        <tr id="@($"audit-row-{entry.Id}")" data-audit="@entry.Id">
+                            <td data-audit-when>@entry.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td data-audit-user>@(entry.UserName ?? "—")</td>
+                            <td data-audit-operation>@entry.Operation</td>
+                            <td data-audit-key>@entry.KeyValues</td>
+                            <td data-audit-old><code>@(entry.OldValues ?? "—")</code></td>
+                            <td data-audit-new><code>@(entry.NewValues ?? "—")</code></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        @if (result.TotalCount > PageSize || page > 1)
+        {
+            <div class="d-flex align-center gap-4 mt-2">
+                <MudButton id="audit-prev" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page <= 1)" OnClick="PreviousPage">
+                    Previous
+                </MudButton>
+                <MudText id="audit-page" Typo="Typo.body2">Page @(page) of @LastPage</MudText>
+                <MudButton id="audit-next" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page >= LastPage)" OnClick="NextPage">
+                    Next
+                </MudButton>
+            </div>
+        }
+    }
+}
+else
+{
+    <MudAlert id="audit-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    private const int PageSize = 50;
+
+    private int page = 1;
+
+    private string table = "person_conditions";
+
+    private string? key;
+
+    private Asked<PagedResult<AuditEntryResponse>>? asked;
+
+    [SupplyParameterFromQuery(Name = "table")]
+    private string? TableParameter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "key")]
+    private string? KeyParameter { get; set; }
+
+    private int LastPage => Math.Max(1, ((asked?.Value?.TotalCount ?? 0) + PageSize - 1) / PageSize);
+
+    protected override Task OnInitializedAsync()
+    {
+        table = string.IsNullOrWhiteSpace(TableParameter) ? table : TableParameter;
+        key = KeyParameter;
+
+        return Load();
+    }
+
+    private async Task Load()
+    {
+        asked = null;
+        asked = await Client.Changes(table, key, page, PageSize);
+    }
+
+    private Task Show()
+    {
+        page = 1;
+
+        return Load();
+    }
+
+    private async Task PreviousPage()
+    {
+        if (page > 1)
+        {
+            page--;
+            await Load();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (page < LastPage)
+        {
+            page++;
+            await Load();
+        }
+    }
+}
