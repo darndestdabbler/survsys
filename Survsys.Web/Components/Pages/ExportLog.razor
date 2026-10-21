@@ -1,0 +1,140 @@
+@* The CDC export log: the history of case exports, as the export-log endpoint
+   returns them. One page of rows, newest first, each naming the export, its
+   run's outcome and detail, processing id and queue, and linking into the
+   message that was generated for it.
+
+   Every element a later walkthrough will name carries an identifier of its
+   own — `export-log-heading`, `export-log-loading`, `export-log-error`,
+   `export-log-total`, `export-log-none`, the table, and one row per export
+   keyed by its id. A test selects by those and not by a MudBlazor class or a
+   cell's position. *@
+@page "/export-log"
+@inject ExportLogClient Client
+
+<PageTitle>Export log — Survsys</PageTitle>
+
+<MudText id="export-log-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Export log
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    The history of case exports to CDC, newest first. Open an export to read the
+    message that was generated for it.
+</MudText>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="export-log-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result)
+{
+    <MudText id="export-log-total" Typo="Typo.body2" Class="mb-4">
+        @result.TotalCount export(s), showing @result.Items.Count.
+    </MudText>
+
+    @if (result.Items.Count == 0)
+    {
+        <MudText id="export-log-none" Typo="Typo.body2">
+            No exports have been logged.
+        </MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="export-log-table" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>Record number</th>
+                        <th>Queued</th>
+                        <th>Sent</th>
+                        <th>Outcome</th>
+                        <th>Detail</th>
+                        <th>Processing</th>
+                        <th>Queue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var export in result.Items)
+                    {
+                        <tr id="@($"export-log-row-{export.Id}")" data-export="@export.Id">
+                            <td data-export-record>
+                                <MudLink Href="@($"/export-log/{export.Id}")">@export.RecordNumber</MudLink>
+                            </td>
+                            <td data-export-queued>@export.QueuedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td data-export-sent>@(export.SentAt is { } sent ? sent.ToString("yyyy-MM-dd HH:mm") : "—")</td>
+                            <td data-export-outcome>@(string.IsNullOrWhiteSpace(export.Outcome) ? "—" : export.Outcome)</td>
+                            <td data-export-detail>@(string.IsNullOrWhiteSpace(export.Detail) ? "—" : export.Detail)</td>
+                            <td data-export-processing>@(string.IsNullOrWhiteSpace(export.ProcessingId) ? "—" : export.ProcessingId)</td>
+                            <td data-export-queue>@(string.IsNullOrWhiteSpace(export.Queue) ? "—" : export.Queue)</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        @if (result.TotalCount > PageSize || page > 1)
+        {
+            <div class="d-flex align-center gap-4 mt-2">
+                <MudButton id="export-log-prev" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page <= 1)" OnClick="PreviousPage">
+                    Previous
+                </MudButton>
+                <MudText id="export-log-page" Typo="Typo.body2">Page @(page) of @LastPage</MudText>
+                <MudButton id="export-log-next" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page >= LastPage)" OnClick="NextPage">
+                    Next
+                </MudButton>
+            </div>
+        }
+    }
+}
+else
+{
+    @* The tier's contract: an API failure is a message on the screen, never
+       an unhandled exception in a circuit. ExportLogClient hands over the
+       message; this is where it is shown. *@
+    <MudAlert id="export-log-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    /// <summary>
+    /// How many exports one page of this screen holds. The API tier's own
+    /// default, stated here because a screen that shows a count has to know
+    /// what it asked for.
+    /// </summary>
+    private const int PageSize = 50;
+
+    private int page = 1;
+
+    private Asked<PagedResult<CdcExportLogItemResponse>>? asked;
+
+    private int LastPage => Math.Max(1, ((asked?.Value?.TotalCount ?? 0) + PageSize - 1) / PageSize);
+
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load()
+    {
+        asked = null;
+        asked = await Client.Page(page, PageSize);
+    }
+
+    private async Task PreviousPage()
+    {
+        if (page > 1)
+        {
+            page--;
+            await Load();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (page < LastPage)
+        {
+            page++;
+            await Load();
+        }
+    }
+}
