@@ -1077,6 +1077,13 @@
       "what": "step 'configure-a-notification-guide': its files",
       "reason": "A guide carries only PHIN variables already in the catalog, and no migration seeds phin_var, so the walkthrough adds the variable on the PHIN variables screen first; the harness must clear phin_var with the guides, or the second run would refuse adding it again.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 93,
+      "dateTime": "2026-10-21T15:56:39.324000-04:00",
+      "task": "Release 0.12.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }

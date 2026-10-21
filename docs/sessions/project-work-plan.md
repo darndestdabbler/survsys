@@ -104,7 +104,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 90 | Guide, rule set and value set administration | no | 2026-10-21 |
 | 91 | Transport to CDC | no | 2026-10-21 |
 | 92 | Phase 11 walkthroughs | no | 2026-10-21 |
-| 93 | Release 0.12.0 (release: 0.12.0) | — | not declared |
+| 93 | Release 0.12.0 (release: 0.12.0) | yes | 2026-10-21 |
 | 94 | Audit with its user and values, and its screens | — | not declared |
 | 95 | Jurisdiction-scoped access and sign-in protection | — | not declared |
 | 96 | Classification rules on save | — | not declared |
@@ -840,3 +840,9 @@ Write the Phase 11 walkthroughs and the Playwright tests that perform them. The 
 
 - 2026-10-21 — step 'export-log-walkthroughs-from-the-worker': its files: The worker builds a message only for a condition exported under a notification guide (condition_detail), and nothing in the application assigns one, so the E2E harness seeds a guide for Lyme disease from a fixture of its own, as elr-intake.sql seeds the intake reference data. (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-21 — step 'configure-a-notification-guide': its files: A guide carries only PHIN variables already in the catalog, and no migration seeds phin_var, so the walkthrough adds the variable on the PHIN variables screen first; the harness must clear phin_var with the guides, or the second run would refuse adding it again. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 93 — Release 0.12.0 (release: 0.12.0)
+
+**Releasable: yes.**
+
+Release 0.12.0: the framework packs and publishes what is on the trunk.
