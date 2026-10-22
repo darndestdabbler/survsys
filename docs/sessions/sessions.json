@@ -2112,9 +2112,9 @@
     {
       "number": 102,
       "title": "eCR validation and the eICR viewer",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-22T08:34:39.092000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-22T08:58:15.462000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
