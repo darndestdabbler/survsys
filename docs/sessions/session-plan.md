@@ -1311,7 +1311,7 @@ the other. The historical counties stay choosable rather than being refused.*
    code a message carries in whichever of the two it names, by the code
    list, and fills the other from the town. `OruR01Generator` writes the
    FIPS code of the one `cdc-notification` names to PID-11, and the legacy
-   code where the list has no FIPS code. Session 103 reads `ecr` the same way
+   code where the list has no FIPS code. Session 104 reads `ecr` the same way
    when it writes an eICR's address to a case.
 5. `Survsys.Web`: the Demographics tab, the person screen and the case search
    show the county equivalent beside the county for a CT address. Its label
@@ -1623,7 +1623,46 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 97: IBIS, ad-hoc reporting and system configuration
+### Session 97: Classification shown on save, and on encounter saves
+
+*Inserted after session 96. Session 96 left two things owed. Its step 3 asked
+for each rule's outcome to be shown to the user on save. The outcome is
+written as an administrative note, which the user finds only by opening the
+Notes tab. The Clinical, Laboratory, Investigation and Administrative tabs
+tell the report page nothing when they save, so the case status in its header
+stays as it was until the page is reloaded. And an encounter's save does not
+run the rules, though the influenza rule reads a facility encounter as the
+case's recorded hospitalization, so its finding stays stale until something
+else saves the case. Both come before the Phase 12 walkthroughs because "see
+a case classified on save" crosses them.*
+
+*Non-goals: no hospitalization field and no "Out of State" agency. Both are
+decisions for session 108's gap analysis.*
+
+1. Register.
+2. `Survsys.Api`: every route that classifies a case answers with the
+   classifier's outcome — the case status after it and that save's findings.
+   The encounter add, edit and delete routes run the classifier too.
+3. `Survsys.Api`: when a case is classified again, a classification note
+   whose finding no longer holds is struck, so a case does not gather
+   findings that are no longer true. The note for a finding that still
+   holds is still written once.
+4. `Survsys.Web`: each tab that saves a case tells the report page. The page
+   re-reads the case's status and shows that save's findings beside the
+   save. Every element id stays unchanged.
+5. `Survsys.UnitTests` and `Survsys.IntegrationTests`: the outcome each
+   classifying route answers with, an encounter's save reclassifying an
+   influenza case, and a stale classification note struck. These reach SQL
+   Server.
+6. `Survsys.E2ETests`: a Playwright test that adds a positive lab to a case
+   with no status and, without a reload, sees the header show Confirmed and
+   the findings shown beside the save.
+7. Cross-provider verification.
+8. Full test suite, the integration suite included, recorded as the run of
+   record.
+9. Close-out.
+
+### Session 98: IBIS, ad-hoc reporting and system configuration
 
 1. Register.
 2. `Survsys.Web`: a Send to IBIS action on the report, privilege-gated, over
@@ -1638,7 +1677,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 98: Phase 12 walkthroughs
+### Session 99: Phase 12 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: four documents — review a case's audit history, run
@@ -1648,7 +1687,7 @@ and `phase-1.6-feature-matrix.md` §11–§14.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 99: Release 0.13.0 (release: 0.13.0)
+### Session 100: Release 0.13.0 (release: 0.13.0)
 
 ---
 
@@ -1658,7 +1697,7 @@ eCR documents in `../nedss/docs/specs/site-specs/`. Its items marked
 **[confirm]** are confirmed with the APHL eCR service desk before the session
 that depends on them, and a session that finds one wrong amends this phase.*
 
-### Session 100: eICR and RR parsing and document intake
+### Session 101: eICR and RR parsing and document intake
 
 1. Register.
 2. `Survsys.Messaging`: a CDA parser behind phase 10's parser seam, reading
@@ -1676,7 +1715,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 101: eCR validation and the eICR viewer
+### Session 102: eCR validation and the eICR viewer
 
 1. Register.
 2. `Survsys.Messaging`: validation against the CDA schema and the HL7
@@ -1689,7 +1728,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 102: Reportability and condition mapping
+### Session 103: Reportability and condition mapping
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: a mapping from RCTC and SNOMED condition
@@ -1703,7 +1742,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 103: Cases from eCR
+### Session 104: Cases from eCR
 
 1. Register.
 2. `Survsys.Api`: a reportable eICR's patient matched by phase 9's matcher,
@@ -1722,7 +1761,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 104: eCR senders and data quality
+### Session 105: eCR senders and data quality
 
 1. Register.
 2. `Survsys.Data` and `Survsys.Api`: eCR senders with their onboarding stage —
@@ -1735,7 +1774,7 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 105: Phase 13 walkthroughs
+### Session 106: Phase 13 walkthroughs
 
 1. Register.
 2. `docs/walkthroughs/`: four documents — review an eICR and its reportability
@@ -1746,18 +1785,23 @@ that depends on them, and a session that finds one wrong amends this phase.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 106: Release 0.14.0 (release: 0.14.0)
+### Session 107: Release 0.14.0 (release: 0.14.0)
 
 ---
 
 *Phase 14 — parity → release 1.0.0, the first release that claims parity.*
 
-### Session 107: The parity check and the documentation for 1.0.0
+### Session 108: The parity check and the documentation for 1.0.0
 
 1. Register.
 2. `docs/planning/gap-analysis.md`: every gap marked closed with the session
    that closed it, or left open with the operator's decision; every row of
-   `phase-1.6-feature-matrix.md` given its survsys status.
+   `phase-1.6-feature-matrix.md` given its survsys status. Among them are
+   session 96's three departures from the legacy classification: an
+   out-of-state case keeps its agency, since there is no "Out of State"
+   agency; a facility encounter stands in for an influenza hospitalization,
+   since there is no hospitalization field; and contacts close at the LHD's
+   acceptance, since this workflow has no `approved_by_lhd`.
 3. `Survsys.E2ETests`: the full walkthrough regression, every document read
    against its own test as session 57 did.
 4. `docs/`: the user and technical guides brought to 1.0.0, with every "built
@@ -1766,4 +1810,4 @@ that depends on them, and a session that finds one wrong amends this phase.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 108: Release 1.0.0 (release: 1.0.0)
+### Session 109: Release 1.0.0 (release: 1.0.0)
