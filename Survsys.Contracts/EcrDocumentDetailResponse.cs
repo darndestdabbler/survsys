@@ -18,8 +18,18 @@ namespace Survsys.Contracts;
 /// </param>
 /// <param name="Conditions">The RR conditions, with their determinations and responsible agencies.</param>
 /// <param name="Findings">The validation findings of the eICR and its RRs, the eICR's first.</param>
+/// <param name="CaseStatus">
+/// The eICR's case status: <c>linked</c> once it is written to its cases,
+/// <c>review</c> while a reviewer must match its patient, or null until
+/// either is decided or where the eICR is not on file.
+/// </param>
+/// <param name="CaseReason">Why the eICR is held for review, or null.</param>
+/// <param name="CaseIds">The cases the eICR was written to.</param>
 public record EcrDocumentDetailResponse(
     EcrDocumentResponse Document,
     string? EicrHtml,
     IReadOnlyList<EcrConditionResponse> Conditions,
-    IReadOnlyList<EcrValidationFindingResponse> Findings);
+    IReadOnlyList<EcrValidationFindingResponse> Findings,
+    string? CaseStatus = null,
+    string? CaseReason = null,
+    IReadOnlyList<int>? CaseIds = null);

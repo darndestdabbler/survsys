@@ -38,6 +38,8 @@ internal sealed class EcrDocumentConfiguration : IEntityTypeConfiguration<EcrDoc
         builder.Property(document => document.RawXml).HasColumnName("raw_xml").IsRequired();
         builder.Property(document => document.Source).HasColumnName("source").HasMaxLength(260);
         builder.Property(document => document.ReceivedAt).HasColumnName("received_at");
+        builder.Property(document => document.CaseStatus).HasColumnName("case_status").HasMaxLength(10);
+        builder.Property(document => document.CaseReason).HasColumnName("case_reason").HasMaxLength(1000);
 
         builder.HasIndex(document => document.DocumentId).IsUnique();
         builder.HasIndex(document => document.SetId);

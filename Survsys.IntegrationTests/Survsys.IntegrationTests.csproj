@@ -29,6 +29,11 @@
     <!-- The ORU^R01 message the ELR intake test drops into a watched directory,
          copied beside the test assembly so the test finds it at run time. -->
     <Content Include="Fixtures\Hl7\*.hl7" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The HL7 eICR R3.1.1 sample, kept once beside the unit tests that parse it,
+         which the eCR case tests take in with their own patient and ids. -->
+    <Content Include="..\Survsys.UnitTests\Fixtures\Cda\CDAR2_IG_PHCASERPT_R2_STU3.1.1_SAMPLE.xml"
+             Link="Fixtures\Cda\CDAR2_IG_PHCASERPT_R2_STU3.1.1_SAMPLE.xml"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

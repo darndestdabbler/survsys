@@ -12233,6 +12233,79 @@ namespace Survsys.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Survsys.Data.EcrCaseLink", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("EcrDocumentId")
+                        .HasColumnType("int")
+                        .HasColumnName("ecr_document_id");
+
+                    b.Property<int>("PersonConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("person_condition_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonConditionId");
+
+                    b.HasIndex("EcrDocumentId", "PersonConditionId")
+                        .IsUnique();
+
+                    b.ToTable("ecr_case_link", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.EcrCaseValue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("EcrCaseLinkId")
+                        .HasColumnType("int")
+                        .HasColumnName("ecr_case_link_id");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("target");
+
+                    b.Property<int>("TargetId")
+                        .HasColumnType("int")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("Written")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("written");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EcrCaseLinkId");
+
+                    b.HasIndex("Target", "TargetId");
+
+                    b.ToTable("ecr_case_value", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.EcrConditionMapping", b =>
                 {
                     b.Property<int>("Id")
@@ -12281,6 +12354,16 @@ namespace Survsys.Data.Migrations
                         .HasColumnName("id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CaseReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("case_reason");
+
+                    b.Property<string>("CaseStatus")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("case_status");
 
                     b.Property<string>("DocumentId")
                         .IsRequired()
@@ -16096,6 +16179,34 @@ namespace Survsys.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Survsys.Data.EcrCaseLink", b =>
+                {
+                    b.HasOne("Survsys.Data.EcrDocument", "EcrDocument")
+                        .WithMany("CaseLinks")
+                        .HasForeignKey("EcrDocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Survsys.Data.PersonCondition", null)
+                        .WithMany()
+                        .HasForeignKey("PersonConditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EcrDocument");
+                });
+
+            modelBuilder.Entity("Survsys.Data.EcrCaseValue", b =>
+                {
+                    b.HasOne("Survsys.Data.EcrCaseLink", "EcrCaseLink")
+                        .WithMany("Values")
+                        .HasForeignKey("EcrCaseLinkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EcrCaseLink");
+                });
+
             modelBuilder.Entity("Survsys.Data.EcrConditionMapping", b =>
                 {
                     b.HasOne("Survsys.Data.Condition", null)
@@ -16656,8 +16767,15 @@ namespace Survsys.Data.Migrations
                     b.Navigation("Details");
                 });
 
+            modelBuilder.Entity("Survsys.Data.EcrCaseLink", b =>
+                {
+                    b.Navigation("Values");
+                });
+
             modelBuilder.Entity("Survsys.Data.EcrDocument", b =>
                 {
+                    b.Navigation("CaseLinks");
+
                     b.Navigation("Findings");
 
                     b.Navigation("RrConditions");

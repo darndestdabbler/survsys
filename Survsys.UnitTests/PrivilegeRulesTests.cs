@@ -85,6 +85,7 @@ public class PrivilegeRulesTests
     [InlineData("GET", "/api/person-conditions/7/hidden-elements")]
     [InlineData("GET", "/api/work-queue")]
     [InlineData("HEAD", "/api/attachments/2/content")]
+    [InlineData("GET", "/api/ecr-documents/4/person-matches")]
     public void RequiredForACaseReadIsViewCases(string method, string path)
     {
         Assert.Equal(Privileges.ViewCases, PrivilegeRules.RequiredFor(method, path));
@@ -97,6 +98,7 @@ public class PrivilegeRulesTests
     [InlineData("PUT", "/api/tasks/3/status")]
     [InlineData("PUT", "/api/cases/forms/5/answers")]
     [InlineData("POST", "/api/cases/7/treatments")]
+    [InlineData("POST", "/api/ecr-documents/4/case")]
     public void RequiredForACaseWriteIsEditCases(string method, string path)
     {
         Assert.Equal(Privileges.EditCases, PrivilegeRules.RequiredFor(method, path));

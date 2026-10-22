@@ -149,6 +149,10 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options, IAudit
 
     public DbSet<EcrRrCondition> EcrRrConditions => Set<EcrRrCondition>();
 
+    public DbSet<EcrCaseLink> EcrCaseLinks => Set<EcrCaseLink>();
+
+    public DbSet<EcrCaseValue> EcrCaseValues => Set<EcrCaseValue>();
+
     public DbSet<PhinVariable> PhinVariables => Set<PhinVariable>();
 
     public DbSet<NotificationGuide> NotificationGuides => Set<NotificationGuide>();

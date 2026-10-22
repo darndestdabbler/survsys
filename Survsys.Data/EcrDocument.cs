@@ -26,6 +26,12 @@ public class EcrDocument
     /// <summary>The feed a production document arrived on.</summary>
     public const string ProductionFeed = "production";
 
+    /// <summary>The case status of an eICR written to its cases.</summary>
+    public const string LinkedCaseStatus = "linked";
+
+    /// <summary>The case status of an eICR whose patient a reviewer must match.</summary>
+    public const string ReviewCaseStatus = "review";
+
     public int Id { get; set; }
 
     /// <summary>The document's id (ClinicalDocument/id), its root and extension joined by a caret.</summary>
@@ -60,4 +66,17 @@ public class EcrDocument
 
     /// <summary>For an RR, the conditions kept at intake as this jurisdiction's to act on; empty for an eICR.</summary>
     public List<EcrRrCondition> RrConditions { get; set; } = [];
+
+    /// <summary>
+    /// For an eICR, <see cref="LinkedCaseStatus"/> once it is written to its
+    /// cases or <see cref="ReviewCaseStatus"/> while a reviewer must match its
+    /// patient; null until either is decided, and for an RR.
+    /// </summary>
+    public string? CaseStatus { get; set; }
+
+    /// <summary>Why the eICR is held for review, or null.</summary>
+    public string? CaseReason { get; set; }
+
+    /// <summary>For an eICR, the cases it was written to.</summary>
+    public List<EcrCaseLink> CaseLinks { get; set; } = [];
 }

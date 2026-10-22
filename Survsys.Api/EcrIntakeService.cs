@@ -34,6 +34,13 @@ public sealed class EcrIntakeOptions
     /// not kept, so none is kept until this is set.
     /// </summary>
     public string[] ResponsibleAgencyIds { get; set; } = [];
+
+    /// <summary>
+    /// The senders, by the custodian id an eICR names, whose results are
+    /// written to a case as labs. Every other sender's are not, their labs
+    /// arriving by ELR, so none is written until this is set.
+    /// </summary>
+    public string[] LabSenders { get; set; } = [];
 }
 
 /// <summary>
@@ -52,15 +59,19 @@ public sealed class EcrIntakeOptions
 /// a document from being stored. A document whose id is already on file
 /// is not stored again and its file is moved to <c>.duplicate</c>; one that
 /// cannot be read is moved to <c>.failed</c>, so neither stalls the poller; a
-/// stored one is moved to <c>.processed</c>. This stores documents and no
-/// more: it stages nothing into the ELR message queue and writes no person or
-/// case.
+/// stored one is moved to <c>.processed</c>. Once an eICR and an RR making
+/// it reportable are both stored, whichever arrived second, the eICR is
+/// handed to <see cref="EcrCaseWriter"/>; a failure there leaves the document
+/// stored and its file processed. Nothing is staged into the ELR message
+/// queue.
 /// </remarks>
 public sealed class EcrIntakeService(
     CdaParser parser,
     CdaValidator validator,
     IServiceScopeFactory scopeFactory,
+    PersonMatchThresholds thresholds,
     IOptions<EcrIntakeOptions> options,
+    IOptions<CountyPrograms> counties,
     ILogger<EcrIntakeService> logger) : BackgroundService
 {
     private const string ProcessedFolder = ".processed";
@@ -147,6 +158,34 @@ public sealed class EcrIntakeService(
         database.EcrDocuments.Add(document);
         await database.SaveChangesAsync(cancellationToken);
         return document;
+    }
+
+    /// <summary>
+    /// Hands the eICR a stored document is or responds to, where it is on
+    /// file, to <see cref="EcrCaseWriter.Process"/>.
+    /// </summary>
+    public static async Task WriteCases(
+        CdaParser parser,
+        SurvsysDbContext database,
+        PersonMatchThresholds thresholds,
+        EcrCaseSettings settings,
+        EcrDocument stored,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        ArgumentNullException.ThrowIfNull(stored);
+
+        var eicrId = stored.Kind == EcrDocument.EicrKind
+            ? stored.Id
+            : await EicrOf(database.EcrDocuments, stored)
+                .Select(document => (int?)document.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+        if (eicrId is { } id)
+        {
+            await EcrCaseWriter.Process(database, parser, thresholds, settings, id, now, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -263,6 +302,24 @@ public sealed class EcrIntakeService(
                         "Stored eCR file {File} as {Kind} {DocumentId} from the {Feed} feed.",
                         fileName, stored.Kind, stored.DocumentId, feed);
                     Move(file, Path.Combine(directory, ProcessedFolder));
+
+                    try
+                    {
+                        await WriteCases(
+                            parser,
+                            database,
+                            thresholds,
+                            new EcrCaseSettings(counties.Value, options.Value.LabSenders),
+                            stored,
+                            DateTimeOffset.Now,
+                            stoppingToken);
+                    }
+                    catch (Exception failure) when (failure is not OperationCanceledException)
+                    {
+                        logger.LogError(
+                            failure, "eCR document {DocumentId} was stored, but writing its cases failed.",
+                            stored.DocumentId);
+                    }
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
