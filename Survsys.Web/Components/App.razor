@@ -1,0 +1,33 @@
+@* The document every screen is rendered into. MudBlazor's stylesheet and
+   script are loaded here, which is the one place they can be loaded from,
+   and Blazor's own script starts the interactive circuit.
+
+   Every screen is interactive but the sign-in page, which is rendered
+   statically: its form posts to this tier, which writes the cookie a circuit
+   then starts with, and a person who has not signed in has no circuit. *@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
+    <HeadOutlet @rendermode="PageRenderMode" />
+</head>
+
+<body>
+    <Routes @rendermode="PageRenderMode" />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+</body>
+
+</html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    private IComponentRenderMode? PageRenderMode =>
+        HttpContext.AcceptsInteractiveRouting() ? InteractiveServer : null;
+}

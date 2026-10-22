@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 080 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 080 transcript</h1>
+<p class="stamp">Rendered 2026-10-20T07:34:34.177Z by dabbler-ai-router 3.21.0 at 3748c9ca4b78eb9e9112a4706a05e6e4b7c97934.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-20T03:20:49.806-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 80: Connecticut ELR conformance</h3>
+<ol><li>Register.</li><li><code>Survsys.Messaging</code>: a conformance profile engine for the usage codes R, RE, O and X and the conditional C(R/X), C(RE/X), C(R/RE) and C(R/O), with a failed check recorded on the message as an exception or a warning by its usage.</li><li><code>Survsys.Messaging</code> and <code>Survsys.Api</code>: the Connecticut profile from <code>CT-ELR-HL7-251_Implementation_Guide_v1.0.pdf</code> — the CT OIDs per environment in configuration, CLIA or OID in PID-3, ORC-2/3, OBR-2/3 and SPM-2, OBR-16, OBR-17, ORC-24 and OBX-2 required, a patient town checked against the 169 CT towns, and NK1 required on a child's blood-lead result — chosen per sender.</li><li><code>Survsys.UnitTests</code>: a passing and a failing message for every CT rule.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Add HL7 conformance checking to ELR intake. Survsys.Messaging gets a small conformance profile engine: a profile is a list of rules, each naming an ER7 element (a segment, field, component or subcomponent such as PID-3.4 or NK1) with a usage of R, RE, O or X, or a conditional C(R/X), C(RE/X), C(R/RE) or C(R/O) whose predicate over the message picks the usage, and an optional value check; checking a preprocessed raw message yields failures, an exception where an R element is empty or invalid and a warning where an RE element is empty, any present element is invalid, or an X element is present. The Connecticut profile follows CT-ELR-HL7-251_Implementation_Guide_v1.0.pdf: MSH-5 and MSH-6 against the CT OIDs taken from configuration (the testing MSH-5 OID in Development, the production one otherwise); an OID or CLIA universal ID with a matching ISO/CLIA type in PID-3.4, ORC-2, ORC-3, OBR-2, OBR-3 and SPM-2's filler EI; OBR-16 (first and last name), OBR-17, ORC-24 and OBX-2 required; a CT patient's town (PID-11.3 where PID-11.4 is CT) checked against the guide's 169 CT town names as a warning, since the guide prefers but does not require them; and NK1 required when a blood-lead result (OBX-3 LOINC 5671-3, 10368-9 or 77307-7) is reported for a patient under 18 at observation. The profile is chosen per sending facility (MSH-4.1) through a Conformance configuration section; intake holds every row of a message with a failed exception-level check in the Exception state under a new non-retryable conformance category (the legacy Validation Rule Failure, 33) with the failures as its detail, and records warning-level failures on each staged row in a new ConformanceWarnings column. Unit tests give every CT rule a passing and a failing message.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/19d32fe336d06d1e8f94511344a7230741b50239"><code>19d32fe336d06d1e8f94511344a7230741b50239</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Conformance engine</td><td><p>In Survsys.Messaging add Er7Message.cs, a minimal ER7 reader over the text OruR01Parser preprocesses (make OruR01Parser.Preprocess internal so both share it): the segments in order, and the values an element path such as PID-3.4.2, ORC-24 or NK1 reads from every occurrence of the segment and every repetition of the field. Add ConformanceProfile.cs: a Usage enum (R, RE, O, X), a ConformanceRule record (element, usage when the predicate is true or there is none, usage when it is false, an optional predicate over the Er7Message, an optional value check and its description) with factory methods for the plain and the four conditional codes, a ConformanceSeverity enum (Exception, Warning), a ConformanceFailure record, and ConformanceProfile with a Name, its Rules and Check(raw) returning the failures by the rules in the task. Unit tests in Er7MessageTests.cs and ConformanceProfileTests.cs cover each usage code and each conditional both ways.</p></td><td><span class="mono">Survsys.Messaging/Er7Message.cs</span><br><span class="mono">Survsys.Messaging/ConformanceProfile.cs</span><br><span class="mono">Survsys.Messaging/OruR01Parser.cs</span><br><span class="mono">Survsys.UnitTests/Er7MessageTests.cs</span><br><span class="mono">Survsys.UnitTests/ConformanceProfileTests.cs</span></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Er7MessageTests|FullyQualifiedName~ConformanceProfileTests|FullyQualifiedName~OruR01ParserTests</code></td><td>yes</td></tr>
+<tr><td>Connecticut profile</td><td><p>In Survsys.Messaging add ConnecticutElrProfile.cs: Create(receivingApplicationOid, receivingFacilityOid) returning the Connecticut ConformanceProfile with the rules the task lists, the OID/CLIA check for HD and EI values (OID: digits and dots; CLIA: two digits, D, seven digits; type ISO or CLIA matching the form), the 169 CT town names from the guide's User-Defined Table, and the child blood-lead predicate. ConnecticutElrProfileTests.cs starts from one fully conforming CT message and, for every CT rule, asserts that message passes it and a variant breaking only that rule fails it with the expected element and severity (the session plan's item 4).</p></td><td><span class="mono">Survsys.Messaging/ConnecticutElrProfile.cs</span><br><span class="mono">Survsys.UnitTests/ConnecticutElrProfileTests.cs</span></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ConnecticutElrProfileTests</code></td><td>yes</td></tr>
+<tr><td>Record on message</td><td><p>In Survsys.Data add the conformance exception category to MessageExceptionRules (code &quot;conformance&quot;, legacy 33 Validation Rule Failure, not retryable because a retry does not re-check the unchanged message) with its test updated, and a nullable ConformanceWarnings string on StagedMessage mapped in StagedMessageConfiguration to conformance_warnings (nvarchar 2000), with an EF migration named ConformanceWarnings generated by dotnet ef and the model snapshot it updates.</p></td><td><span class="mono">Survsys.Data/MessageExceptionRules.cs</span><br><span class="mono">Survsys.Data/StagedMessage.cs</span><br><span class="mono">Survsys.Data/StagedMessageConfiguration.cs</span><br><span class="mono">Survsys.Data/Migrations/20261020100000_ConformanceWarnings.cs</span><br><span class="mono">Survsys.Data/Migrations/20261020100000_ConformanceWarnings.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span><br><span class="mono">Survsys.UnitTests/MessageExceptionRulesTests.cs</span></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~MessageExceptionRulesTests</code></td><td>yes</td></tr>
+<tr><td>Intake wiring</td><td><p>In Survsys.Api add ConformanceOptions (section Conformance: the CT receiving application and receiving facility OIDs, and SenderProfiles mapping a sending facility's MSH-4.1 to a profile name, CT the one known) beside ElrIntakeOptions, with a ProfilesBySender method building the sender-to-profile map; bind it in Program.cs; give ElrIntakeService.Stage and Receive an optional profiles-by-sender argument so a parsed message from a known sender with a profile is checked, every row held as an exception under the conformance category with the exception failures as detail where any, and the warnings recorded in ConformanceWarnings; pass the map from ElrIntakeService and MllpListener. appsettings.json carries the production CT OIDs and an empty SenderProfiles, appsettings.Development.json the testing MSH-5 OID. ElrIntakeServiceTests covers a held, a warned and an unchecked sender, and ProfilesBySender.</p></td><td><span class="mono">Survsys.Api/ElrIntakeService.cs</span><br><span class="mono">Survsys.Api/MllpListener.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.Api/appsettings.json</span><br><span class="mono">Survsys.Api/appsettings.Development.json</span><br><span class="mono">Survsys.UnitTests/ElrIntakeServiceTests.cs</span></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ElrIntakeServiceTests|FullyQualifiedName~MllpListenerTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No UI: the Web tier does not display conformance warnings in this session.</li><li>No other jurisdiction's profile and no national ELR 2.5.1 profile; only the Connecticut rules the session plan lists (no PID-11 minimum-address, MSH-21, OBX-5/6/7 consistency or vocabulary checks).</li><li>No sender profile stored on the Facility table or edited through the admin screens; the choice per sender is configuration.</li><li>No ACK generation or e-mail to the sending facility about failed checks.</li><li>No change to parsing, translation, assignment or reprocessing beyond holding a non-conforming message at intake; a retry does not re-run conformance.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[07:20:49]</span> <span class="muted">run-started</span> session=080 mode=pull</div>
+<div class="line"><span class="at">[07:20:49]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[07:23:59]</span> <span class="muted">run-resumed</span> session=080 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[07:23:59]</span> <span class="muted">plan-accepted</span> steps=[&quot;conformance-engine&quot;,&quot;connecticut-profile&quot;,&quot;record-on-message&quot;,&quot;intake-wiring&quot;] non_goals=5</div>
+<div class="line"><span class="at">[07:23:59]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[07:24:00]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=conformance-engine</div>
+<div class="line"><span class="at">[07:26:00]</span> <span class="muted">run-resumed</span> session=080 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[07:26:03]</span> <span class="muted">check-passed</span> step=conformance-engine argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[07:26:07]</span> <span class="muted">check-passed</span> step=conformance-engine argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Er7MessageTests|FullyQualifiedName~ConformanceProfileTests|FullyQualifiedName~OruR01ParserTests&quot;]</div>
+<div class="line"><span class="at">[07:26:07]</span> <span class="muted">report-accepted</span> seq=2 step=conformance-engine files=[&quot;Survsys.Messaging/Er7Message.cs&quot;,&quot;Survsys.Messaging/ConformanceProfile.cs&quot;,&quot;Survsys.Messaging/OruR01Parser.cs&quot;,&quot;Survsys.UnitTests/Er7MessageTests.cs&quot;,&quot;Survsys.UnitTests/ConformanceProfileTests.cs&quot;] notes=ER7 reader and usage-code conformance engine with tests</div>
+<div class="line"><span class="at">[07:26:07]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=connecticut-profile</div>
+<div class="line"><span class="at">[07:28:13]</span> <span class="muted">run-resumed</span> session=080 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[07:28:16]</span> <span class="muted">check-passed</span> step=connecticut-profile argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[07:28:20]</span> <span class="muted">check-passed</span> step=connecticut-profile argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ConnecticutElrProfileTests&quot;]</div>
+<div class="line"><span class="at">[07:28:21]</span> <span class="muted">report-accepted</span> seq=3 step=connecticut-profile files=[&quot;Survsys.Messaging/ConnecticutElrProfile.cs&quot;,&quot;Survsys.UnitTests/ConnecticutElrProfileTests.cs&quot;] notes=CT ELR profile with a passing and failing message per rule</div>
+<div class="line"><span class="at">[07:28:21]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=record-on-message</div>
+<div class="line"><span class="at">[07:29:36]</span> <span class="muted">run-resumed</span> session=080 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[07:29:39]</span> <span class="muted">check-passed</span> step=record-on-message argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[07:29:43]</span> <span class="muted">check-passed</span> step=record-on-message argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageExceptionRulesTests&quot;]</div>
+<div class="line"><span class="at">[07:29:44]</span> <span class="muted">report-accepted</span> seq=4 step=record-on-message files=[&quot;Survsys.Data/MessageExceptionRules.cs&quot;,&quot;Survsys.Data/StagedMessage.cs&quot;,&quot;Survsys.Data/StagedMessageConfiguration.cs&quot;,&quot;Survsys.Data/Migrations/20261020100000_ConformanceWarnings.cs&quot;,&quot;Survsys.Data/Migrations/20261020100000_ConformanceWarnings.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;,&quot;Survsys.UnitTests/MessageExceptionRulesTests.cs&quot;] notes=Conformance exception category and ConformanceWarnings column with migration</div>
+<div class="line"><span class="at">[07:29:44]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=intake-wiring</div>
+<div class="line"><span class="at">[07:32:27]</span> <span class="muted">run-resumed</span> session=080 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[07:32:30]</span> <span class="muted">check-passed</span> step=intake-wiring argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[07:32:34]</span> <span class="muted">check-passed</span> step=intake-wiring argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ElrIntakeServiceTests|FullyQualifiedName~MllpListenerTests&quot;]</div>
+<div class="line"><span class="at">[07:32:35]</span> <span class="muted">report-accepted</span> seq=5 step=intake-wiring files=[&quot;Survsys.Api/ElrIntakeService.cs&quot;,&quot;Survsys.Api/MllpListener.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.Api/appsettings.json&quot;,&quot;Survsys.Api/appsettings.Development.json&quot;,&quot;Survsys.UnitTests/ElrIntakeServiceTests.cs&quot;] notes=Conformance options per sender wired into intake staging; held, warned and unchecked cases tested</div>
+<div class="line"><span class="at">[07:32:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[07:32:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[07:32:36]</span> <span class="muted">job-started</span> name=verification pid=30600 log=.dabbler/runs/s80/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:34:05]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s80/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:34:05]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[07:34:05]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[07:34:05]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[07:34:06]</span> <span class="muted">job-started</span> name=run of record: unit pid=34724 log=.dabbler/runs/s80/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[07:34:15]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s80/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[07:34:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[07:34:22]</span> <span class="muted">landed</span> commit=19d32fe336d06d1e8f94511344a7230741b50239</div>
+<div class="line"><span class="at">[07:34:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[07:34:22]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[07:34:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[07:34:23]</span> <span class="muted">job-started</span> name=close pid=42192 log=.dabbler/runs/s80/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:34:34]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s80/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:34:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The child blood-lead/NK1 predicate is message-wide and does not associate `PID`, `OBR`, `OBX`, and `NK1` segments within a `PATIENT_RESULT` group.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Evidence:** `Survsys.Messaging/ConnecticutElrProfile.cs`, `Survsys.Messaging/Er7Message.cs`, `Survsys.UnitTests/ConnecticutElrProfileTests.cs`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Suggested case:** With a valid ORU containing two patient-result groups—an adult blood-lead patient with an `NK1`, followed by a child blood-lead patient without an `NK1`—the profile should report an `NK1` exception because the child’s group lacks next-of-kin. Today `IsChildBloodLead` finds the child birth date and blood-lead OBX anywhere in the message while `Values(&quot;NK1&quot;)` finds the adult’s NK1, so the message passes. This is non-blocking because the supplied engine contract is explicitly message-level, but it is a limitation if multi-patient ORUs are accepted.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>7s</td><td>1792</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

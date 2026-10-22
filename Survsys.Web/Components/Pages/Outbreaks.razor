@@ -1,0 +1,107 @@
+@* The outbreaks, for their management: every outbreak newest first, each name
+   the way into its detail screen, and New outbreak for an empty one. The
+   condition and the owning agency are shown by name, read across from the
+   conditions and agencies the lists already hold. *@
+@page "/outbreaks"
+@inject OutbreaksClient Client
+@inject AgenciesClient Agencies
+@inject ConditionsClient Conditions
+
+<PageTitle>Outbreaks — Survsys</PageTitle>
+
+<MudText id="outbreaks-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Outbreaks
+</MudText>
+
+<MudButton id="outbreaks-new" Variant="Variant.Filled" Color="Color.Primary" Class="mb-4"
+           Href="/outbreaks/new">
+    New outbreak
+</MudButton>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="outbreaks-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result)
+{
+    <MudPaper Elevation="1">
+        <MudSimpleTable id="outbreaks-table" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Number</th>
+                    <th>Name</th>
+                    <th>Condition</th>
+                    <th>Owning agency</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (result.Items.Count == 0)
+                {
+                    <tr id="outbreaks-empty">
+                        <td colspan="5">No outbreaks have been opened.</td>
+                    </tr>
+                }
+                @foreach (var outbreak in result.Items)
+                {
+                    <tr data-outbreak="@outbreak.Id">
+                        <td data-outbreak-number>@outbreak.Number</td>
+                        <td data-outbreak-name>
+                            <MudLink Href="@($"/outbreaks/{outbreak.Id}")">@outbreak.Name</MudLink>
+                        </td>
+                        <td data-outbreak-condition>@ConditionName(outbreak.ConditionId)</td>
+                        <td data-outbreak-agency>@AgencyName(outbreak.AgencyId)</td>
+                        <td data-outbreak-status>@StatusText(outbreak.Status)</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+else
+{
+    <MudAlert id="outbreaks-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    private Asked<PagedResult<OutbreakResponse>>? asked;
+
+    private IReadOnlyDictionary<int, string> agencyNames = new Dictionary<int, string>();
+
+    private IReadOnlyDictionary<int, string> conditionNames = new Dictionary<int, string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        asked = await Client.All();
+
+        // The condition and owning agency are shown by name. Their lists are
+        // read for the lookup, and a list that does not load leaves its names
+        // blank rather than failing the outbreaks the screen is here to show.
+        if ((await Agencies.All()).Value is { } agencies)
+        {
+            agencyNames = agencies.Items.ToDictionary(agency => agency.Id, agency => agency.Name);
+        }
+
+        if ((await Conditions.Page(1, 200)).Value is { } conditions)
+        {
+            conditionNames = conditions.Items.ToDictionary(
+                condition => condition.Id,
+                condition => condition.Name);
+        }
+    }
+
+    private string ConditionName(int? id) =>
+        id is { } key && conditionNames.TryGetValue(key, out var name) ? name : string.Empty;
+
+    private string AgencyName(int? id) =>
+        id is { } key && agencyNames.TryGetValue(key, out var name) ? name : string.Empty;
+
+    private static string StatusText(int status) => status switch
+    {
+        0 => "Active",
+        1 => "Completed",
+        _ => status.ToString(),
+    };
+}
