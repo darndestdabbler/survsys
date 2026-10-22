@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 105 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 105 transcript</h1>
+<p class="stamp">Rendered 2026-10-22T17:12:27.000Z by dabbler-ai-router 3.23.0 at 53284aa37854e60fb678dbc36a80c10875de73c2.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-22T12:57:49.203-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 105: eCR senders and data quality</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code> and <code>Survsys.Api</code>: eCR senders with their onboarding stage — test, validation, production — and their settings, with their migration.</li><li><code>Survsys.Web</code>: a senders screen and a data quality screen by sender and condition: volumes, validation findings, receipt latency, and an RR with no eICR or an eICR with no RR.</li><li><code>Survsys.IntegrationTests</code>: the quality figures over seeded documents.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Register eCR senders and show eCR data quality by sender and condition. Survsys.Messaging's CdaParser reads each document's creation time (ClinicalDocument/effectiveTime) into CdaDocument. Survsys.Data gets an ecr_sender table (the sender's id as an eICR's custodian names it, unique; its name; its onboarding stage, 'test', 'validation' or 'production'; and its one setting, whether its eICR results are written to a case as labs) and ecr_document gains the document's sender (its custodian, as parsed) and its creation time, in one migration, EcrSenders. EcrIntakeService records both at intake. The senders whose results are written as labs move from the EcrIntakeOptions.LabSenders configuration list onto the sender rows, read where EcrCaseSettings is built. Survsys.Api adds /api/ecr-senders (list, add, save, delete, validated: id and name required, the id unique, the stage one of the three), gated as reference data, and GET /api/ecr-quality (optional feed and received-from/to dates) behind the privilege the eCR queue uses, answering one row per sender and condition: the sender is an eICR's own and an RR's eICR's, none for an RR with no eICR; the condition is each mapped catalogue condition (else the code's display name) an eICR's RRs keep, none for an eICR without one; and each row gives the eICRs and RRs received, their validation errors and warnings, the average and longest receipt latency (an eICR's received time less its creation time), the eICRs with no RR and the RRs with no eICR. A static EcrQuality computes the rows from the documents in memory. Survsys.Web adds an eCR senders screen (list, add, edit, delete) and an eCR data quality screen (the rows in a table with the feed and date filters), each with a nav entry. Integration tests prove the quality figures over seeded documents and the sender endpoints against SQL Server.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/f23c93a9c3be8fbf24ececafec557786f87cf66d"><code>f23c93a9c3be8fbf24ececafec557786f87cf66d</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Cda created</td><td><p>CdaDocument gains Created, the document's ClinicalDocument/effectiveTime as a DateTimeOffset (the HL7 TS with its offset, UTC where none is given; null where absent or unreadable), read by CdaParser.Read. CdaParserTests prove it for the IG samples and an absent effectiveTime.</p></td><td><span class="mono">Survsys.Messaging/CdaDocument.cs</span><br><span class="mono">Survsys.Messaging/CdaParser.cs</span><br><span class="mono">Survsys.UnitTests/CdaParserTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.CdaParserTests</code></td><td>yes</td></tr>
+<tr><td>Ecr sender data</td><td><p>In Survsys.Data add EcrSender (Id, SenderId unique, Name, Stage with constants for test, validation and production, TakesLabResults) mapped to ecr_sender by EcrSenderConfiguration; EcrDocument gains Sender (the custodian id, nullable, indexed) and CreatedAt (nullable); the DbSet, and the migration EcrSenders with the model snapshot updated.</p></td><td><span class="mono">Survsys.Data/EcrSender.cs</span><br><span class="mono">Survsys.Data/EcrSenderConfiguration.cs</span><br><span class="mono">Survsys.Data/EcrDocument.cs</span><br><span class="mono">Survsys.Data/EcrDocumentConfiguration.cs</span><br><span class="mono">Survsys.Data/SurvsysDbContext.cs</span><br><span class="mono">Survsys.Data/Migrations/20261022200000_EcrSenders.cs</span><br><span class="mono">Survsys.Data/Migrations/20261022200000_EcrSenders.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Ecr sender endpoints</td><td><p>Add EcrSenderEndpoints to Survsys.Api, following EcrConditionMappingEndpoints without its CSV: GET /api/ecr-senders lists the senders, POST adds one, PUT /{id} saves one, DELETE /{id} deletes one, with a public WhyNotASender validation (id and name required and within their lengths, stage one of the three) and the id's uniqueness checked in the query class. Wire shapes EcrSenderResponse and SaveEcrSenderRequest in Survsys.Contracts; registered in Program.cs; the route added to PrivilegeRules' reference-data paths. EcrIntakeService.Stage records the parsed custodian as the document's Sender and Created as its CreatedAt. EcrIntakeOptions.LabSenders is removed, with its appsettings.json key, and the EcrCaseSettings built in EcrIntakeService and EcrEndpoints take the sender ids whose TakesLabResults is set. Unit tests: EcrSenderEndpointsTests cover WhyNotASender, PrivilegeRulesTests the new route, EcrIntakeServiceTests the sender and creation time Stage records.</p></td><td><span class="mono">Survsys.Api/EcrSenderEndpoints.cs</span><br><span class="mono">Survsys.Api/EcrIntakeService.cs</span><br><span class="mono">Survsys.Api/EcrEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.Api/PrivilegeRules.cs</span><br><span class="mono">Survsys.Api/appsettings.json</span><br><span class="mono">Survsys.Contracts/EcrSenderResponse.cs</span><br><span class="mono">Survsys.Contracts/SaveEcrSenderRequest.cs</span><br><span class="mono">Survsys.UnitTests/EcrSenderEndpointsTests.cs</span><br><span class="mono">Survsys.UnitTests/PrivilegeRulesTests.cs</span><br><span class="mono">Survsys.UnitTests/EcrIntakeServiceTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrSenderEndpointsTests|FullyQualifiedName~Survsys.UnitTests.PrivilegeRulesTests|FullyQualifiedName~Survsys.UnitTests.EcrIntakeServiceTests|FullyQualifiedName~Survsys.UnitTests.ArchitectureTests</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Ecr quality endpoint</td><td><p>Add a static EcrQuality to Survsys.Api whose public Rows takes the eICRs and RRs as plain records (id, document id, kind, sender, received and created times, error and warning counts, the RR's eICR document id, its kept conditions' names) and answers the rows by sender and condition: an RR attributed to its eICR's sender, none where its eICR is not on file; an eICR under each condition its RRs keep (the mapped catalogue condition's name, else the code's display name, else the code), none where they keep none; each row with the eICRs and RRs received, errors, warnings, average and longest latency in minutes (received less created, where created is known), eICRs with no RR and RRs with no eICR. EcrEndpoints adds GET /api/ecr-quality with optional feed, from and to (received date, inclusive) that loads those records without the raw XML and hands them to Rows. Wire shape EcrQualityRowResponse in Survsys.Contracts. Unit tests in EcrQualityTests prove the attribution, the condition split, the counts and the latency; EcrEndpointsTests cover the route if it tests the others.</p></td><td><span class="mono">Survsys.Api/EcrQuality.cs</span><br><span class="mono">Survsys.Api/EcrEndpoints.cs</span><br><span class="mono">Survsys.Contracts/EcrQualityRowResponse.cs</span><br><span class="mono">Survsys.UnitTests/EcrQualityTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrQualityTests|FullyQualifiedName~Survsys.UnitTests.EcrEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Sender and quality screens</td><td><p>In Survsys.Web add EcrSendersClient (list, add, save, delete) registered in Program.cs, and EcrClient gains Quality(feed, from, to). Add an eCR senders page at /ecr/senders (the senders in a table, each row's name, stage and lab setting edited and saved, add and delete) and an eCR data quality page at /ecr/quality (the rows in a table with feed and date filters, a blank sender shown as 'No eICR' and a blank condition as 'None'), each linked from the navigation. Unit tests in EcrSendersClientTests prove the new client's requests and EcrClientTests cover Quality.</p></td><td><span class="mono">Survsys.Web/EcrSendersClient.cs</span><br><span class="mono">Survsys.Web/EcrClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.Web/Components/Pages/EcrSenders.razor</span><br><span class="mono">Survsys.Web/Components/Pages/EcrQuality.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span><br><span class="mono">Survsys.UnitTests/EcrSendersClientTests.cs</span><br><span class="mono">Survsys.UnitTests/EcrClientTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrSendersClientTests|FullyQualifiedName~Survsys.UnitTests.EcrClientTests</code><br><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Quality integration tests</td><td><p>Add Survsys.IntegrationTests/EcrQualityTests against SQL Server: seed eICRs and RRs from two senders on the production feed (a paired eICR and RR with a mapped kept condition, an eICR with no RR, an RR with no eICR, a document with findings, a document on the test feed and one outside the date range) and prove GET /api/ecr-quality's rows, counts, latency and filters. Add Survsys.IntegrationTests/EcrSenderEndpointsTests proving the sender CRUD and its refusals, and that an eICR from a sender whose TakesLabResults is set has its results written as a lab, updating EcrCaseWriterTests where they relied on EcrIntakeOptions.LabSenders.</p></td><td><span class="mono">Survsys.IntegrationTests/EcrQualityTests.cs</span><br><span class="mono">Survsys.IntegrationTests/EcrSenderEndpointsTests.cs</span></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>The onboarding stage gates nothing: intake, validation, reportability and case writing behave the same for a sender at any stage, and for a document whose sender is not registered; no sender is registered automatically.</li><li>No backfill of the sender or creation time of documents stored before this session; their quality figures show them with no sender and no latency.</li><li>No charts, trends over time, alerting, export or scheduled report of the quality figures, and no CSV import or export of senders.</li><li>No walkthroughs or Playwright tests (session 106), and no change to the ELR path, CdaValidator, EcrReportability's routing or EcrCaseWriter's writing beyond where its lab senders come from.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[16:57:49]</span> <span class="muted">run-started</span> session=105 mode=pull</div>
+<div class="line"><span class="at">[16:57:49]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[16:59:37]</span> <span class="muted">run-resumed</span> session=105 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[16:59:38]</span> <span class="muted">plan-accepted</span> steps=[&quot;cda-created&quot;,&quot;ecr-sender-data&quot;,&quot;ecr-sender-endpoints&quot;,&quot;ecr-quality-endpoint&quot;,&quot;sender-and-quality-screens&quot;,&quot;quality-integration-tests&quot;] non_goals=4</div>
+<div class="line"><span class="at">[16:59:38]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[16:59:38]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=cda-created</div>
+<div class="line"><span class="at">[17:00:42]</span> <span class="muted">run-resumed</span> session=105 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:00:47]</span> <span class="muted">check-passed</span> step=cda-created argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.CdaParserTests&quot;]</div>
+<div class="line"><span class="at">[17:00:47]</span> <span class="muted">report-accepted</span> seq=2 step=cda-created files=[&quot;Survsys.Messaging/CdaDocument.cs&quot;,&quot;Survsys.Messaging/CdaParser.cs&quot;,&quot;Survsys.UnitTests/CdaParserTests.cs&quot;] notes=CdaDocument.Created reads ClinicalDocument/effectiveTime at its offset, else UTC</div>
+<div class="line"><span class="at">[17:00:47]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=ecr-sender-data</div>
+<div class="line"><span class="at">[17:01:53]</span> <span class="muted">run-resumed</span> session=105 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:01:55]</span> <span class="muted">check-passed</span> step=ecr-sender-data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[17:01:55]</span> <span class="muted">report-accepted</span> seq=3 step=ecr-sender-data files=[&quot;Survsys.Data/EcrSender.cs&quot;,&quot;Survsys.Data/EcrSenderConfiguration.cs&quot;,&quot;Survsys.Data/EcrDocument.cs&quot;,&quot;Survsys.Data/EcrDocumentConfiguration.cs&quot;,&quot;Survsys.Data/SurvsysDbContext.cs&quot;,&quot;Survsys.Data/Migrations/20261022200000_EcrSenders.cs&quot;,&quot;Survsys.Data/Migrations/20261022200000_EcrSenders.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=ecr_sender table and ecr_document sender and created_at in migration EcrSenders</div>
+<div class="line"><span class="at">[17:01:55]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=ecr-sender-endpoints</div>
+<div class="line"><span class="at">[17:03:46]</span> <span class="muted">run-resumed</span> session=105 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:04:02]</span> <span class="muted">check-passed</span> step=ecr-sender-endpoints argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrSenderEndpointsTests|FullyQualifiedName~Survsys.UnitTests.PrivilegeRulesTests|FullyQualifiedName~Survsys.UnitTests.EcrIntakeServiceTests|FullyQualifiedName~Survsys.UnitTests.ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[17:04:04]</span> <span class="muted">check-passed</span> step=ecr-sender-endpoints argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[17:04:05]</span> <span class="muted">report-accepted</span> seq=4 step=ecr-sender-endpoints files=[&quot;Survsys.Api/EcrSenderEndpoints.cs&quot;,&quot;Survsys.Api/EcrIntakeService.cs&quot;,&quot;Survsys.Api/EcrEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.Api/PrivilegeRules.cs&quot;,&quot;Survsys.Api/appsettings.json&quot;,&quot;Survsys.Contracts/EcrSenderResponse.cs&quot;,&quot;Survsys.Contracts/SaveEcrSenderRequest.cs&quot;,&quot;Survsys.UnitTests/EcrSenderEndpointsTests.cs&quot;,&quot;Survsys.UnitTests/PrivilegeRulesTests.cs&quot;,&quot;Survsys.UnitTests/EcrIntakeServiceTests.cs&quot;] notes=Sender CRUD endpoints gated as reference data; intake records sender and creation time; lab senders read from ecr_sender</div>
+<div class="line"><span class="at">[17:04:05]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=ecr-quality-endpoint</div>
+<div class="line"><span class="at">[17:06:50]</span> <span class="muted">run-resumed</span> session=105 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:06:50]</span> <span class="muted">step-file-unchanged</span> step=ecr-quality-endpoint file=Survsys.UnitTests/EcrEndpointsTests.cs</div>
+<div class="line"><span class="at">[17:06:54]</span> <span class="muted">check-passed</span> step=ecr-quality-endpoint argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrQualityTests|FullyQualifiedName~Survsys.UnitTests.EcrEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[17:06:54]</span> <span class="muted">report-accepted</span> seq=5 step=ecr-quality-endpoint files=[&quot;Survsys.Api/EcrQuality.cs&quot;,&quot;Survsys.Api/EcrEndpoints.cs&quot;,&quot;Survsys.Contracts/EcrQualityRowResponse.cs&quot;,&quot;Survsys.UnitTests/EcrQualityTests.cs&quot;] notes=EcrQuality.Rows and GET /api/ecr-quality; EcrEndpointsTests unchanged as it tests no routes</div>
+<div class="line"><span class="at">[17:06:54]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=sender-and-quality-screens</div>
+<div class="line"><span class="at">[17:08:52]</span> <span class="muted">run-resumed</span> session=105 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:08:56]</span> <span class="muted">check-passed</span> step=sender-and-quality-screens argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrSendersClientTests|FullyQualifiedName~Survsys.UnitTests.EcrClientTests&quot;]</div>
+<div class="line"><span class="at">[17:08:57]</span> <span class="muted">check-passed</span> step=sender-and-quality-screens argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[17:08:58]</span> <span class="muted">report-accepted</span> seq=6 step=sender-and-quality-screens files=[&quot;Survsys.Web/EcrSendersClient.cs&quot;,&quot;Survsys.Web/EcrClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.Web/Components/Pages/EcrSenders.razor&quot;,&quot;Survsys.Web/Components/Pages/EcrQuality.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;,&quot;Survsys.UnitTests/EcrSendersClientTests.cs&quot;,&quot;Survsys.UnitTests/EcrClientTests.cs&quot;] notes=Senders screen at /ecr/senders and data quality screen at /ecr/quality with nav entries; EcrSendersClient and EcrClient.Quality</div>
+<div class="line"><span class="at">[17:08:58]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=quality-integration-tests</div>
+<div class="line"><span class="at">[17:10:50]</span> <span class="muted">run-resumed</span> session=105 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:10:51]</span> <span class="muted">step-file-unchanged</span> step=quality-integration-tests file=Survsys.IntegrationTests/EcrCaseWriterTests.cs</div>
+<div class="line"><span class="at">[17:10:52]</span> <span class="muted">check-passed</span> step=quality-integration-tests argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[17:10:53]</span> <span class="muted">report-accepted</span> seq=7 step=quality-integration-tests files=[&quot;Survsys.IntegrationTests/EcrQualityTests.cs&quot;,&quot;Survsys.IntegrationTests/EcrSenderEndpointsTests.cs&quot;] notes=Quality figures and sender CRUD proven on SQL Server; EcrCaseWriterTests unchanged as it builds EcrCaseSettings directly; Ecr integration classes run by hand, 18 passed</div>
+<div class="line"><span class="at">[17:10:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[17:10:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[17:10:53]</span> <span class="muted">job-started</span> name=verification pid=49744 log=.dabbler/runs/s105/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[17:11:58]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s105/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[17:11:58]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[17:11:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[17:11:59]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[17:11:59]</span> <span class="muted">job-started</span> name=run of record: unit pid=33416 log=.dabbler/runs/s105/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[17:12:16]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s105/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[17:12:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[17:12:20]</span> <span class="muted">landed</span> commit=f23c93a9c3be8fbf24ececafec557786f87cf66d</div>
+<div class="line"><span class="at">[17:12:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[17:12:20]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[17:12:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[17:12:21]</span> <span class="muted">job-started</span> name=close pid=52760 log=.dabbler/runs/s105/driver/jobs/close.log</div>
+<div class="line"><span class="at">[17:12:26]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s105/driver/jobs/close.log</div>
+<div class="line"><span class="at">[17:12:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>17s</td><td>2260</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
