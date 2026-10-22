@@ -1,0 +1,261 @@
+@* The PHIN variables a notification guide can carry, for their management:
+   every variable by identifier, filtered as typed, a form to add or edit one,
+   and the rule set type and configuration that format its value. A variable
+   with no configuration is given a new empty one, and the configuration opens
+   in its own editor. A variable a guide still carries is not deleted: the API
+   says so, and the message shows here. *@
+@page "/phin-variables"
+@inject PhinVariablesClient Client
+@inject RuleSetsClient RuleSets
+@inject NavigationManager Navigation
+
+<PageTitle>PHIN variables — Survsys</PageTitle>
+
+<MudText id="phin-variables-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    PHIN variables
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="phin-variables-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@whyNot</MudAlert>
+}
+
+@if (loading)
+{
+    <MudProgressCircular id="phin-variables-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudPaper id="phin-variables-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">@(form.Existing ? $"Edit {form.PhinVar}" : "New PHIN variable")</MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="form.PhinVar" id="phin-variables-phin-var" Label="Identifier"
+                              Variant="Variant.Outlined" Required="true" MaxLength="50" Disabled="@form.Existing" />
+            </MudItem>
+            <MudItem xs="12" sm="9">
+                <MudTextField @bind-Value="form.Description" id="phin-variables-description" Label="Description"
+                              Variant="Variant.Outlined" Required="true" MaxLength="500" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="form.Identifier" id="phin-variables-identifier" Label="Standard identifier"
+                              Variant="Variant.Outlined" MaxLength="50" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="form.CodeSystem" id="phin-variables-code-system" Label="Code system"
+                              Variant="Variant.Outlined" MaxLength="50" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="form.Hl7DataType" id="phin-variables-data-type" Label="HL7 data type"
+                              Variant="Variant.Outlined" MaxLength="20" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="form.Priority" id="phin-variables-priority" Label="Priority"
+                              Variant="Variant.Outlined" MaxLength="10" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="form.Status" id="phin-variables-status" Label="Status"
+                              Variant="Variant.Outlined" MaxLength="20" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="int?" id="phin-variables-rule-set-type" Label="Rule set type" Variant="Variant.Outlined"
+                           @bind-Value="form.RuleSetId">
+                    <MudSelectItem T="int?" Value="@((int?)null)">(none)</MudSelectItem>
+                    @foreach (var type in types)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)type.Id)">@type.Label</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="8" Class="d-flex gap-2 align-center">
+                @if (form.RuleSetConfigId is { } configId)
+                {
+                    <MudText id="phin-variables-rule-set-config">Rule set configuration #@configId</MudText>
+                    <MudButton id="phin-variables-rule-set-edit" Variant="Variant.Outlined" Href="@($"/rule-sets/{configId}")">
+                        Edit rule set
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton id="phin-variables-rule-set-new" Variant="Variant.Outlined" Disabled="@saving"
+                               OnClick="@NewRuleSet">
+                        New rule set
+                    </MudButton>
+                }
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="form.Note" id="phin-variables-note" Label="Note" Variant="Variant.Outlined"
+                              Lines="2" MaxLength="1000" />
+            </MudItem>
+        </MudGrid>
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="phin-variables-save" Variant="Variant.Filled" Color="Color.Primary" Disabled="@saving"
+                       OnClick="@Save">
+                Save
+            </MudButton>
+            <MudButton id="phin-variables-new" Variant="Variant.Outlined" Disabled="@saving"
+                       OnClick="@(() => { form = new(); failure = null; })">
+                New
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    <MudTextField @bind-Value="filter" id="phin-variables-filter" Label="Find" Variant="Variant.Outlined"
+                  Immediate="true" Class="mb-2" />
+    <MudSimpleTable id="phin-variables-table" Dense="true" Hover="true">
+        <thead>
+            <tr><th>Identifier</th><th>Description</th><th>Data type</th><th>Rule set</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var row in variables.Where(Matches))
+            {
+                <tr id="@($"phin-variables-row-{row.PhinVar}")">
+                    <td>@row.PhinVar</td>
+                    <td>@row.Description</td>
+                    <td>@row.Hl7DataType</td>
+                    <td>@TypeLabel(row.RuleSetId)@(row.RuleSetConfigId is { } config ? $" #{config}" : "")</td>
+                    <td>
+                        <MudButton id="@($"phin-variables-edit-{row.PhinVar}")" Size="Size.Small" Variant="Variant.Text"
+                                   OnClick="@(() => { form = new VariableForm(row); failure = null; })">
+                            Edit
+                        </MudButton>
+                        <MudButton id="@($"phin-variables-delete-{row.PhinVar}")" Size="Size.Small" Variant="Variant.Text"
+                                   Color="Color.Error" OnClick="@(() => Delete(row.PhinVar))">
+                            Delete
+                        </MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+@code {
+    private IReadOnlyList<PhinVariableRow> variables = [];
+
+    private IReadOnlyList<RuleSetTypeRow> types = [];
+
+    private VariableForm form = new();
+
+    private string? filter;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var loadedTypes = await RuleSets.Types();
+        types = loadedTypes.Value ?? [];
+        failure = loadedTypes.Failure;
+        await Load();
+        loading = false;
+    }
+
+    private async Task Load()
+    {
+        var loaded = await Client.List();
+        variables = loaded.Value ?? [];
+        failure ??= loaded.Failure;
+    }
+
+    private bool Matches(PhinVariableRow row) =>
+        string.IsNullOrWhiteSpace(filter)
+        || row.PhinVar.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase)
+        || row.Description.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private string? TypeLabel(int? id) => id is null ? null : types.FirstOrDefault(type => type.Id == id)?.Label ?? $"#{id}";
+
+    private async Task<bool> SaveForm()
+    {
+        saving = true;
+        failure = null;
+        var saved = form.Existing ? await Client.Update(form.ToRow()) : await Client.Create(form.ToRow());
+        saving = false;
+
+        if (saved.Value is { } row)
+        {
+            form = new VariableForm(row);
+            await Load();
+            return true;
+        }
+
+        failure = saved.Failure;
+        return false;
+    }
+
+    private Task Save() => SaveForm();
+
+    /// <summary>Gives the variable a new, empty rule set configuration, saves it, and opens the configuration.</summary>
+    private async Task NewRuleSet()
+    {
+        saving = true;
+        failure = null;
+        var created = await RuleSets.Create(new RuleSetConfigRow(0, null, null, false, [], [], [], []));
+        saving = false;
+
+        if (created.Value is not { } config)
+        {
+            failure = created.Failure;
+            return;
+        }
+
+        form.RuleSetConfigId = config.Id;
+        if (await SaveForm())
+        {
+            Navigation.NavigateTo($"/rule-sets/{config.Id}");
+        }
+    }
+
+    private async Task Delete(string phinVar)
+    {
+        failure = await Client.Delete(phinVar);
+
+        if (failure is null)
+        {
+            await Load();
+        }
+    }
+
+    private sealed class VariableForm
+    {
+        public VariableForm()
+        {
+        }
+
+        public VariableForm(PhinVariableRow row)
+        {
+            Existing = true;
+            (PhinVar, Description, Identifier, Priority, Hl7DataType, RuleSetId, RuleSetConfigId, Status, Note, CodeSystem) =
+                (row.PhinVar, row.Description, row.Identifier, row.Priority, row.Hl7DataType, row.RuleSetId,
+                    row.RuleSetConfigId, row.Status, row.Note, row.CodeSystem);
+        }
+
+        public bool Existing { get; }
+
+        public string? PhinVar { get; set; }
+
+        public string? Description { get; set; }
+
+        public string? Identifier { get; set; }
+
+        public string? Priority { get; set; }
+
+        public string? Hl7DataType { get; set; }
+
+        public int? RuleSetId { get; set; }
+
+        public int? RuleSetConfigId { get; set; }
+
+        public string? Status { get; set; }
+
+        public string? Note { get; set; }
+
+        public string? CodeSystem { get; set; }
+
+        public PhinVariableRow ToRow() =>
+            new(PhinVar ?? "", Description ?? "", Identifier, Priority, Hl7DataType, RuleSetId, RuleSetConfigId, Status, Note, CodeSystem);
+    }
+}

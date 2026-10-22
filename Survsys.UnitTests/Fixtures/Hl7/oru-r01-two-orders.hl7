@@ -1,0 +1,10 @@
+MSH|^~\&|LAB_SYSTEM|TEST_LAB^2.16.840.1.113883.3.72.5.30.1^ISO|EMSA|UTAH_DPH^2.16.840.1.113883.3.72.5.20^ISO|20260314120000||ORU^R01^ORU_R01|MSG00002|P|2.5.1
+PID|1||TESTPAT002^^^TEST_LAB^MR||ROE^JANE||19900220|F||2106-3^White^CDCREC|45 Elm St^^Hartford^CT^06103
+ORC|RE|ORD002^TEST_LAB
+OBR|1|ORD002^TEST_LAB|OBR002^TEST_LAB|11585-7^Chlamydia trachomatis Ag [Presence] in Specimen^LN|||20260313080000
+OBX|1|CWE|11585-7^Chlamydia trachomatis Ag [Presence] in Specimen^LN||260373001^Detected^SCT|||A|||F
+SPM|1|||119364003^Serum specimen^SCT|||||||||||||20260313073000
+ORC|RE|ORD003^TEST_LAB
+OBR|2|ORD003^TEST_LAB|OBR003^TEST_LAB|5196-1^Hepatitis B virus surface Ag [Presence] in Serum^LN|||20260313090000
+OBX|1|CWE|5196-1^Hepatitis B virus surface Ag [Presence] in Serum^LN||260415000^Not detected^SCT|||N|||F
+OBX|2|NM|1751-7^Albumin [Mass/volume] in Serum^LN||4.1|g/dL^grams per deciliter^UCUM|3.5-5.0|N|||F

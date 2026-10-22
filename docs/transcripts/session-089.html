@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 089 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 089 transcript</h1>
+<p class="stamp">Rendered 2026-10-21T10:14:20.761Z by dabbler-ai-router 3.21.0 at f8b8a364fcbd4b1309c67a5b82ce5e145ad76dbb.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-21T05:42:02.036-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 89: Auto-queue on every change, queue actions and reconciliation</h3>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: a case queued for notification on every change that reaches a notified variable — labs, clinical, investigation, administrative and demographics — when the condition's print criteria pass; the print criteria per condition, with their migration.</li><li><code>Survsys.Api</code> and <code>Survsys.Web</code>: remove from the queue, retract a sent notification (NOT118 = X), resend, export specific records or an MMWR range, and the reconciliation cutoff stored and set on screen.</li><li><code>Survsys.IntegrationTests</code>: each queue action and the cutoff's effect.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Finish the notification queue's review side. Survsys.Data gains nmi_condition_print_criteria (a condition and a case status code from CaseStatusRules that makes it notifiable), a single-row nmi_reconciliation_cutoff (MMWR year and week, read as the existing ReconciliationCutoff struct), and a Retract flag on nmi_export_queue, in one migration that seeds Confirmed and Probable for every existing condition. CaseNotificationQueue gains QueueChangeAsync, which stages the existing upsert only when the case's condition's print criteria pass its current case status; the case write paths that reach a notified variable call it in the same unit of work â€” case create, update, status and promote in PersonConditionEndpoints, labs (including those the ELR writer adds through LabQueries), clinical, investigation, administrative, and a person's demographics for each of the person's cases. The print criteria are read and replaced per condition (GET and PUT /api/conditions/{id}/print-criteria) and edited on the condition screen. Queue actions: DELETE /api/notification-queue/{personConditionId} removes an entry; POST /api/notification-queue/{personConditionId}/retract queues a case CDC accepted before as a retraction, which the builder sends with NOT118 = X; POST /api/export-log/{id}/resend queues a logged case again; POST /api/notification-queue/records queues cases by record number, answering with how many were queued and which numbers are unknown; POST /api/notification-queue/mmwr-range queues the morbidity cases of an MMWR year and week range, optionally one condition, whose print criteria pass. The reconciliation cutoff is read and set at GET and PUT /api/reconciliation-cutoff, and GET /api/reconciliation-cutoff/totals counts, by condition and MMWR year, the cases CDC accepted whose MMWR position the cutoff counts â€” the legacy verification totals and the cutoff's effect. The Notification queue screen gains remove and the record and MMWR-range exports, the Export log screen gains resend and retract, and a Reconciliation cutoff admin screen sets the cutoff and shows the totals. Integration tests cover each queue action, the print-criteria gate on each write path, and the cutoff's effect on the totals.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/4d1149f0401aea93f79141ad9cbc4199fa7b2290"><code>4d1149f0401aea93f79141ad9cbc4199fa7b2290</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Notification review data</td><td><p>In Survsys.Data add ConditionPrintCriterion (table nmi_condition_print_criteria: Id, ConditionId cascading from condition, CaseStatus code max 2, unique on the pair) with its configuration, ReconciliationCutoffSetting (table nmi_reconciliation_cutoff: Id, MmwrYear, MmwrWeek, with ToCutoff() returning ReconciliationCutoff) with its configuration, a Retract bool (retract, default false) on NotificationQueueEntry and its configuration, and DbSets on SurvsysDbContext. Add migration 20261021120000_NotificationReview with its Designer file and the snapshot; the migration seeds print criteria C and P for every existing condition and leaves the cutoff table empty.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>git grep --untracked -q -F nmi_condition_print_criteria -- Survsys.Data/Migrations/20261021120000_NotificationReview.cs</code></td><td>yes</td></tr>
+<tr><td>Print criteria api</td><td><p>Add GET /api/conditions/{id}/print-criteria (the condition's notifiable case status codes) and PUT /api/conditions/{id}/print-criteria (replaces them; refuses a code CaseStatusRules does not assign, 404 for an unknown condition) in ConditionEndpoints, with ConditionPrintCriteriaRequest and ConditionPrintCriteriaResponse contracts, and their integration tests in ConditionEndpointsTests.</p></td><td></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Auto queue on change</td><td><p>Add CaseNotificationQueue.QueueChangeAsync(CaseChanged): reads the case (tracked first, so a status changed in the same unit of work counts) and stages EnqueueAsync only when nmi_condition_print_criteria holds its condition and case status. PersonConditionQueries' QueueForNotification calls it; LabQueries (create, update and delete of labs, tests, results and resistance tests), ClinicalQueries, InvestigationQueries and AdministrativeQueries call it for the case they wrote, and PersonQueries' update calls it for each of the person's cases â€” each building a CaseNotificationQueue over its own context so constructors and MessageCaseWriter do not change. The manual queue action keeps the ungated EnqueueAsync. Integration tests: a case meeting its criteria is queued and one not meeting them is not, in CaseNotificationQueueTests, and a write through each area queues the case in LabEndpointsTests, ClinicalEndpointsTests, InvestigationAdministrativeEndpointsTests and PersonEndpointsTests; ContactEventEndpointsTests' promotion test gives the promoted case a notifiable status.</p></td><td></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Queue actions api</td><td><p>In NotificationQueueEndpoints add DELETE /api/notification-queue/{personConditionId} (404 when not queued), POST /api/notification-queue/{personConditionId}/retract (409 when CDC never accepted the case; otherwise upserts the entry with Retract set and unheld), POST /api/notification-queue/records (ExportRecordsRequest of record numbers; queues each known case through EnqueueAsync and answers NotificationExportResponse with the count queued and the unknown numbers) and POST /api/notification-queue/mmwr-range (ExportMmwrRangeRequest: MMWR year, start and end week, optional condition id; queues the morbidity cases in the range whose print criteria pass). In ExportLogEndpoints add POST /api/export-log/{id}/resend, which queues the log row's case again. NotificationQueueItemResponse carries Retract. NotificationMessageBuilder.Build takes a retract flag that sets NOT118 to X, and NotificationQueueService.Process passes the entry's flag. Integration tests for each action in NotificationQueueEndpointsTests and ExportLogEndpointsTests, and the retraction's NOT118 in NotificationMessageBuilderTests.</p></td><td></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Reconciliation cutoff api</td><td><p>Add Survsys.Api/ReconciliationCutoffEndpoints.cs: GET /api/reconciliation-cutoff (the stored cutoff, 404 when none is set), PUT /api/reconciliation-cutoff (ReconciliationCutoffRequest; refuses a week outside 1â€“53; upserts the single row) and GET /api/reconciliation-cutoff/totals (by condition and MMWR year, the count of morbidity cases with an accepted nmi_log row whose print criteria pass and whose MMWR position ReconciliationCutoff.Counts, every such case when no cutoff is set), with ReconciliationCutoffResponse and ReconciliationTotalResponse contracts, mapped in Program.cs. Integration tests in ReconciliationCutoffEndpointsTests: set and read back, a refused week, and a case before and after a moved cutoff entering and leaving the totals.</p></td><td></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Queue actions web</td><td><p>NotificationQueueClient gains Remove, ExportRecords and ExportMmwrRange; ExportLogClient gains Resend and Retract. The Notification queue screen gains a Remove button per row, a retraction marker, an export-records field (record numbers separated by commas or lines) and an MMWR-range form (year, start week, end week, optional condition), each reporting what it queued; the Export log screen gains Resend on every row and Retract on accepted rows. Unit tests for each new client method in NotificationQueueClientTests and ExportLogClientTests.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~NotificationQueueClientTests</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ExportLogClientTests</code></td><td>yes</td></tr>
+<tr><td>Cutoff and criteria web</td><td><p>Add Survsys.Web/ReconciliationCutoffClient.cs (Find, Set, Totals), registered in Survsys.Web/Program.cs, and an admin Reconciliation cutoff screen at /reconciliation-cutoff that sets the MMWR year and week and lists the totals, linked from the navigation bar. ConditionsClient gains PrintCriteria and SetPrintCriteria, and the condition edit screen gains a Print criteria section of one checkbox per assignable case status, saved with the condition. Unit tests in ReconciliationCutoffClientTests and ConditionsClientTests.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ReconciliationCutoffClientTests</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ConditionsClientTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No live transmission to CDC and no transport, batch-file, credential or log-retention work: tests use the stub endpoint and the shipped endpoint stays empty (session 91).</li><li>No NETSS export, NETSS delete records or verification-record files: the totals are read on screen and over the API, never written out or sent.</li><li>No automatic F/C/X notification-status logic and no TB state-case-number rule: NOT118 is overridden only for an explicit retraction; an automatic retraction when a sent case stops meeting print criteria is not done.</li><li>No guide, rule set, value set, override or variable-default administration, and no change to Survsys.Messaging (session 90).</li><li>No queue-type routing, no chunking by process_record_limit, and no new Playwright walkthroughs (session 92); existing element ids keep working.</li><li>No queueing from writes outside the five named areas â€” treatments, vaccines, encounters, notes, forms, contacts and attachments do not auto-queue.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[09:42:02]</span> <span class="muted">run-started</span> session=089 mode=pull</div>
+<div class="line"><span class="at">[09:42:02]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[09:45:11]</span> <span class="muted">run-resumed</span> session=089 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[09:45:11]</span> <span class="muted">plan-accepted</span> steps=[&quot;notification-review-data&quot;,&quot;print-criteria-api&quot;,&quot;auto-queue-on-change&quot;,&quot;queue-actions-api&quot;,&quot;reconciliation-cutoff-api&quot;,&quot;queue-actions-web&quot;,&quot;cutoff-and-criteria-web&quot;] non_goals=6</div>
+<div class="line"><span class="at">[09:45:11]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[09:45:12]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=notification-review-data</div>
+<div class="line"><span class="at">[09:47:00]</span> <span class="muted">run-resumed</span> session=089 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:47:04]</span> <span class="muted">check-passed</span> step=notification-review-data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[09:47:04]</span> <span class="muted">check-passed</span> step=notification-review-data argv=[&quot;git&quot;,&quot;grep&quot;,&quot;--untracked&quot;,&quot;-q&quot;,&quot;-F&quot;,&quot;nmi_condition_print_criteria&quot;,&quot;--&quot;,&quot;Survsys.Data/Migrations/20261021120000_NotificationReview.cs&quot;]</div>
+<div class="line"><span class="at">[09:47:05]</span> <span class="muted">report-accepted</span> seq=2 step=notification-review-data files=[] notes=Print criteria and reconciliation cutoff tables, retract flag on the queue, migration 20261021120000_NotificationReview seeding C and P for every condition</div>
+<div class="line"><span class="at">[09:47:05]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=print-criteria-api</div>
+<div class="line"><span class="at">[09:48:43]</span> <span class="muted">run-resumed</span> session=089 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:48:45]</span> <span class="muted">check-passed</span> step=print-criteria-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[09:48:46]</span> <span class="muted">report-accepted</span> seq=3 step=print-criteria-api files=[] notes=GET and PUT /api/conditions/{id}/print-criteria with request and response contracts and integration tests</div>
+<div class="line"><span class="at">[09:48:46]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=auto-queue-on-change</div>
+<div class="line"><span class="at">[09:57:33]</span> <span class="muted">run-resumed</span> session=089 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:57:36]</span> <span class="muted">check-passed</span> step=auto-queue-on-change argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[09:57:37]</span> <span class="muted">report-accepted</span> seq=4 step=auto-queue-on-change files=[] notes=QueueChangeAsync gates the auto-queue on print criteria; case, lab, clinical, investigation, administrative and demographics writes call it; fixture seeds C and P criteria as the migration does; affected integration tests updated and passing</div>
+<div class="line"><span class="at">[09:57:37]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=queue-actions-api</div>
+<div class="line"><span class="at">[10:00:55]</span> <span class="muted">run-resumed</span> session=089 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:00:57]</span> <span class="muted">check-passed</span> step=queue-actions-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[10:00:58]</span> <span class="muted">report-accepted</span> seq=5 step=queue-actions-api files=[] notes=Remove, retract (NOT118 = X, 409 without an accepted export), export by record number and by MMWR range, and resend from the export log; the worker passes the entry's retract flag to the builder; integration tests for each</div>
+<div class="line"><span class="at">[10:00:58]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=reconciliation-cutoff-api</div>
+<div class="line"><span class="at">[10:02:22]</span> <span class="muted">run-resumed</span> session=089 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:02:24]</span> <span class="muted">check-passed</span> step=reconciliation-cutoff-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[10:02:25]</span> <span class="muted">report-accepted</span> seq=6 step=reconciliation-cutoff-api files=[] notes=GET and PUT /api/reconciliation-cutoff over the single row, GET /api/reconciliation-cutoff/totals counting accepted notifiable cases the cutoff counts by condition and MMWR year; contracts, Program.cs mapping, integration tests</div>
+<div class="line"><span class="at">[10:02:25]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=queue-actions-web</div>
+<div class="line"><span class="at">[10:05:23]</span> <span class="muted">run-resumed</span> session=089 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:05:25]</span> <span class="muted">check-passed</span> step=queue-actions-web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[10:05:29]</span> <span class="muted">check-passed</span> step=queue-actions-web argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~NotificationQueueClientTests&quot;]</div>
+<div class="line"><span class="at">[10:05:33]</span> <span class="muted">check-passed</span> step=queue-actions-web argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ExportLogClientTests&quot;]</div>
+<div class="line"><span class="at">[10:05:33]</span> <span class="muted">report-accepted</span> seq=7 step=queue-actions-web files=[] notes=Queue screen gains remove, a retraction marker, export by record numbers and by MMWR range; export log screen gains resend and retract; clients and unit tests; export-log rows carry their case id for retract</div>
+<div class="line"><span class="at">[10:05:33]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=cutoff-and-criteria-web</div>
+<div class="line"><span class="at">[10:07:37]</span> <span class="muted">run-resumed</span> session=089 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:07:40]</span> <span class="muted">check-passed</span> step=cutoff-and-criteria-web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[10:07:43]</span> <span class="muted">check-passed</span> step=cutoff-and-criteria-web argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ReconciliationCutoffClientTests&quot;]</div>
+<div class="line"><span class="at">[10:07:47]</span> <span class="muted">check-passed</span> step=cutoff-and-criteria-web argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ConditionsClientTests&quot;]</div>
+<div class="line"><span class="at">[10:07:47]</span> <span class="muted">report-accepted</span> seq=8 step=cutoff-and-criteria-web files=[] notes=ReconciliationCutoffClient and the /reconciliation-cutoff screen (set the cutoff, list the totals) linked beside Export log; ConditionsClient print-criteria methods and a print-criteria checkbox row on the condition editor saved with the condition; unit tests</div>
+<div class="line"><span class="at">[10:07:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[10:07:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[10:07:48]</span> <span class="muted">job-started</span> name=verification pid=16956 log=.dabbler/runs/s89/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:09:34]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s89/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:09:34]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[10:09:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[10:09:34]</span> <span class="muted">instruction-issued</span> seq=9 kind=rejection reasons=4</div>
+<div class="line"><span class="at">[10:10:02]</span> <span class="muted">run-resumed</span> session=089 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[10:10:02]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0,1,2,3] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:3,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[10:10:02]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[10:10:02]</span> <span class="muted">instruction-issued</span> seq=10 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[10:12:54]</span> <span class="muted">run-resumed</span> session=089 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[10:12:57]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=notification-review-data</div>
+<div class="line"><span class="at">[10:12:57]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;git&quot;,&quot;grep&quot;,&quot;--untracked&quot;,&quot;-q&quot;,&quot;-F&quot;,&quot;nmi_condition_print_criteria&quot;,&quot;--&quot;,&quot;Survsys.Data/Migrations/20261021120000_NotificationReview.cs&quot;] owner=notification-review-data</div>
+<div class="line"><span class="at">[10:12:59]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=print-criteria-api</div>
+<div class="line"><span class="at">[10:13:01]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=auto-queue-on-change</div>
+<div class="line"><span class="at">[10:13:03]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=queue-actions-api</div>
+<div class="line"><span class="at">[10:13:05]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=reconciliation-cutoff-api</div>
+<div class="line"><span class="at">[10:13:07]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=queue-actions-web</div>
+<div class="line"><span class="at">[10:13:10]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~NotificationQueueClientTests&quot;] owner=queue-actions-web</div>
+<div class="line"><span class="at">[10:13:14]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ExportLogClientTests&quot;] owner=queue-actions-web</div>
+<div class="line"><span class="at">[10:13:16]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=cutoff-and-criteria-web</div>
+<div class="line"><span class="at">[10:13:19]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ReconciliationCutoffClientTests&quot;] owner=cutoff-and-criteria-web</div>
+<div class="line"><span class="at">[10:13:23]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ConditionsClientTests&quot;] owner=cutoff-and-criteria-web</div>
+<div class="line"><span class="at">[10:13:23]</span> <span class="muted">report-accepted</span> seq=10 step=fix-round-1 files=[] notes=Totals count every accepted case after the cutoff whatever its current status or criteria; tests for each lab edit and delete route and the workflow move, notifiable and not; a null print-criteria list is a 400; the cutoff screen shows a failed cutoff read instead of claiming none is set</div>
+<div class="line"><span class="at">[10:13:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[10:13:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[10:13:23]</span> <span class="muted">job-started</span> name=verification pid=47032 log=.dabbler/runs/s89/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:14:05]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s89/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:14:05]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[10:14:05]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[10:14:05]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[10:14:06]</span> <span class="muted">job-started</span> name=run of record: unit pid=11040 log=.dabbler/runs/s89/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[10:14:12]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s89/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[10:14:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[10:14:15]</span> <span class="muted">landed</span> commit=4d1149f0401aea93f79141ad9cbc4199fa7b2290</div>
+<div class="line"><span class="at">[10:14:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[10:14:15]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[10:14:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[10:14:15]</span> <span class="muted">job-started</span> name=close pid=11928 log=.dabbler/runs/s89/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:14:20]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s89/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:14:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>4 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Reconciliation totals incorrectly depend on current print criteria rather than historical CDC acceptance.**</td><td>fixed — Totals count every accepted case after the cutoff whatever its current status or criteria; tests for each lab edit and delete route and the workflow move, notifiable and not; a null print-criteria list is a 400; the cutoff screen shows a failed cutoff read instead of claiming none is set</td></tr>
+<tr><td>1</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The promised integration coverage for the print-criteria gate on each write path is not delivered.**</td><td>fixed — Totals count every accepted case after the cutoff whatever its current status or criteria; tests for each lab edit and delete route and the workflow move, notifiable and not; a null print-criteria list is a 400; the cutoff screen shows a failed cutoff read instead of claiming none is set</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** `ConditionEndpoints.SetPrintCriteria` dereferences `request.CaseStatuses` without handling a JSON `null` value.</td><td>fixed — Totals count every accepted case after the cutoff whatever its current status or criteria; tests for each lab edit and delete route and the workflow move, notifiable and not; a null print-criteria list is a 400; the cutoff screen shows a failed cutoff read instead of claiming none is set</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Nit:** The reconciliation screen treats every failed cutoff read as “no cutoff is set.”</td><td>fixed — Totals count every accepted case after the cutoff whatever its current status or criteria; tests for each lab edit and delete route and the workflow move, notifiable and not; a null print-criteria list is a 400; the cutoff screen shows a failed cutoff read instead of claiming none is set</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The reconciliation page still states that a counted case must have “its status meets its condition's print criteria,” which contradicts the corrected reconciliation behavior.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Location:** `Survsys.Web/Components/Pages/ReconciliationCutoff.razor`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Case:** With a confirmed Malaria case accepted by CDC, narrow Malaria’s criteria to `[&quot;P&quot;]`, then open `/reconciliation-cutoff`. The total correctly includes the case, but the explanatory text incorrectly tells the operator it should not qualify. Update the copy to say that accepted notifications remain counted regardless of subsequent status or criteria changes.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>1959</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

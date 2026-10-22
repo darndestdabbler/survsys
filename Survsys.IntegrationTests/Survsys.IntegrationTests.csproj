@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Survsys.Data and Survsys.Api together, against a real SQL Server. A
+       missing SQL Server fails loudly rather than skipping, because a
+       skipped integration suite reads as a green run. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <!-- Starts Survsys.Api in process, running Program.cs as written (the
+         startup migration gate included), so the suite drives the real host
+         rather than a copy of its wiring. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The rows the suite seeds. Copied rather than embedded so that a
+         failing run can be reproduced by hand against the same SQL. -->
+    <Content Include="Fixtures\conditions.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\persons.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\person-conditions.sql" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The ORU^R01 message the ELR intake test drops into a watched directory,
+         copied beside the test assembly so the test finds it at run time. -->
+    <Content Include="Fixtures\Hl7\*.hl7" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The HL7 eICR R3.1.1 sample, kept once beside the unit tests that parse it,
+         which the eCR case tests take in with their own patient and ids. -->
+    <Content Include="..\Survsys.UnitTests\Fixtures\Cda\CDAR2_IG_PHCASERPT_R2_STU3.1.1_SAMPLE.xml"
+             Link="Fixtures\Cda\CDAR2_IG_PHCASERPT_R2_STU3.1.1_SAMPLE.xml"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Survsys.Api\Survsys.Api.csproj" />
+    <ProjectReference Include="..\Survsys.Data\Survsys.Data.csproj" />
+  </ItemGroup>
+
+</Project>

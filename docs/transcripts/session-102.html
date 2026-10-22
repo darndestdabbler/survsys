@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 102 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 102 transcript</h1>
+<p class="stamp">Rendered 2026-10-22T12:58:18.293Z by dabbler-ai-router 3.23.0 at a38f428bec08f58869efd76706792f7929ab9999.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-22T08:34:46.783-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 102: eCR validation and the eICR viewer</h3>
+<ol><li>Register.</li><li><code>Survsys.Messaging</code>: validation against the CDA schema and the HL7 schematron, its findings stored on the document without blocking it.</li><li><code>Survsys.Web</code>: an eCR queue and a document screen showing the eICR through the HL7 CDA stylesheet beside the RR's conditions, determinations and validation findings.</li><li><code>Survsys.UnitTests</code>: a valid and an invalid document of each version.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Validate every eCR document as it is taken in and give reviewers a screen to read it. The HL7 artifacts are vendored unchanged under Survsys.Messaging/Cda: the CDA R2 schema with the SDTC extensions (HL7/CDA-core-2.0), the four IG schematrons with the vocabulary files they read (eICR R1.1, R3.1, R3.1.1, RR 1.1), the ISO Schematron XSLT 1.0 skeleton (schematron/schematron), and the HL7 CDA stylesheet (HL7/CDA-core-xsl). The schematrons declare queryBinding xslt2 but use XPath 1.0 throughout except two matches() calls in R3.1.1, so a CdaValidator in Survsys.Messaging compiles each schematron once through the skeleton with XslCompiledTransform (the query binding read as xslt1, matches() bound to a .NET regex extension function), and validates a document against the schema and the schematron for its kind and version, answering findings: source (schema or schematron), severity (the schematron rule's role -- fatal, error, warning -- and error for a schema violation), message and location. R3.1's 58 MB vocabulary file is not vendored: every value set R3.1's schematron looks up is in the R3.1.1 vocabulary, which is read in its place. Survsys.Data gets an ecr_validation_finding table owned by ecr_document, with its migration; EcrIntakeService validates each document it stores and stores the findings with it, never refusing a document for them. CdaStylesheet in Survsys.Messaging renders a document to HTML through the HL7 CDA stylesheet with JavaScript off. Survsys.Api adds GET /api/ecr-documents (the eCR queue: paged, filtered by feed, newest first, each row with its kind, feed, document id, version, received time and counts of errors and warnings) and GET /api/ecr-documents/{id} (the eICR rendered, the conditions, determinations and responsible agencies of its paired RRs -- or for an RR, its own and its eICR's rendering -- and the validation findings of each document, marked with the document they belong to), behind the case-viewing privilege the staged-message queue uses. Survsys.Web adds an EcrClient, an eCR queue page and a document page that shows the rendered eICR in a sandboxed iframe beside the RR's conditions and the findings, with a nav entry. Unit tests validate a valid and an invalid document of each version (the IG sample, and the sample with its required ClinicalDocument/id removed).</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/b27250c733204f9fbabb13a08a2c2725e997267d"><code>b27250c733204f9fbabb13a08a2c2725e997267d</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Vendor hl7 cda artifacts</td><td><p>Vendor the HL7 and ISO Schematron artifacts unchanged under Survsys.Messaging/Cda, copied to the output directory: the SDTC-extended CDA schema set from HL7/CDA-core-2.0 schema/extensions/SDTC (keeping its infrastructure/cda and processable/coreschemas layout so its relative includes resolve); the four schematrons with the vocabulary files they load (R1.1 schematron and voc.xml from HL7/CDA-phcaserpt-1.1.1, R3.1 schematron from HL7/CDA-phcaserpt-1.3.0, R3.1.1 schematron and vocabulary from HL7/CDA-phcaserpt CDA-phcaserpt-3.1.1, RR 1.1 schematron and vocabulary from HL7/CDA-phcr-rr-1.1.0); the ISO Schematron XSLT 1.0 files from schematron/schematron trunk/schematron/code; and CDA.xsl with cda_l10n.xml and cda_narrativeblock.xml from HL7/CDA-core-xsl. A README in Survsys.Messaging/Cda names where each file came from and why R3.1's own vocabulary file is not here.</p></td><td></td><td><code>dotnet build Survsys.Messaging/Survsys.Messaging.csproj</code></td><td>yes</td></tr>
+<tr><td>Cda validator</td><td><p>Add CdaValidator to Survsys.Messaging and the CdaValidationFinding record it answers (Source: schema or schematron; Severity: fatal, error or warning; Message; Location). Validate(raw, kind, igVersion) validates the document against the CDA schema (every violation an error) and against the schematron for that kind and version (R1.1, R3.1, R3.1.1, RR 1.1), each schematron compiled once and cached: through iso_dsdl_include, iso_abstract_expand and iso_svrl_for_xslt1 with XslCompiledTransform, its queryBinding read as xslt1 and matches() bound to a .NET regex extension function, document() resolved beside the schematron with R3.1's vocabulary file name resolved to the R3.1.1 vocabulary. A finding's severity is the role of the SVRL fired-rule its failed assert falls under (a rule with no role is an error). Unit tests in CdaValidatorTests: each version's IG sample has no fatal or error finding, and the same sample without its ClinicalDocument/id has a schema error and a schematron finding of fatal or error severity.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.CdaValidatorTests</code></td><td>yes</td></tr>
+<tr><td>Ecr finding storage</td><td><p>In Survsys.Data add EcrValidationFinding (id, the owning EcrDocument, source, severity, message, location) mapped to an ecr_validation_finding table deleted with its document, an EcrDocument.Findings collection, the DbSet, and the migration EcrValidationFindings with the model snapshot updated. Mirror the table in the integration fixture only if the fixture creates tables by hand rather than by migrating.</p></td><td></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Validate on intake</td><td><p>EcrIntakeService.Stage (and so Receive) takes a CdaValidator, validates the document for the kind and version the parser read, and attaches the findings to the EcrDocument it returns; a document with findings of any severity is stored like any other. CdaValidator is registered as a singleton in Survsys.Api's Program.cs. Update EcrIntakeServiceTests in the unit suite for the new signature and add one proving a document without its id is staged with its findings; update the integration test's call for the new signature.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrIntakeServiceTests</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Cda stylesheet</td><td><p>Add CdaStylesheet to Survsys.Messaging: Render(raw) transforms a document to HTML through the vendored HL7 CDA.xsl, compiled once, with useJavascript false and document() resolved beside the stylesheet. Unit tests in CdaStylesheetTests: each eICR sample renders to HTML carrying its title and no script element.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.CdaStylesheetTests</code></td><td>yes</td></tr>
+<tr><td>Ecr endpoints</td><td><p>Add EcrEndpoints to Survsys.Api and its wire shapes to Survsys.Contracts, following MessageQueueEndpoints: GET /api/ecr-documents is the eCR queue, paged with the existing Paging, filtered by an optional feed, newest first, each row an EcrDocumentResponse (id, kind, feed, document id, version number, source, received at, error count counting fatal and error findings, warning count). GET /api/ecr-documents/{id} answers an EcrDocumentDetailResponse: the summary; the eICR's HTML from CdaStylesheet (the document's own for an eICR, its paired eICR's for an RR, null where the eICR has not arrived); the conditions of the paired RRs (for an RR, its own) read with CdaParser, each an EcrConditionResponse with its condition, determination, location, responsible agency and reporting timeframe; and the findings of the eICR and those RRs as EcrValidationFindingResponse, each naming the document kind and id it belongs to. Both require the case-viewing privilege; an unknown id is 404. Unit tests in EcrEndpointsTests prove the projection; integration tests in the integration suite's EcrEndpointsTests prove the list and the detail against SQL Server.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrEndpointsTests|FullyQualifiedName~Survsys.UnitTests.ArchitectureTests</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Ecr web screens</td><td><p>In Survsys.Web add EcrClient (List and Get over the two endpoints) registered in Program.cs; an eCR queue page at /ecr listing documents with a feed filter and paging, each row linking to its document; and a document page at /ecr/{id} showing the rendered eICR in an iframe with an empty sandbox attribute (no scripts) beside a table of the RR's conditions, determinations and responsible agencies, and a table of validation findings with their severity, source, document, message and location. Add an 'eCR' nav entry beside 'Staged messages' for case viewers. Unit tests in EcrClientTests prove the client's requests and its reading of the responses.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrClientTests</code><br><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No reportability decisions or mapping of RR conditions to the conditions catalogue (session 103), no cases opened from an eICR (session 104), no sender onboarding or data-quality reporting (session 105), and no walkthroughs or Playwright tests (session 106).</li><li>No XSLT 2.0 engine (Saxon or otherwise) and no rewriting of the HL7 schematrons on disk: the vendored files stay byte-for-byte as HL7 publishes them.</li><li>Validation never blocks, rejects, moves aside or holds a document; a document with fatal findings is stored exactly as one with none.</li><li>No validation of versions the parser does not read (eICR 4.0, RR 2.0), and no re-validation of documents already stored before this session.</li><li>No actions on the eCR screens beyond reading: no review states, assignment, deletion or re-processing.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[12:34:46]</span> <span class="muted">run-started</span> session=102 mode=pull</div>
+<div class="line"><span class="at">[12:34:46]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[12:41:09]</span> <span class="muted">run-resumed</span> session=102 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[12:41:09]</span> <span class="muted">plan-accepted</span> steps=[&quot;vendor-hl7-cda-artifacts&quot;,&quot;cda-validator&quot;,&quot;ecr-finding-storage&quot;,&quot;validate-on-intake&quot;,&quot;cda-stylesheet&quot;,&quot;ecr-endpoints&quot;,&quot;ecr-web-screens&quot;] non_goals=5</div>
+<div class="line"><span class="at">[12:41:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[12:41:10]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=vendor-hl7-cda-artifacts</div>
+<div class="line"><span class="at">[12:42:19]</span> <span class="muted">run-resumed</span> session=102 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:42:21]</span> <span class="muted">check-passed</span> step=vendor-hl7-cda-artifacts argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Messaging/Survsys.Messaging.csproj&quot;]</div>
+<div class="line"><span class="at">[12:42:21]</span> <span class="muted">report-accepted</span> seq=2 step=vendor-hl7-cda-artifacts files=[] notes=Vendored 22 HL7/ISO files unchanged under Survsys.Messaging/Cda (sizes match GitHub), copied to output via a None item; README names each source commit and the R3.1 vocabulary substitution</div>
+<div class="line"><span class="at">[12:42:21]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=cda-validator</div>
+<div class="line"><span class="at">[12:44:28]</span> <span class="muted">run-resumed</span> session=102 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:44:50]</span> <span class="muted">check-passed</span> step=cda-validator argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.CdaValidatorTests&quot;]</div>
+<div class="line"><span class="at">[12:44:50]</span> <span class="muted">report-accepted</span> seq=3 step=cda-validator files=[] notes=CdaValidator: schema pass, then schematron compiled once per version via ISO xslt1 skeleton (queryBinding xslt1, matches() bound to Regex, R3.1 vocab resolved to R3.1.1). Severity is the fired-rule role; where a rule has none (RR 1.1 uses phases), the pattern id suffix -warnings gives warning, else error. 9 tests pass.</div>
+<div class="line"><span class="at">[12:44:50]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=ecr-finding-storage</div>
+<div class="line"><span class="at">[12:45:51]</span> <span class="muted">run-resumed</span> session=102 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:45:53]</span> <span class="muted">check-passed</span> step=ecr-finding-storage argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[12:45:54]</span> <span class="muted">report-accepted</span> seq=4 step=ecr-finding-storage files=[] notes=EcrValidationFinding on ecr_validation_finding (cascade-deleted with its document), EcrDocument.Findings, DbSet, migration 20261022140000_EcrValidationFindings and snapshot; ef has-pending-model-changes reports none; the integration fixture migrates so needs no mirror</div>
+<div class="line"><span class="at">[12:45:54]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=validate-on-intake</div>
+<div class="line"><span class="at">[12:47:27]</span> <span class="muted">run-resumed</span> session=102 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:47:44]</span> <span class="muted">check-passed</span> step=validate-on-intake argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrIntakeServiceTests&quot;]</div>
+<div class="line"><span class="at">[12:47:46]</span> <span class="muted">check-passed</span> step=validate-on-intake argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[12:47:46]</span> <span class="muted">report-accepted</span> seq=5 step=validate-on-intake files=[] notes=Stage/Receive take a CdaValidator and attach findings; CdaValidator registered as a singleton. The parser refuses a document with no id before staging, so the new unit test's invalid document lacks the required ClinicalDocument/effectiveTime instead (schema error plus schematron finding; still staged unchanged). Integration EcrIntakeServiceTests run by hand against SQL Server with the new migration: 1 passed.</div>
+<div class="line"><span class="at">[12:47:46]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=cda-stylesheet</div>
+<div class="line"><span class="at">[12:48:23]</span> <span class="muted">run-resumed</span> session=102 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:48:28]</span> <span class="muted">check-passed</span> step=cda-stylesheet argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.CdaStylesheetTests&quot;]</div>
+<div class="line"><span class="at">[12:48:28]</span> <span class="muted">report-accepted</span> seq=6 step=cda-stylesheet files=[] notes=CdaStylesheet.Render: HL7 CDA.xsl compiled once, useJavascript false, input DTDs refused, document() limited to files beside the stylesheet. 4 tests pass (3 eICR samples render with title and no script; non-XML refused).</div>
+<div class="line"><span class="at">[12:48:28]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=ecr-endpoints</div>
+<div class="line"><span class="at">[12:51:45]</span> <span class="muted">run-resumed</span> session=102 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:51:50]</span> <span class="muted">check-passed</span> step=ecr-endpoints argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrEndpointsTests|FullyQualifiedName~Survsys.UnitTests.ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[12:51:53]</span> <span class="muted">check-passed</span> step=ecr-endpoints argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[12:51:54]</span> <span class="muted">report-accepted</span> seq=7 step=ecr-endpoints files=[] notes=EcrEndpoints: GET /api/ecr-documents (paged, feed filter, newest first, error/warning counts) and GET /api/ecr-documents/{id} (eICR HTML via CdaStylesheet, paired RR conditions, findings of eICR then RRs; 404 unknown); ViewCases via existing PrivilegeRules default for /api reads; 4 contract records. Unit 6 passed (incl. ArchitectureTests); integration EcrEndpointsTests + EcrIntakeServiceTests run by hand against SQL Server: 4 passed.</div>
+<div class="line"><span class="at">[12:51:54]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=ecr-web-screens</div>
+<div class="line"><span class="at">[12:53:48]</span> <span class="muted">run-resumed</span> session=102 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:53:52]</span> <span class="muted">check-passed</span> step=ecr-web-screens argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrClientTests&quot;]</div>
+<div class="line"><span class="at">[12:53:54]</span> <span class="muted">check-passed</span> step=ecr-web-screens argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[12:53:54]</span> <span class="muted">report-accepted</span> seq=8 step=ecr-web-screens files=[] notes=EcrClient (List, Get) registered; /ecr queue page with feed filter and paging; /ecr/{id} page with the eICR in an iframe sandbox=empty beside the RR conditions table and the findings table; eCR nav entry for case viewers. EcrClientTests 4 passed; full unit suite 2180 passed.</div>
+<div class="line"><span class="at">[12:53:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[12:53:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[12:53:55]</span> <span class="muted">job-started</span> name=verification pid=39284 log=.dabbler/runs/s102/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:55:31]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s102/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:55:31]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[12:55:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[12:55:31]</span> <span class="muted">instruction-issued</span> seq=9 kind=rejection reasons=1</div>
+<div class="line"><span class="at">[12:55:41]</span> <span class="muted">run-resumed</span> session=102 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[12:55:41]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[12:55:41]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[12:55:41]</span> <span class="muted">instruction-issued</span> seq=10 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[12:56:40]</span> <span class="muted">run-resumed</span> session=102 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[12:56:42]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Messaging/Survsys.Messaging.csproj&quot;] owner=vendor-hl7-cda-artifacts</div>
+<div class="line"><span class="at">[12:57:05]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.CdaValidatorTests&quot;] owner=cda-validator</div>
+<div class="line"><span class="at">[12:57:06]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;] owner=ecr-finding-storage</div>
+<div class="line"><span class="at">[12:57:23]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrIntakeServiceTests&quot;] owner=validate-on-intake</div>
+<div class="line"><span class="at">[12:57:25]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;] owner=validate-on-intake</div>
+<div class="line"><span class="at">[12:57:29]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.CdaStylesheetTests&quot;] owner=cda-stylesheet</div>
+<div class="line"><span class="at">[12:57:32]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrEndpointsTests|FullyQualifiedName~Survsys.UnitTests.ArchitectureTests&quot;] owner=ecr-endpoints</div>
+<div class="line"><span class="at">[12:57:34]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;] owner=ecr-endpoints</div>
+<div class="line"><span class="at">[12:57:38]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrClientTests&quot;] owner=ecr-web-screens</div>
+<div class="line"><span class="at">[12:57:40]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;] owner=ecr-web-screens</div>
+<div class="line"><span class="at">[12:57:40]</span> <span class="muted">report-accepted</span> seq=10 step=fix-round-1 files=[] notes=Findings table on /ecr/{id} now names each finding's document by kind and id (data-ecr-finding-document); new integration test AnEicrWithTwoRrsNamesTheDocumentOfEachFinding stores an eICR with two RRs and asserts each finding's (kind, id) and both RRs' conditions; RR XML extracted to a helper. EcrEndpointsTests integration 4 passed against SQL Server.</div>
+<div class="line"><span class="at">[12:57:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[12:57:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[12:57:40]</span> <span class="muted">job-started</span> name=verification pid=55172 log=.dabbler/runs/s102/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:57:50]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s102/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:57:50]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[12:57:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[12:57:50]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[12:57:50]</span> <span class="muted">job-started</span> name=run of record: unit pid=10748 log=.dabbler/runs/s102/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[12:58:09]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s102/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[12:58:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[12:58:13]</span> <span class="muted">landed</span> commit=b27250c733204f9fbabb13a08a2c2725e997267d</div>
+<div class="line"><span class="at">[12:58:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[12:58:13]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[12:58:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[12:58:13]</span> <span class="muted">job-started</span> name=close pid=49596 log=.dabbler/runs/s102/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:58:18]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s102/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:58:18]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The document screen does not mark findings with the document they belong to when an eICR has multiple paired RRs.</td><td>fixed — Findings table on /ecr/{id} now names each finding's document by kind and id (data-ecr-finding-document); new integration test AnEicrWithTwoRrsNamesTheDocumentOfEachFinding stores an eICR with two RRs and asserts each finding's (kind, id) and both RRs' conditions; RR XML extracted to a helper. EcrEndpointsTests integration 4 passed against SQL Server.</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>18s</td><td>2180</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
