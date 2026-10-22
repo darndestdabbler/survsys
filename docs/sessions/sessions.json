@@ -2090,9 +2090,9 @@
     {
       "number": 101,
       "title": "eICR and RR parsing and document intake",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-22T08:11:42.294000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-22T08:26:50.687000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
