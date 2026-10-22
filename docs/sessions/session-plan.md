@@ -1844,6 +1844,16 @@ is planned before the release.*
 
 ### Session 108: Release 0.14.0 (release: 0.14.0)
 
+*The first release the integration suite gates (session 107). The router
+cannot declare a suite only a release runs, so the gate is this step.*
+
+1. Before anything is published, the integration suite run whole in a
+   container, with `SURVSYS_SQLSERVER` unset:
+   `dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --blame-hang-timeout 5m`.
+   It must be green. A red run stops the release: the step is reported
+   blocked with the failures, and a repair session is planned before a new
+   release session.
+
 ---
 
 *Phase 14 — parity → release 1.0.0, the first release that claims parity.*

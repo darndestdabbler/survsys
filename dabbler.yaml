@@ -16,11 +16,20 @@ schema_version: 1
 # It is also the suite that holds the architecture tests, so the reference
 # graph between the modules is checked by the one suite that always runs.
 #
-# `integration` wants a reachable SQL Server and `e2e` wants Playwright
-# browsers with both tiers running, so neither is the mechanical gate on
-# every session. They are declared so that a change under the paths they
-# cover selects their tests, and so that the walkthrough suite has a name
+# `integration` brings its own SQL Server -- a container Testcontainers
+# starts for the run, unless SURVSYS_SQLSERVER names a server -- and `e2e`
+# wants Playwright browsers with both tiers running. Neither is the
+# mechanical gate on every session: they are declared so that a change under
+# the paths they cover selects their tests, and so that each has a name
 # before the release that gates on it.
+#
+# A release runs the integration suite whole and green before it publishes,
+# as a step written into each release session's section of the session plan
+# rather than declared here. This router runs every expensive suite as the
+# run of record of every session -- targeted or whole, a `select` changes
+# only which -- and has no suite that only a release runs, so marking
+# `integration` expensive would put a nine-minute container run at the end
+# of every ordinary session.
 #
 # Every command carries its own hang limit, so every later run of a suite
 # inherits it rather than depending on who remembered to pass it.

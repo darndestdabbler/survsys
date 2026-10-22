@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Survsys.Data and Survsys.Api together, against a real SQL Server. A
-       missing SQL Server fails loudly rather than skipping, because a
-       skipped integration suite reads as a green run. -->
+  <!-- Survsys.Data and Survsys.Api together, against a real SQL Server: a
+       container the suite starts for itself, unless SURVSYS_SQLSERVER names
+       one. A missing container engine or server fails loudly rather than
+       skipping, because a skipped integration suite reads as a green run. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -18,6 +19,9 @@
          startup migration gate included), so the suite drives the real host
          rather than a copy of its wiring. -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
+    <!-- The SQL Server 2022 container the suite runs against when
+         SURVSYS_SQLSERVER is not set, with a password generated per run. -->
+    <PackageReference Include="Testcontainers.MsSql" Version="4.16.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,6 +1,9 @@
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Configurations;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Data;
+using Testcontainers.MsSql;
 using Xunit;
 
 namespace Survsys.IntegrationTests;
@@ -10,17 +13,24 @@ namespace Survsys.IntegrationTests;
 /// condition and person fixtures in it. Built once for the whole suite.
 /// </summary>
 /// <remarks>
-/// <strong>An unreachable server fails the suite, loudly.</strong> Nothing
-/// here skips: a skipped integration suite reads as a green run, and a green
-/// run that proved nothing is worse than a red one that says so. The failure
-/// names the server it tried and the variable that redirects it, because the
+/// <strong>The suite brings its own server.</strong> Unless
+/// <see cref="ConnectionVariable"/> names one, the fixture starts a SQL Server
+/// 2022 container for the run, through whatever Docker-compatible engine
+/// Testcontainers finds (Docker Desktop, or Podman with <c>DOCKER_HOST</c>
+/// pointing at it), and removes it when the run ends. Its password is the one
+/// Testcontainers generates for that container, so there is none to keep.
+///
+/// <strong>An unreachable engine or server fails the suite, loudly.</strong>
+/// Nothing here skips: a skipped integration suite reads as a green run, and a
+/// green run that proved nothing is worse than a red one that says so. The
+/// failure names what it tried and the variables that redirect it, because the
 /// one thing a developer needs on seeing it is where to point it instead.
 ///
 /// The database is dropped and rebuilt by the migration rather than by
 /// <c>EnsureCreated</c>, so what the suite runs against is the schema the
 /// migration produces — which is the only schema a deployment will ever get.
 /// </remarks>
-public sealed class SqlServerFixture : IDisposable
+public sealed class SqlServerFixture : IAsyncLifetime
 {
     /// <summary>
     /// The environment variable that redirects this suite at another server.
@@ -29,23 +39,19 @@ public sealed class SqlServerFixture : IDisposable
     /// </summary>
     public const string ConnectionVariable = "SURVSYS_SQLSERVER";
 
-    /// <summary>
-    /// This host's own SQL Server, used when nothing redirects the suite.
-    /// Integrated security, so there is no credential here and none to leak;
-    /// the short connect timeout is so that an absent server fails in seconds
-    /// rather than in the client's default quarter-minute, once per test
-    /// class.
-    /// </summary>
-    private const string LocalDefault =
-        "Server=localhost;Database=survsys_integration;Trusted_Connection=True;"
-        + "TrustServerCertificate=True;Connect Timeout=5";
+    /// <summary>The variable that points Testcontainers at a container engine.</summary>
+    private const string EngineVariable = "DOCKER_HOST";
 
-    public SqlServerFixture()
+    private const string Image = "mcr.microsoft.com/mssql/server:2022-latest";
+
+    private MsSqlContainer? container;
+
+    public async Task InitializeAsync()
     {
         ConnectionString =
             Environment.GetEnvironmentVariable(ConnectionVariable) is { Length: > 0 } redirected
                 ? redirected
-                : LocalDefault;
+                : await StartContainer();
 
         // Pooled connections from an earlier run would otherwise keep the
         // database from being dropped.
@@ -69,7 +75,7 @@ public sealed class SqlServerFixture : IDisposable
     }
 
     /// <summary>The database the suite runs against.</summary>
-    public string ConnectionString { get; }
+    public string ConnectionString { get; private set; } = "";
 
     /// <summary>
     /// How many rows <c>Fixtures/conditions.sql</c> seeds. Stated here so a
@@ -159,7 +165,55 @@ public sealed class SqlServerFixture : IDisposable
 
     private sealed record FixedAuditUser(int? UserId) : IAuditUser;
 
-    public void Dispose() => SqlConnection.ClearAllPools();
+    public async Task DisposeAsync()
+    {
+        SqlConnection.ClearAllPools();
+
+        if (container is not null)
+        {
+            await container.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Starts the run's SQL Server container and returns the suite's
+    /// connection string into it. The short connect timeout is so that a
+    /// server that went away fails in seconds rather than in the client's
+    /// default quarter-minute, once per test class.
+    /// </summary>
+    private async Task<string> StartContainer()
+    {
+        try
+        {
+            container = new MsSqlBuilder(Image).Build();
+            await container.StartAsync();
+        }
+        catch (DockerUnavailableException unavailable)
+        {
+            throw new InvalidOperationException(NoEngine(unavailable), unavailable);
+        }
+
+        return new SqlConnectionStringBuilder(container.GetConnectionString())
+        {
+            InitialCatalog = "survsys_integration",
+            ConnectTimeout = 5,
+        }.ConnectionString;
+    }
+
+    private static string NoEngine(Exception cause)
+    {
+        var tried = TestcontainersSettings.OS.DockerEndpointAuthConfig?.Endpoint?.ToString()
+            ?? "no endpoint at all";
+        var dockerHost = Environment.GetEnvironmentVariable(EngineVariable) is { Length: > 0 } host
+            ? $"'{host}'"
+            : "not set";
+
+        return $"Survsys.IntegrationTests starts its own SQL Server container and no container "
+            + $"engine answered at {tried} ({EngineVariable} is {dockerHost}): {cause.Message} "
+            + "This suite does not skip when the engine is missing, because a skipped integration "
+            + $"suite reads as a green run. Start Docker or Podman, set {EngineVariable} to its "
+            + $"endpoint, or set {ConnectionVariable} to the connection string of a running SQL Server.";
+    }
 
     private static string FixtureSql(string file)
     {

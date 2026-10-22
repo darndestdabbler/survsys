@@ -107,14 +107,29 @@ silently skips reads as a green run.
 | Suite | Command | Needs |
 |---|---|---|
 | `unit` — the run of record | `dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj` | nothing |
-| `integration` | `dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj` | a reachable SQL Server |
+| `integration` — run whole before every release | `dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj` | a Docker-compatible container engine, or the SQL Server `SURVSYS_SQLSERVER` names |
 | `e2e` — the walkthroughs | `dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj` | a reachable SQL Server; Playwright's chromium, which the harness installs if it is missing |
 
-The integration suite drops and re-migrates its own database,
-`survsys_integration`; `SURVSYS_SQLSERVER` replaces its connection string
-whole. The end-to-end suite uses `survsys_e2e`, and `SURVSYS_E2E_SQLSERVER`
-replaces that one, so a CI runner can change the authentication as well as the
-host. The end-to-end harness starts both built tiers on free loopback ports,
+The integration suite brings its own server. Unless `SURVSYS_SQLSERVER` names
+one, it starts a SQL Server 2022 container through Testcontainers
+(`Testcontainers.MsSql`) when the run begins, with a password generated for
+that container, and removes it when the run ends. Nothing has to be started
+first and no password is kept. A missing engine fails the suite and names the
+endpoint it tried, `DOCKER_HOST` and `SURVSYS_SQLSERVER`. With Podman on
+Windows, a machine that answers on the Docker pipe (`npipe:////./pipe/docker_engine`)
+needs nothing set. Otherwise point `DOCKER_HOST` at Podman's own pipe, for
+example `npipe:////./pipe/podman-machine-default`. Testcontainers' cleanup
+container (Ryuk) works under rootless Podman, so `TESTCONTAINERS_RYUK_DISABLED`
+is not needed. Give the Podman machine 4 GiB of memory: 2 GiB is SQL Server's
+bare minimum. A whole run takes about nine minutes, so it is not the run of
+record. A release session runs it whole, and green, before anything is
+published.
+
+The suite drops and re-migrates its own database, `survsys_integration`.
+`SURVSYS_SQLSERVER` replaces its connection string whole, so the suite still
+runs against a local SQL Server. The end-to-end suite uses `survsys_e2e`, and
+`SURVSYS_E2E_SQLSERVER` replaces that one, so a CI runner can change the
+authentication as well as the host. The end-to-end harness starts both built tiers on free loopback ports,
 migrates, creates a walkthrough-only administrator, empties every table a
 walkthrough fills, reseeds the fixtures, and waits on `health/ready` for up to
 two minutes. It records video of every test into
