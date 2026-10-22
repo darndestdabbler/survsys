@@ -1,0 +1,186 @@
+@* The reconciliation cutoff: the MMWR week and year after which cases CDC
+   accepted are counted in the verification totals, set here, and the totals
+   it bounds listed below it.
+
+   Every element a walkthrough will name carries an identifier of its own —
+   `reconciliation-cutoff-heading`, `-loading`, `-current`, `-none`, the
+   `-load-error`, the `-year` and `-week` fields with the `-save` button,
+   `-saved`, `-error`,
+   `-totals` with one row per condition and year, and `-totals-none`. *@
+@page "/reconciliation-cutoff"
+@inject ReconciliationCutoffClient Client
+
+<PageTitle>Reconciliation cutoff — Survsys</PageTitle>
+
+<MudText id="reconciliation-cutoff-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Reconciliation cutoff
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    Only cases reported in an MMWR week after the cutoff are counted in the
+    verification totals CDC reconciles against. A case is counted once CDC has
+    accepted its notification and its status meets its condition's print criteria.
+</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="reconciliation-cutoff-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (failure is { } whyNot)
+    {
+        <MudAlert id="reconciliation-cutoff-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @whyNot
+        </MudAlert>
+    }
+
+    @if (saved)
+    {
+        <MudAlert id="reconciliation-cutoff-saved" Severity="Severity.Success" Class="mb-4">
+            The cutoff has been saved.
+        </MudAlert>
+    }
+
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        @if (cutoffFailure is { } cutoffWhyNot)
+        {
+            <MudAlert id="reconciliation-cutoff-load-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                @cutoffWhyNot
+            </MudAlert>
+        }
+        else if (current is { } cutoff)
+        {
+            <MudText id="reconciliation-cutoff-current" Typo="Typo.body1" Class="mb-4">
+                Counting cases after MMWR week @cutoff.MmwrWeek of @cutoff.MmwrYear.
+            </MudText>
+        }
+        else
+        {
+            <MudText id="reconciliation-cutoff-none" Typo="Typo.body1" Class="mb-4">
+                No cutoff is set: every case is counted.
+            </MudText>
+        }
+
+        <div class="d-flex gap-4 align-center">
+            <MudNumericField T="int" @bind-Value="year" id="reconciliation-cutoff-year"
+                             Label="MMWR year" Variant="Variant.Outlined" />
+            <MudNumericField T="int" @bind-Value="week" id="reconciliation-cutoff-week"
+                             Label="MMWR week" Min="1" Max="53" Variant="Variant.Outlined" />
+            <MudButton id="reconciliation-cutoff-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(saving || cutoffFailure is not null)" OnClick="Save">
+                Save
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    <MudText Typo="Typo.h6" GutterBottom="true">Verification totals</MudText>
+
+    @if (totals.Count == 0)
+    {
+        <MudText id="reconciliation-cutoff-totals-none" Typo="Typo.body2">
+            No cases are counted.
+        </MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="reconciliation-cutoff-totals" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>CDC code</th>
+                        <th>Condition</th>
+                        <th>MMWR year</th>
+                        <th>Cases</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var total in totals)
+                    {
+                        <tr data-reconciliation-total="@($"{total.Condition}-{total.MmwrYear}")">
+                            <td>@(total.CdcCode ?? "—")</td>
+                            <td>@total.Condition</td>
+                            <td>@total.MmwrYear</td>
+                            <td data-reconciliation-count>@total.Count</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
+}
+
+@code {
+    private bool loading = true;
+
+    private bool saving;
+
+    private bool saved;
+
+    private string? failure;
+
+    private ReconciliationCutoffResponse? current;
+
+    private string? cutoffFailure;
+
+    private int year = DateTime.Today.Year;
+
+    private int week = 1;
+
+    private List<ReconciliationTotalResponse> totals = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        // No cutoff set is the API tier's 404, so that failure alone is read as
+        // none set; any other is shown, and the form is not offered over a
+        // cutoff that could not be read.
+        var found = await Client.Find();
+        current = found.Value;
+        cutoffFailure = ReconciliationCutoffClient.NoneSet(found) ? null : found.Failure;
+        if (current is { } cutoff)
+        {
+            (year, week) = (cutoff.MmwrYear, cutoff.MmwrWeek);
+        }
+
+        await LoadTotals();
+        loading = false;
+    }
+
+    private async Task LoadTotals()
+    {
+        var asked = await Client.Totals();
+        totals = asked.Value ?? [];
+        failure = asked.Failure;
+    }
+
+    /// <summary>
+    /// Stores the cutoff and reloads the totals it bounds, or shows why it was
+    /// not stored.
+    /// </summary>
+    private async Task Save()
+    {
+        saving = true;
+        saved = false;
+        failure = null;
+
+        try
+        {
+            var stored = await Client.Set(year, week);
+            if (stored.Value is { } cutoff)
+            {
+                current = cutoff;
+                cutoffFailure = null;
+                saved = true;
+                await LoadTotals();
+            }
+            else
+            {
+                failure = stored.Failure;
+            }
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

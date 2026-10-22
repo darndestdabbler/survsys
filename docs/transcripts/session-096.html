@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 096 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 096 transcript</h1>
+<p class="stamp">Rendered 2026-10-21T23:48:24.506Z by dabbler-ai-router 3.23.0 at dbea64e26893310a6051b3ead6ee2b3947c502ff.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-21T19:29:53.980-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 96: Classification rules on save</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code>: the validation and classification rules of <code>CLASSIFICATION_RULES.md</code> run on every case save — chlamydia, gonorrhea, hepatitis C, influenza, syphilis, measles and COVID — with out-of-state status from the patient's address and the jurisdiction taken from it.</li><li><code>Survsys.Api</code>: contacts of chlamydia, gonorrhea and syphilis cases closed when the rule says, and each rule's outcome shown to the user on save.</li><li><code>Survsys.UnitTests</code>: every rule's cases from <code>CLASSIFICATION_RULES.md</code>.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Run the validation and classification rules of CLASSIFICATION_RULES.md on every save of a case. The case status vocabulary gains Out of State (OS), shown and selectable wherever a status is. A pure, static ClassificationRules in Survsys.Data takes what a case's rules read (its condition, its event type, its workflow state, its current status, the state and resolved agency of the patient's current address, and its labs' organism, test type and result) and returns an outcome: a status to set (or none), an agency to set (or none), whether a contact is closed, and one line per rule saying what it found. Out-of-state: a patient whose current address is in a state other than Connecticut is OS, and a case leaving OS is reclassified. Jurisdiction: a case with no agency takes the agency its patient's zip resolves to through ZipAgencyRules. Chlamydia: a positive Chlamydia trachomatis result on an approved test type is Confirmed, and no such lab is reported as &quot;No valid lab exists&quot;. Gonorrhea: a positive Neisseria gonorrhoeae result is Confirmed, or Probable when its only evidence is a Gram stain. Hepatitis C: a positive HCV RNA, antigen or genotype result is Confirmed. Influenza: a case is reported when its hospitalization is not recorded. Syphilis and measles: no status is assigned (the document leaves them to the investigation), and the rule reports that. COVID-19: a positive PCR/amplification or antigen result is Confirmed, a positive IgG antibody with an epidemiological link Probable, and a positive test with neither symptoms nor link Not a Case. A rule sets a status only where the case has none or is OS, so a status a person set is never overwritten. Contacts of chlamydia, gonorrhea and syphilis cases are closed when they reach the LHD's acceptance, this workflow's counterpart of the legacy approved_by_lhd. In Survsys.Api a CaseClassifier loads those inputs, applies the outcome and records each rule's line as an administrative note on the case, which is how the user sees it on save; it is called at the end of every route that saves a case (create, clinical, investigation, administrative, workflow, labs and contact events) and not from the manual status route, which is the person's own setting.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/1fe0c6a0361ff9d91ad38e0c21088f3628d2d7c5"><code>1fe0c6a0361ff9d91ad38e0c21088f3628d2d7c5</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Out of state status</td><td><p>Add Out of State (code OS) to CaseStatus and CaseStatusRules (Read and IsAssignable), update CaseStatusRulesTests, list OS in the Api's status refusals, and show and offer it in the Web's status lists and labels.</p></td><td></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code><br><code>dotnet build Survsys.Web/Survsys.Web.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~CaseStatusRulesTests</code></td><td>yes</td></tr>
+<tr><td>Classification rules</td><td><p>Write Survsys.Data/ClassificationRules.cs: the pure, static rules for out-of-state status, jurisdiction from the address, chlamydia, gonorrhea, hepatitis C, influenza, syphilis, measles and COVID-19 and the contact close, over an input record and returning an outcome record; and Survsys.UnitTests/ClassificationRulesTests.cs with every rule's cases from CLASSIFICATION_RULES.md, including each row of the COVID matrix.</p></td><td><span class="mono">Survsys.Data/ClassificationRules.cs</span><br><span class="mono">Survsys.UnitTests/ClassificationRulesTests.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~ClassificationRulesTests</code></td><td>yes</td></tr>
+<tr><td>Classify on save</td><td><p>Write Survsys.Api/CaseClassifier.cs, which reads a case's inputs, applies ClassificationRules' outcome to the case and records each rule's line as an administrative note, and call it at the end of each route that saves a case (create, clinical, investigation, administrative, workflow, labs, contact events) but not the manual status route; and Survsys.IntegrationTests/CaseClassifierTests.cs proving a chlamydia case confirmed, an out-of-state case set OS, a contact closed and a status a person set left alone.</p></td><td><span class="mono">Survsys.Api/CaseClassifier.cs</span><br><span class="mono">Survsys.Api/PersonConditionEndpoints.cs</span><br><span class="mono">Survsys.Api/ClinicalEndpoints.cs</span><br><span class="mono">Survsys.Api/InvestigationEndpoints.cs</span><br><span class="mono">Survsys.Api/AdministrativeEndpoints.cs</span><br><span class="mono">Survsys.Api/LabEndpoints.cs</span><br><span class="mono">Survsys.Api/ContactEventEndpoints.cs</span><br><span class="mono">Survsys.IntegrationTests/CaseClassifierTests.cs</span></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo -v q</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No configurable rules engine or rule table: the rules are code, one per condition, as the document describes them.</li><li>No hepatitis C resolution rule (validate_hepc_resolved): the document names only &quot;complex clinical criteria&quot; and specifies none.</li><li>No contact sharing between agencies for syphilis or measles beyond what the rule reports; no new share rows.</li><li>No COVID PUI form validation, ACTS or GAEN checks (covid.validate_covid_pc_info, validate_corona_acts, validate_corona_gaen).</li><li>No workflow-gated validation by agency id (the legacy secondary agencies 12, 14, 23, 25, 26): rules run on every save.</li><li>No change to the manual status route, to MMWR week calculation, or to an &quot;Out of State&quot; agency; no migration.</li><li>No new Web screen: the outcome is shown as a note on the case's Notes tab.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[23:29:53]</span> <span class="muted">run-started</span> session=096 mode=pull</div>
+<div class="line"><span class="at">[23:29:54]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[23:32:37]</span> <span class="muted">run-resumed</span> session=096 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[23:32:37]</span> <span class="muted">plan-accepted</span> steps=[&quot;out-of-state-status&quot;,&quot;classification-rules&quot;,&quot;classify-on-save&quot;] non_goals=7</div>
+<div class="line"><span class="at">[23:32:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[23:32:37]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=out-of-state-status</div>
+<div class="line"><span class="at">[23:34:23]</span> <span class="muted">run-resumed</span> session=096 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:34:23]</span> <span class="muted">step-file-unchanged</span> step=out-of-state-status file=Survsys.Api/SavedViewEndpoints.cs</div>
+<div class="line"><span class="at">[23:34:25]</span> <span class="muted">check-passed</span> step=out-of-state-status argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[23:34:27]</span> <span class="muted">check-passed</span> step=out-of-state-status argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[23:34:31]</span> <span class="muted">check-passed</span> step=out-of-state-status argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseStatusRulesTests&quot;]</div>
+<div class="line"><span class="at">[23:34:31]</span> <span class="muted">report-accepted</span> seq=2 step=out-of-state-status files=[] notes=OS Out of State added to CaseStatus and CaseStatusRules, the Api refusal texts and the Web status lists and labels; SavedViewEndpoints needed no change</div>
+<div class="line"><span class="at">[23:34:31]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=classification-rules</div>
+<div class="line"><span class="at">[23:37:09]</span> <span class="muted">run-resumed</span> session=096 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:37:10]</span> <span class="muted">check-passed</span> step=classification-rules argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[23:37:14]</span> <span class="muted">check-passed</span> step=classification-rules argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ClassificationRulesTests&quot;]</div>
+<div class="line"><span class="at">[23:37:15]</span> <span class="muted">report-accepted</span> seq=3 step=classification-rules files=[&quot;Survsys.Data/ClassificationRules.cs&quot;,&quot;Survsys.UnitTests/ClassificationRulesTests.cs&quot;] notes=Pure ClassificationRules.Classify over a ClassificationInput, returning status, agency, contact close and findings; 36 unit cases incl. every COVID matrix row</div>
+<div class="line"><span class="at">[23:37:15]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=classify-on-save</div>
+<div class="line"><span class="at">[23:43:39]</span> <span class="muted">run-resumed</span> session=096 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:43:41]</span> <span class="muted">check-passed</span> step=classify-on-save argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[23:43:43]</span> <span class="muted">check-passed</span> step=classify-on-save argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[23:43:43]</span> <span class="muted">report-accepted</span> seq=4 step=classify-on-save files=[&quot;Survsys.Api/CaseClassifier.cs&quot;,&quot;Survsys.Api/PersonConditionEndpoints.cs&quot;,&quot;Survsys.Api/ClinicalEndpoints.cs&quot;,&quot;Survsys.Api/InvestigationEndpoints.cs&quot;,&quot;Survsys.Api/AdministrativeEndpoints.cs&quot;,&quot;Survsys.Api/LabEndpoints.cs&quot;,&quot;Survsys.Api/ContactEventEndpoints.cs&quot;,&quot;Survsys.IntegrationTests/CaseClassifierTests.cs&quot;] notes=CaseClassifier runs after the save of create, promote, workflow, clinical, investigation, administrative, every lab write and contact events (not the status route); findings recorded once as an administrative note. CaseClassifierTests 4/4 and 104 affected integration tests pass by hand</div>
+<div class="line"><span class="at">[23:43:43]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[23:43:43]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[23:43:44]</span> <span class="muted">job-started</span> name=verification pid=32168 log=.dabbler/runs/s96/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:45:15]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s96/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:45:15]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[23:45:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[23:45:15]</span> <span class="muted">instruction-issued</span> seq=5 kind=rejection reasons=5</div>
+<div class="line"><span class="at">[23:45:37]</span> <span class="muted">run-resumed</span> session=096 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[23:45:37]</span> <span class="muted">dispute-recorded</span> round=1 finding=3</div>
+<div class="line"><span class="at">[23:45:37]</span> <span class="muted">dispute-recorded</span> round=1 finding=4</div>
+<div class="line"><span class="at">[23:45:37]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0,1,2] reject=[3,4] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:3,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;CLASSIFICATION_RULES.md section 3.2 (../nedss/docs/business-logic, outside this repository) is the specification this session implements, and its table reads 'Positive result + approved type (NOT Gram Stain) -&gt; C (Confirmed)' and 'Positive result + Gram Stain -&gt; P (Probable)'. The approved-type qualifier for confirmation is the spec's own, and the Gram-stain branch does not require it, exactly as the code does. The doc comment on the gonorrhea rule records this.&quot;},{&quot;finding&quot;:4,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The zip-to-agency mapping holds Connecticut jurisdictions, so it cannot name a correct agency for a patient who lives in another state. The legacy routes an out-of-state case to an 'Out of State' agency, and the session's declared non-goals exclude that agency ('No change ... to an \&quot;Out of State\&quot; agency'). So an out-of-state case is given the OS status and keeps the agency it already has. Taking a Connecticut agency from a zip would assign a jurisdiction the case does not belong to.&quot;}]</div>
+<div class="line"><span class="at">[23:45:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[23:45:37]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[23:46:16]</span> <span class="muted">run-resumed</span> session=096 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[23:46:18]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=out-of-state-status</div>
+<div class="line"><span class="at">[23:46:20]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=out-of-state-status</div>
+<div class="line"><span class="at">[23:46:24]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseStatusRulesTests&quot;] owner=out-of-state-status</div>
+<div class="line"><span class="at">[23:46:25]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=classification-rules</div>
+<div class="line"><span class="at">[23:46:29]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ClassificationRulesTests&quot;] owner=classification-rules</div>
+<div class="line"><span class="at">[23:46:31]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=classify-on-save</div>
+<div class="line"><span class="at">[23:46:34]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=classify-on-save</div>
+<div class="line"><span class="at">[23:46:34]</span> <span class="muted">report-accepted</span> seq=6 step=fix-round-1 files=[&quot;Survsys.Data/ClassificationRules.cs&quot;,&quot;Survsys.UnitTests/ClassificationRulesTests.cs&quot;] notes=COVID rule reads only SARS-CoV-2 results; hepatitis C antigen case added; influenza hospitalization says when it is recorded; 38 rule tests pass</div>
+<div class="line"><span class="at">[23:46:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[23:46:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[23:46:34]</span> <span class="muted">job-started</span> name=verification pid=31564 log=.dabbler/runs/s96/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:46:56]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s96/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:46:56]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[23:46:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[23:46:56]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[23:46:56]</span> <span class="muted">job-started</span> name=run of record: unit pid=14320 log=.dabbler/runs/s96/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[23:47:04]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="bad">1</span> log=.dabbler/runs/s96/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[23:47:04]</span> <span class="muted">tests-failed</span> command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[23:47:04]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=fix-run-of-record</div>
+<div class="line"><span class="at">[23:47:41]</span> <span class="muted">run-resumed</span> session=096 phase=<span class="milestone">run-of-record</span> mode=pull</div>
+<div class="line"><span class="at">[23:47:44]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=out-of-state-status</div>
+<div class="line"><span class="at">[23:47:45]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=out-of-state-status</div>
+<div class="line"><span class="at">[23:47:49]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseStatusRulesTests&quot;] owner=out-of-state-status</div>
+<div class="line"><span class="at">[23:47:50]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=classification-rules</div>
+<div class="line"><span class="at">[23:47:54]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ClassificationRulesTests&quot;] owner=classification-rules</div>
+<div class="line"><span class="at">[23:47:56]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=classify-on-save</div>
+<div class="line"><span class="at">[23:47:57]</span> <span class="muted">check-passed</span> step=fix-run-of-record argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=classify-on-save</div>
+<div class="line"><span class="at">[23:47:58]</span> <span class="muted">report-accepted</span> seq=7 step=fix-run-of-record files=[&quot;Survsys.UnitTests/PersonConditionEndpointsTests.cs&quot;] notes=WhyNotAStatus tests still expected OS refused; OS is now an assignable code, so it moves to the accepted cases and lowercase os stays refused; full unit suite 2106/2106</div>
+<div class="line"><span class="at">[23:47:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[23:47:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[23:47:58]</span> <span class="muted">job-started</span> name=verification pid=48252 log=.dabbler/runs/s96/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:48:08]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s96/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:48:08]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[23:48:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[23:48:08]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[23:48:08]</span> <span class="muted">job-started</span> name=run of record: unit pid=31604 log=.dabbler/runs/s96/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[23:48:16]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s96/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[23:48:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[23:48:19]</span> <span class="muted">landed</span> commit=1fe0c6a0361ff9d91ad38e0c21088f3628d2d7c5</div>
+<div class="line"><span class="at">[23:48:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[23:48:19]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[23:48:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[23:48:19]</span> <span class="muted">job-started</span> name=close pid=24752 log=.dabbler/runs/s96/driver/jobs/close.log</div>
+<div class="line"><span class="at">[23:48:24]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s96/driver/jobs/close.log</div>
+<div class="line"><span class="at">[23:48:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>5 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>COVID-19 classification treats any positive PCR/amplification or antigen result as a COVID result, regardless of the lab organism.</td><td>fixed — COVID rule reads only SARS-CoV-2 results; hepatitis C antigen case added; influenza hospitalization says when it is recorded; 38 rule tests pass — (Survsys.Data/ClassificationRules.cs, Survsys.UnitTests/ClassificationRulesTests.cs)</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The visible hepatitis-C tests do not cover the explicitly required positive antigen branch.</td><td>fixed — COVID rule reads only SARS-CoV-2 results; hepatitis C antigen case added; influenza hospitalization says when it is recorded; 38 rule tests pass — (Survsys.Data/ClassificationRules.cs, Survsys.UnitTests/ClassificationRulesTests.cs)</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** The influenza rule does not emit an outcome line when hospitalization is recorded, contrary to the promised “one line per rule saying what it found.”</td><td>fixed — COVID rule reads only SARS-CoV-2 results; hepatitis C antigen case added; influenza hospitalization says when it is recorded; 38 rule tests pass — (Survsys.Data/ClassificationRules.cs, Survsys.UnitTests/ClassificationRulesTests.cs)</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Nit:** Gonorrhea confirmation improperly depends on `ApprovedTestType`, a qualifier the plan applies to chlamydia but not gonorrhea.</td><td>disputed — CLASSIFICATION_RULES.md section 3.2 (../nedss/docs/business-logic, outside this repository) is the specification this session implements, and its table reads 'Positive result + approved type (NOT Gram Stain) -&gt; C (Confirmed)' and 'Positive result + Gram Stain -&gt; P (Probable)'. The approved-type qualifier for confirmation is the spec's own, and the Gram-stain branch does not require it, exactly as the code does. The doc comment on the gonorrhea rule records this.</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** Jurisdiction assignment is skipped for every out-of-state case, even when the input already has a resolved zip agency.</td><td>disputed — The zip-to-agency mapping holds Connecticut jurisdictions, so it cannot name a correct agency for a patient who lives in another state. The legacy routes an out-of-state case to an 'Out of State' agency, and the session's declared non-goals exclude that agency ('No change ... to an &quot;Out of State&quot; agency'). So an out-of-state case is given the OS status and keeps the agency it already has. Taking a Connecticut agency from a zip would assign a jurisdiction the case does not belong to.</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The COVID organism filter still treats any organism containing `&quot;coronavirus&quot;` as SARS-CoV-2, despite the method comment limiting classification to results that “identify SARS-CoV-2.” A test worth adding in `Survsys.UnitTests/ClassificationRulesTests.cs`: with a COVID-19 condition, no symptoms or epidemiological link, and `Lab(&quot;Human coronavirus OC43&quot;, &quot;PCR/amplification&quot;, &quot;POSITIVE&quot;)`, assert no COVID status is assigned; today `Has(lab.Organism, &quot;SARS-CoV-2&quot;, &quot;coronavirus&quot;)` would return Confirmed.</td><td>not answered</td></tr>
+</table></td></tr>
+<tr><td>3</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** Round 2’s COVID finding persists: `ClassificationRules` still classifies a positive PCR/amplification result for any organism containing `&quot;coronavirus&quot;` as SARS-CoV-2. A COVID case with `Human coronavirus OC43`, `PCR/amplification`, `POSITIVE`, no symptoms, and no epidemiological link should receive no COVID status; the current organism matching instead assigns Confirmed. Add an assertion for that input in `Survsys.UnitTests/ClassificationRulesTests.cs` and restrict the rule to SARS-CoV-2 identifiers.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="bad">failed</span></td><td>7s</td><td></td><td></td><td></td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>7s</td><td>2106</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
