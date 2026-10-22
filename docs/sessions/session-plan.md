@@ -1785,57 +1785,62 @@ that depends on them, and a session that finds one wrong amends this phase.*
 5. Full test suite, recorded as the run of record.
 6. Close-out.
 
-### Session 107: The integration suite before every release, on SQL Server in Podman
+### Session 107: The integration suite before every release, on SQL Server in a container
 
 *Inserted after session 106. The framework's run of record is the unit suite
 alone, and it has never run the integration suite. Sessions whose plans say
 "the integration suite included" still recorded a unit-only run. So an
 integration failure goes unseen until someone runs the suite by hand: session
 95 found `PersonMergeEndpointsTests.AMergeThatFailsPartwayLeavesBothPeopleUnchanged`
-broken since session 94. The suite needs a reachable SQL Server, and the
-operator's machine has no server ready for it. A SQL Server 2022 container
-under Podman is that server. `SqlServerFixture` already takes its whole
-connection string from `SURVSYS_SQLSERVER`, and nothing in the schema uses a
-Windows-only feature. This comes before release 0.14.0 so that release is the
-first one the integration suite gates.*
+broken since session 94. The suite needs a reachable SQL Server, so it should
+bring its own. Testcontainers for .NET (`Testcontainers.MsSql`) is the usual
+way to do that: the fixture starts a SQL Server 2022 container, waits until it
+is ready, and hands back its connection string. `dotnet test` then needs
+nothing started first. Nothing in the schema uses a Windows-only feature. This
+comes before release 0.14.0 so that release is the first one the integration
+suite gates.*
 
 *Non-goals: ordinary sessions keep the unit suite as their run of record, and
-no CI pipeline runs the integration suite. Nothing about the container is
-treated as a secret: it holds only test data and can be discarded at any
-time. No product code changes. If the first
-run in the container fails because of the product rather than the container,
-the failure is recorded in the session's notes and a repair session is planned
-before the release.*
+no CI pipeline runs the integration suite. No script, no compose file, and no
+password anyone has to keep: Testcontainers generates one for each run. The
+end-to-end harness keeps its own server for now. No product code changes. If
+the first run in a container fails because of the product rather than the
+container, the failure is recorded in the session's notes and a repair session
+is planned before the release.*
 
 1. Register.
-2. `scripts/`: a PowerShell script that brings up SQL Server 2022 under
-   Podman for the test suites. It starts the `survsys-sql` container, creating
-   it on the first run. It waits until the server accepts a SQL sign-in,
-   giving up with a clear message after a bounded wait. It sets
-   `SURVSYS_SQLSERVER` and `SURVSYS_E2E_SQLSERVER` for the command it runs.
-   The `sa` password is a fixed throwaway written in the script, so the
-   operator stores nothing. The port is published on `127.0.0.1` only, so
-   nothing beyond the machine reaches the server. A second switch stops the
-   container, and a third removes it.
-3. `dabbler.yaml`: the integration suite becomes one a release session must
+2. `Survsys.IntegrationTests`: a reference to `Testcontainers.MsSql`, and
+   `SqlServerFixture` starting a SQL Server 2022 container for the run when
+   `SURVSYS_SQLSERVER` is not set. When it is set, the fixture uses that
+   server as it does today, so the suite can still run against a local SQL
+   Server. The container is removed when the run ends. If no container
+   engine is reachable, the fixture fails loudly, naming the engine it tried,
+   `DOCKER_HOST` and `SURVSYS_SQLSERVER`, the same way an unreachable server
+   fails it today. It never skips.
+3. Podman on the operator's machine: Testcontainers reaches Podman through its
+   Docker-compatible API, with `DOCKER_HOST` pointing at it where Docker
+   Desktop would otherwise answer. Whether Testcontainers' cleanup container
+   (Ryuk) has to be turned off with `TESTCONTAINERS_RYUK_DISABLED` is settled
+   by trying it. The session's notes record the settings that worked, and none
+   of them is written to a file the repository tracks.
+4. `dabbler.yaml`: the integration suite becomes one a release session must
    run whole and green, while an ordinary session's run of record stays the
-   unit suite. Its command runs `dotnet test` through the step 2 script, so
-   the framework's run needs nothing started by hand. The session first
-   finds out what the installed router can express: a suite only a release
-   runs, or one the release selects. Its notes say which was used. If the
-   router can express neither, the release gate becomes a documented step of
-   the release session, and the notes say so.
-4. `docs/technical/README.md`: the suites table and its paragraph describe
-   the container. That covers the image, the script, the environment
-   variables it sets, and the Podman machine memory the suite needs (4 GiB, where 2 GiB
-   is SQL Server's bare minimum).
-5. The whole integration suite run in the container by the step 2 script.
-   Failures caused by the container (sign-in, timing, collation) are fixed
-   here.
-6. Cross-provider verification.
-7. Full test suite, the integration suite included and run in the container,
+   unit suite. The session first finds out what the installed router can
+   express: a suite only a release runs, or one the release selects. Its
+   notes say which was used. If the router can express neither, the release
+   gate becomes a documented step of the release session, and the notes say
+   so.
+5. `docs/technical/README.md`: the suites table and its paragraph describe
+   how the integration suite gets its server. It starts a container unless
+   `SURVSYS_SQLSERVER` names one. The paragraph also gives the Podman
+   settings and the machine memory the suite needs (4 GiB, where 2 GiB is
+   SQL Server's bare minimum).
+6. The whole integration suite run in a container. Failures caused by the
+   container (sign-in, timing, collation) are fixed here.
+7. Cross-provider verification.
+8. Full test suite, the integration suite included and run in a container,
    recorded as the run of record.
-8. Close-out.
+9. Close-out.
 
 ### Session 108: Release 0.14.0 (release: 0.14.0)
 
