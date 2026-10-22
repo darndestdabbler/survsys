@@ -111,7 +111,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 97 | Classification shown on save, and on encounter saves | no | 2026-10-22 |
 | 98 | IBIS, ad-hoc reporting and system configuration | no | 2026-10-22 |
 | 99 | Phase 12 walkthroughs | no | 2026-10-22 |
-| 100 | Release 0.13.0 (release: 0.13.0) | — | not declared |
+| 100 | Release 0.13.0 (release: 0.13.0) | yes | 2026-10-22 |
 | 101 | eICR and RR parsing and document intake | — | not declared |
 | 102 | eCR validation and the eICR viewer | — | not declared |
 | 103 | Reportability and condition mapping | — | not declared |
@@ -892,3 +892,9 @@ Finish Phase 12's IBIS, ad-hoc reporting and system configuration. In Survsys.We
 **Releasable: no.**
 
 Write the Phase 12 walkthroughs and the Playwright tests that perform them. Four documents are added to docs/walkthroughs/ and linked from its README, each in the house form of the others and each with the one test named after it in Survsys.E2ETests: review a case's audit history (change a case, open its audit history and read the change with the user and the values before and after), run an ad-hoc report (save a view, pick it and one of its columns on the Reports screen, read the counts and export them), send a case to IBIS (press Send to IBIS on a case's report and read the date IBIS accepted it), and see a case classified on save (the document for the test session 97 already wrote, which now names that document instead of the session). For the IBIS walkthrough the E2E harness starts a loopback stand-in for IBIS that accepts every case and points the API tier's IbisTransmission endpoint at it, so nothing leaves the machine.
+
+### Session 100 — Release 0.13.0 (release: 0.13.0)
+
+**Releasable: yes.**
+
+Release 0.13.0: the framework packs and publishes what is on the trunk.
