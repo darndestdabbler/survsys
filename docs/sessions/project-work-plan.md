@@ -119,7 +119,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 105 | eCR senders and data quality | no | 2026-10-22 |
 | 106 | Phase 13 walkthroughs | no | 2026-10-22 |
 | 107 | The integration suite before every release, on SQL Server in a container | no | 2026-10-22 |
-| 108 | Release 0.14.0 (release: 0.14.0) | — | not declared |
+| 108 | Release 0.14.0 (release: 0.14.0) | yes | 2026-10-22 |
 | 109 | The parity check and the documentation for 1.0.0 | — | not declared |
 | 110 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
@@ -946,3 +946,9 @@ Write the Phase 13 walkthroughs and the Playwright tests that perform them. The 
 **Releasable: no.**
 
 Make the integration suite bring its own SQL Server and gate release 0.14.0. Survsys.IntegrationTests takes a reference to Testcontainers.MsSql, and SqlServerFixture (made an IAsyncLifetime collection fixture) starts a SQL Server 2022 container for the run when SURVSYS_SQLSERVER is not set, pointing the suite's survsys_integration database at it; when the variable is set it uses that server as today. The container is removed when the run ends. An unreachable container engine fails the fixture loudly, naming the engine endpoint it tried, DOCKER_HOST and SURVSYS_SQLSERVER, and never skips. The suite is then run whole in a container on the operator's Podman machine (through its Docker-compatible pipe), settling by trying whether Ryuk has to be disabled; container-caused failures (sign-in, timing, collation) are fixed in the fixture, the settings that worked go in the session's notes and in no tracked file, and a product failure is recorded in the notes with a repair session planned before the release. The installed router (3.23.0) runs every expensive suite at every session's run of record and offers no suite only a release runs; an expensive suite with a select would still run, targeted or whole, in ordinary sessions. So the integration suite stays non-expensive in dabbler.yaml, whose comment says why, and the release gate becomes a documented step of session 108's section in session-plan.md: the integration suite run whole and green in a container before anything is published. docs/technical/README.md's suites table and paragraph describe how the suite gets its server, the Podman settings, and the 4 GiB machine memory it needs.
+
+### Session 108 — Release 0.14.0 (release: 0.14.0)
+
+**Releasable: yes.**
+
+Release 0.14.0: the framework packs and publishes what is on the trunk.
