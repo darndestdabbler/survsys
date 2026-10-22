@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 095 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 095 transcript</h1>
+<p class="stamp">Rendered 2026-10-21T23:23:03.072Z by dabbler-ai-router 3.23.0 at 312752df9e6892909f56b929d8ca03b13266e7ca.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-21T18:47:40.915-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 95: Jurisdiction-scoped access and sign-in protection</h3>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: a user's case access scoped to their agencies' jurisdictions and to cases shared with them, every case route and the case search refusing the rest; the Forms and Treatments writes needing the privilege the navigation bar already asks for.</li><li><code>Survsys.Api</code> and <code>Survsys.Web</code>: account lockout after failed sign-ins, and data protection keys persisted to a configured folder on both tiers, so a sign-in survives an app-pool recycle and a second server.</li><li><code>Survsys.IntegrationTests</code>: a case out of the user's jurisdiction refused on every route, and lockout.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Scope a user's case access to their agencies' jurisdictions and to cases shared with those agencies, and protect signing in. Survsys.Data gains a user_agencies join (a user's agencies) and two lockout columns on users (failed sign-in count, locked-out-until), in one migration that also gives the Administrator role a new all_jurisdictions privilege (the statewide user, added to Survsys.Contracts.Privileges). At sign-in the API tier puts the user's agencies on the token beside their privileges; one CaseAccess rule in Survsys.Api, run as middleware after authorisation, resolves the case a request is about from its route (/api/person-conditions/{id}, /api/cases/{personConditionId}, /api/notification-queue/{personConditionId}, and the child records -- labs and their tests, results and resistance tests, exposures and their places, contacts, sources and contact events, notes, attachments, tasks, encounters, case treatments, case vaccines and case forms -- by their owning case) and answers 404 unless the caller holds all_jurisdictions, the case's agency is one of theirs, or the case is shared with one of theirs; the case search is filtered by the same predicate. PrivilegeRules treats /api/forms and /api/treatments as reference data, so their writes need manage_reference_data as the navigation bar already asks. The Users screen and /api/users carry a user's agencies so an administrator can assign them. Sign-in locks a user out for 15 minutes after 5 consecutive failures, refused in the same words as any other refusal, and a success resets the count. Both tiers persist their data protection keys to the folder Survsys:DataProtectionKeysPath names, under a fixed application name, when it is configured. Integration tests prove an out-of-jurisdiction case refused on every case route and in the search, a shared and an in-jurisdiction case served, and lockout; existing tests whose non-administrator users read cases are given all_jurisdictions.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/b916d2e035d6a675e495c7599d4fb54cbce1edbc"><code>b916d2e035d6a675e495c7599d4fb54cbce1edbc</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Jurisdiction data</td><td><p>Survsys.Data: a UserAgency entity (user_agencies table keyed on user and agency, cascading with the user) and its configuration registered on SurvsysDbContext; User gains FailedSignInCount and LockedOutUntil with their columns. One migration, JurisdictionAccessAndLockout, with its designer and the model snapshot updated, that adds them and inserts the all_jurisdictions privilege for the Administrator role. Survsys.Contracts.Privileges gains AllJurisdictions (all_jurisdictions) in All, described as seeing every agency's cases.</p></td><td></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo -v q</code><br><code>dotnet build Survsys.Contracts/Survsys.Contracts.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>Case access</td><td><p>Survsys.Api: the user's agency ids travel on the token as an agency claim that AccountEndpoints.ClaimsFor writes and AccountQueries.SignIn reads from user_agencies. A new CaseAccess.cs holds the rule: which case a route pattern and its values are about (pure, unit-tested), the visible-case predicate over PersonCondition (all_jurisdictions, the case's agency among the caller's, or a share with one of them), and a middleware registered in Program.cs after UseAuthorization that answers 404 Problem Details for a case the caller may not see. The case search applies the same predicate. PrivilegeRules lists /api/forms and /api/treatments with the reference data. Unit tests: CaseAccessTests for the route rule, PrivilegeRulesTests and AccountEndpointsTests updated.</p></td><td></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code><br><code>dotnet build Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>User agencies</td><td><p>A user's agencies on /api/users and the Users screen: SaveUserRequest and UserResponse carry AgencyIds; UserEndpoints validates them against the agencies, saves them to user_agencies and returns them; Users.razor offers one checkbox per agency beside the roles and lists each user's agencies. UserEndpointsTests updated for the new response shape.</p></td><td></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj --nologo -v q</code><br><code>dotnet build Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>Sign in protection</td><td><p>Lockout in AccountQueries.SignIn: a user whose LockedOutUntil is in the future is refused without checking the password; a wrong password increments FailedSignInCount and at 5 sets LockedOutUntil 15 minutes ahead and resets the count; a success clears both. Data protection on both tiers: where Survsys:DataProtectionKeysPath is configured, AddDataProtection persists keys to that folder under a fixed application name per tier, so a token or cookie survives a recycle and a second server; unset, nothing changes.</p></td><td></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code><br><code>dotnet build Survsys.Web/Survsys.Web.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>Access integration tests</td><td><p>Survsys.IntegrationTests: CaseAccessTests, with a user of its own whose agency is not the case's, refused (404) on every case route -- the case's own routes, its child records and the case search omitting it -- while an in-jurisdiction case and one shared with the user's agency are served; AccountEndpointsTests, with a user of its own, locked out after five failures (the right password then refused) and a success resetting the count. Existing tests whose non-administrator roles read cases (EditLock, Note, PersonCondition, PersonMerge, SavedView) give those roles all_jurisdictions.</p></td><td></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo -v q</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No jurisdiction scoping of person reads (/api/persons), the work queue, outbreak case lists, reports, saved-view exports, the message and notification queues or the export log; only the case routes and the case search are scoped.</li><li>No check on which agency a new case is created in or routed to; creation and routing keep their current rules.</li><li>No screen or endpoint to unlock a locked-out user, no configurable lockout thresholds, and no password policy; the lockout simply expires.</li><li>No change to how a share is made or to shares being read-only; a shared case is readable and writable exactly as an in-jurisdiction one, by the same route rule.</li><li>No key encryption at rest, key vault or database-backed key store for data protection; a configured folder only, and nothing changes where it is unset.</li><li>No new Playwright tests and no walkthrough documents.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[22:47:40]</span> <span class="muted">run-started</span> session=095 mode=pull</div>
+<div class="line"><span class="at">[22:47:40]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[22:50:48]</span> <span class="muted">run-resumed</span> session=095 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[22:50:48]</span> <span class="muted">plan-accepted</span> steps=[&quot;jurisdiction-data&quot;,&quot;case-access&quot;,&quot;user-agencies&quot;,&quot;sign-in-protection&quot;,&quot;access-integration-tests&quot;] non_goals=6</div>
+<div class="line"><span class="at">[22:50:48]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[22:50:48]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=jurisdiction-data</div>
+<div class="line"><span class="at">[22:52:15]</span> <span class="muted">run-resumed</span> session=095 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:52:17]</span> <span class="muted">check-passed</span> step=jurisdiction-data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[22:52:18]</span> <span class="muted">check-passed</span> step=jurisdiction-data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Contracts/Survsys.Contracts.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[22:52:18]</span> <span class="muted">report-accepted</span> seq=2 step=jurisdiction-data files=[] notes=user_agencies join, lockout columns on users, all_jurisdictions privilege seeded to Administrator in migration JurisdictionAccessAndLockout</div>
+<div class="line"><span class="at">[22:52:18]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=case-access</div>
+<div class="line"><span class="at">[22:55:18]</span> <span class="muted">run-resumed</span> session=095 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:55:20]</span> <span class="muted">check-passed</span> step=case-access argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[22:55:22]</span> <span class="muted">check-passed</span> step=case-access argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[22:55:23]</span> <span class="muted">report-accepted</span> seq=3 step=case-access files=[] notes=CaseAccess route rule and visible-case predicate as middleware after authorisation, agency claims at sign-in, case search narrowed, forms and treatments as reference data</div>
+<div class="line"><span class="at">[22:55:23]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=user-agencies</div>
+<div class="line"><span class="at">[22:57:58]</span> <span class="muted">run-resumed</span> session=095 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:58:01]</span> <span class="muted">check-passed</span> step=user-agencies argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[22:58:03]</span> <span class="muted">check-passed</span> step=user-agencies argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[22:58:03]</span> <span class="muted">report-accepted</span> seq=4 step=user-agencies files=[] notes=Users carry AgencyIds on save and response, validated against agencies and saved to user_agencies; Users screen offers agency checkboxes and lists them</div>
+<div class="line"><span class="at">[22:58:03]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=sign-in-protection</div>
+<div class="line"><span class="at">[22:58:49]</span> <span class="muted">run-resumed</span> session=095 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:58:52]</span> <span class="muted">check-passed</span> step=sign-in-protection argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[22:58:53]</span> <span class="muted">check-passed</span> step=sign-in-protection argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[22:58:54]</span> <span class="muted">report-accepted</span> seq=5 step=sign-in-protection files=[] notes=Lockout for 15 minutes after 5 wrong passwords in a row, reset on success; data protection keys persisted to Survsys:DataProtectionKeysPath on both tiers when set</div>
+<div class="line"><span class="at">[22:58:54]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=access-integration-tests</div>
+<div class="line"><span class="at">[23:14:54]</span> <span class="muted">run-resumed</span> session=095 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:14:57]</span> <span class="muted">check-passed</span> step=access-integration-tests argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[23:14:57]</span> <span class="muted">report-accepted</span> seq=6 step=access-integration-tests files=[] notes=CaseAccessTests asks every case route from the host's endpoints and the search; AccountEndpointsTests proves lockout and reset; CaseAccess now leaves a missing case to the endpoint's own 404; PersonMerge partial-failure test signs in before counting audits, since sign-ins are audited since session 94</div>
+<div class="line"><span class="at">[23:14:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[23:14:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[23:14:57]</span> <span class="muted">job-started</span> name=verification pid=11436 log=.dabbler/runs/s95/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:15:59]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s95/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:15:59]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[23:15:59]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[23:15:59]</span> <span class="muted">instruction-issued</span> seq=7 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[23:16:13]</span> <span class="muted">run-resumed</span> session=095 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[23:16:13]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0,1,2] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[23:16:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[23:16:13]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[23:17:58]</span> <span class="muted">run-resumed</span> session=095 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[23:18:00]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=jurisdiction-data</div>
+<div class="line"><span class="at">[23:18:01]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Contracts/Survsys.Contracts.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=jurisdiction-data</div>
+<div class="line"><span class="at">[23:18:03]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=case-access</div>
+<div class="line"><span class="at">[23:18:07]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=case-access</div>
+<div class="line"><span class="at">[23:18:08]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=user-agencies</div>
+<div class="line"><span class="at">[23:18:10]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=user-agencies</div>
+<div class="line"><span class="at">[23:18:12]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=sign-in-protection</div>
+<div class="line"><span class="at">[23:18:14]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=sign-in-protection</div>
+<div class="line"><span class="at">[23:18:16]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=access-integration-tests</div>
+<div class="line"><span class="at">[23:18:16]</span> <span class="muted">report-accepted</span> seq=8 step=fix-round-1 files=[] notes=Lockout counted and cleared by atomic conditional UPDATEs so parallel failures each count; tests for parallel failures, identical refusal words, and a token outliving its host with a configured key folder</div>
+<div class="line"><span class="at">[23:18:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[23:18:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[23:18:16]</span> <span class="muted">job-started</span> name=verification pid=51916 log=.dabbler/runs/s95/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:19:49]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s95/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:19:49]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[23:19:49]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[23:19:49]</span> <span class="muted">instruction-issued</span> seq=9 kind=rejection reasons=2</div>
+<div class="line"><span class="at">[23:20:31]</span> <span class="muted">run-resumed</span> session=095 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[23:20:31]</span> <span class="muted">dispute-recorded</span> round=2 finding=1</div>
+<div class="line"><span class="at">[23:20:31]</span> <span class="muted">dispositions-accepted</span> round=2 fix=[0] reject=[1] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The Web tier's key configuration is the same four lines as the API tier's (Survsys.Web/Program.cs:41-51 against Survsys.Api/Program.cs), and the API-tier test already proves that pattern keeps a token valid across hosts. A Web-tier equivalent cannot be hosted in-process here: the integration suite references only Survsys.Api and Survsys.Data (Survsys.IntegrationTests.csproj:35-36), the Web tier's entry point is an internal top-level Program that would collide with the API's public global Program (Survsys.Api/Program.cs:285) in any project referencing both, and the end-to-end harness runs each tier as a separate process. Adding that hosting machinery for a minor nit is the over-engineering the session forbids.&quot;}]</div>
+<div class="line"><span class="at">[23:20:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[23:20:31]</span> <span class="muted">instruction-issued</span> seq=10 kind=step step=fix-round-2</div>
+<div class="line"><span class="at">[23:21:36]</span> <span class="muted">run-resumed</span> session=095 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[23:21:38]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=jurisdiction-data</div>
+<div class="line"><span class="at">[23:21:39]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Contracts/Survsys.Contracts.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=jurisdiction-data</div>
+<div class="line"><span class="at">[23:21:41]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=case-access</div>
+<div class="line"><span class="at">[23:21:44]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=case-access</div>
+<div class="line"><span class="at">[23:21:46]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=user-agencies</div>
+<div class="line"><span class="at">[23:21:48]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=user-agencies</div>
+<div class="line"><span class="at">[23:21:49]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=sign-in-protection</div>
+<div class="line"><span class="at">[23:21:51]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=sign-in-protection</div>
+<div class="line"><span class="at">[23:21:53]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=access-integration-tests</div>
+<div class="line"><span class="at">[23:21:53]</span> <span class="muted">report-accepted</span> seq=10 step=fix-round-2 files=[] notes=A wrong password is counted only outside a lockout, so failures landing after the fifth cannot count toward the next; parallel test now asserts the count is zero after the lockout and one wrong password then does not re-lock</div>
+<div class="line"><span class="at">[23:21:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[23:21:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[23:21:53]</span> <span class="muted">job-started</span> name=verification pid=47032 log=.dabbler/runs/s95/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:22:45]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s95/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:22:45]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[23:22:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[23:22:45]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[23:22:45]</span> <span class="muted">job-started</span> name=run of record: unit pid=44420 log=.dabbler/runs/s95/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[23:22:54]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s95/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[23:22:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[23:22:57]</span> <span class="muted">landed</span> commit=b916d2e035d6a675e495c7599d4fb54cbce1edbc</div>
+<div class="line"><span class="at">[23:22:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[23:22:58]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[23:22:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[23:22:58]</span> <span class="muted">job-started</span> name=close pid=50524 log=.dabbler/runs/s95/driver/jobs/close.log</div>
+<div class="line"><span class="at">[23:23:03]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s95/driver/jobs/close.log</div>
+<div class="line"><span class="at">[23:23:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Lockout updates are not concurrency-safe, so parallel failed sign-ins can bypass the five-attempt lockout.</td><td>fixed — Lockout counted and cleared by atomic conditional UPDATEs so parallel failures each count; tests for parallel failures, identical refusal words, and a token outliving its host with a configured key folder</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** No visible test proves configured data-protection key sharing. Add a test with a common `Survsys:DataProtectionKeysPath` that signs in through one fresh API/Web host instance, disposes it, starts a second instance with the same configuration, and asserts the original bearer token/cookie remains accepted. The current source appears intended to pass this, but neither changed `Program.cs` file has a corresponding test.</td><td>fixed — Lockout counted and cleared by atomic conditional UPDATEs so parallel failures each count; tests for parallel failures, identical refusal words, and a token outliving its host with a configured key folder</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** The lockout integration test asserts only `401` responses. Add a case that submits an unknown username, a wrong password for an active user, and the correct password for a locked user, then asserts their problem `title` and `detail` are identical. This directly pins the required “same words as any other refusal” behavior.</td><td>fixed — Lockout counted and cleared by atomic conditional UPDATEs so parallel failures each count; tests for parallel failures, identical refusal words, and a token outliving its host with a configured key folder</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Concurrent failures that complete after the threshold pollute the next lockout window, allowing one bad password to re-lock an account after its 15-minute lockout has expired.</td><td>fixed — A wrong password is counted only outside a lockout, so failures landing after the fifth cannot count toward the next; parallel test now asserts the count is zero after the lockout and one wrong password then does not re-lock</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The newly added data-protection integration test starts only `SurvsysApi` hosts. It would still pass if `Survsys.Web/Program.cs` ignored `Survsys:DataProtectionKeysPath`. Add a Web-tier equivalent: configure one temporary key directory, authenticate through one fresh Web host and retain its authentication cookie/artifact, dispose it, start a second Web host with the same configuration, and assert that the original authenticated request is accepted.</td><td>disputed — The Web tier's key configuration is the same four lines as the API tier's (Survsys.Web/Program.cs:41-51 against Survsys.Api/Program.cs), and the API-tier test already proves that pattern keeps a token valid across hosts. A Web-tier equivalent cannot be hosted in-process here: the integration suite references only Survsys.Api and Survsys.Data (Survsys.IntegrationTests.csproj:35-36), the Web tier's entry point is an internal top-level Program that would collide with the API's public global Program (Survsys.Api/Program.cs:285) in any project referencing both, and the end-to-end harness runs each tier as a separate process. Adding that hosting machinery for a minor nit is the over-engineering the session forbids.</td></tr>
+</table></td></tr>
+<tr><td>3</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `WrongPasswordsSentTogetherLockTheUserOutAndNoneCountsTowardTheNext` does not actually distinguish the fixed implementation from the previous bug because it submits exactly ten failures. Under the prior implementation, failures 5 and 10 each reset `FailedSignInCount` to zero, so the asserted zero count, expiry, one additional failure, and successful sign-in can all still pass. A discriminating case would start with an active user, coordinate six wrong-password attempts so each reaches the update path, assert the account is locked with count zero, expire the lockout, submit four more wrong passwords, then assert the correct password succeeds. Current code should succeed; the prior implementation would carry count one from the sixth request, re-lock on the fourth post-expiry failure, and refuse the correct password.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>8s</td><td>2065</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
