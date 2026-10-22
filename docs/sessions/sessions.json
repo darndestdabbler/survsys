@@ -2010,9 +2010,9 @@
     {
       "number": 97,
       "title": "Classification shown on save, and on encounter saves",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-22T02:21:13.932000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-22T02:39:20.624000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
