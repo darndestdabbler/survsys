@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 101 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 101 transcript</h1>
+<p class="stamp">Rendered 2026-10-22T12:26:53.583Z by dabbler-ai-router 3.23.0 at 347d97c605fec689af66f8451d61c6b1fd338f0b.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-22T08:11:50.031-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 101: eICR and RR parsing and document intake</h3>
+<ol><li>Register.</li><li><code>Survsys.Messaging</code>: a CDA parser behind phase 10's parser seam, reading eICR R1.1 and R3.1/3.1.1 and RR 1.1 by templateId with LINQ to XML, into the patient, encounter, problems, results, medications, pregnancy, travel, occupation, and the RR's conditions with their determinations and responsible agencies.</li><li><code>Survsys.Api</code>: intake of eICR and RR documents from configured folders, a test and a production feed kept apart, the raw XML stored unchanged, each document taken once by its id, an RR paired with its eICR, and an eICR's versions grouped by setId and ordered by version number.</li><li><code>Survsys.UnitTests</code>: the HL7 IG examples of each version parsed, and a re-sent version grouped with its first.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Read eICR and RR CDA documents and take them in. In Survsys.Messaging a CdaParser, a second IMessageParser (Format &quot;CDA&quot;), reads a ClinicalDocument with LINQ to XML by templateId: eICR R1.1 (2.16.840.1.113883.10.20.15.2, extension 2016-12-01) and R3.1/R3.1.1 (extensions 2021-01-01 and 2022-05-01), and RR 1.1 (2.16.840.1.113883.10.20.15.2.1.2). Its Read(raw) answers a CdaDocument record: the kind (eICR or RR) and IG version, the document id, setId and versionNumber, the patient (as the existing ParsedPatient), the encounter, problems, results, medications, pregnancy, travel and occupation, and for an RR the eICR id it responds to and its conditions, each with its code, determination (RRVS1-4) and responsible agency; Parse(raw) maps that onto ParsedMessage for the seam, the patient with the results as one order. A document that is not XML or not a recognised eICR or RR throws Hl7ParseException. In Survsys.Data an ecr_document table (EcrDocument: document id unique, kind, feed, setId, version number, the eICR id an RR responds to, the raw XML unchanged, source file name, received at) with its migration. In Survsys.Api an EcrIntakeService background worker polls two configured folders, the test feed and the production feed (EcrIntake options, both empty and so off by default), stores each document's raw XML with the feed it came from, takes each document once by its id (a re-sent id is moved aside, not stored again), and moves a handled file to .processed and an unreadable one to .failed, as ElrIntakeService does. Two static queries over the stored documents answer an eICR's versions (same setId, ordered by version number) and the eICR an RR is paired with (and the RRs of an eICR) by the RR's referenced eICR id, so the pairing holds whichever document arrives first. The HL7 IG sample documents (eICR R1.1, eICR R3.1.1, RR 1.1) are kept as unit test fixtures and parsed; a re-sent version is grouped with its first.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/73c14d9b6cc4bcba14da11d66e8b59ece8b988ae"><code>73c14d9b6cc4bcba14da11d66e8b59ece8b988ae</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Cda parser</td><td><p>Survsys.Messaging: CdaDocument.cs holds the records the parse answers (CdaDocument with its encounter, problem, result, medication, travel, occupation and RR condition records), and CdaParser.cs implements IMessageParser with Read(raw) and Parse(raw), selecting by templateId with LINQ to XML and no new package. Survsys.UnitTests: the HL7 IG samples copied unchanged into Fixtures/Cda (CDAR2_IG_PHCASERPT_R2_STU1.1_Sample.xml, CDAR2_IG_PHCASERPT_R2_STU3.1.1_SAMPLE.xml, CDAR2_IG_PHCR_R2_RR_D1_2017DEC_SAMPLE.xml) and copied to output by the csproj; CdaParserTests parses each, asserting kind, version, ids, patient and the sections it carries, the RR's conditions with determination and responsible agency, Parse's mapping, and Hl7ParseException for non-XML and for a non-eCR document.</p></td><td></td><td><code>dotnet build Survsys.Messaging/Survsys.Messaging.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~CdaParserTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Ecr document data</td><td><p>Survsys.Data: an EcrDocument entity mapped to ecr_document (Id; DocumentId unique; Kind; Feed; SetId indexed; VersionNumber; EicrDocumentId indexed, for an RR; RawXml; Source; ReceivedAt), its configuration, a DbSet on SurvsysDbContext, and a migration.</p></td><td></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>Ecr intake api</td><td><p>Survsys.Api: EcrIntakeService.cs with EcrIntakeOptions (TestDirectory, ProductionDirectory, PollIntervalSeconds) and a BackgroundService polling both folders; a public static Stage(parser, raw, feed, source, takenDocumentIds) that answers the EcrDocument to store, or null for a document id already taken, and throws Hl7ParseException for an unreadable one; a static Receive that stores it; public static Versions(documents, setId) and Pair queries (RR to its eICR, eICR to its RRs) over an IQueryable&lt;EcrDocument&gt;. Program.cs binds the options, registers CdaParser and the worker; appsettings.json gains the EcrIntake section, off by default. Unit tests in EcrIntakeServiceTests (stage per feed with raw XML unchanged, a taken id refused, a re-sent version grouped with its first and ordered, an RR paired with its eICR in either order); integration tests in Survsys.IntegrationTests/EcrIntakeServiceTests for Receive storing once against the database.</p></td><td></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~EcrIntakeServiceTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No schema or schematron validation and no eICR viewer or eCR queue screen: those are session 102's.</li><li>No reportability decision, no condition mapping, and no routing of RR determinations: session 103's.</li><li>No person matching and no case written from an eICR: session 104's. Intake stores documents and stages nothing into the ELR message queue.</li><li>No sender table or onboarding stage, and no data quality figures: session 105's.</li><li>No FHIR eICR or RR bundles, no eICR Edition 4 / RR 2.0, and no cloud-bucket transport: folders only.</li><li>No change to ElrIntakeService, OruR01Parser or the ELR staging path.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[12:11:50]</span> <span class="muted">run-started</span> session=101 mode=pull</div>
+<div class="line"><span class="at">[12:11:50]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[12:13:44]</span> <span class="muted">run-resumed</span> session=101 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[12:13:44]</span> <span class="muted">plan-accepted</span> steps=[&quot;cda-parser&quot;,&quot;ecr-document-data&quot;,&quot;ecr-intake-api&quot;] non_goals=6</div>
+<div class="line"><span class="at">[12:13:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[12:13:45]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=cda-parser</div>
+<div class="line"><span class="at">[12:18:33]</span> <span class="muted">run-resumed</span> session=101 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:18:35]</span> <span class="muted">check-passed</span> step=cda-parser argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Messaging/Survsys.Messaging.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[12:18:38]</span> <span class="muted">check-passed</span> step=cda-parser argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CdaParserTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[12:18:38]</span> <span class="muted">report-accepted</span> seq=2 step=cda-parser files=[] notes=CdaParser reads eICR R1.1/R3.1/R3.1.1 and RR 1.1 by templateId into CdaDocument; IG samples as fixtures</div>
+<div class="line"><span class="at">[12:18:38]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=ecr-document-data</div>
+<div class="line"><span class="at">[12:19:41]</span> <span class="muted">run-resumed</span> session=101 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:19:43]</span> <span class="muted">check-passed</span> step=ecr-document-data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[12:19:43]</span> <span class="muted">report-accepted</span> seq=3 step=ecr-document-data files=[] notes=EcrDocument on ecr_document with unique document_id, indexed set_id and eicr_document_id, and the EcrDocuments migration</div>
+<div class="line"><span class="at">[12:19:43]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=ecr-intake-api</div>
+<div class="line"><span class="at">[12:21:49]</span> <span class="muted">run-resumed</span> session=101 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:21:51]</span> <span class="muted">check-passed</span> step=ecr-intake-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[12:21:53]</span> <span class="muted">check-passed</span> step=ecr-intake-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[12:21:57]</span> <span class="muted">check-passed</span> step=ecr-intake-api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~EcrIntakeServiceTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[12:21:58]</span> <span class="muted">report-accepted</span> seq=4 step=ecr-intake-api files=[] notes=EcrIntakeService polls test and production folders and stores each document once; Stage takes no taken-id set because the id is known only after parsing, so Receive checks the database (unique index behind it) and the take-once test is the integration test, which passes against SQL Server</div>
+<div class="line"><span class="at">[12:21:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[12:21:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[12:21:58]</span> <span class="muted">job-started</span> name=verification pid=46420 log=.dabbler/runs/s101/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:23:51]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s101/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:23:51]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[12:23:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[12:23:51]</span> <span class="muted">instruction-issued</span> seq=5 kind=rejection reasons=4</div>
+<div class="line"><span class="at">[12:24:28]</span> <span class="muted">run-resumed</span> session=101 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[12:24:28]</span> <span class="muted">dispute-recorded</span> round=1 finding=0</div>
+<div class="line"><span class="at">[12:24:28]</span> <span class="muted">dispute-recorded</span> round=1 finding=1</div>
+<div class="line"><span class="at">[12:24:28]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[2] reject=[0,1] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;CdaParser implements IMessageParser (Format CDA, Parse to ParsedMessage), which is what sitting behind the seam means. It cannot also be registered as the IMessageParser service: the container holds one IMessageParser, OruR01Parser, and ElrIntakeService and MllpListener resolve that single service for HL7 v2 lab messages, so registering CdaParser under it would hand CDA parsing to the ELR file drop and MLLP listener. The declaration's non-goals forbid changing the ELR staging path. The eCR intake stores documents and needs the CDA-specific Read, so it takes the concrete CdaParser.&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The declaration's 'the results as one order' was loose wording for the patient's results carried as orders; the parser maps each Result Organizer to a ParsedOrder. That is the faithful mapping onto the seam: ParsedOrder is defined as one order a message reports (an OBR with its results), and a CDA Result Organizer is exactly that, a panel with its own code and date, the CDA counterpart of an OBR. Collapsing every organizer into one order would lose each panel's test code and date and stage a CDA document unlike an HL7 v2 message of the same content. The tests assert the per-organizer mapping.&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[12:24:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[12:24:28]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[12:25:19]</span> <span class="muted">run-resumed</span> session=101 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[12:25:21]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Messaging/Survsys.Messaging.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=cda-parser</div>
+<div class="line"><span class="at">[12:25:24]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CdaParserTests|FullyQualifiedName~ArchitectureTests&quot;] owner=cda-parser</div>
+<div class="line"><span class="at">[12:25:26]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=ecr-document-data</div>
+<div class="line"><span class="at">[12:25:27]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=ecr-intake-api</div>
+<div class="line"><span class="at">[12:25:29]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=ecr-intake-api</div>
+<div class="line"><span class="at">[12:25:33]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~EcrIntakeServiceTests|FullyQualifiedName~ArchitectureTests&quot;] owner=ecr-intake-api</div>
+<div class="line"><span class="at">[12:25:33]</span> <span class="muted">report-accepted</span> seq=6 step=fix-round-1 files=[] notes=Added the eICR STU3 IG sample (templateId extension 2021-01-01, from HL7/CDA-phcaserpt-1.3.0) unchanged as the R3.1 fixture, with ReadsTheEicrR31Sample</div>
+<div class="line"><span class="at">[12:25:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[12:25:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[12:25:34]</span> <span class="muted">job-started</span> name=verification pid=9268 log=.dabbler/runs/s101/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:26:37]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s101/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:26:37]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[12:26:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[12:26:37]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[12:26:37]</span> <span class="muted">job-started</span> name=run of record: unit pid=49308 log=.dabbler/runs/s101/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[12:26:45]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s101/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[12:26:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[12:26:48]</span> <span class="muted">landed</span> commit=73c14d9b6cc4bcba14da11d66e8b59ece8b988ae</div>
+<div class="line"><span class="at">[12:26:48]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[12:26:49]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[12:26:49]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[12:26:49]</span> <span class="muted">job-started</span> name=close pid=41592 log=.dabbler/runs/s101/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:26:53]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s101/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:26:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>4 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The CDA parser is not registered through the `IMessageParser` seam.**</td><td>disputed — CdaParser implements IMessageParser (Format CDA, Parse to ParsedMessage), which is what sitting behind the seam means. It cannot also be registered as the IMessageParser service: the container holds one IMessageParser, OruR01Parser, and ElrIntakeService and MllpListener resolve that single service for HL7 v2 lab messages, so registering CdaParser under it would hand CDA parsing to the ELR file drop and MLLP listener. The declaration's non-goals forbid changing the ELR staging path. The eCR intake stores documents and needs the CDA-specific Read, so it takes the concrete CdaParser.</td></tr>
+<tr><td>1</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>`Parse` violates the required one-order CDA seam mapping.**</td><td>disputed — The declaration's 'the results as one order' was loose wording for the patient's results carried as orders; the parser maps each Result Organizer to a ParsedOrder. That is the faithful mapping onto the seam: ParsedOrder is defined as one order a message reports (an OBR with its results), and a CDA Result Organizer is exactly that, a panel with its own code and date, the CDA counterpart of an OBR. Collapsing every organizer into one order would lose each panel's test code and date and stage a CDA document unlike an HL7 v2 message of the same content. The tests assert the per-organizer mapping.</td></tr>
+<tr><td>2</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The promised eICR R3.1 IG-example fixture and parsing test are absent.**</td><td>fixed — Added the eICR STU3 IG sample (templateId extension 2021-01-01, from HL7/CDA-phcaserpt-1.3.0) unchanged as the R3.1 fixture, with ReadsTheEicrR31Sample</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Nit:** The visible intake tests exercise `Stage`, `Receive`, and static pairing queries, but not the background worker’s folder behavior. A useful non-blocking case would configure a temporary test feed folder containing one valid eICR and one malformed XML file, start a testable poll iteration, and assert that the valid raw XML is stored and moved to `.processed` while the malformed file moves to `.failed`.</td><td>not answered</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The prior worker-behavior coverage improvement remains useful. With a temporary configured test-feed folder containing one valid eICR XML fixture and one malformed XML file, invoke one poll iteration; assert the valid document is stored unchanged and moved to `.processed`, the malformed file moves to `.failed`, and processing continues rather than abandoning the valid file.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>7s</td><td>2159</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
