@@ -1,0 +1,105 @@
+@* The duplicate people on file: the pairs the matcher takes for one person, as
+   the candidates endpoint returns them, best first, each a way into the merge
+   screen for that pair. Reached only by holders of merge_persons, which the
+   API tier enforces whatever this screen shows.
+
+   Every element a later walkthrough will name carries an identifier of its
+   own — `duplicates-heading`, `duplicates-loading`, `duplicates-error`,
+   `duplicates-forbidden`, `duplicates-none`, the table, and one row per pair
+   keyed by both ids. *@
+@page "/persons/duplicates"
+@inject PersonsClient Client
+
+<PageTitle>Duplicate persons — Survsys</PageTitle>
+
+<MudText id="duplicates-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Duplicate persons
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    People on file who may be the same person. Open a pair to compare the two
+    records and merge them.
+</MudText>
+
+@if (!mayMerge)
+{
+    <MudAlert id="duplicates-forbidden" Severity="Severity.Warning">
+        Finding and merging duplicate persons needs the merge_persons privilege.
+    </MudAlert>
+}
+else if (asked is null)
+{
+    <MudProgressCircular id="duplicates-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } pairs)
+{
+    @if (pairs.Count == 0)
+    {
+        <MudText id="duplicates-none" Typo="Typo.body2">No duplicate persons were found.</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="duplicates-table" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>Person</th>
+                        <th>Born</th>
+                        <th>Possible duplicate</th>
+                        <th>Born</th>
+                        <th>Score</th>
+                        <th>Verdict</th>
+                        <th>Why</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var pair in pairs)
+                    {
+                        <tr id="@($"duplicate-row-{pair.First.Id}-{pair.Second.Id}")">
+                            <td>
+                                <MudLink Href="@($"/persons/merge/{pair.First.Id}/{pair.Second.Id}")">
+                                    @Name(pair.First)
+                                </MudLink>
+                            </td>
+                            <td>@pair.First.BirthDate?.ToString("yyyy-MM-dd")</td>
+                            <td>@Name(pair.Second)</td>
+                            <td>@pair.Second.BirthDate?.ToString("yyyy-MM-dd")</td>
+                            <td data-duplicate-score>@pair.Score</td>
+                            <td data-duplicate-verdict>@pair.Verdict</td>
+                            <td data-duplicate-reasons>@string.Join("; ", pair.Reasons)</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
+}
+else
+{
+    <MudAlert id="duplicates-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private bool mayMerge;
+
+    private Asked<IReadOnlyList<DuplicatePersonPairResponse>>? asked;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = AuthenticationState is { } state ? (await state).User : null;
+        mayMerge = user?.HasClaim(AccountClient.PrivilegeClaim, Privileges.MergePersons) == true;
+
+        if (mayMerge)
+        {
+            asked = await Client.DuplicateCandidates();
+        }
+    }
+
+    private static string Name(PersonResponse person) =>
+        string.IsNullOrWhiteSpace(person.FirstName) ? person.LastName : $"{person.LastName}, {person.FirstName}";
+}

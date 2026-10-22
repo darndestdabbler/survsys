@@ -1,0 +1,2161 @@
+{
+  "schemaVersion": 5,
+  "sessions": [
+    {
+      "number": 1,
+      "title": "Author or import the solution plan",
+      "status": "complete",
+      "startedAt": "2026-10-15T07:58:23.107000-04:00",
+      "completedAt": "2026-10-15T08:30:47.399000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "8628c28bbd8253ba5cc42f10d0a64417cc449d12"
+    },
+    {
+      "number": 2,
+      "title": "Challenge the plan, then break it into numbered sessions",
+      "status": "complete",
+      "startedAt": "2026-10-15T08:32:07.053000-04:00",
+      "completedAt": "2026-10-15T08:43:25.577000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "efc205c59f98adcd3c2a154b407beeb71b5872c2"
+    },
+    {
+      "number": 3,
+      "title": "Skeleton \u2014 the solution, its seven projects and the architecture tests",
+      "status": "complete",
+      "startedAt": "2026-10-15T08:45:21.142000-04:00",
+      "completedAt": "2026-10-15T09:21:19.379000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 6,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "527212eab400b104d2d8a4cb0269bf711439d8a2"
+    },
+    {
+      "number": 4,
+      "title": "Packaging \u2014 write the packaging block and nothing else",
+      "status": "complete",
+      "startedAt": "2026-10-15T09:25:04.610000-04:00",
+      "completedAt": "2026-10-15T09:49:48.777000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "63470814d0127ef60330c37c38a2af8763dd6716"
+    },
+    {
+      "number": 5,
+      "title": "First vertical slice \u2014 one real table through the API",
+      "status": "complete",
+      "startedAt": "2026-10-15T09:54:52.244000-04:00",
+      "completedAt": "2026-10-15T10:18:32.010000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "25e0044aa46a2db79ce25ec79828a6f3317f6a6f"
+    },
+    {
+      "number": 6,
+      "title": "First MudBlazor screen and the Playwright harness",
+      "status": "complete",
+      "startedAt": "2026-10-15T10:38:03.857000-04:00",
+      "completedAt": "2026-10-15T11:00:06.452000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "f392ff7ac7340a89e116200c9996f300f252a023"
+    },
+    {
+      "number": 7,
+      "title": "The first walkthrough and the documentation it lives in",
+      "status": "complete",
+      "startedAt": "2026-10-15T11:01:38.175000-04:00",
+      "completedAt": "2026-10-15T11:13:54.892000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "5e605a4c11dd51de5a327f527f26a91beb6580d2"
+    },
+    {
+      "number": 8,
+      "title": "Release 0.1.0 (release: 0.1.0)",
+      "status": "cancelled",
+      "startedAt": "2026-10-15T11:28:20.931000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "74d68d1c8d9f06ae31c4d6fd6e6dea014938c3ce",
+      "preCancelStatus": "in-progress",
+      "cancelledReason": "packaging run hit EPERM: TEMP pointed at {output} and .NET's persistent build servers kept it open",
+      "cancelledAt": "2026-10-15T12:32:36-04:00",
+      "completedAt": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 9,
+      "title": "Packaging \u2014 repair the pack block and nothing else",
+      "status": "complete",
+      "startedAt": "2026-10-15T12:43:19.632000-04:00",
+      "completedAt": "2026-10-15T12:54:37.300000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "dabbe7db4bc5adafcbd63915d86ea9da9ab0292c"
+    },
+    {
+      "number": 10,
+      "title": "Release 0.1.0 (release: 0.1.0)",
+      "status": "cancelled",
+      "startedAt": "2026-10-15T14:55:06.255000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "76da0e07077da743e1713be878199af55378f42b",
+      "preCancelStatus": "in-progress",
+      "cancelledReason": "the declared feed was the artifacts.example.org placeholder, which does not resolve; pack succeeded and 0.1.0 was never spent",
+      "cancelledAt": "2026-10-15T15:20:36-04:00",
+      "completedAt": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 11,
+      "title": "Packaging \u2014 point the feed at the handoff folder",
+      "status": "complete",
+      "startedAt": "2026-10-15T15:23:04.725000-04:00",
+      "completedAt": "2026-10-15T15:34:41.246000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "191f9adcf91680ed921a58c85a7f3eb1e784cad0"
+    },
+    {
+      "number": 12,
+      "title": "Release 0.1.0 (release: 0.1.0)",
+      "status": "complete",
+      "startedAt": "2026-10-15T15:37:23.529000-04:00",
+      "completedAt": "2026-10-15T15:37:57.783000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "89f6ce3286c851b27f39fff959246614b90e8425",
+      "verificationVerdict": null
+    },
+    {
+      "number": 13,
+      "title": "Person demographics \u2014 schema and endpoints",
+      "status": "complete",
+      "startedAt": "2026-10-15T15:38:12.411000-04:00",
+      "completedAt": "2026-10-15T15:59:44.957000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "41afe1c7bebb5688f6da766a0ff42618a646d26e"
+    },
+    {
+      "number": 14,
+      "title": "Person search and case morbidity report creation",
+      "status": "complete",
+      "startedAt": "2026-10-15T20:03:27.640000-04:00",
+      "completedAt": "2026-10-15T20:51:39.664000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "f44f626e5f7bd426d571e8182b5faa2b4f747d1d"
+    },
+    {
+      "number": 15,
+      "title": "The case morbidity report shell and its Demographics tab",
+      "status": "complete",
+      "startedAt": "2026-10-15T20:57:28.954000-04:00",
+      "completedAt": "2026-10-15T21:20:54.762000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "7320970f49157166d2b68cfc40c60caae7923bd6"
+    },
+    {
+      "number": 16,
+      "title": "Phase 1 walkthroughs",
+      "status": "complete",
+      "startedAt": "2026-10-15T21:21:00.366000-04:00",
+      "completedAt": "2026-10-15T22:02:50.391000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "2e0224fd05d214d5b7214605bf11b60efd76340f"
+    },
+    {
+      "number": 17,
+      "title": "Release 0.2.0 (release: 0.2.0)",
+      "status": "complete",
+      "startedAt": "2026-10-15T22:02:55.833000-04:00",
+      "completedAt": "2026-10-15T22:03:25.070000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "ab99c58e34fadc7d5b086d28f8ee2b73d2bda0ee",
+      "verificationVerdict": null
+    },
+    {
+      "number": 18,
+      "title": "Clinical and laboratory data \u2014 schema and endpoints",
+      "status": "complete",
+      "startedAt": "2026-10-15T22:03:30.241000-04:00",
+      "completedAt": "2026-10-15T22:49:43.245000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "19934c641df1b1a6a644fbbcec19efc62ea89c88"
+    },
+    {
+      "number": 19,
+      "title": "Clinical and laboratory screens",
+      "status": "complete",
+      "startedAt": "2026-10-15T22:49:48.678000-04:00",
+      "completedAt": "2026-10-15T23:04:33.968000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "f3fca29e575fa931f9e0e863bafe94e46342c6eb"
+    },
+    {
+      "number": 20,
+      "title": "Case classification, status and MMWR week",
+      "status": "complete",
+      "startedAt": "2026-10-15T23:04:39.578000-04:00",
+      "completedAt": "2026-10-15T23:57:17.980000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "a2f52136b5670c527d2df95c9a9b845c88477bb2"
+    },
+    {
+      "number": 21,
+      "title": "Workflow state machine, work queues and agency sharing",
+      "status": "complete",
+      "startedAt": "2026-10-15T23:57:23.793000-04:00",
+      "completedAt": "2026-10-16T00:38:08.912000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "2226a7c239ce861833ecbce34ff6b4836df9c846"
+    },
+    {
+      "number": 22,
+      "title": "Phase 2 walkthroughs",
+      "status": "complete",
+      "startedAt": "2026-10-16T00:38:20.050000-04:00",
+      "completedAt": "2026-10-16T01:07:54.367000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "d46fd7c565366a69cc93dfe1b8c62934a10d2862"
+    },
+    {
+      "number": 23,
+      "title": "Release 0.3.0 (release: 0.3.0)",
+      "status": "complete",
+      "startedAt": "2026-10-16T01:07:59.763000-04:00",
+      "completedAt": "2026-10-16T01:08:30.092000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "63c87a70c4cc5d97f1a68acff68b806271247bbb",
+      "verificationVerdict": null
+    },
+    {
+      "number": 24,
+      "title": "The Investigation and Administrative tabs",
+      "status": "complete",
+      "startedAt": "2026-10-16T01:08:35.235000-04:00",
+      "completedAt": "2026-10-16T02:36:00.779000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "32ba9e1a3887c6a66aec0b253e7b36933881ed33"
+    },
+    {
+      "number": 25,
+      "title": "Contacts and exposures",
+      "status": "complete",
+      "startedAt": "2026-10-16T02:39:23.330000-04:00",
+      "completedAt": "2026-10-16T03:23:52.338000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "2e7562911f428bd791fa65ad095d0bf91809c5b8"
+    },
+    {
+      "number": 26,
+      "title": "Notes and tasks",
+      "status": "complete",
+      "startedAt": "2026-10-16T03:26:24.915000-04:00",
+      "completedAt": "2026-10-16T03:52:11.595000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "ef259a1c243d2d47564ce7c819a07f42566cc645"
+    },
+    {
+      "number": 27,
+      "title": "File attachments",
+      "status": "complete",
+      "startedAt": "2026-10-16T04:23:48.301000-04:00",
+      "completedAt": "2026-10-16T04:41:49.865000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "81d7711779f4604478b9de393fb6e99c31823cd5"
+    },
+    {
+      "number": 28,
+      "title": "Phase 3 walkthroughs",
+      "status": "complete",
+      "startedAt": "2026-10-16T04:56:51.853000-04:00",
+      "completedAt": "2026-10-16T05:24:52.664000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "cdce7de3aa5449f8cc9711463ef7f7f399884cdb"
+    },
+    {
+      "number": 29,
+      "title": "Release 0.4.0 (release: 0.4.0)",
+      "status": "complete",
+      "startedAt": "2026-10-16T14:12:26.269000-04:00",
+      "completedAt": "2026-10-16T14:13:04.176000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "e48165ea8f27165d0618bc4144c32843e6786d72",
+      "verificationVerdict": null
+    },
+    {
+      "number": 30,
+      "title": "Agencies, jurisdictions, facilities and conditions",
+      "status": "complete",
+      "startedAt": "2026-10-16T14:17:35.678000-04:00",
+      "completedAt": "2026-10-16T14:33:12.439000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "5fc941201385e882f7099a658941a9e45a6d4ac4"
+    },
+    {
+      "number": 31,
+      "title": "Core element configuration",
+      "status": "complete",
+      "startedAt": "2026-10-16T15:02:41-04:00",
+      "completedAt": "2026-10-16T15:14:18.902000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "66ebbeed4975d78c2db78718567e37338ef1d9d2"
+    },
+    {
+      "number": 32,
+      "title": "Users, roles, privileges and access audit",
+      "status": "complete",
+      "startedAt": "2026-10-16T15:56:09.727000-04:00",
+      "completedAt": "2026-10-16T16:20:17.984000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "adb1492e10b9c33f6bee267ff81787d8bb2579eb"
+    },
+    {
+      "number": 33,
+      "title": "Saved views and custom exports",
+      "status": "complete",
+      "startedAt": "2026-10-17T02:34:28.451000-04:00",
+      "completedAt": "2026-10-17T02:45:28.173000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "e482d0aa3538677c7ae69594e613b70736f777c9"
+    },
+    {
+      "number": 34,
+      "title": "Phase 4 walkthroughs",
+      "status": "complete",
+      "startedAt": "2026-10-17T02:55:13.435000-04:00",
+      "completedAt": "2026-10-17T03:25:33.328000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "179f1d8f28541b8e303c92e7cf4bf9b1cafab286"
+    },
+    {
+      "number": 35,
+      "title": "Release 0.5.0 (release: 0.5.0)",
+      "status": "complete",
+      "startedAt": "2026-10-17T03:25:41.874000-04:00",
+      "completedAt": "2026-10-17T03:26:13.100000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "ee9f583bc1ee3b0b4accd16c225005cf0f84f98d",
+      "verificationVerdict": null
+    },
+    {
+      "number": 36,
+      "title": "`Survsys.Messaging` and HL7 intake parsing",
+      "status": "complete",
+      "startedAt": "2026-10-17T03:26:21.040000-04:00",
+      "completedAt": "2026-10-17T03:40:41.776000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "115632c46313a4c0947c34ea09afe764def89c9c"
+    },
+    {
+      "number": 37,
+      "title": "Vocabulary matching",
+      "status": "complete",
+      "startedAt": "2026-10-17T03:40:50.451000-04:00",
+      "completedAt": "2026-10-17T03:53:28.992000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "2e0b43963dde980abec965c2167a1451d5e6f514"
+    },
+    {
+      "number": 38,
+      "title": "Duplicate detection and person matching",
+      "status": "complete",
+      "startedAt": "2026-10-17T03:53:37.760000-04:00",
+      "completedAt": "2026-10-17T04:07:18.060000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "cc88ddd3585b39a08348de5465246c0f6530ea93"
+    },
+    {
+      "number": 39,
+      "title": "The message queue and the intake service",
+      "status": "complete",
+      "startedAt": "2026-10-17T04:07:26.793000-04:00",
+      "completedAt": "2026-10-17T04:33:32.631000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "c5db6eedeb5dd1b2fc3230dce02dd649fc818270"
+    },
+    {
+      "number": 40,
+      "title": "ELR review screens and promotion to a case",
+      "status": "complete",
+      "startedAt": "2026-10-17T04:33:41.147000-04:00",
+      "completedAt": "2026-10-17T04:57:55.054000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "e80e07bfc71dbcc4c002d624abe234f6059932e2"
+    },
+    {
+      "number": 41,
+      "title": "Phase 5 walkthroughs",
+      "status": "complete",
+      "startedAt": "2026-10-17T06:02:03.524000-04:00",
+      "completedAt": "2026-10-17T06:36:26.269000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "33b6e08b2df17471679f1f2dd91b72caf9826b37"
+    },
+    {
+      "number": 42,
+      "title": "Release 0.6.0 (release: 0.6.0)",
+      "status": "complete",
+      "startedAt": "2026-10-17T06:36:34.461000-04:00",
+      "completedAt": "2026-10-17T06:37:08.120000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "98a0fc282d1e234bae77b0097bda912701e89ea6",
+      "verificationVerdict": null
+    },
+    {
+      "number": 43,
+      "title": "Notification guides and PHIN variable mapping",
+      "status": "complete",
+      "startedAt": "2026-10-17T06:37:16.228000-04:00",
+      "completedAt": "2026-10-17T06:53:00.377000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "a6c3f5e7826e9494d7ec1c89afc9f2723925ecdd"
+    },
+    {
+      "number": 44,
+      "title": "The seven rule set types and repeating groups",
+      "status": "complete",
+      "startedAt": "2026-10-17T06:53:09.100000-04:00",
+      "completedAt": "2026-10-17T07:19:58.534000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "9eaf68314ff5c78d9de16d09000a6732a38bbe70"
+    },
+    {
+      "number": 45,
+      "title": "Message generation and direct transmission",
+      "status": "complete",
+      "startedAt": "2026-10-17T07:20:08.288000-04:00",
+      "completedAt": "2026-10-17T07:40:59.471000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "66a6b5fcffedc451bd65dd851f1e2b8129bfd575"
+    },
+    {
+      "number": 46,
+      "title": "Auto-queue, reconciliation and the export log",
+      "status": "complete",
+      "startedAt": "2026-10-17T07:41:09.034000-04:00",
+      "completedAt": "2026-10-17T08:02:34.704000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "d8b1d913b2d3151abab7370419a4cc48c1899f16"
+    },
+    {
+      "number": 47,
+      "title": "Notification screens",
+      "status": "complete",
+      "startedAt": "2026-10-17T08:02:44.298000-04:00",
+      "completedAt": "2026-10-17T08:37:30.513000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gemini-4-argon",
+        "verifierProvider": "google",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "54cccb8cf92a31ea9147d9f40e67eb650a72d3d4"
+    },
+    {
+      "number": 48,
+      "title": "Phase 6 walkthroughs",
+      "status": "complete",
+      "startedAt": "2026-10-17T08:41:07.211000-04:00",
+      "completedAt": "2026-10-17T11:13:40.048000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "04f1497fdeb98a33af287f91c7840d65efe0c55f"
+    },
+    {
+      "number": 49,
+      "title": "Repair the dropdown steps of five walkthroughs",
+      "status": "complete",
+      "startedAt": "2026-10-17T12:52:34.291000-04:00",
+      "completedAt": "2026-10-17T12:59:37.716000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "4b2d7d59cd526993a213be51c112dd5bc306bb30"
+    },
+    {
+      "number": 50,
+      "title": "Release 0.7.0 (release: 0.7.0)",
+      "status": "complete",
+      "startedAt": "2026-10-17T13:12:44.330000-04:00",
+      "completedAt": "2026-10-17T13:13:26.544000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "1f698454ee3cf173cf5f74c426ba0d39a05dc6a7",
+      "verificationVerdict": null
+    },
+    {
+      "number": 51,
+      "title": "Outbreak management",
+      "status": "complete",
+      "startedAt": "2026-10-17T13:13:43.444000-04:00",
+      "completedAt": "2026-10-17T14:30:42.329000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "07a3d8b425a1e8ea6568bb97d15e401c96071167"
+    },
+    {
+      "number": 52,
+      "title": "The dynamic form builder",
+      "status": "complete",
+      "startedAt": "2026-10-17T14:30:52.088000-04:00",
+      "completedAt": "2026-10-17T15:10:18.738000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "c23e4c55e219983d36b29655dc47405d1e8f974e"
+    },
+    {
+      "number": 53,
+      "title": "Treatments and vaccines",
+      "status": "complete",
+      "startedAt": "2026-10-17T15:10:28.450000-04:00",
+      "completedAt": "2026-10-17T15:41:44.693000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "4a6454238de2020c9a38a66e060f56ad1cfdaa12"
+    },
+    {
+      "number": 54,
+      "title": "Audit by EF Core interceptors",
+      "status": "complete",
+      "startedAt": "2026-10-17T15:41:54.335000-04:00",
+      "completedAt": "2026-10-17T21:22:06.449000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "b9efd444ef623d030255a5853c71f1b19a4d35b0"
+    },
+    {
+      "number": 55,
+      "title": "IBIS integration and ad-hoc reporting",
+      "status": "complete",
+      "startedAt": "2026-10-18T03:59:33.598000-04:00",
+      "completedAt": "2026-10-18T04:12:49.477000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "c7d39a690cff2cf85f40311d92c0d3ca518453a0"
+    },
+    {
+      "number": 56,
+      "title": "Repair the three endpoint queries SQL Server cannot translate",
+      "status": "complete",
+      "startedAt": "2026-10-18T05:26:33.265000-04:00",
+      "completedAt": "2026-10-18T05:32:18.420000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "5581a49bda9d9573469171f773f375c5ba83c4f4"
+    },
+    {
+      "number": 57,
+      "title": "Phase 7 walkthroughs and the full walkthrough regression",
+      "status": "complete",
+      "startedAt": "2026-10-18T06:05:01.519000-04:00",
+      "completedAt": "2026-10-18T06:40:29.248000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "b54ee390f4f5f4b47116c35f0d4985b76e1fa0de"
+    },
+    {
+      "number": 58,
+      "title": "Release 0.8.0 (release: 0.8.0)",
+      "status": "complete",
+      "startedAt": "2026-10-18T09:50:25.202000-04:00",
+      "completedAt": "2026-10-18T09:51:21.706000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "fb3c56384a1cc40c3d6688a1dd47bb2f48fd8f70",
+      "verificationVerdict": null
+    },
+    {
+      "number": 59,
+      "title": "Case search and getting back to a case",
+      "status": "complete",
+      "startedAt": "2026-10-18T09:57:24.535000-04:00",
+      "completedAt": "2026-10-18T10:28:55.837000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "fd4da693e7a8d6a5ab4f52d05ab0e18c3e9eea6b"
+    },
+    {
+      "number": 60,
+      "title": "Correcting and removing a case's child records",
+      "status": "complete",
+      "startedAt": "2026-10-18T10:29:07.547000-04:00",
+      "completedAt": "2026-10-18T11:26:30.988000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "7ecdc38903666877edc3092bc5bdcac9927a4984"
+    },
+    {
+      "number": 61,
+      "title": "The full investigation workflow",
+      "status": "complete",
+      "startedAt": "2026-10-18T11:26:42.532000-04:00",
+      "completedAt": "2026-10-18T12:39:25.269000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "dd3784f045feb8a45ef21ca6d3d31c025ea82a00"
+    },
+    {
+      "number": 62,
+      "title": "Event types, contact cases and the contact import",
+      "status": "complete",
+      "startedAt": "2026-10-18T19:48:52.768000-04:00",
+      "completedAt": "2026-10-18T20:12:21.252000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "1832e3c87059513bbec7cd19d0f63a115e2d3a66"
+    },
+    {
+      "number": 63,
+      "title": "Treatments, encounters, occupation and pregnancy on a case",
+      "status": "complete",
+      "startedAt": "2026-10-18T20:15:39.052000-04:00",
+      "completedAt": "2026-10-18T20:37:55.049000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "bbf19d693e4d4d40c886a9215136940061f76077"
+    },
+    {
+      "number": 64,
+      "title": "The reference code lists behind every coded field",
+      "status": "complete",
+      "startedAt": "2026-10-19T01:22:43.981000-04:00",
+      "completedAt": "2026-10-19T01:59:55.878000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "574924c8d34719c2b971f52a72cefe23cffad2ca"
+    },
+    {
+      "number": 65,
+      "title": "Delete, print and lock a case, and private notes",
+      "status": "complete",
+      "startedAt": "2026-10-19T02:12:19.419000-04:00",
+      "completedAt": "2026-10-19T02:45:13.109000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "a79ac8c624e13bbc8e04a427d805a04d78dfb3a8"
+    },
+    {
+      "number": 66,
+      "title": "Reload the report when the address names another case",
+      "status": "complete",
+      "startedAt": "2026-10-19T06:28:14.174000-04:00",
+      "completedAt": "2026-10-19T06:30:42.302000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "f9a0e176a992a00a5bc7c01c245756ee1f841d0b"
+    },
+    {
+      "number": 67,
+      "title": "Phase 8 walkthroughs",
+      "status": "complete",
+      "startedAt": "2026-10-19T07:12:10.393000-04:00",
+      "completedAt": "2026-10-19T07:26:17.428000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "cbf46e8ada099cb4ec4f94959c8c6b029b945990"
+    },
+    {
+      "number": 68,
+      "title": "Release 0.9.0 (release: 0.9.0)",
+      "status": "complete",
+      "startedAt": "2026-10-19T07:32:23.358000-04:00",
+      "completedAt": "2026-10-19T07:33:13.685000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "9f0c2954dd563b2038cd6ae8192dfb11731a5e4b",
+      "verificationVerdict": null
+    },
+    {
+      "number": 69,
+      "title": "Person identifiers, name history and address history",
+      "status": "complete",
+      "startedAt": "2026-10-19T09:04:30.214000-04:00",
+      "completedAt": "2026-10-19T09:21:30.447000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "feda3b8737942ee307b54b4961c53b29f807e500"
+    },
+    {
+      "number": 70,
+      "title": "Person matching in the running application",
+      "status": "complete",
+      "startedAt": "2026-10-19T11:39:45.530000-04:00",
+      "completedAt": "2026-10-19T11:55:09.218000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "e0c1307f22c60a14908b3261850b5d7d8b55649d"
+    },
+    {
+      "number": 71,
+      "title": "Duplicate persons and merging them",
+      "status": "complete",
+      "startedAt": "2026-10-19T13:02:19.411000-04:00",
+      "completedAt": "2026-10-19T13:20:08.930000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "24e9806995dcc3727a83f88a715534af12340973"
+    },
+    {
+      "number": 72,
+      "title": "Phase 9 walkthroughs",
+      "status": "complete",
+      "startedAt": "2026-10-19T13:48:28.192000-04:00",
+      "completedAt": "2026-10-19T14:00:34.386000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "643f21f889457d17ec64a275b6627037b51aa610"
+    },
+    {
+      "number": 73,
+      "title": "Repair the three walkthroughs Phase 9 broke",
+      "status": "complete",
+      "startedAt": "2026-10-19T14:18:42.345000-04:00",
+      "completedAt": "2026-10-19T14:22:51.288000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "37cb96ac0159a9e3bd73cdb3fec2ebb2c64f181e"
+    },
+    {
+      "number": 74,
+      "title": "Release 0.10.0 (release: 0.10.0)",
+      "status": "complete",
+      "startedAt": "2026-10-19T15:01:57.416000-04:00",
+      "completedAt": "2026-10-19T15:02:47.594000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "c77e72240bf0b217aa352501961a73147a8be571",
+      "verificationVerdict": null
+    },
+    {
+      "number": 75,
+      "title": "Parsed messages, the parser seam and MLLP",
+      "status": "complete",
+      "startedAt": "2026-10-19T15:11:07.187000-04:00",
+      "completedAt": "2026-10-19T15:30:42.340000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "1b46b15cc7a4310f5cb7942f3867f4fa8ca9cff8"
+    },
+    {
+      "number": 76,
+      "title": "Vocabulary and rules at intake",
+      "status": "complete",
+      "startedAt": "2026-10-19T15:40:47.358000-04:00",
+      "completedAt": "2026-10-19T16:22:19.809000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "a3f206399c03c8c673ab55d8d572cd52471fbfac"
+    },
+    {
+      "number": 77,
+      "title": "The graylist, automatic assignment and the full queue",
+      "status": "complete",
+      "startedAt": "2026-10-19T19:27:10.703000-04:00",
+      "completedAt": "2026-10-19T19:55:14.654000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "281e0f35c8a91586f61cf2ae864ae53e0ab81120"
+    },
+    {
+      "number": 78,
+      "title": "Labs from messages, and updating an existing case",
+      "status": "complete",
+      "startedAt": "2026-10-20T00:17:32.097000-04:00",
+      "completedAt": "2026-10-20T00:39:37.156000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "20a1d23519542edb4d23d0325adf2b395cf564e9"
+    },
+    {
+      "number": 79,
+      "title": "Exceptions, reprocessing, notifications and statistics",
+      "status": "complete",
+      "startedAt": "2026-10-20T01:15:00.530000-04:00",
+      "completedAt": "2026-10-20T01:50:51.822000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "a907e7639513d49b24c02ebd9de2cf7481a5d9a0"
+    },
+    {
+      "number": 80,
+      "title": "Connecticut ELR conformance",
+      "status": "complete",
+      "startedAt": "2026-10-20T03:20:34.543000-04:00",
+      "completedAt": "2026-10-20T03:34:28.226000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "2b60a2c123108718dbca2aa7640dc93cfa27f5eb"
+    },
+    {
+      "number": 81,
+      "title": "Connecticut planning regions as county equivalents",
+      "status": "complete",
+      "startedAt": "2026-10-20T03:52:47.120000-04:00",
+      "completedAt": "2026-10-20T04:14:02.194000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "b1646045224297e7f2d59b1ce88a95ebfbcb49b5"
+    },
+    {
+      "number": 82,
+      "title": "Repair ELR promotion's address and result value",
+      "status": "complete",
+      "startedAt": "2026-10-20T08:12:03.907000-04:00",
+      "completedAt": "2026-10-20T08:17:21.739000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "89c7dd2ccd6aae8a293cbcffd7196187d594c84f"
+    },
+    {
+      "number": 83,
+      "title": "Reference data administration \u2014 code lists and addresses",
+      "status": "complete",
+      "startedAt": "2026-10-20T08:56:48.437000-04:00",
+      "completedAt": "2026-10-20T09:34:30.625000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "bd35359e76dd2daab89eea80ff99eb6566310ac5"
+    },
+    {
+      "number": 84,
+      "title": "Reference data administration \u2014 facilities, conditions, treatments and vaccines",
+      "status": "complete",
+      "startedAt": "2026-10-20T17:59:11.397000-04:00",
+      "completedAt": "2026-10-20T18:22:27.576000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "f0a98140febcbf3b1eb0121fbd1bb196108e1086"
+    },
+    {
+      "number": 85,
+      "title": "Editor settings ignored, and the integration sign-in flake",
+      "status": "complete",
+      "startedAt": "2026-10-20T18:31:10.149000-04:00",
+      "completedAt": "2026-10-20T18:36:38.713000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "2e4524388cdbf3d2cca44bed3c95363f7b323a6a"
+    },
+    {
+      "number": 86,
+      "title": "Phase 10 walkthroughs",
+      "status": "complete",
+      "startedAt": "2026-10-20T18:56:40.659000-04:00",
+      "completedAt": "2026-10-21T04:28:12.503000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 4,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "38e2c93c660328dbc665dbd9558a58eb31b0593c"
+    },
+    {
+      "number": 87,
+      "title": "Release 0.11.0 (release: 0.11.0)",
+      "status": "complete",
+      "startedAt": "2026-10-21T04:44:16.054000-04:00",
+      "completedAt": "2026-10-21T04:45:02.156000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "7439314d247a8a29472bee6b3118c00b63c064c1",
+      "verificationVerdict": null
+    },
+    {
+      "number": 88,
+      "title": "The notification queue worker and the export log",
+      "status": "complete",
+      "startedAt": "2026-10-21T05:05:31.486000-04:00",
+      "completedAt": "2026-10-21T05:32:03.319000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 4,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "b2532d483d88844f132838181249601adf3d3396"
+    },
+    {
+      "number": 89,
+      "title": "Auto-queue on every change, queue actions and reconciliation",
+      "status": "complete",
+      "startedAt": "2026-10-21T05:41:54.654000-04:00",
+      "completedAt": "2026-10-21T06:14:17.326000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "33988fa7a3fc769450c3557d83abbc601b226bfd"
+    },
+    {
+      "number": 90,
+      "title": "Guide, rule set and value set administration",
+      "status": "complete",
+      "startedAt": "2026-10-21T08:01:10.989000-04:00",
+      "completedAt": "2026-10-21T08:44:22.035000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "cf3ecc3e3a97862ccdf1cd69166c62495d866862"
+    },
+    {
+      "number": 91,
+      "title": "Transport to CDC",
+      "status": "complete",
+      "startedAt": "2026-10-21T09:33:44.680000-04:00",
+      "completedAt": "2026-10-21T09:42:59.625000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "d48e19cd16669c5c0529cfa33297c4e0128e5676"
+    },
+    {
+      "number": 92,
+      "title": "Phase 11 walkthroughs",
+      "status": "complete",
+      "startedAt": "2026-10-21T09:46:20.149000-04:00",
+      "completedAt": "2026-10-21T10:06:02.793000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.21.0",
+      "startCommit": "b4a73b4be65feb16a6c46b14af9ea3f45e7e0e30"
+    },
+    {
+      "number": 93,
+      "title": "Release 0.12.0 (release: 0.12.0)",
+      "status": "complete",
+      "startedAt": "2026-10-21T15:56:38.847000-04:00",
+      "completedAt": "2026-10-21T15:57:27.152000-04:00",
+      "orchestrator": {
+        "engine": "framework",
+        "identityProvenance": "direct"
+      },
+      "frameworkVersion": "3.23.0",
+      "startCommit": "e29ebf37c830a848658079ae5f3fe738d347c159",
+      "verificationVerdict": null
+    },
+    {
+      "number": 94,
+      "title": "Audit with its user and values, and its screens",
+      "status": "complete",
+      "startedAt": "2026-10-21T16:09:11.846000-04:00",
+      "completedAt": "2026-10-21T16:22:53.569000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.23.0",
+      "startCommit": "9c59c050344ff1d20538a55167014031b84013a4"
+    },
+    {
+      "number": 95,
+      "title": "Jurisdiction-scoped access and sign-in protection",
+      "status": "complete",
+      "startedAt": "2026-10-21T18:47:31.601000-04:00",
+      "completedAt": "2026-10-21T19:23:00.075000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.23.0",
+      "startCommit": "465d39862454f8cc919df176a6aa4a0981d9649a"
+    },
+    {
+      "number": 96,
+      "title": "Classification rules on save",
+      "status": "complete",
+      "startedAt": "2026-10-21T19:29:46.399000-04:00",
+      "completedAt": "2026-10-21T19:48:21.462000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 3,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.23.0",
+      "startCommit": "8689d32e27d0d25471a1f00eef2a08b0b6b493d1"
+    },
+    {
+      "number": 97,
+      "title": "Classification shown on save, and on encounter saves",
+      "status": "complete",
+      "startedAt": "2026-10-22T02:21:13.932000-04:00",
+      "completedAt": "2026-10-22T02:39:20.624000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 2,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.23.0",
+      "startCommit": "a5e5f365cf2e68fe79964f54bcde33fa5acdb77b"
+    },
+    {
+      "number": 98,
+      "title": "IBIS, ad-hoc reporting and system configuration",
+      "status": "complete",
+      "startedAt": "2026-10-22T04:40:10.549000-04:00",
+      "completedAt": "2026-10-22T05:04:11.847000-04:00",
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.23.0",
+      "startCommit": "d640494983110d6316949d8999bca10044202e4f"
+    },
+    {
+      "number": 99,
+      "title": "Phase 12 walkthroughs",
+      "status": "in-progress",
+      "startedAt": "2026-10-22T06:15:59.417000-04:00",
+      "completedAt": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": null,
+      "startCommit": "bc46ccc1dae77816fb1a32df5041cf68c3a317b3",
+      "frameworkVersion": "3.23.0"
+    },
+    {
+      "number": 100,
+      "title": "Release 0.13.0 (release: 0.13.0)",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 101,
+      "title": "eICR and RR parsing and document intake",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 102,
+      "title": "eCR validation and the eICR viewer",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 103,
+      "title": "Reportability and condition mapping",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 104,
+      "title": "Cases from eCR",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 105,
+      "title": "eCR senders and data quality",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 106,
+      "title": "Phase 13 walkthroughs",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 107,
+      "title": "Release 0.14.0 (release: 0.14.0)",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 108,
+      "title": "The parity check and the documentation for 1.0.0",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    },
+    {
+      "number": 109,
+      "title": "Release 1.0.0 (release: 1.0.0)",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
+    }
+  ]
+}
