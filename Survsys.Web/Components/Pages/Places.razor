@@ -1,0 +1,285 @@
+@* The Connecticut towns and the zip codes, and their maintenance: a tab each.
+   A town carries the historical county and the planning region it lies in,
+   which fill a Connecticut address saved with its town alone; a zip code
+   carries the county it lies in, which fills a county still blank. Each tab
+   lists its rows, adds one or edits one, and exports and imports CSV, an
+   import previewed before it is saved. A town's name and a zip code are their
+   rows' keys: an edit keeps them, and a new one is added as a new row. No row
+   is deleted. *@
+@page "/places"
+@inject PlacesClient Client
+@inject CodesClient Codes
+
+<PageTitle>Towns and zip codes — Survsys</PageTitle>
+
+<MudText id="places-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Towns and zip codes
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="places-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (loading)
+{
+    <MudProgressCircular id="places-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudTabs id="places-tabs" Elevation="1" Rounded="true" TabPanelsClass="pa-4">
+        <MudTabPanel Text="Connecticut towns" ID="@("places-towns-tab")">
+            <div class="d-flex gap-4 align-start mb-4">
+                <MudButton id="ct-towns-export" Variant="Variant.Outlined"
+                           Href="@($"/places/{PlacesClient.Towns}/export")" Target="_blank">
+                    Export towns CSV
+                </MudButton>
+                <div>
+                    <ImportPreview Prefix="ct-towns-import" Label="Import towns CSV"
+                                   Import="@((csv, confirm) => Client.Import(PlacesClient.Towns, csv, confirm))"
+                                   Imported="@Load" />
+                </div>
+            </div>
+
+            <MudPaper id="town-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" GutterBottom="true">@(editingTown is null ? "New town" : "Edit town")</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @bind-Value="town" id="town-name" Label="Town" Variant="Variant.Outlined"
+                                      Required="true" MaxLength="50" Disabled="@(editingTown is not null)" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <CodeSelect List="@CodeLists.County" Kind="county" @bind-Value="townCounty"
+                                    id="town-county" Label="County" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <CodeSelect List="@CodeLists.County" Kind="county-equivalent" @bind-Value="townRegion"
+                                    id="town-planning-region" Label="Planning region" />
+                    </MudItem>
+                </MudGrid>
+                <div class="d-flex gap-2 mt-4">
+                    <MudButton id="town-save" Variant="Variant.Filled" Color="Color.Primary"
+                               Disabled="@saving" OnClick="@SaveTown">
+                        Save
+                    </MudButton>
+                    <MudButton id="town-new" Variant="Variant.Outlined" Disabled="@saving" OnClick="@ClearTown">
+                        New town
+                    </MudButton>
+                </div>
+            </MudPaper>
+
+            <MudSimpleTable id="towns-table" Dense="true" Hover="true">
+                <thead>
+                    <tr>
+                        <th>Town</th>
+                        <th>County</th>
+                        <th>Planning region</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in towns)
+                    {
+                        <tr id="@($"town-row-{Slug(row.Town)}")">
+                            <td>@row.Town</td>
+                            <td>@CountyName(row.County)</td>
+                            <td>@CountyName(row.PlanningRegion)</td>
+                            <td>
+                                <MudButton id="@($"town-edit-{Slug(row.Town)}")" Size="Size.Small"
+                                           Variant="Variant.Text" OnClick="@(() => EditTown(row))">
+                                    Edit
+                                </MudButton>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Zip codes" ID="@("places-zip-codes-tab")">
+            <div class="d-flex gap-4 align-start mb-4">
+                <MudButton id="zip-codes-export" Variant="Variant.Outlined"
+                           Href="@($"/places/{PlacesClient.ZipCodes}/export")" Target="_blank">
+                    Export zip codes CSV
+                </MudButton>
+                <div>
+                    <ImportPreview Prefix="zip-codes-import" Label="Import zip codes CSV"
+                                   Import="@((csv, confirm) => Client.Import(PlacesClient.ZipCodes, csv, confirm))"
+                                   Imported="@Load" />
+                </div>
+            </div>
+
+            <MudPaper id="zip-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" GutterBottom="true">@(editingZip is null ? "New zip code" : "Edit zip code")</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @bind-Value="zip" id="zip-code" Label="Zip code" Variant="Variant.Outlined"
+                                      Required="true" MaxLength="10" Disabled="@(editingZip is not null)" />
+                    </MudItem>
+                    <MudItem xs="12" sm="8">
+                        <CodeSelect List="@CodeLists.County" Kind="county" @bind-Value="zipCounty"
+                                    id="zip-county" Label="County" />
+                    </MudItem>
+                </MudGrid>
+                <div class="d-flex gap-2 mt-4">
+                    <MudButton id="zip-save" Variant="Variant.Filled" Color="Color.Primary"
+                               Disabled="@saving" OnClick="@SaveZip">
+                        Save
+                    </MudButton>
+                    <MudButton id="zip-new" Variant="Variant.Outlined" Disabled="@saving" OnClick="@ClearZip">
+                        New zip code
+                    </MudButton>
+                </div>
+            </MudPaper>
+
+            <MudSimpleTable id="zip-codes-table" Dense="true" Hover="true">
+                <thead>
+                    <tr>
+                        <th>Zip code</th>
+                        <th>County</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in zipCodes)
+                    {
+                        <tr id="@($"zip-row-{row.Code}")">
+                            <td>@row.Code</td>
+                            <td>@CountyName(row.County)</td>
+                            <td>
+                                <MudButton id="@($"zip-edit-{row.Code}")" Size="Size.Small"
+                                           Variant="Variant.Text" OnClick="@(() => EditZip(row))">
+                                    Edit
+                                </MudButton>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+    private IReadOnlyList<CtTownRow> towns = [];
+
+    private IReadOnlyList<ZipCodeRow> zipCodes = [];
+
+    private IReadOnlyList<CodeResponse> counties = [];
+
+    private string? editingTown;
+
+    private string? town;
+
+    private string? townCounty;
+
+    private string? townRegion;
+
+    private string? editingZip;
+
+    private string? zip;
+
+    private string? zipCounty;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        counties = (await Codes.List(CodeLists.County, inactive: true)).Value ?? [];
+
+        await Load();
+        loading = false;
+    }
+
+    private async Task Load()
+    {
+        var loadedTowns = await Client.List<CtTownRow>(PlacesClient.Towns);
+        var loadedZipCodes = await Client.List<ZipCodeRow>(PlacesClient.ZipCodes);
+
+        towns = loadedTowns.Value ?? [];
+        zipCodes = loadedZipCodes.Value ?? [];
+        failure ??= loadedTowns.Failure ?? loadedZipCodes.Failure;
+    }
+
+    /// <summary>A town's name as an element id: Windsor Locks is windsor-locks.</summary>
+    private static string Slug(string name) => name.ToLowerInvariant().Replace(' ', '-');
+
+    private string CountyName(string? code) => AddressLabels.CountyName(counties, code) ?? "—";
+
+    private void EditTown(CtTownRow row)
+    {
+        editingTown = row.Town;
+        town = row.Town;
+        townCounty = row.County;
+        townRegion = row.PlanningRegion;
+        failure = null;
+    }
+
+    private void ClearTown()
+    {
+        editingTown = town = townCounty = townRegion = null;
+        failure = null;
+    }
+
+    private void EditZip(ZipCodeRow row)
+    {
+        editingZip = row.Code;
+        zip = row.Code;
+        zipCounty = row.County;
+        failure = null;
+    }
+
+    private void ClearZip()
+    {
+        editingZip = zip = zipCounty = null;
+        failure = null;
+    }
+
+    private async Task SaveTown()
+    {
+        var row = new CtTownRow(town ?? "", townCounty ?? "", townRegion ?? "");
+
+        if (await Saved(PlacesClient.Towns, editingTown, row))
+        {
+            ClearTown();
+        }
+    }
+
+    private async Task SaveZip()
+    {
+        var row = new ZipCodeRow(zip ?? "", zipCounty);
+
+        if (await Saved(PlacesClient.ZipCodes, editingZip, row))
+        {
+            ClearZip();
+        }
+    }
+
+    /// <summary>Adds the row, or saves over the one with <paramref name="key"/>, and reloads; false where it was refused.</summary>
+    private async Task<bool> Saved<TRow>(string table, string? key, TRow row)
+        where TRow : class
+    {
+        saving = true;
+        failure = null;
+
+        var saved = key is null
+            ? await Client.Create(table, row)
+            : await Client.Update(table, key, row);
+
+        saving = false;
+        failure = saved.Failure;
+
+        if (saved.Succeeded)
+        {
+            await Load();
+        }
+
+        return saved.Succeeded;
+    }
+}

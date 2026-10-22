@@ -1,0 +1,56 @@
+@* The agencies, for their administration: every agency in name order, each
+   name the way into its edit screen, and New agency for an empty one. The
+   agencies are a handful and arrive in one page. *@
+@page "/agencies"
+@inject AgenciesClient Client
+
+<PageTitle>Agencies — Survsys</PageTitle>
+
+<MudText id="agencies-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Agencies
+</MudText>
+
+<MudButton id="agencies-new" Variant="Variant.Filled" Color="Color.Primary" Class="mb-4"
+           Href="/agencies/new">
+    New agency
+</MudButton>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="agencies-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result)
+{
+    <MudPaper Elevation="1">
+        <MudSimpleTable id="agencies-table" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var agency in result.Items)
+                {
+                    <tr data-agency="@agency.Name">
+                        <td data-agency-name>
+                            <MudLink Href="@($"/agencies/{agency.Id}")">@agency.Name</MudLink>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+else
+{
+    <MudAlert id="agencies-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    private Asked<PagedResult<AgencyResponse>>? asked;
+
+    protected override async Task OnInitializedAsync() =>
+        asked = await Client.All();
+}

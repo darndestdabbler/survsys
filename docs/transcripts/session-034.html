@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 034 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 034 transcript</h1>
+<p class="stamp">Rendered 2026-10-17T07:25:37.403Z by dabbler-ai-router 3.21.0 at ad9ad0e78f25a86aa38caaf84487b521014def92.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-17T02:55:13.591-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 34: Phase 4 walkthroughs</h3>
+<ol><li>Register.</li><li><code>docs/walkthroughs/</code>: four documents — configure an agency, add a facility, save a view, export a dataset.</li><li><code>Survsys.E2ETests</code>: the four Playwright tests named after them, recording video.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Session 034 adds the four Phase 4 walkthroughs to docs/walkthroughs/ -- configure an agency, add a facility, save a view and export a dataset -- each as one document of numbered steps performed against a running Survsys, paired with the one Playwright test named after it in Survsys.E2ETests that performs those steps in their written order, records video and asserts the outcome the document promises, and each linked from the walkthroughs index. The documents describe behaviour already built in earlier sessions -- the Agencies, Facilities and Saved views screens and the saved view's CSV export link -- inferred from the legacy system as the walkthrough contract requires; no application behaviour is added or changed. Where a walkthrough leaves a row behind that a re-run of the suite would see a second time (a facility it adds, a saved view it saves), the end-to-end harness is extended to clear that table before it seeds, exactly as it already does for every other artifact a walkthrough creates.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/992efae26ed6861b4fcaa5682584ae2fdd2fa67b"><code>992efae26ed6861b4fcaa5682584ae2fdd2fa67b</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Configure an agency</td><td><p>Write docs/walkthroughs/configure-an-agency.md as a walkthrough for a surveillance administrator opening one of the agencies already on file (an existing migration-seeded agency such as Davis County), setting its short name and its jurisdiction zip codes on the Agencies/AgencyEdit screens, and reading the saved configuration back. Infer the user story from the legacy system per the walkthrough contract, name every screen element by the stable id it carries, and describe exactly what Survsys shows. Add Survsys.E2ETests/ConfigureAnAgencyTests.cs: the one test named after the document, performing its numbered steps in order, recording video, and asserting what the document promises. Editing a seeded agency is idempotent across runs, so no harness change is needed. Add the document to the table in docs/walkthroughs/README.md.</p></td><td><span class="mono">docs/walkthroughs/configure-an-agency.md</span><br><span class="mono">Survsys.E2ETests/ConfigureAnAgencyTests.cs</span><br><span class="mono">docs/walkthroughs/README.md</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj --nologo</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests --nologo</code></td><td>yes</td></tr>
+<tr><td>Add a facility</td><td><p>Write docs/walkthroughs/add-a-facility.md as a walkthrough for adding a new facility on the Facilities/FacilityEdit screens -- its name, short name, owning agency and address -- and reading it back in the facilities table, inferred from the legacy system per the walkthrough contract and naming every element by its stable id. Add Survsys.E2ETests/AddAFacilityTests.cs: the one test named after the document, performing its steps in order, recording video, and asserting the facility it added appears. Because a facility a walkthrough adds is a row left behind that a re-run would otherwise see twice, extend Survsys.E2ETests/SurvsysHarness.cs so the facilities table is cleared before the fixtures are seeded, alongside the other tables a walkthrough fills. Add the document to docs/walkthroughs/README.md.</p></td><td><span class="mono">docs/walkthroughs/add-a-facility.md</span><br><span class="mono">Survsys.E2ETests/AddAFacilityTests.cs</span><br><span class="mono">Survsys.E2ETests/SurvsysHarness.cs</span><br><span class="mono">docs/walkthroughs/README.md</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj --nologo</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests --nologo</code></td><td>yes</td></tr>
+<tr><td>Save a view</td><td><p>Write docs/walkthroughs/save-a-view.md as a walkthrough for a user on the Saved views screen defining a view of the case morbidity reports -- naming it, choosing the columns it exports and the filters it selects by -- saving it, reading it back in the list of views, and saving over it with Edit, inferred from the legacy system per the walkthrough contract and naming every element by its stable id. Add Survsys.E2ETests/SaveAViewTests.cs: the one test named after the document, performing its steps in order, recording video, and asserting the view it saved appears as described. Because a saved view is a row left behind that a re-run would otherwise see twice, extend Survsys.E2ETests/SurvsysHarness.cs so the saved views table is cleared before the fixtures are seeded. Add the document to docs/walkthroughs/README.md.</p></td><td><span class="mono">docs/walkthroughs/save-a-view.md</span><br><span class="mono">Survsys.E2ETests/SaveAViewTests.cs</span><br><span class="mono">Survsys.E2ETests/SurvsysHarness.cs</span><br><span class="mono">docs/walkthroughs/README.md</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj --nologo</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests --nologo</code></td><td>yes</td></tr>
+<tr><td>Export a dataset</td><td><p>Write docs/walkthroughs/export-a-dataset.md as a walkthrough for exporting a dataset from a saved view: the user creates a case morbidity report through the user interface so there is data to export, saves a view that selects it, follows the view's Export CSV link, and reads the downloaded file -- its header row of the chosen column names and the report's row. Infer the user story from the legacy system per the walkthrough contract and name every element by its stable id. Add Survsys.E2ETests/ExportADatasetTests.cs: the one test named after the document, performing its steps in order, recording video, capturing the download through Playwright, and asserting the file's contents. The saved views table is already cleared between runs by the save-a-view step and the report lives in a table the harness already clears, so no harness change is needed here. Add the document to docs/walkthroughs/README.md.</p></td><td><span class="mono">docs/walkthroughs/export-a-dataset.md</span><br><span class="mono">Survsys.E2ETests/ExportADatasetTests.cs</span><br><span class="mono">docs/walkthroughs/README.md</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj --nologo</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests --nologo</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to application behaviour or source in Survsys.Api, Survsys.Web, Survsys.Data or Survsys.Contracts: a step a walkthrough cannot perform as written is reported as a defect in the application or the document, never fixed in this session.</li><li>No walkthroughs beyond the four this section of the session plan names.</li><li>No new seed fixtures: the walkthroughs reuse the already-seeded conditions, people and migration-seeded agencies and create through the user interface any report they need; only the tables a new walkthrough itself fills (facilities, saved views) are added to the harness's between-run clearing.</li><li>The session does not run or record the full suite, perform cross-provider verification, or close out: those are the framework's own work between instructions.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[06:55:13]</span> <span class="muted">run-started</span> session=034 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[06:55:13]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[06:55:13]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[07:03:28]</span> <span class="muted">engine-session</span> id=d79d552a-14d0-4a76-b1a7-038bf01d410f</div>
+<div class="line"><span class="at">[07:03:28]</span> <span class="muted">engine-returned</span> seq=1 exit=<span class="good">0</span> seconds=494 transcript=.dabbler/runs/s34/driver/engine-01.log</div>
+<div class="line"><span class="at">[07:03:28]</span> <span class="muted">plan-accepted</span> steps=[&quot;configure-an-agency&quot;,&quot;add-a-facility&quot;,&quot;save-a-view&quot;,&quot;export-a-dataset&quot;] non_goals=4</div>
+<div class="line"><span class="at">[07:03:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[07:03:28]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=configure-an-agency</div>
+<div class="line"><span class="at">[07:03:28]</span> <span class="muted">engine-invoked</span> seq=2 invocation=2/24 first=false output=stream</div>
+<div class="line"><span class="at">[07:08:35]</span> <span class="muted">engine-returned</span> seq=2 exit=<span class="good">0</span> seconds=306 transcript=.dabbler/runs/s34/driver/engine-02.log</div>
+<div class="line"><span class="at">[07:08:37]</span> <span class="muted">check-passed</span> step=configure-an-agency argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:08:40]</span> <span class="muted">check-passed</span> step=configure-an-agency argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:08:40]</span> <span class="muted">report-accepted</span> seq=2 step=configure-an-agency files=[&quot;docs/walkthroughs/configure-an-agency.md&quot;,&quot;Survsys.E2ETests/ConfigureAnAgencyTests.cs&quot;,&quot;docs/walkthroughs/README.md&quot;] notes=Configure-an-agency walkthrough, its named Playwright test editing seeded Davis County idempotently, and the index row.</div>
+<div class="line"><span class="at">[07:08:40]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=add-a-facility</div>
+<div class="line"><span class="at">[07:08:40]</span> <span class="muted">engine-invoked</span> seq=3 invocation=3/24 first=false output=stream</div>
+<div class="line"><span class="at">[07:13:39]</span> <span class="muted">engine-returned</span> seq=3 exit=<span class="good">0</span> seconds=300 transcript=.dabbler/runs/s34/driver/engine-03.log</div>
+<div class="line"><span class="at">[07:13:41]</span> <span class="muted">check-passed</span> step=add-a-facility argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:13:44]</span> <span class="muted">check-passed</span> step=add-a-facility argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:13:45]</span> <span class="muted">report-accepted</span> seq=3 step=add-a-facility files=[&quot;docs/walkthroughs/add-a-facility.md&quot;,&quot;Survsys.E2ETests/AddAFacilityTests.cs&quot;,&quot;Survsys.E2ETests/SurvsysHarness.cs&quot;,&quot;docs/walkthroughs/README.md&quot;] notes=Add-a-facility walkthrough and its named test; harness now clears the facilities table before seeding so the added row is read back idempotently; index row added.</div>
+<div class="line"><span class="at">[07:13:45]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=save-a-view</div>
+<div class="line"><span class="at">[07:13:45]</span> <span class="muted">engine-invoked</span> seq=4 invocation=4/24 first=false output=stream</div>
+<div class="line"><span class="at">[07:19:12]</span> <span class="muted">engine-returned</span> seq=4 exit=<span class="good">0</span> seconds=328 transcript=.dabbler/runs/s34/driver/engine-04.log</div>
+<div class="line"><span class="at">[07:19:14]</span> <span class="muted">check-passed</span> step=save-a-view argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:19:17]</span> <span class="muted">check-passed</span> step=save-a-view argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:19:17]</span> <span class="muted">report-accepted</span> seq=4 step=save-a-view files=[&quot;docs/walkthroughs/save-a-view.md&quot;,&quot;Survsys.E2ETests/SaveAViewTests.cs&quot;,&quot;Survsys.E2ETests/SurvsysHarness.cs&quot;,&quot;docs/walkthroughs/README.md&quot;] notes=Save-a-view walkthrough and its named test defining, saving, reading back and saving over a view; harness now clears the saved_views table before seeding; index row added.</div>
+<div class="line"><span class="at">[07:19:17]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=export-a-dataset</div>
+<div class="line"><span class="at">[07:19:17]</span> <span class="muted">engine-invoked</span> seq=5 invocation=5/24 first=false output=stream</div>
+<div class="line"><span class="at">[07:23:57]</span> <span class="muted">engine-returned</span> seq=5 exit=<span class="good">0</span> seconds=280 transcript=.dabbler/runs/s34/driver/engine-05.log</div>
+<div class="line"><span class="at">[07:23:59]</span> <span class="muted">check-passed</span> step=export-a-dataset argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:24:02]</span> <span class="muted">check-passed</span> step=export-a-dataset argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:24:02]</span> <span class="muted">report-accepted</span> seq=5 step=export-a-dataset files=[&quot;docs/walkthroughs/export-a-dataset.md&quot;,&quot;Survsys.E2ETests/ExportADatasetTests.cs&quot;,&quot;docs/walkthroughs/README.md&quot;] notes=Export-a-dataset walkthrough and its named test: creates a Bartonellosis report, saves a view selecting it, captures the Export CSV download and asserts the file's exact header and row; index row added.</div>
+<div class="line"><span class="at">[07:24:02]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[07:24:02]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[07:24:03]</span> <span class="muted">job-started</span> name=verification pid=36268 log=.dabbler/runs/s34/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:25:22]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s34/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:25:22]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[07:25:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[07:25:22]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[07:25:22]</span> <span class="muted">job-started</span> name=run of record: unit pid=11124 log=.dabbler/runs/s34/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[07:25:28]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s34/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[07:25:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[07:25:31]</span> <span class="muted">landed</span> commit=992efae26ed6861b4fcaa5682584ae2fdd2fa67b</div>
+<div class="line"><span class="at">[07:25:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[07:25:31]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[07:25:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[07:25:31]</span> <span class="muted">job-started</span> name=close pid=6380 log=.dabbler/runs/s34/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:25:37]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s34/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:25:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>12 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.E2ETests/SaveAViewTests.cs` (Step 6) and `Survsys.E2ETests/ExportADatasetTests.cs` (Step 12), the post-save assertion checks `await Expect(Page.Locator(&quot;#saved-view-form-heading&quot;)).ToHaveTextAsync(&quot;New saved view&quot;)` when saving a brand-new view. Because `#saved-view-form-heading` already reads `&quot;New saved view&quot;` before `#saved-view-save` is clicked (it only changes to `&quot;Edit &lt;name&gt;&quot;` when editing an existing view in Step 8), this assertion passes immediately even if the save has not yet completed or failed to clear the form.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Precondition:** On `/saved-views` in &quot;New saved view&quot; mode with `#saved-view-name` filled with `&quot;Malaria cases&quot;`, columns ticked, and Condition set to `&quot;Malaria&quot;`.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Input:** Click `#saved-view-save` in Step 6.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Expectation:** Assert `await Expect(Page.Locator(&quot;#saved-view-name&quot;)).ToHaveValueAsync(&quot;&quot;)` (as promised by Step 6 of `docs/walkthroughs/save-a-view.md`: &quot;its boxes clear&quot;); today's Step 6 only asserts `#saved-view-form-heading` has text `&quot;New saved view&quot;`, which is already true prior to clicking Save.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.E2ETests/SaveAViewTests.cs` (Step 8), `docs/walkthroughs/save-a-view.md` states that pressing **Edit** changes the heading to **Edit Malaria cases** &quot;and the form fills with the view's name, its ticked columns and its **Condition** of **Malaria**&quot;, but the test only asserts the form heading text.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Precondition:** `&quot;Malaria cases&quot;` saved view exists in `#saved-views-table` with columns `record_number, last_name, condition` and condition `&quot;Malaria&quot;`.</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Input:** Click the `Edit` button on the `[data-saved-view='Malaria cases']` row in Step 8.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Expectation:** In addition to `#saved-view-form-heading` reading `&quot;Edit Malaria cases&quot;`, assert `#saved-view-name` has value `&quot;Malaria cases&quot;`, `#saved-view-column-record_number`, `#saved-view-column-last_name`, and `#saved-view-column-condition` are checked, and the `&quot;Condition&quot;` combobox has text `&quot;Malaria&quot;`; today's test would pass Step 8 even if clicking Edit failed to populate the form fields.</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.E2ETests/ExportADatasetTests.cs` (Step 14), `docs/walkthroughs/export-a-dataset.md` promises in Step 14 that the browser downloads a file named `saved-view-&lt;id&gt;.csv`, and numbers reading the file as Step 15, whereas the test folds Steps 14 and 15 into a single `Step(Document, 14, ...)` call and does not assert the downloaded filename pattern.</td><td>not answered</td></tr>
+<tr><td>9</td><td><strong>minor</strong></td><td>**Precondition:** `&quot;Bartonellosis export&quot;` view is saved and visible in `#saved-views-table`.</td><td>not answered</td></tr>
+<tr><td>10</td><td><strong>minor</strong></td><td>**Input:** Click the `Export CSV` link on the `[data-saved-view='Bartonellosis export']` row inside `Page.RunAndWaitForDownloadAsync`.</td><td>not answered</td></tr>
+<tr><td>11</td><td><strong>minor</strong></td><td>**Expectation:** Assert `Assert.Matches(@&quot;^saved-view-\d+\.csv$&quot;, download.SuggestedFilename)` in Step 14 and assert the CSV body in Step 15; today's test only checks the CSV stream contents and would pass regardless of the download's filename.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>5s</td><td>792</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
