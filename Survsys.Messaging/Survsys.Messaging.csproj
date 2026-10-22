@@ -17,6 +17,16 @@
     <PackageReference Include="nHapi.Model.V251" Version="3.2.4" />
   </ItemGroup>
 
+  <!-- The HL7 CDA schema, eCR schematrons and vocabularies, the ISO
+       Schematron skeleton and the HL7 CDA stylesheet, as published (see
+       Cda/README.md). They are read from disk beside the assembly, where
+       their relative includes and document() calls resolve, so they are
+       copied to the output of this project and of every project that
+       references it. -->
+  <ItemGroup>
+    <None Include="Cda\**\*" Exclude="Cda\README.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Survsys.Contracts\Survsys.Contracts.csproj" />
   </ItemGroup>

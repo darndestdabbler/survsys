@@ -143,6 +143,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options, IAudit
 
     public DbSet<EcrDocument> EcrDocuments => Set<EcrDocument>();
 
+    public DbSet<EcrValidationFinding> EcrValidationFindings => Set<EcrValidationFinding>();
+
     public DbSet<PhinVariable> PhinVariables => Set<PhinVariable>();
 
     public DbSet<NotificationGuide> NotificationGuides => Set<NotificationGuide>();

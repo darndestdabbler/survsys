@@ -12300,6 +12300,47 @@ namespace Survsys.Data.Migrations
                     b.ToTable("ecr_document", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.EcrValidationFinding", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("EcrDocumentId")
+                        .HasColumnType("int")
+                        .HasColumnName("ecr_document_id");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("message");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("severity");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("source");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EcrDocumentId");
+
+                    b.ToTable("ecr_validation_finding", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.Encounter", b =>
                 {
                     b.Property<int>("Id")
@@ -15964,6 +16005,17 @@ namespace Survsys.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Survsys.Data.EcrValidationFinding", b =>
+                {
+                    b.HasOne("Survsys.Data.EcrDocument", "EcrDocument")
+                        .WithMany("Findings")
+                        .HasForeignKey("EcrDocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EcrDocument");
+                });
+
             modelBuilder.Entity("Survsys.Data.Encounter", b =>
                 {
                     b.HasOne("Survsys.Data.Facility", null)
@@ -16492,6 +16544,11 @@ namespace Survsys.Data.Migrations
             modelBuilder.Entity("Survsys.Data.CdcExportLogEntry", b =>
                 {
                     b.Navigation("Details");
+                });
+
+            modelBuilder.Entity("Survsys.Data.EcrDocument", b =>
+                {
+                    b.Navigation("Findings");
                 });
 
             modelBuilder.Entity("Survsys.Data.Person", b =>

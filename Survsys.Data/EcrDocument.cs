@@ -54,4 +54,7 @@ public class EcrDocument
 
     /// <summary>When the document was taken in, in UTC.</summary>
     public DateTime ReceivedAt { get; set; }
+
+    /// <summary>What validation against the CDA schema and the HL7 schematron found, if anything.</summary>
+    public List<EcrValidationFinding> Findings { get; set; } = [];
 }

@@ -37,7 +37,10 @@ public sealed class EcrIntakeOptions
 /// <remarks>
 /// A document is read by <see cref="CdaParser"/> for its kind, id, set and
 /// version, and for the eICR an RR responds to; the rest of what the parser
-/// reads is the later eCR sessions'. A document whose id is already on file
+/// reads is the later eCR sessions'. Each is validated by
+/// <see cref="CdaValidator"/> against the CDA schema and the HL7 schematron,
+/// and its findings are stored with it: a finding of any severity never stops
+/// a document from being stored. A document whose id is already on file
 /// is not stored again and its file is moved to <c>.duplicate</c>; one that
 /// cannot be read is moved to <c>.failed</c>, so neither stalls the poller; a
 /// stored one is moved to <c>.processed</c>. This stores documents and no
@@ -46,6 +49,7 @@ public sealed class EcrIntakeOptions
 /// </remarks>
 public sealed class EcrIntakeService(
     CdaParser parser,
+    CdaValidator validator,
     IServiceScopeFactory scopeFactory,
     IOptions<EcrIntakeOptions> options,
     ILogger<EcrIntakeService> logger) : BackgroundService
@@ -57,14 +61,16 @@ public sealed class EcrIntakeService(
     /// <summary>
     /// The document to store for one raw eICR or RR taken from
     /// <paramref name="feed"/>: its raw text unchanged, with the kind, ids,
-    /// set and version <paramref name="parser"/> reads from it. Throws
+    /// set and version <paramref name="parser"/> reads from it, and what
+    /// <paramref name="validator"/> finds wrong with it as its findings. Throws
     /// <see cref="Hl7ParseException"/> for a document the parser cannot read,
     /// and <see cref="ArgumentException"/> for a feed that is neither test nor
     /// production.
     /// </summary>
-    public static EcrDocument Stage(CdaParser parser, string raw, string feed, string? source)
+    public static EcrDocument Stage(CdaParser parser, CdaValidator validator, string raw, string feed, string? source)
     {
         ArgumentNullException.ThrowIfNull(parser);
+        ArgumentNullException.ThrowIfNull(validator);
         ArgumentNullException.ThrowIfNull(raw);
         if (feed is not (EcrDocument.TestFeed or EcrDocument.ProductionFeed))
         {
@@ -83,6 +89,15 @@ public sealed class EcrIntakeService(
             RawXml = raw,
             Source = source,
             ReceivedAt = DateTime.UtcNow,
+            Findings = validator.Validate(raw, document.Kind, document.IgVersion)
+                .Select(finding => new EcrValidationFinding
+                {
+                    Source = finding.Source,
+                    Severity = finding.Severity,
+                    Message = finding.Message,
+                    Location = finding.Location,
+                })
+                .ToList(),
         };
     }
 
@@ -92,6 +107,7 @@ public sealed class EcrIntakeService(
     /// </summary>
     public static async Task<EcrDocument?> Receive(
         CdaParser parser,
+        CdaValidator validator,
         SurvsysDbContext database,
         string raw,
         string feed,
@@ -100,7 +116,7 @@ public sealed class EcrIntakeService(
     {
         ArgumentNullException.ThrowIfNull(database);
 
-        var document = Stage(parser, raw, feed, source);
+        var document = Stage(parser, validator, raw, feed, source);
         if (await database.EcrDocuments.AnyAsync(taken => taken.DocumentId == document.DocumentId, cancellationToken))
         {
             return null;
@@ -211,7 +227,7 @@ public sealed class EcrIntakeService(
 
                 using var scope = scopeFactory.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<SurvsysDbContext>();
-                var stored = await Receive(parser, database, raw, feed, fileName, stoppingToken);
+                var stored = await Receive(parser, validator, database, raw, feed, fileName, stoppingToken);
 
                 if (stored is null)
                 {

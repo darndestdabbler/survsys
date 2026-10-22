@@ -30,14 +30,14 @@ public class EcrIntakeServiceTests(SqlServerFixture server)
             await using (var context = server.NewContext())
             {
                 var stored = await EcrIntakeService.Receive(
-                    parser, context, raw, EcrDocument.TestFeed, "first.xml", CancellationToken.None);
+                    parser, new CdaValidator(), context, raw, EcrDocument.TestFeed, "first.xml", CancellationToken.None);
                 Assert.NotNull(stored);
             }
 
             await using (var context = server.NewContext())
             {
                 var again = await EcrIntakeService.Receive(
-                    parser, context, raw, EcrDocument.ProductionFeed, "again.xml", CancellationToken.None);
+                    parser, new CdaValidator(), context, raw, EcrDocument.ProductionFeed, "again.xml", CancellationToken.None);
                 Assert.Null(again);
             }
 

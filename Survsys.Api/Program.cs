@@ -106,6 +106,7 @@ builder.Services.AddWorkQueue();
 builder.Services.AddCaseSearch();
 builder.Services.AddSavedViews();
 builder.Services.AddMessageQueue();
+builder.Services.AddEcr();
 builder.Services.AddMessageStatistics();
 builder.Services.AddNotificationQueue();
 builder.Services.AddExportLog();
@@ -148,6 +149,7 @@ builder.Services.AddHostedService<MllpListener>();
 builder.Services.Configure<EcrIntakeOptions>(
     builder.Configuration.GetSection(EcrIntakeOptions.SectionName));
 builder.Services.AddSingleton<CdaParser>();
+builder.Services.AddSingleton<CdaValidator>();
 builder.Services.AddHostedService<EcrIntakeService>();
 
 // Automatic assignment and the graylist: a background worker that assigns the
@@ -275,6 +277,7 @@ app.MapWorkQueue();
 app.MapCaseSearch();
 app.MapSavedViews();
 app.MapMessageQueue();
+app.MapEcr();
 app.MapMessageStatistics();
 app.MapNotificationQueue();
 app.MapExportLog();
