@@ -12233,6 +12233,73 @@ namespace Survsys.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Survsys.Data.EcrDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DocumentId")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("document_id");
+
+                    b.Property<string>("EicrDocumentId")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("eicr_document_id");
+
+                    b.Property<string>("Feed")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("feed");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("RawXml")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("raw_xml");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("received_at");
+
+                    b.Property<string>("SetId")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("set_id");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)")
+                        .HasColumnName("source");
+
+                    b.Property<int?>("VersionNumber")
+                        .HasColumnType("int")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentId")
+                        .IsUnique();
+
+                    b.HasIndex("EicrDocumentId");
+
+                    b.HasIndex("SetId");
+
+                    b.ToTable("ecr_document", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.Encounter", b =>
                 {
                     b.Property<int>("Id")

@@ -112,15 +112,16 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 98 | IBIS, ad-hoc reporting and system configuration | no | 2026-10-22 |
 | 99 | Phase 12 walkthroughs | no | 2026-10-22 |
 | 100 | Release 0.13.0 (release: 0.13.0) | yes | 2026-10-22 |
-| 101 | eICR and RR parsing and document intake | — | not declared |
+| 101 | eICR and RR parsing and document intake | no | 2026-10-22 |
 | 102 | eCR validation and the eICR viewer | — | not declared |
 | 103 | Reportability and condition mapping | — | not declared |
 | 104 | Cases from eCR | — | not declared |
 | 105 | eCR senders and data quality | — | not declared |
 | 106 | Phase 13 walkthroughs | — | not declared |
-| 107 | Release 0.14.0 (release: 0.14.0) | — | not declared |
-| 108 | The parity check and the documentation for 1.0.0 | — | not declared |
-| 109 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 107 | The integration suite before every release, on SQL Server in a container | — | not declared |
+| 108 | Release 0.14.0 (release: 0.14.0) | — | not declared |
+| 109 | The parity check and the documentation for 1.0.0 | — | not declared |
+| 110 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -898,3 +899,9 @@ Write the Phase 12 walkthroughs and the Playwright tests that perform them. Four
 **Releasable: yes.**
 
 Release 0.13.0: the framework packs and publishes what is on the trunk.
+
+### Session 101 — eICR and RR parsing and document intake
+
+**Releasable: no.**
+
+Read eICR and RR CDA documents and take them in. In Survsys.Messaging a CdaParser, a second IMessageParser (Format "CDA"), reads a ClinicalDocument with LINQ to XML by templateId: eICR R1.1 (2.16.840.1.113883.10.20.15.2, extension 2016-12-01) and R3.1/R3.1.1 (extensions 2021-01-01 and 2022-05-01), and RR 1.1 (2.16.840.1.113883.10.20.15.2.1.2). Its Read(raw) answers a CdaDocument record: the kind (eICR or RR) and IG version, the document id, setId and versionNumber, the patient (as the existing ParsedPatient), the encounter, problems, results, medications, pregnancy, travel and occupation, and for an RR the eICR id it responds to and its conditions, each with its code, determination (RRVS1-4) and responsible agency; Parse(raw) maps that onto ParsedMessage for the seam, the patient with the results as one order. A document that is not XML or not a recognised eICR or RR throws Hl7ParseException. In Survsys.Data an ecr_document table (EcrDocument: document id unique, kind, feed, setId, version number, the eICR id an RR responds to, the raw XML unchanged, source file name, received at) with its migration. In Survsys.Api an EcrIntakeService background worker polls two configured folders, the test feed and the production feed (EcrIntake options, both empty and so off by default), stores each document's raw XML with the feed it came from, takes each document once by its id (a re-sent id is moved aside, not stored again), and moves a handled file to .processed and an unreadable one to .failed, as ElrIntakeService does. Two static queries over the stored documents answer an eICR's versions (same setId, ordered by version number) and the eICR an RR is paired with (and the RRs of an eICR) by the RR's referenced eICR id, so the pairing holds whichever document arrives first. The HL7 IG sample documents (eICR R1.1, eICR R3.1.1, RR 1.1) are kept as unit test fixtures and parsed; a re-sent version is grouped with its first.

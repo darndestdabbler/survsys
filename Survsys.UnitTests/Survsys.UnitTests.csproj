@@ -20,6 +20,9 @@
     <!-- HL7 fixtures the parser tests read, copied beside the test assembly
          so OruR01ParserTests finds them under Fixtures/Hl7 at run time. -->
     <None Include="Fixtures\Hl7\*.hl7" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The HL7 eCR implementation guides' sample documents, unchanged, for
+         CdaParserTests and EcrIntakeServiceTests under Fixtures/Cda. -->
+    <None Include="Fixtures\Cda\*.xml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

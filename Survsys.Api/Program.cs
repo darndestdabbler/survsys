@@ -143,6 +143,13 @@ builder.Services.AddSingleton<IMessageParser, OruR01Parser>();
 builder.Services.AddHostedService<ElrIntakeService>();
 builder.Services.AddHostedService<MllpListener>();
 
+// The eCR intake: a background worker that stores each eICR and RR delivered
+// to the test or production feed's folder. Off unless a folder is configured.
+builder.Services.Configure<EcrIntakeOptions>(
+    builder.Configuration.GetSection(EcrIntakeOptions.SectionName));
+builder.Services.AddSingleton<CdaParser>();
+builder.Services.AddHostedService<EcrIntakeService>();
+
 // Automatic assignment and the graylist: a background worker that assigns the
 // queued messages it can assign with confidence, and releases and prunes
 // graylisted ones. Off unless a poll interval is configured.

@@ -141,6 +141,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options, IAudit
 
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
+    public DbSet<EcrDocument> EcrDocuments => Set<EcrDocument>();
+
     public DbSet<PhinVariable> PhinVariables => Set<PhinVariable>();
 
     public DbSet<NotificationGuide> NotificationGuides => Set<NotificationGuide>();
