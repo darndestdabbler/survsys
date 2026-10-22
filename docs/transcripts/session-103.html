@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 103 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 103 transcript</h1>
+<p class="stamp">Rendered 2026-10-22T15:58:15.926Z by dabbler-ai-router 3.23.0 at b227077d215cbd34f55fbfdff1634ceb3010f831.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-22T11:41:10.021-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 103: Reportability and condition mapping</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code> and <code>Survsys.Api</code>: a mapping from RCTC and SNOMED condition codes to the conditions catalogue, with its migration and an import from an RCTC release; each RR condition kept where this jurisdiction is the responsible agency and the determination is reportable.</li><li><code>Survsys.Web</code>: the mapping screen, and &quot;may be reportable&quot; and unmapped conditions sent to the eCR queue for review.</li><li><code>Survsys.IntegrationTests</code>: each determination code's routing.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Decide what each Reportability Response asks of this jurisdiction and map its condition codes to the conditions catalogue. Survsys.Data gets two tables with one migration, EcrReportability: ecr_condition_mapping (a code system OID, a code, its display name, and the catalogue condition it maps to, null while unmapped; unique on code system and code), which holds RCTC condition-grouper and SNOMED condition codes alike; and ecr_rr_condition, owned by ecr_document, the RR conditions kept at intake (code system, code, display name, determination code, responsible agency id, reporting timeframe). EcrIntakeOptions gains ResponsibleAgencyIds, this jurisdiction's agency ids as the RR names them (root^extension). A static EcrReportability in Survsys.Api decides each parsed RR condition: it is kept only where its responsible agency is one of those ids and its determination is RRVS1 (reportable) or RRVS2 (may be reportable) -- RRVS3, RRVS4, no determination or another agency is not kept -- and a kept condition is routed 'reportable' when it is RRVS1 and its code maps to a catalogue condition, and 'review' when it is RRVS2 or unmapped; EcrIntakeService stores the kept conditions with each RR. The mapping is resolved when it is read, not when the RR arrives, so mapping a code later takes it out of review. Survsys.Api adds /api/ecr-condition-mappings (list, add, save, delete, and CSV export and previewed import through the existing ReferenceTable/ReferenceImport machinery with columns code_system, code, display_name, condition -- the condition by catalogue name, blank for unmapped), which is how an RCTC release's condition list is brought in, gated as reference data. The eCR queue rows gain a count of conditions routed to review and a filter to RRs that have one; the document detail's conditions gain the mapped catalogue condition and the routing (null for one not kept). Survsys.Web adds the mapping screen with its CSV import and export, a review column and filter on the eCR queue, and the mapped condition and routing on the document screen. Integration tests prove each determination code's routing end to end, and the mapping endpoints, against SQL Server.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/39e87df5ae9848d6549abf9d8e8a3c93510fac0d"><code>39e87df5ae9848d6549abf9d8e8a3c93510fac0d</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Reportability data</td><td><p>In Survsys.Data add EcrConditionMapping (id, code system, code, display name, nullable ConditionId to the conditions catalogue) mapped to ecr_condition_mapping, unique on code system and code, and EcrRrCondition (id, owning EcrDocument, code system, code, display name, determination code, responsible agency id, reporting timeframe) mapped to ecr_rr_condition and deleted with its document, with an EcrDocument.RrConditions collection, the DbSets, and the migration EcrReportability with the model snapshot updated.</p></td><td></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Reportability on intake</td><td><p>Add EcrReportability to Survsys.Api: the determination codes RRVS1-RRVS4 as constants, IsKept(condition, responsibleAgencyIds) answering whether a parsed RrCondition is this jurisdiction's and RRVS1 or RRVS2, and Route(determinationCode, mapped) answering 'reportable' for RRVS1 mapped and 'review' otherwise. EcrIntakeOptions gains ResponsibleAgencyIds (empty by default, so nothing is kept until it is set; added empty to appsettings.json). EcrIntakeService.Stage takes the agency ids and, for an RR, attaches its kept conditions as EcrRrCondition rows. Unit tests in EcrReportabilityTests cover each determination code, another agency and no agency, and each routing; EcrIntakeServiceTests in the unit suite prove an RR is staged with its kept conditions; the integration EcrIntakeServiceTests are updated for the new signature.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrReportabilityTests|FullyQualifiedName~Survsys.UnitTests.EcrIntakeServiceTests</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Condition mapping endpoints</td><td><p>Add EcrConditionMappingEndpoints to Survsys.Api, following VaccineEndpoints: GET /api/ecr-condition-mappings lists every mapping with its catalogue condition's name; POST adds one, PUT /{id} saves one, DELETE /{id} deletes one, each validated (code system and code required, the pair unique, the condition on file); GET /csv exports and POST /csv imports with preview and confirm through a ReferenceTable keyed on code system and code, columns code_system, code, display_name, condition (the catalogue condition by name, blank for unmapped). Wire shapes EcrConditionMappingResponse and SaveEcrConditionMappingRequest in Survsys.Contracts; registered in Program.cs; the route added to PrivilegeRules' reference-data paths. Unit tests in EcrConditionMappingEndpointsTests prove the validation and the CSV row reading, PrivilegeRulesTests cover the new route, and integration tests in EcrConditionMappingEndpointsTests prove the CRUD and an import against SQL Server.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrConditionMappingEndpointsTests|FullyQualifiedName~Survsys.UnitTests.PrivilegeRulesTests|FullyQualifiedName~Survsys.UnitTests.ArchitectureTests</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Ecr queue routing</td><td><p>In EcrEndpoints, each queue row (EcrDocumentResponse) gains ReviewCount, the number of its kept conditions routed to review with the mapping resolved in the query, and GET /api/ecr-documents takes an optional review flag narrowing the queue to documents with one. Each detail condition (EcrConditionResponse) gains the mapped catalogue condition's id and name and its routing ('reportable', 'review', or null where EcrReportability does not keep it). Unit tests in EcrEndpointsTests are updated for the new members; integration tests in EcrEndpointsTests take in an RR with one condition per determination code RRVS1 to RRVS4 for this jurisdiction (RRVS1 both mapped and unmapped) and one for another agency, and prove which are kept, each one's routing on the detail, the review count, and the review filter.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrEndpointsTests</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Mapping and review screens</td><td><p>In Survsys.Web add EcrConditionMappingsClient (list, add, save, delete, CSV export, import preview and confirm) registered in Program.cs, and an eCR condition mapping page at /ecr/condition-mappings: the mappings in a table, each row's catalogue condition chosen and saved, add and delete, and CSV export and a previewed import, linked from the navigation beside the other reference data. EcrClient's List takes the review flag; the eCR queue shows each row's review count and a 'Needs review' filter; the document page shows each condition's mapped catalogue condition and routing. Unit tests in EcrConditionMappingsClientTests prove the new client's requests and EcrClientTests cover the review flag.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrConditionMappingsClientTests|FullyQualifiedName~Survsys.UnitTests.EcrClientTests</code><br><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No cases opened, linked or written from an eICR, and no person matching (session 104); no eCR senders or data-quality screen (session 105); no walkthroughs or Playwright tests (session 106).</li><li>No parsing of the RCTC Excel workbook or the eRSD FHIR bundle and no download from APHL's Terminology Exchange Service: an RCTC release's condition list comes in as CSV through the mapping import.</li><li>No review workflow beyond routing: no review states, assignment, dismissal or re-processing of a document; routing only marks a kept condition for review and the queue filters on it.</li><li>No backfill of RRs stored before this session, and no change to the eCR parser, the validator or the stored raw XML.</li><li>No mapping by trigger code (diagnosis, lab or medication RCTC codes): only the RR's condition codes are mapped.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[15:41:10]</span> <span class="muted">run-started</span> session=103 mode=pull</div>
+<div class="line"><span class="at">[15:41:10]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[15:43:39]</span> <span class="muted">run-resumed</span> session=103 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[15:43:39]</span> <span class="muted">plan-accepted</span> steps=[&quot;reportability-data&quot;,&quot;reportability-on-intake&quot;,&quot;condition-mapping-endpoints&quot;,&quot;ecr-queue-routing&quot;,&quot;mapping-and-review-screens&quot;] non_goals=5</div>
+<div class="line"><span class="at">[15:43:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[15:43:40]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=reportability-data</div>
+<div class="line"><span class="at">[15:44:58]</span> <span class="muted">run-resumed</span> session=103 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:45:00]</span> <span class="muted">check-passed</span> step=reportability-data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[15:45:00]</span> <span class="muted">report-accepted</span> seq=2 step=reportability-data files=[] notes=ecr_condition_mapping and ecr_rr_condition tables with the EcrReportability migration</div>
+<div class="line"><span class="at">[15:45:00]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=reportability-on-intake</div>
+<div class="line"><span class="at">[15:46:55]</span> <span class="muted">run-resumed</span> session=103 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:47:11]</span> <span class="muted">check-passed</span> step=reportability-on-intake argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrReportabilityTests|FullyQualifiedName~Survsys.UnitTests.EcrIntakeServiceTests&quot;]</div>
+<div class="line"><span class="at">[15:47:13]</span> <span class="muted">check-passed</span> step=reportability-on-intake argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[15:47:14]</span> <span class="muted">report-accepted</span> seq=3 step=reportability-on-intake files=[] notes=EcrReportability decides kept conditions and routing; intake stores an RR's kept conditions for the configured agency ids</div>
+<div class="line"><span class="at">[15:47:14]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=condition-mapping-endpoints</div>
+<div class="line"><span class="at">[15:50:25]</span> <span class="muted">run-resumed</span> session=103 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:50:29]</span> <span class="muted">check-passed</span> step=condition-mapping-endpoints argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrConditionMappingEndpointsTests|FullyQualifiedName~Survsys.UnitTests.PrivilegeRulesTests|FullyQualifiedName~Survsys.UnitTests.ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[15:50:31]</span> <span class="muted">check-passed</span> step=condition-mapping-endpoints argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[15:50:31]</span> <span class="muted">report-accepted</span> seq=4 step=condition-mapping-endpoints files=[] notes=eCR condition mapping CRUD and CSV import/export, gated as reference data; integration tests pass locally</div>
+<div class="line"><span class="at">[15:50:31]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=ecr-queue-routing</div>
+<div class="line"><span class="at">[15:54:05]</span> <span class="muted">run-resumed</span> session=103 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:54:09]</span> <span class="muted">check-passed</span> step=ecr-queue-routing argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[15:54:10]</span> <span class="muted">check-passed</span> step=ecr-queue-routing argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[15:54:11]</span> <span class="muted">report-accepted</span> seq=5 step=ecr-queue-routing files=[] notes=Queue rows carry a review count and a review filter; detail conditions carry the mapped condition and routing; integration test routes every determination code</div>
+<div class="line"><span class="at">[15:54:11]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=mapping-and-review-screens</div>
+<div class="line"><span class="at">[15:56:40]</span> <span class="muted">run-resumed</span> session=103 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:56:44]</span> <span class="muted">check-passed</span> step=mapping-and-review-screens argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrConditionMappingsClientTests|FullyQualifiedName~Survsys.UnitTests.EcrClientTests&quot;]</div>
+<div class="line"><span class="at">[15:56:46]</span> <span class="muted">check-passed</span> step=mapping-and-review-screens argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[15:56:46]</span> <span class="muted">report-accepted</span> seq=6 step=mapping-and-review-screens files=[] notes=eCR condition mapping screen with CSV export and previewed import; queue review column and Needs review filter; document page shows mapped condition and routing</div>
+<div class="line"><span class="at">[15:56:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[15:56:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[15:56:46]</span> <span class="muted">job-started</span> name=verification pid=41600 log=.dabbler/runs/s103/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:57:50]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s103/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:57:50]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[15:57:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[15:57:50]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[15:57:50]</span> <span class="muted">job-started</span> name=run of record: unit pid=51352 log=.dabbler/runs/s103/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[15:58:08]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s103/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[15:58:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[15:58:11]</span> <span class="muted">landed</span> commit=39e87df5ae9848d6549abf9d8e8a3c93510fac0d</div>
+<div class="line"><span class="at">[15:58:11]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[15:58:11]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[15:58:11]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[15:58:11]</span> <span class="muted">job-started</span> name=close pid=39420 log=.dabbler/runs/s103/driver/jobs/close.log</div>
+<div class="line"><span class="at">[15:58:15]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s103/driver/jobs/close.log</div>
+<div class="line"><span class="at">[15:58:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>11 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** Detail routing is recomputed from the current `ResponsibleAgencyIds` configuration rather than from the RR conditions persisted at intake.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Evidence:** `Survsys.Api/EcrIntakeService.cs` persists only `EcrReportability.Kept(...)` conditions; `Survsys.Api/EcrEndpoints.cs` queue counts those persisted `RrConditions`, but `Conditions(...)` reparses raw XML and calls `EcrReportability.IsKept(condition, responsibleAgencyIds)` using current options.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Failure scenario:** An RR is received while agency `A` is configured and its RRVS1 condition is stored. If the configuration is later changed to remove `A`, the queue still counts the persisted condition while document detail renders its routing as `null` (“Not kept”). Conversely, adding an agency later can make detail route a condition never persisted or queued.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Suggested test:** Stage an RR with `[Agency]`, then request its detail from a host configured with an empty agency list. Expect the persisted condition’s routing to remain consistent with the queue’s review count; today detail returns `null` routing.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** The mapping screen retrieves only the first 200 catalogue conditions, with no paging or search path for conditions beyond that page.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Evidence:** `Survsys.Web/Components/Pages/EcrConditionMappings.razor` defines `Catalogue = 200` and calls `Conditions.Page(1, Catalogue)` once; the select is populated only from that result.</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Failure scenario:** If the catalogue contains more than 200 conditions, an administrator cannot map a code to a condition returned only on a later page.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Suggested test:** With a catalogue condition available only beyond page 1 at size 200, open the mapping form and select that condition. Expect it to be selectable through paging/search or an appropriately complete catalogue source; today it is absent.</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>**Nit:** The visible integration tests do not pin the explicitly required late-mapping behavior.</td><td>not answered</td></tr>
+<tr><td>9</td><td><strong>minor</strong></td><td>**Evidence:** `Survsys.IntegrationTests/EcrEndpointsTests.cs` creates mappings before staging `RoutedRr`; no visible test changes a mapping after an RR has been stored.</td><td>not answered</td></tr>
+<tr><td>10</td><td><strong>minor</strong></td><td>**Suggested test:** Store an RRVS1 condition for the configured agency with no mapping, assert it appears in `review=true` with `ReviewCount == 1`, then add a mapping for the same `(code_system, code)` and assert the RR no longer appears in `review=true` and detail reports `reportable`. The current query design appears intended to satisfy this, but the behavior is not regression-pinned.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>17s</td><td>2214</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

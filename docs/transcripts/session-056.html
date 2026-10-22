@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 056 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 056 transcript</h1>
+<p class="stamp">Rendered 2026-10-18T09:32:22.950Z by dabbler-ai-router 3.21.0 at 9c11c42e3863bc5c3ec25ca46ad9281b5292fdb2.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-18T05:26:41.820-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 56: Repair the three endpoint queries SQL Server cannot translate</h3>
+<p>*Inserted after session 55. The integration suite fails 20 of its 174 tests on the trunk, every one with a 500 from the API. Three queries throw EF Core's &quot;The LINQ expression … could not be translated&quot;, and each has the same shape: it projects rows into a positional record (<code>OutbreakAccessResponse</code>, the treatment's condition rows, the case's form assignments), then orders by a property of that record (<code>AgencyName</code>, <code>Name</code>, <code>AssignedAt</code>). EF cannot map a constructor argument back to a column, so the <code>OrderBy</code> after the projection has nothing to translate. The failing paths are <code>OutbreakQueries.AccessRows</code> (<code>OutbreakEndpoints.cs</code>), reached by every outbreak detail, create, save and access call; <code>TreatmentQueries.Detail</code> (<code>TreatmentEndpoints.cs</code>), reached by every treatment create, save and read; and <code>FormQueries.Assignments</code> (<code>FormEndpoints.cs</code>), reached by listing a case's forms and by the auto-assign on case creation. Sessions 51 to 53 shipped them. Nothing failed at their close because a session's run of record is the unit suite, which does not reach SQL Server. The Phase 7 walkthroughs open an outbreak, complete a form and record a treatment through exactly these paths, so this comes before them.*</p>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: in each of the three queries, order by the entity's or the joined row's own columns before projecting into the response record, so the ordering translates to SQL; the order each endpoint returns is unchanged. Look for any other query in <code>Survsys.Api</code> that orders by a property of a positional-record projection, and give it the same change. No endpoint's route, contract or response changes.</li><li><code>Survsys.IntegrationTests</code>: the existing tests are the proof. The whole integration suite passes, 174 of 174, with the 20 that fail today among them and no test changed to get there.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Repair the three Survsys.Api queries SQL Server cannot translate, each of which projects into a positional response record and then orders by a property of that record. In OutbreakQueries.AccessRows (OutbreakEndpoints.cs) order the joined agency rows by agency.Name then agency.Id before projecting into OutbreakAccessResponse; in TreatmentQueries.Detail (TreatmentEndpoints.cs) order the joined conditions by condition.Name then condition.Id before projecting into TreatmentConditionResponse; in FormQueries.Assignments (FormEndpoints.cs) order by assignment.AssignedAt then assignment.Id before projecting into FormAssignmentResponse. A sweep of every OrderBy/ThenBy in Survsys.Api found no other query ordering after a positional-record projection (ReportQueries orders an anonymous type, which translates), so these three are the whole change. The order each endpoint returns is unchanged, and the existing integration suite -- 174 of 174, with the 20 that fail today among them and no test changed -- is the proof.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/83ac41c4f8a66810cfafd27841789340ec247b4c"><code>83ac41c4f8a66810cfafd27841789340ec247b4c</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Order before projection</td><td><p>In Survsys.Api/OutbreakEndpoints.cs (AccessRows), Survsys.Api/TreatmentEndpoints.cs (the treatment's condition rows) and Survsys.Api/FormEndpoints.cs (Assignments), move the OrderBy/ThenBy ahead of the projection into the positional response record, ordering by the same values taken from the entity's or the joined row's own columns (agency.Name/agency.Id; condition.Name/condition.Id; assignment.AssignedAt/assignment.Id), so the ordering translates to SQL and the returned order is unchanged. Change nothing else. The whole integration suite then passes, 174 of 174, with no test changed.</p></td><td><span class="mono">Survsys.Api/OutbreakEndpoints.cs</span><br><span class="mono">Survsys.Api/TreatmentEndpoints.cs</span><br><span class="mono">Survsys.Api/FormEndpoints.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code><br><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No route, contract, response shape or returned order changes for any endpoint.</li><li>No test is added, changed or skipped: the existing integration suite is the proof.</li><li>No query outside these three is rewritten, and no other refactoring of the query classes.</li><li>No change to which suites make up the run of record, no release or packaging change: dabbler.yaml is untouched.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[09:26:41]</span> <span class="muted">run-started</span> session=056 mode=pull</div>
+<div class="line"><span class="at">[09:26:41]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[09:27:47]</span> <span class="muted">run-resumed</span> session=056 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[09:27:47]</span> <span class="muted">plan-accepted</span> steps=[&quot;order-before-projection&quot;] non_goals=4</div>
+<div class="line"><span class="at">[09:27:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[09:27:48]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=order-before-projection</div>
+<div class="line"><span class="at">[09:30:11]</span> <span class="muted">run-resumed</span> session=056 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:30:14]</span> <span class="muted">check-passed</span> step=order-before-projection argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[09:31:43]</span> <span class="muted">check-passed</span> step=order-before-projection argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[09:31:44]</span> <span class="muted">report-accepted</span> seq=2 step=order-before-projection files=[&quot;Survsys.Api/OutbreakEndpoints.cs&quot;,&quot;Survsys.Api/TreatmentEndpoints.cs&quot;,&quot;Survsys.Api/FormEndpoints.cs&quot;] notes=Ordered by entity/joined-row columns before projecting into the response records in AccessRows, ConditionRows and Assignments; integration suite 174/174.</div>
+<div class="line"><span class="at">[09:31:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[09:31:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[09:31:46]</span> <span class="muted">job-started</span> name=verification pid=24624 log=.dabbler/runs/s56/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:31:58]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s56/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:31:58]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[09:31:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[09:31:58]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[09:32:00]</span> <span class="muted">job-started</span> name=run of record: unit pid=29996 log=.dabbler/runs/s56/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[09:32:08]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s56/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[09:32:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[09:32:13]</span> <span class="muted">landed</span> commit=83ac41c4f8a66810cfafd27841789340ec247b4c</div>
+<div class="line"><span class="at">[09:32:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[09:32:13]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[09:32:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[09:32:14]</span> <span class="muted">job-started</span> name=close pid=48968 log=.dabbler/runs/s56/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:32:22]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s56/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:32:22]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>1022</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
