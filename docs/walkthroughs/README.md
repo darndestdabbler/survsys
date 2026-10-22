@@ -48,6 +48,10 @@ running Survsys. Perform them in any order; each one stands alone.
 | [Run an ad-hoc report](run-an-ad-hoc-report.md) | An epidemiologist opens two Lyme disease cases, saves a view that selects them, counts the cases it selects grouped by agency on the Reports screen, and exports the counts as a CSV file. | `Survsys.E2ETests/RunAnAdHocReportTests.cs` |
 | [Send a case to IBIS](send-a-case-to-ibis.md) | An investigator opens a case, sends it to IBIS from the report's IBIS panel, and reads the date IBIS accepted it. | `Survsys.E2ETests/SendACaseToIbisTests.cs` |
 | [See a case classified on save](see-a-case-classified-on-save.md) | An investigator records a positive *Chlamydia trachomatis* culture on a chlamydia case with no status, and without a reload sees the header read the case confirmed and the finding that confirmed it beside the save. | `Survsys.E2ETests/SeeACaseClassifiedOnSaveTests.cs` |
+| [Review an eICR and its reportability response](review-an-eicr-and-its-reportability-response.md) | A surveillance reviewer drops an eICR and its RR into the eCR intake, finds both on the eCR queue, opens the eICR, and reads it rendered, the RR's condition with its determination, responsible agency, mapping and routing, and what validation found in each document. | `Survsys.E2ETests/ReviewAnEicrAndItsReportabilityResponseTests.cs` |
+| [Map a reportable condition](map-a-reportable-condition.md) | A surveillance administrator drops an RR whose reportable condition's code maps to nothing, finds it waiting under Needs review on the eCR queue, maps the code to its condition on the eCR condition mapping screen, and reads the RR's condition mapped and reportable. | `Survsys.E2ETests/MapAReportableConditionTests.cs` |
+| [Open a case from an eICR](open-a-case-from-an-eicr.md) | A surveillance reviewer drops an eICR for a patient not on file and the RR finding its condition reportable, opens the eICR from the eCR queue, and follows its Open case link to the new case opened for that patient and condition. | `Survsys.E2ETests/OpenACaseFromAnEicrTests.cs` |
+| [Link an eICR to an existing case](link-an-eicr-to-an-existing-case.md) | An investigator reads a patient's open case on the Events screen, drops an eICR for that patient and the RR finding its condition reportable, and follows the eICR's Open case link to the same case rather than a second one. | `Survsys.E2ETests/LinkAnEicrToAnExistingCaseTests.cs` |
 
 ## The contract every entry here is held to
 
@@ -82,11 +86,12 @@ dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj
 That starts both tiers on ports it finds free, seeds the database, performs
 every walkthrough in a browser and records each one. The four phase 10
 walkthroughs — the three that drop a message into the ELR intake, and the
-LOINC mapping, which needs the sending lab their seed puts on file — run
-against a second pair of tiers over a database of their own, the first one's
-name with `_intake` on the end, with the intake and its assignment pass turned
-on. The whole run is the full walkthrough regression a release runs: it
-performs all forty-three walkthroughs above, every one of them, with nothing
-selected out. It needs a reachable SQL
+LOINC mapping, which needs the sending lab their seed puts on file — and the
+phase 13 eCR walkthroughs, which drop eICRs and RRs into the eCR intake's
+test feed, run against a second pair of tiers over a database of their own,
+the first one's name with `_intake` on the end, with both intakes and the
+assignment pass turned on. The whole run is the full walkthrough regression a
+release runs: it performs every walkthrough above, with nothing selected
+out. It needs a reachable SQL
 Server; each walkthrough's own **Before you start** says what it needs to be
 performed by hand instead.

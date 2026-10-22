@@ -1,6 +1,7 @@
 @* One eCR document with its pair: the eICR as the HL7 CDA stylesheet renders
    it, beside the RR's conditions with their determinations and responsible
-   agencies, and below them what validation found in each document. An eICR
+   agencies and the cases the eICR was written to, or why it is held for
+   review, and below them what validation found in each document. An eICR
    can have more than one RR, so each finding names its document by kind and
    id.
 
@@ -9,8 +10,8 @@
 
    Every element a later walkthrough will name carries an identifier of its
    own — `ecr-document-heading`, `-back`, `-loading`, `-error`, `-eicr`,
-   `-no-eicr`, `-conditions`, `-no-conditions`, `-findings` and
-   `-no-findings`. *@
+   `-no-eicr`, `-conditions`, `-no-conditions`, `-cases`, `-case-{id}`,
+   `-case-review`, `-no-cases`, `-findings` and `-no-findings`. *@
 @page "/ecr/{Id:int}"
 @inject EcrClient Client
 
@@ -101,6 +102,32 @@ else if (asked.Value is { } detail)
                         </tbody>
                     </MudSimpleTable>
                 </MudPaper>
+            }
+
+            <MudText HtmlTag="h2" Typo="Typo.h6" Class="mt-6" GutterBottom="true">Cases</MudText>
+            @if (detail.CaseStatus == "linked" && detail.CaseIds is { Count: > 0 } caseIds)
+            {
+                <div id="ecr-document-cases" class="d-flex flex-column gap-1">
+                    <MudText Typo="Typo.body2">The eICR was written to these cases:</MudText>
+                    @foreach (var caseId in caseIds)
+                    {
+                        <MudLink id="@($"ecr-document-case-{caseId}")" Href="@($"/event/edit/{caseId}")">
+                            Open case
+                        </MudLink>
+                    }
+                </div>
+            }
+            else if (detail.CaseStatus == "review")
+            {
+                <MudAlert id="ecr-document-case-review" Severity="Severity.Warning" Dense="true">
+                    Held for review: @detail.CaseReason
+                </MudAlert>
+            }
+            else
+            {
+                <MudText id="ecr-document-no-cases" Typo="Typo.body2">
+                    No case has been written from this eICR.
+                </MudText>
             }
         </MudItem>
     </MudGrid>

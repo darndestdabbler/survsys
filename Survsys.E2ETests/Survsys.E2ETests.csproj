@@ -65,6 +65,12 @@
              CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Fixtures\Hl7\*.hl7"
              CopyToOutputDirectory="PreserveNewest" />
+    <!-- The eCR walkthroughs' condition mapping and person, and the eICRs and
+         RRs they drop, this suite's alone for the same reason. -->
+    <Content Include="Fixtures\ecr-intake.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\Cda\*.xml"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

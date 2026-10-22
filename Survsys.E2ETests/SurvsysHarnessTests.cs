@@ -284,4 +284,38 @@ public class IntakeHarnessTests(IntakeHarness harness)
 
         Assert.Equal(["22314-9", "5061-8", "6463-4"], loincs);
     }
+
+    /// <summary>
+    /// The intake harness's eCR test feed is on, with a drop directory of its
+    /// own, and its seed maps the condition codes the eCR fixtures' RRs carry
+    /// -- all but the one the mapping walkthrough maps by hand.
+    /// Without them the review, open and link walkthroughs' conditions would
+    /// wait for review and no case would be opened or linked.
+    /// </summary>
+    [Fact]
+    public void ItsEcrIntakeIsOnAndItsSeedMapsTheWalkthroughsCodes()
+    {
+        Assert.True(Directory.Exists(harness.EcrDirectory));
+        Assert.NotEqual(harness.IntakeDirectory, harness.EcrDirectory);
+        Assert.True(File.Exists(IntakeHarness.Document("ecr-link-eicr.xml")));
+
+        var codes = new List<string>();
+
+        using var connection = new SqlConnection(harness.ConnectionString);
+        connection.Open();
+
+        using var read = connection.CreateCommand();
+        read.CommandText = "SELECT code FROM ecr_condition_mapping ORDER BY code";
+
+        using var reader = read.ExecuteReader();
+
+        while (reader.Read())
+        {
+            codes.Add(reader.GetString(0));
+        }
+
+        // Contained rather than equal: the mapping walkthrough, run before
+        // this test, adds the code it maps.
+        Assert.Subset(codes.ToHashSet(), new HashSet<string> { "40468003", "58265007", "61462000" });
+    }
 }

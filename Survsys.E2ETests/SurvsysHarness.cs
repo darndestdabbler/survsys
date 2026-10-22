@@ -548,9 +548,25 @@ public class SurvsysHarness : IDisposable
     /// <see cref="IntakeHarness"/>; for this harness they start empty, and the
     /// LOINC walkthrough adds what it needs.
     /// </para>
+    /// <para>
+    /// Phase 13's eCR tables go before everything: a document's findings, RR
+    /// conditions and case links hang off it, a case link names its report
+    /// and a condition mapping its condition, by references the schema
+    /// refuses to cascade. <c>Fixtures/ecr-intake.sql</c> fills the mapping
+    /// for <see cref="IntakeHarness"/>, and what the eCR walkthroughs drop
+    /// fills the rest; a document left from the last run would be one its
+    /// walkthrough could not take in again, its id already on file.
+    /// </para>
     /// </remarks>
     public static readonly string[] TablesInDeletionOrder =
     [
+        "ecr_case_value",
+        "ecr_case_link",
+        "ecr_validation_finding",
+        "ecr_rr_condition",
+        "ecr_document",
+        "ecr_condition_mapping",
+        "ecr_sender",
         "vocab_rule_conditions",
         "vocab_rules",
         "vocab_child_vocab",
@@ -897,8 +913,9 @@ public sealed class SurvsysCollection : ICollectionFixture<SurvsysHarness>
 /// <summary>
 /// Both tiers with the inbound ELR intake turned on: a drop directory polled
 /// every few seconds, and the assignment pass that assigns, graylists and
-/// releases what it stages. What the intake walkthroughs are performed
-/// against.
+/// releases what it stages; and with the eCR intake's test feed on, polled
+/// as often, keeping the RR conditions of the responsible agency its RRs
+/// name. What the intake and eCR walkthroughs are performed against.
 /// </summary>
 /// <remarks>
 /// Its database is its own — the main harness's name with <c>_intake</c>
@@ -906,8 +923,9 @@ public sealed class SurvsysCollection : ICollectionFixture<SurvsysHarness>
 /// review, and over the main harness's database it would move the seeded
 /// messages the review, promote and duplicate walkthroughs read before they
 /// read them. It is seeded from the conditions, the people and
-/// <c>Fixtures/elr-intake.sql</c>, and no staged message: what is in its
-/// queue is what a walkthrough dropped.
+/// <c>Fixtures/elr-intake.sql</c> and <c>Fixtures/ecr-intake.sql</c>, and no
+/// staged message or eCR document: what is in its queues is what a
+/// walkthrough dropped.
 /// </remarks>
 public sealed class IntakeHarness : SurvsysHarness
 {
@@ -919,7 +937,15 @@ public sealed class IntakeHarness : SurvsysHarness
     public const int PollIntervalSeconds = 2;
 
     /// <summary>The fixtures this harness seeds, in the order they run.</summary>
-    public static readonly string[] IntakeFixtures = ["conditions.sql", "persons.sql", "elr-intake.sql"];
+    public static readonly string[] IntakeFixtures =
+        ["conditions.sql", "persons.sql", "elr-intake.sql", "ecr-intake.sql"];
+
+    /// <summary>
+    /// This jurisdiction's id as the eCR fixtures' RRs name their responsible
+    /// agency, root and extension joined by a caret: the Utah Department of
+    /// Health's, as those RRs give it.
+    /// </summary>
+    public const string ResponsibleAgencyId = "2.16.840.1.113883.4.6^8000000001";
 
     /// <summary>
     /// The signed-in browser state this harness's tests open with: a file of
@@ -930,6 +956,8 @@ public sealed class IntakeHarness : SurvsysHarness
         Path.Combine(AppContext.BaseDirectory, "intake-signed-in-state.json");
 
     private static readonly string DropDirectory = Path.Combine(AppContext.BaseDirectory, "intake-drop");
+
+    private static readonly string EcrDropDirectory = Path.Combine(AppContext.BaseDirectory, "ecr-drop");
 
     public IntakeHarness()
         : base(
@@ -948,6 +976,13 @@ public sealed class IntakeHarness : SurvsysHarness
     public string IntakeDirectory => DropDirectory;
 
     /// <summary>
+    /// The directory the API tier's eCR intake polls as its test feed: a
+    /// walkthrough's reader copies an eICR or an RR here. Emptied before the
+    /// tier starts, as <see cref="IntakeDirectory"/> is.
+    /// </summary>
+    public string EcrDirectory => EcrDropDirectory;
+
+    /// <summary>
     /// The database this harness runs against, given the main harness's:
     /// the same server and sign-in, the database name with <c>_intake</c> on
     /// the end.
@@ -964,14 +999,21 @@ public sealed class IntakeHarness : SurvsysHarness
     public static string Message(string name) =>
         Path.Combine(AppContext.BaseDirectory, "Fixtures", "Hl7", name);
 
+    /// <summary>One of the eICRs and RRs under <c>Fixtures/Cda</c>, by file name.</summary>
+    public static string Document(string name) =>
+        Path.Combine(AppContext.BaseDirectory, "Fixtures", "Cda", name);
+
     private static Dictionary<string, string> Settings()
     {
-        if (Directory.Exists(DropDirectory))
+        foreach (var directory in new[] { DropDirectory, EcrDropDirectory })
         {
-            Directory.Delete(DropDirectory, recursive: true);
-        }
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
 
-        Directory.CreateDirectory(DropDirectory);
+            Directory.CreateDirectory(directory);
+        }
 
         var interval = PollIntervalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
@@ -980,6 +1022,9 @@ public sealed class IntakeHarness : SurvsysHarness
             ["ElrIntake__DropDirectory"] = DropDirectory,
             ["ElrIntake__PollIntervalSeconds"] = interval,
             ["MessageProcessing__PollIntervalSeconds"] = interval,
+            ["EcrIntake__TestDirectory"] = EcrDropDirectory,
+            ["EcrIntake__PollIntervalSeconds"] = interval,
+            ["EcrIntake__ResponsibleAgencyIds__0"] = ResponsibleAgencyId,
         };
     }
 }
