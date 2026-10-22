@@ -7,10 +7,16 @@
    own — `reports-heading`, `reports-group-by`, `reports-onset-from`,
    `reports-onset-to`, `reports-run`, `reports-loading`, `reports-error`,
    `reports-none` and the table. A test selects by those and not by a
-   MudBlazor class or a cell's position. *@
+   MudBlazor class or a cell's position.
+
+   Below it, the same counting over one of the user's saved views, by any one
+   of the view's columns: `reports-view`, `reports-view-group-by`,
+   `reports-view-run`, `reports-view-export`, `reports-view-error`,
+   `reports-view-none` and `reports-view-table`. *@
 @page "/reports"
 @using System.Globalization
 @inject ReportsClient Client
+@inject SavedViewsClient SavedViews
 
 <PageTitle>Reports — Survsys</PageTitle>
 
@@ -94,6 +100,101 @@ else if (counts is not null)
     }
 }
 
+<MudText id="reports-view-heading" HtmlTag="h2" Typo="Typo.h5" Class="mt-8" GutterBottom="true">
+    Saved view report
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    Count the case morbidity reports one of your saved views selects, by any
+    one of the view's columns.
+</MudText>
+
+@if (viewsFailure is not null)
+{
+    <MudAlert id="reports-view-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @viewsFailure
+    </MudAlert>
+}
+else
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6">
+            @* One item per view, labelled by its unique name, so the combobox
+               reads as its label. *@
+            <MudSelect T="int?" Value="@viewId" ValueChanged="@ChooseView" id="reports-view"
+                       Label="Saved view" Variant="Variant.Outlined">
+                @foreach (var view in views)
+                {
+                    <MudSelectItem T="int?" Value="@view.Id">@view.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudSelect T="string" @bind-Value="viewGroupBy" id="reports-view-group-by" Label="Group by"
+                       Variant="Variant.Outlined" Disabled="@(Chosen is null)">
+                @foreach (var column in Chosen?.Columns ?? [])
+                {
+                    <MudSelectItem T="string" Value="@column">@column</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12">
+            <MudStack Row="true" Spacing="2">
+                <MudButton id="reports-view-run" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@(Chosen is null || viewGroupBy is null)" OnClick="@RunView">
+                    Run
+                </MudButton>
+                @if (viewCounts is not null)
+                {
+                    <MudButton id="reports-view-export" Variant="Variant.Outlined" Color="Color.Primary"
+                               Href="@($"/reports/saved-views/{viewRanId}/counts/export?groupBy={Uri.EscapeDataString(viewRanBy)}")"
+                               Target="_blank">
+                        Export CSV
+                    </MudButton>
+                }
+            </MudStack>
+        </MudItem>
+    </MudGrid>
+
+    @if (viewFailure is not null)
+    {
+        <MudAlert id="reports-view-error" Severity="Severity.Error" Variant="Variant.Filled">
+            @viewFailure
+        </MudAlert>
+    }
+    else if (viewCounts is not null)
+    {
+        @if (viewCounts.Count == 0)
+        {
+            <MudText id="reports-view-none" Typo="Typo.body2">
+                The view selects no case morbidity reports.
+            </MudText>
+        }
+        else
+        {
+            <MudPaper Elevation="1">
+                <MudSimpleTable id="reports-view-table" Hover="true" Striped="true">
+                    <thead>
+                        <tr>
+                            <th>@viewRanBy</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in viewCounts)
+                        {
+                            <tr>
+                                <td data-report-view-group>@(row.Group ?? "(none)")</td>
+                                <td data-report-view-count>@row.Count</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        }
+    }
+}
+
 @code {
     private string groupBy = ReportGroupings.Condition;
 
@@ -108,6 +209,55 @@ else if (counts is not null)
     private string ranBy = ReportGroupings.Condition;
 
     private IReadOnlyList<CaseCountResponse>? counts;
+
+    private IReadOnlyList<SavedViewResponse> views = [];
+
+    private string? viewsFailure;
+
+    private int? viewId;
+
+    private string? viewGroupBy;
+
+    private string? viewFailure;
+
+    private int viewRanId;
+
+    private string viewRanBy = "";
+
+    private IReadOnlyList<CaseCountResponse>? viewCounts;
+
+    private SavedViewResponse? Chosen => views.FirstOrDefault(view => view.Id == viewId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var listed = await SavedViews.All();
+        views = listed.Value?.Items ?? [];
+        viewsFailure = listed.Failure;
+    }
+
+    /// <summary>Chooses a view, grouping by its first column until another is picked.</summary>
+    private void ChooseView(int? id)
+    {
+        viewId = id;
+        viewGroupBy = Chosen?.Columns.FirstOrDefault();
+        viewCounts = null;
+        viewFailure = null;
+    }
+
+    private async Task RunView()
+    {
+        if (Chosen is not { } view || viewGroupBy is not { } column)
+        {
+            return;
+        }
+
+        var asked = await Client.SavedViewCounts(view.Id, column);
+
+        viewRanId = view.Id;
+        viewRanBy = column;
+        viewCounts = asked.Value;
+        viewFailure = asked.Failure;
+    }
 
     private async Task Run()
     {

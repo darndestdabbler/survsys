@@ -97,6 +97,24 @@ public class ConditionEndpointsTests
         Assert.Equal(HepatitisADetail, ConditionEndpoints.ToDetail.Compile().Invoke(HepatitisA()));
     }
 
+    /// <summary>
+    /// The intake flags are read from the condition; the guide is another
+    /// table's, so the mapping leaves it for the read to fill.
+    /// </summary>
+    [Fact]
+    public void ToDetailCarriesTheIntakeFlagsAndLeavesTheGuide()
+    {
+        var condition = HepatitisA();
+        condition.BypassOutOfState = true;
+        condition.BlockPreliminary = true;
+
+        var detail = ConditionEndpoints.Detail(condition);
+
+        Assert.True(detail.BypassOutOfState);
+        Assert.True(detail.BlockPreliminary);
+        Assert.Null(detail.GuideId);
+    }
+
     [Fact]
     public void DetailIsTheReadMappingItself()
     {
@@ -156,6 +174,29 @@ public class ConditionEndpointsTests
     }
 
     [Fact]
+    public void AConditionsIntakeFlagsReadBackFromItsCsvRow()
+    {
+        var condition = HepatitisADetail with { BypassOutOfState = true, BlockPreliminary = true };
+
+        var (rows, _) = ReferenceCsv.Read(
+            ReferenceCsv.Write(ConditionEndpoints.CsvColumns, [ConditionEndpoints.CsvFields(condition)]),
+            ConditionEndpoints.CsvColumns);
+
+        Assert.Equal((condition, null), ConditionEndpoints.FromCsv(Assert.Single(rows)));
+    }
+
+    [Fact]
+    public void FromCsvRefusesAnIntakeFlagItCannotRead()
+    {
+        var (rows, _) = ReferenceCsv.Read(
+            "id,name,active,block_preliminary\r\n74,Mpox,yes,sometimes\r\n", ["id", "name", "active"]);
+
+        Assert.Equal(
+            (null, "block_preliminary 'sometimes' is not yes or no."),
+            ConditionEndpoints.FromCsv(Assert.Single(rows)));
+    }
+
+    [Fact]
     public void FromCsvReadsABlankIdAsAConditionToAdd()
     {
         var (rows, _) = ReferenceCsv.Read("id,name,active\r\n,Mpox,yes\r\n", ["id", "name", "active"]);
@@ -187,6 +228,15 @@ public class ConditionEndpointsTests
                 "Identify every place the case ate or worked.",
                 "Immune globulin within two weeks of exposure."),
             ConditionEndpoints.Request(HepatitisADetail));
+    }
+
+    [Fact]
+    public void RequestCarriesTheGuideAndTheIntakeFlags()
+    {
+        var request = ConditionEndpoints.Request(
+            HepatitisADetail with { GuideId = 5, BypassOutOfState = true, BlockPreliminary = true });
+
+        Assert.Equal((5, true, true), (request.GuideId, request.BypassOutOfState, request.BlockPreliminary));
     }
 
     [Fact]

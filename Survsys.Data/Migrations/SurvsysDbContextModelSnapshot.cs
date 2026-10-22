@@ -10786,6 +10786,14 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("active");
 
+                    b.Property<bool>("BlockPreliminary")
+                        .HasColumnType("bit")
+                        .HasColumnName("block_preliminary");
+
+                    b.Property<bool>("BypassOutOfState")
+                        .HasColumnType("bit")
+                        .HasColumnName("bypass_out_of_state");
+
                     b.Property<string>("CdcCode")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
@@ -15041,6 +15049,28 @@ namespace Survsys.Data.Migrations
                     b.HasIndex("StagedMessageId");
 
                     b.ToTable("system_message_results", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.SystemSetting", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("system_setting", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.Treatment", b =>

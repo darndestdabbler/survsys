@@ -62,6 +62,9 @@ public sealed class PersonConditionsClient(HttpClient http)
     /// <summary>How a failure to release a report's edit lock starts.</summary>
     public const string ReleaseLockFailurePrefix = "The case morbidity report's edit lock could not be released";
 
+    /// <summary>How a failure to send a report to IBIS starts.</summary>
+    public const string IbisFailurePrefix = "The case morbidity report could not be sent to IBIS";
+
     private static readonly ApiAsk Opening = new(FailurePrefix, "the report created");
 
     private static readonly ApiAsk Deleting = new(DeleteFailurePrefix, "nothing");
@@ -85,6 +88,8 @@ public sealed class PersonConditionsClient(HttpClient http)
     private static readonly ApiAsk Promoting = new(PromoteFailurePrefix, "the report as promoted");
 
     private static readonly ApiAsk SavingBriefNote = new(BriefNoteFailurePrefix, "the report as saved");
+
+    private static readonly ApiAsk SendingToIbis = new(IbisFailurePrefix, "what IBIS answered");
 
     /// <summary>
     /// Opens a case morbidity report and answers with it — its record number
@@ -237,4 +242,23 @@ public sealed class PersonConditionsClient(HttpClient http)
     /// </summary>
     public Task<string?> ReleaseLock(int id, CancellationToken cancellationToken = default) =>
         ReleasingLock.Delete(http, $"api/person-conditions/{id}/lock", cancellationToken);
+
+    /// <summary>
+    /// Sends a report to IBIS and answers with the date IBIS accepted it, or
+    /// with why it was not sent: IBIS timing out is the API tier's 504, and
+    /// IBIS refusing it its 502.
+    /// </summary>
+    /// <remarks>
+    /// The route takes no body, so an empty one is sent. Whether the user may
+    /// send it is the API tier's to decide, as every case write is.
+    /// </remarks>
+    public async Task<Asked<IbisTransmissionResponse>> SendToIbis(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        using var nothing = new StringContent(string.Empty);
+
+        return await SendingToIbis.PostContent<IbisTransmissionResponse>(
+            http, $"api/person-conditions/{id}/ibis", nothing, cancellationToken);
+    }
 }

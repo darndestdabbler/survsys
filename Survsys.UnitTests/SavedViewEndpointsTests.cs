@@ -119,4 +119,29 @@ public class SavedViewEndpointsTests
             SavedViewEndpoints.WhyNotASavedView(View(onsetFrom: new DateOnly(2026, 2, 1), onsetTo: new DateOnly(2026, 1, 1))),
             StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void WhyNotAGroupingAcceptsOneOfTheViewsColumns()
+    {
+        Assert.Null(SavedViewEndpoints.WhyNotAGrouping(
+            [ExportColumns.RecordNumber, ExportColumns.Condition], ExportColumns.Condition));
+    }
+
+    /// <summary>
+    /// A column the catalogue knows but the view does not export is refused:
+    /// the report counts by what the view shows.
+    /// </summary>
+    [Fact]
+    public void WhyNotAGroupingRefusesAColumnTheViewDoesNotExport()
+    {
+        Assert.Contains("record_number, condition",
+            SavedViewEndpoints.WhyNotAGrouping([ExportColumns.RecordNumber, ExportColumns.Condition], ExportColumns.Agency),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WhyNotAGroupingRefusesNoGrouping()
+    {
+        Assert.NotNull(SavedViewEndpoints.WhyNotAGrouping([ExportColumns.RecordNumber], null));
+    }
 }

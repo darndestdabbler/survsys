@@ -67,6 +67,8 @@ public class PrivilegeRulesTests
     [InlineData("GET", "/api/privileges")]
     [InlineData("GET", "/api/access-audit")]
     [InlineData("GET", "/api/audit")]
+    [InlineData("GET", "/api/system-settings")]
+    [InlineData("PUT", "/api/system-settings/cdc_batch_file_prefix")]
     public void RequiredForUsersRolesAndTheAccessAuditIsManageUsers(string method, string path)
     {
         Assert.Equal(Privileges.ManageUsers, PrivilegeRules.RequiredFor(method, path));

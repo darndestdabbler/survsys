@@ -3,7 +3,10 @@
    and an existing one; which it is, is whether the address carries an id.
    A save goes back to the conditions list, the print criteria — the case
    statuses that make the condition's cases notifiable to CDC — saved with it,
-   one checkbox per status (`condition-print-criteria-{code}`). An existing
+   one checkbox per status (`condition-print-criteria-{code}`). The
+   notification guide its cases are exported under (`condition-guide`) and its
+   two intake flags (`condition-bypass-out-of-state`,
+   `condition-block-preliminary`) are saved with the condition itself. An existing
    condition also carries
    its ELR intake rules — the message filter and the case-management rules —
    edited here and saved on their own, whole, and its lab overrides — the
@@ -14,6 +17,7 @@
 @inject ConditionsClient Conditions
 @inject VocabularyClient Vocabulary
 @inject CodesClient Codes
+@inject GuidesClient Guides
 @inject NavigationManager Navigation
 
 <PageTitle>@Heading — Survsys</PageTitle>
@@ -47,6 +51,24 @@ else
             </MudItem>
             <MudItem xs="12">
                 <MudCheckBox @bind-Value="active" id="condition-active" Label="Active" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                @* One item per guide and one for none, each with a label of its
+                   own, so the combobox reads as the guide chosen. *@
+                <MudSelect T="int" @bind-Value="guideId" id="condition-guide" Label="Notification guide"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem T="int" Value="0">(none)</MudSelectItem>
+                    @foreach (var guide in guides)
+                    {
+                        <MudSelectItem T="int" Value="@guide.Id">@guide.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSwitch T="bool" @bind-Value="bypassOutOfState" id="condition-bypass-out-of-state"
+                           Color="Color.Primary" Label="Assign lab messages for out-of-state patients" />
+                <MudSwitch T="bool" @bind-Value="blockPreliminary" id="condition-block-preliminary"
+                           Color="Color.Primary" Label="Filter lab messages whose results are all preliminary" />
             </MudItem>
             <MudItem xs="12" id="condition-print-criteria">
                 <MudText Typo="Typo.subtitle2">Notified to CDC when the case status is</MudText>
@@ -342,6 +364,15 @@ else
 
     private string? treatmentLeadIn;
 
+    /// <summary>The guide the condition is exported under, 0 for none.</summary>
+    private int guideId;
+
+    private bool bypassOutOfState;
+
+    private bool blockPreliminary;
+
+    private IReadOnlyList<GuideRow> guides = [];
+
     private bool loading = true;
 
     private bool saving;
@@ -391,6 +422,10 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        var loadedGuides = await Guides.List();
+        guides = loadedGuides.Value ?? [];
+        failure = loadedGuides.Failure;
+
         if (Id is { } id)
         {
             var found = await Conditions.Find(id);
@@ -403,12 +438,15 @@ else
                 contactLeadIn = condition.ContactLeadIn;
                 placeLeadIn = condition.PlaceLeadIn;
                 treatmentLeadIn = condition.TreatmentLeadIn;
+                guideId = condition.GuideId ?? 0;
+                bypassOutOfState = condition.BypassOutOfState;
+                blockPreliminary = condition.BlockPreliminary;
             }
 
             var criteria = await Conditions.PrintCriteria(id);
             printCriteria = criteria.Value?.CaseStatuses.ToHashSet() ?? [];
 
-            failure = found.Failure ?? criteria.Failure;
+            failure = found.Failure ?? criteria.Failure ?? failure;
 
             var loadedRules = await Vocabulary.Rules(id);
             rules = (loadedRules.Value ?? []).Select(rule => new RuleForm(rule)).ToList();
@@ -531,7 +569,8 @@ else
         failure = null;
 
         var request = new SaveConditionRequest(
-            name ?? "", active, cdcCode, contactLeadIn, placeLeadIn, treatmentLeadIn);
+            name ?? "", active, cdcCode, contactLeadIn, placeLeadIn, treatmentLeadIn,
+            guideId == 0 ? null : guideId, bypassOutOfState, blockPreliminary);
 
         var saved = Id is { } id
             ? await Conditions.Update(id, request)

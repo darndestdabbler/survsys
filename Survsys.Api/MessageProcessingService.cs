@@ -63,6 +63,13 @@ public sealed class MessageProcessingOptions
 }
 
 /// <summary>
+/// The intake flags of a message's condition that automatic assignment
+/// honours: whether a patient out of state is assigned all the same, and
+/// whether a message whose every result is preliminary is filtered.
+/// </summary>
+public sealed record ConditionIntakeFlags(bool BypassOutOfState, bool BlockPreliminary);
+
+/// <summary>
 /// A person on file a message's patient was scored against: who, how well
 /// they match, and whether they already have an open case on the message's
 /// condition.
@@ -111,16 +118,21 @@ public sealed class MessageProcessingService(
     /// </summary>
     /// <remarks>
     /// In the legacy order: a message with no condition or no case-management
-    /// decision is a reviewer's; one whose rule allows no new case is
-    /// graylisted to wait for a case; a patient outside the home state is out
-    /// of state; a message with no investigating agency is a reviewer's. Then
+    /// decision is a reviewer's; one whose every result is preliminary, for a
+    /// condition that blocks preliminary results, is filtered; one whose rule
+    /// allows no new case is graylisted to wait for a case; a patient outside
+    /// the home state is out of state, unless the condition bypasses that; a
+    /// message with no investigating agency is a reviewer's. Then
     /// the person: exactly one exact match is that person, whose open case on
     /// the condition, where they have one, the message updates; no exact or
     /// probable match at all is
     /// a new person, if the message names one; anything else is a reviewer's.
     /// </remarks>
     public static AssignmentDecision Decide(
-        StagedMessage message, IReadOnlyList<AssignmentCandidate> candidates, string? homeState)
+        StagedMessage message,
+        IReadOnlyList<AssignmentCandidate> candidates,
+        string? homeState,
+        ConditionIntakeFlags? flags = null)
     {
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(candidates);
@@ -128,6 +140,16 @@ public sealed class MessageProcessingService(
         if (message.ConditionId is null || message.AllowNewCase is null)
         {
             return Pending("This message has no condition and case-management decision to assign it by.");
+        }
+
+        if (flags?.BlockPreliminary == true
+            && message.Results.Count > 0
+            && message.Results.All(result => string.Equals(result.ResultStatus?.Trim(), "P", StringComparison.OrdinalIgnoreCase)))
+        {
+            return new AssignmentDecision(
+                MessageReviewStatusRules.FilteredCode,
+                null,
+                "Filtered: every result is preliminary, and the condition blocks preliminary results.");
         }
 
         if (message.AllowNewCase == false)
@@ -139,7 +161,8 @@ public sealed class MessageProcessingService(
                 + "waits for a case to attach to.");
         }
 
-        if (!string.IsNullOrWhiteSpace(homeState)
+        if (flags?.BypassOutOfState != true
+            && !string.IsNullOrWhiteSpace(homeState)
             && !string.IsNullOrWhiteSpace(message.PatientState)
             && !string.Equals(message.PatientState.Trim(), homeState.Trim(), StringComparison.OrdinalIgnoreCase))
         {
@@ -270,13 +293,20 @@ public sealed class MessageProcessingService(
         CountyPrograms counties,
         CancellationToken cancellationToken)
     {
-        var message = await database.StagedMessages.SingleOrDefaultAsync(
-            message => message.Id == id && message.ReviewStatus == MessageReviewStatusRules.EntryCode,
-            cancellationToken);
+        var message = await database.StagedMessages
+            .Include(message => message.Results)
+            .SingleOrDefaultAsync(
+                message => message.Id == id && message.ReviewStatus == MessageReviewStatusRules.EntryCode,
+                cancellationToken);
         if (message is null)
         {
             return;
         }
+
+        var flags = await database.Conditions
+            .Where(condition => condition.Id == message.ConditionId)
+            .Select(condition => new ConditionIntakeFlags(condition.BypassOutOfState, condition.BlockPreliminary))
+            .SingleOrDefaultAsync(cancellationToken);
 
         var candidates = new List<AssignmentCandidate>();
         var request = MatchRequest(message);
@@ -302,7 +332,7 @@ public sealed class MessageProcessingService(
             }
         }
 
-        var decision = Decide(message, candidates, options.HomeState);
+        var decision = Decide(message, candidates, options.HomeState, flags);
 
         if (decision.UpdatesCase)
         {

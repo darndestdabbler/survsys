@@ -37,5 +37,7 @@ internal sealed class ConditionConfiguration : IEntityTypeConfiguration<Conditio
             .HasColumnName("cdc_code")
             .HasMaxLength(20);
         builder.Property(condition => condition.ConditionGroupId).HasColumnName("condition_group_id");
+        builder.Property(condition => condition.BypassOutOfState).HasColumnName("bypass_out_of_state");
+        builder.Property(condition => condition.BlockPreliminary).HasColumnName("block_preliminary");
     }
 }

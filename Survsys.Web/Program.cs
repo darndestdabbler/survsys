@@ -108,6 +108,7 @@ builder.Services.AddHttpClient<CasesClient>(http => http.BaseAddress = api).AddH
 builder.Services.AddHttpClient<UsersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<RolesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<SavedViewsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<SystemSettingsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<MessageQueueClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<NotificationQueueClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<ExportLogClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
@@ -201,6 +202,14 @@ app.MapPost("/account/sign-out", async (HttpContext http) =>
 app.MapGet("/saved-views/{id:int}/export", async (int id, SavedViewsClient views, CancellationToken cancellationToken) =>
     await views.Export(id, cancellationToken) is var exported && exported.Value is { } csv
         ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"saved-view-{id}.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// A saved view's counts as CSV, handed to the browser as a file the same way,
+// from a plain link the Reports screen offers.
+app.MapGet("/reports/saved-views/{id:int}/counts/export", async (
+        int id, string groupBy, ReportsClient reports, CancellationToken cancellationToken) =>
+    await reports.SavedViewCountsCsv(id, groupBy, cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"saved-view-{id}-counts.csv")
         : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
 
 // A vocabulary table's CSV export, handed to the browser as a file the same

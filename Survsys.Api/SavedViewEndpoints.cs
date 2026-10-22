@@ -90,6 +90,19 @@ public static class SavedViewEndpoints
         return null;
     }
 
+    /// <summary>
+    /// Why <paramref name="groupBy"/> is not a column the view's reports can
+    /// be counted by — one of the view's own columns — or null where it is.
+    /// </summary>
+    public static string? WhyNotAGrouping(IReadOnlyList<string> columns, string? groupBy)
+    {
+        ArgumentNullException.ThrowIfNull(columns);
+
+        return groupBy is not null && columns.Contains(groupBy, StringComparer.Ordinal)
+            ? null
+            : $"groupBy must be one of the view's columns: {string.Join(", ", columns)}.";
+    }
+
     /// <summary>A view's columns, in order, from the comma-separated column it is stored as.</summary>
     internal static IReadOnlyList<string> ColumnsOf(SavedView view) =>
         view.Columns.Split(',', StringSplitOptions.RemoveEmptyEntries);
@@ -204,7 +217,7 @@ public static class SavedViewEndpoints
     /// The signed-in caller's id. The fallback policy has already refused a
     /// caller who is not signed in, so there is always one here.
     /// </summary>
-    private static int Caller(ClaimsPrincipal user) =>
+    internal static int Caller(ClaimsPrincipal user) =>
         AccountEndpoints.UserIdOf(user)
             ?? throw new InvalidOperationException("A saved-view request reached its endpoint without a signed-in user.");
 
@@ -280,6 +293,47 @@ internal sealed class SavedViewQueries(SurvsysDbContext database)
             return null;
         }
 
+        var columns = SavedViewEndpoints.ColumnsOf(view);
+        var rows = await Rows(view, cancellationToken);
+
+        return CaseExport.Csv(columns, rows.Select(row => CaseExport.Values(row, columns)));
+    }
+
+    /// <summary>The user's view's columns, or null where the user has no view with that id.</summary>
+    public async Task<IReadOnlyList<string>?> Columns(int userId, int id, CancellationToken cancellationToken) =>
+        await Find(userId, id, cancellationToken) is { } view ? SavedViewEndpoints.ColumnsOf(view) : null;
+
+    /// <summary>
+    /// The count of the reports the user's view selects for each value of
+    /// <paramref name="groupBy"/>, as the view's export writes the value, most
+    /// first and then by value; null where the user has no view with that id.
+    /// </summary>
+    /// <remarks>
+    /// Counted here rather than in the database, so a group is exactly the
+    /// value the export writes in that column — a date as a date, a blank
+    /// workflow state as the initial state.
+    /// </remarks>
+    public async Task<IReadOnlyList<CaseCountResponse>?> Counts(
+        int userId, int id, string groupBy, CancellationToken cancellationToken)
+    {
+        if (await Find(userId, id, cancellationToken) is not { } view)
+        {
+            return null;
+        }
+
+        string[] column = [groupBy];
+
+        return (await Rows(view, cancellationToken))
+            .GroupBy(row => CaseExport.Values(row, column)[0])
+            .Select(group => new CaseCountResponse(group.Key, group.Count()))
+            .OrderByDescending(row => row.Count)
+            .ThenBy(row => row.Group, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>The reports a view selects, in record-number order.</summary>
+    private async Task<List<CaseExportRow>> Rows(SavedView view, CancellationToken cancellationToken)
+    {
         var reports = database.PersonConditions.AsQueryable();
 
         if (view.ConditionId is { } conditionId)
@@ -316,7 +370,7 @@ internal sealed class SavedViewQueries(SurvsysDbContext database)
             reports = reports.Where(report => report.EventOnsetDate <= to);
         }
 
-        var rows = await (
+        return await (
             from report in reports
             join person in database.Persons on report.PersonId equals person.Id
             join condition in database.Conditions on report.ConditionId equals condition.Id
@@ -340,10 +394,6 @@ internal sealed class SavedViewQueries(SurvsysDbContext database)
                 report.MmwrYear,
                 report.CreatedAt))
             .ToListAsync(cancellationToken);
-
-        var columns = SavedViewEndpoints.ColumnsOf(view);
-
-        return CaseExport.Csv(columns, rows.Select(row => CaseExport.Values(row, columns)));
     }
 
     private Task<SavedView?> Find(int userId, int id, CancellationToken cancellationToken) =>

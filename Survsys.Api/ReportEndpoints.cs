@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -16,6 +18,12 @@ namespace Survsys.Api;
 /// database, so a report reads one row per group rather than every case. The
 /// range is inclusive at both ends, either end may be left off, and a report
 /// with no event onset date falls outside any range that is given.
+///
+/// <c>GET /api/reports/saved-views/{id}/counts?groupBy=</c> is the ad-hoc
+/// report over one of the caller's saved views: the reports the view selects,
+/// counted by any one of the view's own columns, and <c>/counts/export</c> the
+/// same counts as CSV. Another user's view is a 404, as it is under
+/// <c>/api/saved-views</c>.
 /// </remarks>
 public static class ReportEndpoints
 {
@@ -31,6 +39,14 @@ public static class ReportEndpoints
         routes.MapGet("/api/reports/case-counts", GetCaseCounts)
             .WithName("GetCaseCounts")
             .WithSummary("Counts case morbidity reports by one grouping over an optional event onset range.");
+
+        routes.MapGet("/api/reports/saved-views/{id:int}/counts", GetSavedViewCounts)
+            .WithName("GetSavedViewCounts")
+            .WithSummary("Counts the reports one of the caller's saved views selects by one of the view's columns.");
+
+        routes.MapGet("/api/reports/saved-views/{id:int}/counts/export", ExportSavedViewCounts)
+            .WithName("ExportSavedViewCounts")
+            .WithSummary("The same counts, as CSV of the column and its count.");
 
         return routes;
     }
@@ -71,6 +87,72 @@ public static class ReportEndpoints
         }
 
         return TypedResults.Ok(await reports.CaseCounts(groupBy!, from, to, cancellationToken));
+    }
+
+    private static async Task<Results<Ok<IReadOnlyList<CaseCountResponse>>, ProblemHttpResult>> GetSavedViewCounts(
+        SavedViewQueries views,
+        ClaimsPrincipal user,
+        int id,
+        string? groupBy,
+        CancellationToken cancellationToken = default)
+    {
+        var caller = SavedViewEndpoints.Caller(user);
+
+        if (await WhyNotSavedViewCounts(views, caller, id, groupBy, cancellationToken) is { } refused)
+        {
+            return refused;
+        }
+
+        return TypedResults.Ok((await views.Counts(caller, id, groupBy!, cancellationToken))!);
+    }
+
+    private static async Task<Results<ContentHttpResult, ProblemHttpResult>> ExportSavedViewCounts(
+        SavedViewQueries views,
+        AccessAuditQueries audit,
+        ClaimsPrincipal user,
+        int id,
+        string? groupBy,
+        CancellationToken cancellationToken = default)
+    {
+        var caller = SavedViewEndpoints.Caller(user);
+
+        if (await WhyNotSavedViewCounts(views, caller, id, groupBy, cancellationToken) is { } refused)
+        {
+            return refused;
+        }
+
+        var counts = (await views.Counts(caller, id, groupBy!, cancellationToken))!;
+
+        await audit.Record(caller, null, "Export", $"saved view {id} counts by {groupBy}", cancellationToken);
+
+        return TypedResults.Text(
+            CaseExport.Csv(
+                [groupBy!, "count"],
+                counts.Select(row => (IReadOnlyList<string?>)[row.Group, row.Count.ToString(CultureInfo.InvariantCulture)])),
+            "text/csv; charset=utf-8");
+    }
+
+    /// <summary>
+    /// A 404 where the caller has no view with that id, a 400 where the
+    /// grouping is not one of its columns, or null where the counts can run.
+    /// </summary>
+    private static async Task<ProblemHttpResult?> WhyNotSavedViewCounts(
+        SavedViewQueries views, int caller, int id, string? groupBy, CancellationToken cancellationToken)
+    {
+        if (await views.Columns(caller, id, cancellationToken) is not { } columns)
+        {
+            return TypedResults.Problem(
+                detail: $"You have no saved view with id {id}.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "There is no such saved view.");
+        }
+
+        return SavedViewEndpoints.WhyNotAGrouping(columns, groupBy) is { } why
+            ? TypedResults.Problem(
+                detail: why,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The report asked for is not one this endpoint can run.")
+            : null;
     }
 }
 

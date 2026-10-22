@@ -14,7 +14,8 @@ namespace Survsys.Api;
 /// readiness probe say otherwise.
 ///
 /// The rule, in the order it is asked:
-/// users, roles, the privilege catalogue and the access and change audits need
+/// users, roles, the privilege catalogue, the access and change audits and the
+/// system settings need
 /// <see cref="Privileges.ManageUsers"/>; the reference data — conditions,
 /// agencies, facilities, core elements, the code lists, the ELR vocabulary,
 /// the Connecticut towns, the zip codes, the vaccine catalogue, the form and
@@ -42,7 +43,7 @@ public static class PrivilegeRules
     public const string PrivilegeClaim = "privilege";
 
     private static readonly string[] Administration =
-        ["/api/users", "/api/roles", "/api/privileges", "/api/access-audit", "/api/audit"];
+        ["/api/users", "/api/roles", "/api/privileges", "/api/access-audit", "/api/audit", "/api/system-settings"];
 
     private static readonly string[] ReferenceData =
     [

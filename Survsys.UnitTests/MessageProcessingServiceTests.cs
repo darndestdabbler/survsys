@@ -195,6 +195,46 @@ public class MessageProcessingServiceTests
     }
 
     [Fact]
+    public void DecideAssignsAPatientOutOfStateWhereTheConditionBypassesIt()
+    {
+        var decision = MessageProcessingService.Decide(
+            Message(state: "NY"), [], "CT", new ConditionIntakeFlags(BypassOutOfState: true, BlockPreliminary: false));
+
+        Assert.Equal(MessageReviewStatusRules.AssignedCode, decision.Status);
+    }
+
+    [Fact]
+    public void DecideFiltersAMessageOfOnlyPreliminaryResultsWhereTheConditionBlocksThem()
+    {
+        var message = Message();
+        message.Results = [new StagedMessageResult { ResultStatus = "P" }, new StagedMessageResult { ResultStatus = "p " }];
+
+        var decision = MessageProcessingService.Decide(
+            message, [], "CT", new ConditionIntakeFlags(BypassOutOfState: false, BlockPreliminary: true));
+
+        Assert.Equal(MessageReviewStatusRules.FilteredCode, decision.Status);
+        Assert.Contains("preliminary", decision.Reason, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// One final result among preliminary ones is not filtered, nor is a
+    /// preliminary message for a condition that does not block them.
+    /// </summary>
+    [Fact]
+    public void DecideAssignsAMessageWithAFinalResultOrForAConditionThatDoesNotBlock()
+    {
+        var mixed = Message();
+        mixed.Results = [new StagedMessageResult { ResultStatus = "P" }, new StagedMessageResult { ResultStatus = "F" }];
+        var preliminary = Message();
+        preliminary.Results = [new StagedMessageResult { ResultStatus = "P" }];
+
+        Assert.Equal(MessageReviewStatusRules.AssignedCode, MessageProcessingService.Decide(
+            mixed, [], "CT", new ConditionIntakeFlags(false, BlockPreliminary: true)).Status);
+        Assert.Equal(MessageReviewStatusRules.AssignedCode, MessageProcessingService.Decide(
+            preliminary, [], "CT", new ConditionIntakeFlags(false, false)).Status);
+    }
+
+    [Fact]
     public void DecideSendsAMessageWithNoAgencyToPending()
     {
         var decision = MessageProcessingService.Decide(Message(agencyId: null), [], "CT");

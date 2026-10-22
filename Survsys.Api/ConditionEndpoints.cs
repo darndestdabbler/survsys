@@ -56,7 +56,10 @@ public static class ConditionEndpoints
             condition.Active,
             condition.ContactLeadIn,
             condition.PlaceLeadIn,
-            condition.TreatmentLeadIn);
+            condition.TreatmentLeadIn,
+            null,
+            condition.BypassOutOfState,
+            condition.BlockPreliminary);
 
     /// <summary>
     /// <see cref="ToDetail"/> compiled, for a condition just saved and so in
@@ -272,7 +275,10 @@ public static class ConditionEndpoints
 
     /// <summary>The conditions' CSV columns, in the order an export writes them.</summary>
     public static readonly IReadOnlyList<string> CsvColumns =
-        ["id", "name", "active", "cdc_code", "contact_lead_in", "place_lead_in", "treatment_lead_in"];
+        [
+            "id", "name", "active", "cdc_code", "contact_lead_in", "place_lead_in", "treatment_lead_in",
+            "bypass_out_of_state", "block_preliminary",
+        ];
 
     /// <summary>A condition as its CSV fields, in <see cref="CsvColumns"/> order; an id of 0 is blank.</summary>
     public static IReadOnlyList<string?> CsvFields(ConditionDetailResponse row)
@@ -283,6 +289,7 @@ public static class ConditionEndpoints
         [
             ReferenceCsv.Number(row.Id == 0 ? null : row.Id), row.Name, ReferenceCsv.YesNo(row.Active), row.CdcCode,
             row.ContactLeadIn, row.PlaceLeadIn, row.TreatmentLeadIn,
+            ReferenceCsv.YesNo(row.BypassOutOfState), ReferenceCsv.YesNo(row.BlockPreliminary),
         ];
     }
 
@@ -304,6 +311,16 @@ public static class ConditionEndpoints
             return (null, badActive);
         }
 
+        if (ReferenceCsv.Flag(row, "bypass_out_of_state", out var bypassOutOfState) is { } badBypass)
+        {
+            return (null, badBypass);
+        }
+
+        if (ReferenceCsv.Flag(row, "block_preliminary", out var blockPreliminary) is { } badBlock)
+        {
+            return (null, badBlock);
+        }
+
         return (new ConditionDetailResponse(
             id ?? 0,
             row.Value("name") ?? "",
@@ -311,15 +328,20 @@ public static class ConditionEndpoints
             active,
             row.Value("contact_lead_in"),
             row.Value("place_lead_in"),
-            row.Value("treatment_lead_in")), null);
+            row.Value("treatment_lead_in"),
+            null,
+            bypassOutOfState,
+            blockPreliminary), null);
     }
 
-    /// <summary>A condition row as the request that saves it.</summary>
+    /// <summary>A condition row as the request that saves it, its guide among it.</summary>
     public static SaveConditionRequest Request(ConditionDetailResponse row)
     {
         ArgumentNullException.ThrowIfNull(row);
 
-        return new(row.Name, row.Active, row.CdcCode, row.ContactLeadIn, row.PlaceLeadIn, row.TreatmentLeadIn);
+        return new(
+            row.Name, row.Active, row.CdcCode, row.ContactLeadIn, row.PlaceLeadIn, row.TreatmentLeadIn,
+            row.GuideId, row.BypassOutOfState, row.BlockPreliminary);
     }
 
     private static async Task<Results<Ok<ConditionDetailResponse>, ProblemHttpResult>> GetCondition(
@@ -340,7 +362,7 @@ public static class ConditionEndpoints
         SaveConditionRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (WhyNotACondition(request) is { } why)
+        if ((WhyNotACondition(request) ?? await conditions.WhyNotAGuide(request.GuideId, cancellationToken)) is { } why)
         {
             return Refused(why);
         }
@@ -356,7 +378,7 @@ public static class ConditionEndpoints
         SaveConditionRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (WhyNotACondition(request) is { } why)
+        if ((WhyNotACondition(request) ?? await conditions.WhyNotAGuide(request.GuideId, cancellationToken)) is { } why)
         {
             return Refused(why);
         }
@@ -439,12 +461,20 @@ internal sealed class ConditionQueries(SurvsysDbContext database)
         return new PagedResult<ConditionResponse>(rows, page, pageSize, total);
     }
 
-    /// <summary>The condition with that id, or null where no condition has it.</summary>
-    public Task<ConditionDetailResponse?> Find(int id, CancellationToken cancellationToken) =>
-        database.Conditions
+    /// <summary>The condition with that id and its guide, or null where no condition has it.</summary>
+    public async Task<ConditionDetailResponse?> Find(int id, CancellationToken cancellationToken) =>
+        await database.Conditions
             .Where(condition => condition.Id == id)
             .Select(ConditionEndpoints.ToDetail)
-            .SingleOrDefaultAsync(cancellationToken);
+            .SingleOrDefaultAsync(cancellationToken) is { } condition
+            ? condition with { GuideId = await GuideOf(id, cancellationToken) }
+            : null;
+
+    /// <summary>Why <paramref name="guideId"/> is not a notification guide on file, or null where it is or is none.</summary>
+    public async Task<string?> WhyNotAGuide(int? guideId, CancellationToken cancellationToken) =>
+        guideId is { } id && !await database.NotificationGuides.AnyAsync(guide => guide.Id == id, cancellationToken)
+            ? $"guideId {id} is not a notification guide on file."
+            : null;
 
     public static readonly ReferenceTable<Condition, ConditionDetailResponse> Table = new ConditionTable();
 
@@ -461,8 +491,9 @@ internal sealed class ConditionQueries(SurvsysDbContext database)
         Apply(condition, request);
         database.Conditions.Add(condition);
         await database.SaveChangesAsync(cancellationToken);
+        await SetGuide(condition.Id, request.GuideId, cancellationToken);
 
-        return ConditionEndpoints.Detail(condition);
+        return ConditionEndpoints.Detail(condition) with { GuideId = request.GuideId };
     }
 
     /// <summary>
@@ -484,8 +515,42 @@ internal sealed class ConditionQueries(SurvsysDbContext database)
 
         Apply(condition, request);
         await database.SaveChangesAsync(cancellationToken);
+        await SetGuide(id, request.GuideId, cancellationToken);
 
-        return ConditionEndpoints.Detail(condition);
+        return ConditionEndpoints.Detail(condition) with { GuideId = request.GuideId };
+    }
+
+    private Task<int?> GuideOf(int id, CancellationToken cancellationToken) =>
+        database.ConditionDetails
+            .Where(detail => detail.ConditionId == id)
+            .Select(detail => (int?)detail.GuideId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+    /// <summary>
+    /// Puts the condition under the guide — the one <c>condition_detail</c>
+    /// row a condition has — or, for none, takes the row away.
+    /// </summary>
+    private async Task SetGuide(int id, int? guideId, CancellationToken cancellationToken)
+    {
+        var detail = await database.ConditionDetails.SingleOrDefaultAsync(item => item.ConditionId == id, cancellationToken);
+
+        if (guideId is not { } guide)
+        {
+            if (detail is not null)
+            {
+                database.ConditionDetails.Remove(detail);
+            }
+        }
+        else if (detail is null)
+        {
+            database.ConditionDetails.Add(new ConditionDetail { ConditionId = id, GuideId = guide });
+        }
+        else
+        {
+            detail.GuideId = guide;
+        }
+
+        await database.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
@@ -602,14 +667,16 @@ internal sealed class ConditionQueries(SurvsysDbContext database)
         condition.ContactLeadIn = string.IsNullOrWhiteSpace(request.ContactLeadIn) ? null : request.ContactLeadIn;
         condition.PlaceLeadIn = string.IsNullOrWhiteSpace(request.PlaceLeadIn) ? null : request.PlaceLeadIn;
         condition.TreatmentLeadIn = string.IsNullOrWhiteSpace(request.TreatmentLeadIn) ? null : request.TreatmentLeadIn;
+        condition.BypassOutOfState = request.BypassOutOfState;
+        condition.BlockPreliminary = request.BlockPreliminary;
     }
 }
 
 /// <summary>
 /// The conditions, keyed by id: a row whose id is blank is a condition to add,
 /// and a row naming an id not on file is refused. A condition has no other
-/// key — names are not unique in the legacy data. The group is not carried,
-/// and is left as it is.
+/// key — names are not unique in the legacy data. The group and the guide
+/// are not carried, and are left as they are.
 /// </summary>
 internal sealed class ConditionTable : ReferenceTable<Condition, ConditionDetailResponse>
 {

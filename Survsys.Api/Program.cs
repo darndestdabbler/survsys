@@ -124,6 +124,7 @@ builder.Services.AddHepLabGroups();
 builder.Services.AddPlaces();
 builder.Services.AddIbis();
 builder.Services.AddReports();
+builder.Services.AddSystemSettings();
 
 // The inbound ELR intake: a background worker that polls a file drop, and an
 // MLLP listener beside it, each queuing every message for review. Each is off
@@ -280,6 +281,7 @@ app.MapCodes();
 app.MapPlaces();
 app.MapIbis();
 app.MapReports();
+app.MapSystemSettings();
 
 app.Run();
 

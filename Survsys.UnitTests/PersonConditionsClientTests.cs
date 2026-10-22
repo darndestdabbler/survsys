@@ -451,6 +451,48 @@ public class PersonConditionsClientTests
         Assert.Contains("400", promoted.Failure);
     }
 
+    /// <summary>
+    /// The IBIS send: a POST to the report's IBIS URL, and the date IBIS
+    /// accepted it is what the screen gets.
+    /// </summary>
+    [Fact]
+    public async Task SendToIbisPostsTheIbisUrlAndTheAcceptedDateComesBack()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new PersonConditionsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK,
+                """{ "status": "Accepted", "detail": null, "attemptedAt": "2026-10-22T09:00:00-04:00", "sentToIbis": true, "ibisUpdatedAt": "2026-10-22" }""");
+        }));
+
+        var answer = await client.SendToIbis(11);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/person-conditions/11/ibis", sent?.RequestUri?.ToString());
+        Assert.True(answer.Succeeded);
+        Assert.Equal(new DateOnly(2026, 10, 22), answer.Value?.IbisUpdatedAt);
+    }
+
+    /// <summary>
+    /// IBIS timing out is a 504 from the API tier, which reaches the screen
+    /// under the IBIS prefix with its status, as every refusal does.
+    /// </summary>
+    [Fact]
+    public async Task SendToIbisThatTimedOutCarriesTheIbisPrefixAndTheStatus()
+    {
+        var client = new PersonConditionsClient(Transport(_ => Answer(
+            HttpStatusCode.GatewayTimeout,
+            """{ "status": 504, "title": "IBIS did not answer in time.", "detail": "IBIS did not answer within 30 seconds." }""")));
+
+        var answer = await client.SendToIbis(11);
+
+        Assert.False(answer.Succeeded);
+        Assert.StartsWith(PersonConditionsClient.IbisFailurePrefix, answer.Failure);
+        Assert.Contains("504", answer.Failure);
+    }
+
     [Fact]
     public async Task SaveBriefNotePutsTheNoteAndTheReportComesBack()
     {

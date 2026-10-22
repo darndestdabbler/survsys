@@ -109,7 +109,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 95 | Jurisdiction-scoped access and sign-in protection | no | 2026-10-21 |
 | 96 | Classification rules on save | no | 2026-10-21 |
 | 97 | Classification shown on save, and on encounter saves | no | 2026-10-22 |
-| 98 | IBIS, ad-hoc reporting and system configuration | — | not declared |
+| 98 | IBIS, ad-hoc reporting and system configuration | no | 2026-10-22 |
 | 99 | Phase 12 walkthroughs | — | not declared |
 | 100 | Release 0.13.0 (release: 0.13.0) | — | not declared |
 | 101 | eICR and RR parsing and document intake | — | not declared |
@@ -880,3 +880,9 @@ Show the user each save's classification without a reload, and run the classifie
 **Amended after acceptance:**
 
 - 2026-10-22 — step 'e2e-classified-on-save': its files: A result entered on the Laboratory tab stores its organism as an id on the organism code list, while the classifier read only vocab_master_organisms, so a hand-entered positive Chlamydia trachomatis lab never confirms the case; the classifier falls back to the organism code list, proven in CaseClassifierTests, and the E2E needs it (claude-code (anthropic, claude-opus-5-5))
+
+### Session 98 — IBIS, ad-hoc reporting and system configuration
+
+**Releasable: no.**
+
+Finish Phase 12's IBIS, ad-hoc reporting and system configuration. In Survsys.Web the morbidity report gets a Send to IBIS action, shown only to a user holding edit_cases, over the existing POST /api/person-conditions/{id}/ibis: it shows the date IBIS accepted the case, or what the endpoint said when IBIS timed out or refused it. Ad-hoc reporting runs over the caller's saved views: GET /api/reports/saved-views/{id}/counts?groupBy=<column> counts the reports a view selects grouped by any one of that view's own columns, and /counts/export answers the same counts as CSV; both sit under /api/reports, so run_reports gates them, and a view that is not the caller's is a 404. The Reports screen gains a section to pick a saved view and one of its columns, show the counts and export them. Condition configuration gains the notification guide a condition is exported under (the condition_detail row, written by the condition save, removed when the guide is cleared) and two EMSA intake flags on the condition, bypass out-of-state and block preliminary results, which automatic assignment honours: a message for a bypassing condition is not held as out of state, and one whose results are all preliminary (OBX-11 P) for a blocking condition is filtered. Both flags and the guide are edited on the condition's edit screen beside the print criteria that screen already edits, and the flags ride in the conditions CSV. System configuration is a key-value system_setting table (name, value, description) with a migration, /api/system-settings to list, save and delete a setting under manage_users, and a System settings screen under the Administration links of the application bar. Unit tests cover each new public method and client call; integration tests cover the saved-view counts, the condition guide and flags, and the settings routes.

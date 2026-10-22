@@ -139,6 +139,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options, IAudit
 
     public DbSet<ReconciliationCutoffSetting> ReconciliationCutoffs => Set<ReconciliationCutoffSetting>();
 
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+
     public DbSet<PhinVariable> PhinVariables => Set<PhinVariable>();
 
     public DbSet<NotificationGuide> NotificationGuides => Set<NotificationGuide>();

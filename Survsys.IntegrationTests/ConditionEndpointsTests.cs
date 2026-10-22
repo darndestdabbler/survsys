@@ -170,11 +170,12 @@ public class ConditionEndpointsTests(SqlServerFixture server) : IDisposable
             Assert.Equal(HttpStatusCode.Created, created.StatusCode);
             var a = (await created.Content.ReadFromJsonAsync<ConditionDetailResponse>(Json))!;
 
-            var csv = "id,name,active,cdc_code,contact_lead_in,place_lead_in,treatment_lead_in\r\n"
-                + $"{a.Id},Itest condition A,no,99999,,,\r\n"
-                + ",Itest condition B,yes,,\"Name every contact.\r\nThen call each.\",,\r\n"
-                + ",,yes,,,,\r\n"
-                + "987654321,Itest condition C,yes,,,,\r\n";
+            var csv = "id,name,active,cdc_code,contact_lead_in,place_lead_in,treatment_lead_in,"
+                + "bypass_out_of_state,block_preliminary\r\n"
+                + $"{a.Id},Itest condition A,no,99999,,,,yes,no\r\n"
+                + ",Itest condition B,yes,,\"Name every contact.\r\nThen call each.\",,,,\r\n"
+                + ",,yes,,,,,,\r\n"
+                + "987654321,Itest condition C,yes,,,,,,\r\n";
 
             var preview = await Import(client, csv, confirm: false);
 
@@ -187,15 +188,56 @@ public class ConditionEndpointsTests(SqlServerFixture server) : IDisposable
 
             await Import(client, csv, confirm: true);
 
-            Assert.Equal((false, "99999"), ((await Detail(client, a.Id)).Active, (await Detail(client, a.Id)).CdcCode));
+            var saved = await Detail(client, a.Id);
+            Assert.Equal((false, "99999", true), (saved.Active, saved.CdcCode, saved.BypassOutOfState));
 
             var exported = await client.GetStringAsync("/api/conditions/csv");
-            Assert.Contains("Itest condition B,yes,,\"Name every contact.\r\nThen call each.\",,\r\n", exported);
+            Assert.Contains("Itest condition B,yes,,\"Name every contact.\r\nThen call each.\",,,no,no\r\n", exported);
 
             var again = await Import(client, exported, confirm: false);
             Assert.Empty(again.Added);
             Assert.Empty(again.Changed);
             Assert.Empty(again.Refused);
+        }
+        finally
+        {
+            await ClearImported();
+        }
+    }
+
+    /// <summary>
+    /// A condition saved with a guide and its intake flags reads them back;
+    /// saved without a guide it is under none; and a guide not on file is a
+    /// 400.
+    /// </summary>
+    [Fact]
+    public async Task AConditionsGuideAndIntakeFlagsAreSavedAndReadBack()
+    {
+        var client = api.CreateClient();
+        await ClearImported();
+
+        try
+        {
+            var guideId = await Guide();
+
+            using var created = await client.PostAsJsonAsync("/api/conditions",
+                new SaveConditionRequest("Itest condition guide", true, GuideId: guideId, BypassOutOfState: true), Json);
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            var condition = (await created.Content.ReadFromJsonAsync<ConditionDetailResponse>(Json))!;
+
+            var read = await Detail(client, condition.Id);
+            Assert.Equal((guideId, true, false), (read.GuideId, read.BypassOutOfState, read.BlockPreliminary));
+
+            using var cleared = await client.PutAsJsonAsync($"/api/conditions/{condition.Id}",
+                new SaveConditionRequest("Itest condition guide", true, BlockPreliminary: true), Json);
+            Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+
+            read = await Detail(client, condition.Id);
+            Assert.Equal((null, false, true), (read.GuideId, read.BypassOutOfState, read.BlockPreliminary));
+
+            using var refused = await client.PutAsJsonAsync($"/api/conditions/{condition.Id}",
+                new SaveConditionRequest("Itest condition guide", true, GuideId: int.MaxValue), Json);
+            Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         }
         finally
         {
@@ -337,7 +379,22 @@ public class ConditionEndpointsTests(SqlServerFixture server) : IDisposable
     private async Task ClearImported()
     {
         await using var context = server.NewContext();
-        await context.Conditions.Where(condition => condition.Name.StartsWith("Itest condition")).ExecuteDeleteAsync();
+        var imported = context.Conditions.Where(condition => condition.Name.StartsWith("Itest condition"));
+        await context.ConditionDetails
+            .Where(detail => imported.Any(condition => condition.Id == detail.ConditionId))
+            .ExecuteDeleteAsync();
+        await imported.ExecuteDeleteAsync();
+    }
+
+    /// <summary>The id of the integration suite's condition guide, added on the first run.</summary>
+    private async Task<int> Guide()
+    {
+        await using var context = server.NewContext();
+        var guide = await context.NotificationGuides.FirstOrDefaultAsync(item => item.Name == "Itest condition guide")
+            ?? context.NotificationGuides.Add(new Data.NotificationGuide { Name = "Itest condition guide" }).Entity;
+        await context.SaveChangesAsync();
+
+        return guide.Id;
     }
 
     private async Task<PagedResult<ConditionResponse>> Conditions(string url)

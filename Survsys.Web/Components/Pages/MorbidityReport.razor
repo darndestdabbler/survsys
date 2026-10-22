@@ -395,6 +395,37 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         </MudButton>
     </MudPaper>
 
+    @* Sending the case to IBIS, the external epidemiology reporting system: a
+       case write, so it is offered only to a user who may edit cases. The
+       API tier records the case as sent only when IBIS accepts it. *@
+    @if (canSendToIbis)
+    {
+        <MudPaper id="report-ibis" Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">IBIS</MudText>
+
+            @if (ibisSent is { } sentMessage)
+            {
+                <MudAlert id="report-ibis-sent" Severity="Severity.Success" Variant="Variant.Filled"
+                          Class="mb-4">
+                    @sentMessage
+                </MudAlert>
+            }
+
+            @if (ibisError is { } whyNotSent)
+            {
+                <MudAlert id="report-ibis-error" Severity="Severity.Error" Variant="Variant.Filled"
+                          Class="mb-4">
+                    @whyNotSent
+                </MudAlert>
+            }
+
+            <MudButton id="report-ibis-send" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@sendingToIbis" OnClick="@SendToIbis">
+                Send to IBIS
+            </MudButton>
+        </MudPaper>
+    }
+
     <MudTabs id="report-tabs" Elevation="1" Rounded="true" ApplyEffectsToContainer="true"
              TabPanelsClass="pa-4">
         @* The tab's own identifier is on what the tab shows rather than on
@@ -555,6 +586,15 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
 
     private string? notifyError;
 
+    /// <summary>Whether the signed-in user may edit cases, and so send this one to IBIS.</summary>
+    private bool canSendToIbis;
+
+    private bool sendingToIbis;
+
+    private string? ibisSent;
+
+    private string? ibisError;
+
     /// <summary>The report's workflow as this user sees it: state, the moves they may make, history.</summary>
     private WorkflowResponse? workflow;
 
@@ -621,6 +661,8 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     {
         canSeeHistory = AuthenticationState is { } state
             && (await state).User.HasClaim(AccountClient.PrivilegeClaim, Privileges.ManageUsers);
+        canSendToIbis = AuthenticationState is { } editor
+            && (await editor).User.HasClaim(AccountClient.PrivilegeClaim, Privileges.EditCases);
 
         if (loadedId == ReportId)
         {
@@ -648,6 +690,8 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         promoteError = null;
         notifyQueued = null;
         notifyError = null;
+        ibisSent = null;
+        ibisError = null;
         workflowSaved = null;
         workflowError = null;
         workflowNote = null;
@@ -1155,6 +1199,41 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         finally
         {
             queuing = false;
+        }
+    }
+
+    /// <summary>
+    /// Sends the case to IBIS, showing the date IBIS accepted it on success or
+    /// the client's message — IBIS timing out or refusing it among them — on
+    /// failure.
+    /// </summary>
+    private async Task SendToIbis()
+    {
+        if (report is not { } current)
+        {
+            return;
+        }
+
+        ibisSent = null;
+        ibisError = null;
+        sendingToIbis = true;
+
+        try
+        {
+            var answered = await Reports.SendToIbis(current.Id);
+
+            if (answered.Value is { } sent)
+            {
+                ibisSent = $"IBIS accepted this case on {sent.IbisUpdatedAt:yyyy-MM-dd}.";
+            }
+            else
+            {
+                ibisError = answered.Failure;
+            }
+        }
+        finally
+        {
+            sendingToIbis = false;
         }
     }
 }

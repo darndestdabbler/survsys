@@ -57,4 +57,18 @@ public class Condition
     /// identifier rather than a navigation, until the table exists.
     /// </summary>
     public int? ConditionGroupId { get; set; }
+
+    /// <summary>
+    /// Whether an electronic lab message for this condition is assigned even
+    /// when its patient lives out of state, rather than held as out of state:
+    /// the legacy EMSA <c>vocab_master_condition.bypass_oos</c>.
+    /// </summary>
+    public bool BypassOutOfState { get; set; }
+
+    /// <summary>
+    /// Whether an electronic lab message for this condition whose every result
+    /// is preliminary is filtered rather than assigned: the legacy EMSA
+    /// <c>vocab_master_condition.blacklist_preliminary</c>.
+    /// </summary>
+    public bool BlockPreliminary { get; set; }
 }

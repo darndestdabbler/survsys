@@ -93,6 +93,59 @@ public class ReportsClientTests
         Assert.DoesNotContain("run_reports is required", counts.Failure, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task SavedViewCountsAsksForTheViewsCountsByTheColumn()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new ReportsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, Counts);
+        }));
+
+        var counts = await client.SavedViewCounts(7, ExportColumns.CaseStatus);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal(
+            "http://api.example.test/api/reports/saved-views/7/counts?groupBy=case_status",
+            sent?.RequestUri?.ToString());
+        Assert.True(counts.Succeeded);
+        Assert.Equal(new CaseCountResponse("Malaria", 3), counts.Value?[0]);
+    }
+
+    [Fact]
+    public async Task SavedViewCountsCsvAsksForTheExportAndTheTextComesBack()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new ReportsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, "case_status,count\r\nC,3\r\n");
+        }));
+
+        var csv = await client.SavedViewCountsCsv(7, ExportColumns.CaseStatus);
+
+        Assert.Equal(
+            "http://api.example.test/api/reports/saved-views/7/counts/export?groupBy=case_status",
+            sent?.RequestUri?.ToString());
+        Assert.Equal("case_status,count\r\nC,3\r\n", csv.Value);
+    }
+
+    [Fact]
+    public async Task SavedViewCountsOfAViewNotTheUsersCarryThePrefixAndTheStatus()
+    {
+        var client = new ReportsClient(Transport(_ => Answer(
+            HttpStatusCode.NotFound, """{ "status": 404, "detail": "You have no saved view with id 7." }""")));
+
+        var counts = await client.SavedViewCounts(7, ExportColumns.CaseStatus);
+
+        Assert.False(counts.Succeeded);
+        Assert.StartsWith(ReportsClient.FailurePrefix, counts.Failure);
+        Assert.Contains("404", counts.Failure);
+    }
+
     private static HttpClient Transport(Func<HttpRequestMessage, HttpResponseMessage> answer) =>
         new(new StubTransport(answer)) { BaseAddress = new Uri("http://api.example.test/") };
 
