@@ -2134,9 +2134,9 @@
     {
       "number": 103,
       "title": "Reportability and condition mapping",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-22T11:41:02.251000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-22T11:58:13.257000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
