@@ -1,0 +1,339 @@
+@* The inbound ELR intake queue: the staged messages waiting for a reviewer,
+   as the staged-message endpoint returns them. One page of rows, oldest first,
+   with a review-state filter above them, and each row a way into the message
+   on its own. A row's checkbox selects it, and the action bar above the table
+   moves, deletes or retries every message selected.
+
+   Every element a later walkthrough will name carries an identifier of its
+   own — `staged-messages-heading`, `staged-messages-filter`,
+   `staged-messages-total`, `staged-messages-loading`, `staged-messages-error`,
+   `staged-messages-none`, the table, one row per message keyed by its id and
+   its `staged-message-select-{id}` checkbox, and the action bar's
+   `staged-messages-selected`, `staged-messages-select-page`,
+   `staged-messages-move-to`, `staged-messages-move`, `staged-messages-delete`,
+   `staged-messages-retry`, `staged-messages-acted` and
+   `staged-messages-action-error`.
+   A test selects by those and not by a MudBlazor class or a cell's position.
+
+   The review state is the stored code the wire carries; this tier reads
+   Survsys.Contracts and not Survsys.Data, so the rule class that owns the
+   vocabulary is out of reach here and the label is a handful of literals, as
+   the work-queue screen maps its workflow codes for display. *@
+@page "/staged-messages"
+@inject MessageQueueClient Client
+
+<PageTitle>Staged messages — Survsys</PageTitle>
+
+<MudText id="staged-messages-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Staged messages
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    The inbound electronic lab reports waiting for review. Filter by review
+    state, or leave it on All to see the whole queue.
+</MudText>
+
+<MudSelect id="staged-messages-filter" T="string" Label="Review state" Value="status"
+           ValueChanged="OnFilterChanged" Dense="true" Class="mb-4" Style="max-width: 20rem;">
+    <MudSelectItem T="string" Value="@AllStates">All</MudSelectItem>
+    @foreach (var state in States)
+    {
+        <MudSelectItem T="string" Value="@state.Code">@state.Label</MudSelectItem>
+    }
+</MudSelect>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="staged-messages-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result)
+{
+    <MudText id="staged-messages-total" Typo="Typo.body2" Class="mb-4">
+        @result.TotalCount message(s), showing @result.Items.Count.
+    </MudText>
+
+    @if (acted is not null)
+    {
+        <MudAlert id="staged-messages-acted" Severity="Severity.Success" Class="mb-4">@acted</MudAlert>
+    }
+
+    @if (actionFailure is not null)
+    {
+        <MudAlert id="staged-messages-action-error" Severity="Severity.Error" Class="mb-4">@actionFailure</MudAlert>
+    }
+
+    @if (result.Items.Count > 0)
+    {
+        <div class="d-flex flex-wrap align-center gap-4 mb-4">
+            <MudButton id="staged-messages-select-page" Variant="Variant.Outlined" Size="Size.Small"
+                       OnClick="@(() => SelectPage(result.Items))">
+                Select page
+            </MudButton>
+            <MudText id="staged-messages-selected" Typo="Typo.body2">@selected.Count selected</MudText>
+            <MudSelect id="staged-messages-move-to" T="string" Label="Move to" @bind-Value="moveTo"
+                       Dense="true" Style="max-width: 16rem;">
+                @foreach (var state in States.Where(state => state.Code != AssignedCode))
+                {
+                    <MudSelectItem T="string" Value="@state.Code">@state.Label</MudSelectItem>
+                }
+            </MudSelect>
+            <MudButton id="staged-messages-move" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                       Disabled="@(acting || !CanMove)" OnClick="Move">
+                Move
+            </MudButton>
+            <MudButton id="staged-messages-retry" Variant="Variant.Outlined" Size="Size.Small"
+                       Disabled="@(acting || !CanRetry)" OnClick="Retry">
+                Retry
+            </MudButton>
+            <MudButton id="staged-messages-delete" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                       Disabled="@(acting || !CanDelete)" OnClick="Delete">
+                Delete
+            </MudButton>
+        </div>
+    }
+
+    @if (result.Items.Count == 0)
+    {
+        <MudText id="staged-messages-none" Typo="Typo.body2">
+            No messages are in this part of the queue.
+        </MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="staged-messages-table" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>Source</th>
+                        <th>Received</th>
+                        <th>Review state</th>
+                        <th>QA</th>
+                        <th>Exception</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var message in result.Items)
+                    {
+                        <tr id="@($"staged-message-row-{message.Id}")" data-staged-message="@message.Id">
+                            <td data-staged-message-source>
+                                <input type="checkbox" id="@($"staged-message-select-{message.Id}")"
+                                       aria-label="@($"Select message {message.Id}")"
+                                       checked="@selected.ContainsKey(message.Id)"
+                                       @onchange="@(changed => Toggle(message, changed.Value is true))" />
+                                <MudLink Href="@($"/staged-messages/{message.Id}")">
+                                    @(string.IsNullOrWhiteSpace(message.Source) ? "—" : message.Source)
+                                </MudLink>
+                            </td>
+                            <td data-staged-message-received>@message.ReceivedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td data-staged-message-state>@Label(message.ReviewStatus)</td>
+                            <td data-staged-message-qa>@(message.QaFlagged ? "Flagged" : "—")</td>
+                            <td data-staged-message-exception>@(string.IsNullOrWhiteSpace(message.ExceptionDetail) ? "—" : message.ExceptionDetail)</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        @if (result.TotalCount > PageSize || page > 1)
+        {
+            <div class="d-flex align-center gap-4 mt-2">
+                <MudButton id="staged-messages-prev" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page <= 1)" OnClick="PreviousPage">
+                    Previous
+                </MudButton>
+                <MudText id="staged-messages-page" Typo="Typo.body2">Page @(page) of @LastPage</MudText>
+                <MudButton id="staged-messages-next" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page >= LastPage)" OnClick="NextPage">
+                    Next
+                </MudButton>
+            </div>
+        }
+    }
+}
+else
+{
+    @* The tier's contract: an API failure is a message on the screen, never
+       an unhandled exception in a circuit. MessageQueueClient hands over the
+       message; this is where it is shown. *@
+    <MudAlert id="staged-messages-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    /// <summary>The value the filter holds for "every review state".</summary>
+    private const string AllStates = "";
+
+    /// <summary>
+    /// How many messages one page of this screen holds. The API tier's own
+    /// default, stated here because a screen that shows a count has to know
+    /// what it asked for.
+    /// </summary>
+    private const int PageSize = 50;
+
+    /// <summary>
+    /// The review states a message can be filtered to, their stored codes and
+    /// the labels shown for them. The codes are the wire's; the API tier owns
+    /// the vocabulary, and this list is display only, as the work-queue
+    /// screen's workflow mapping is. Every state a message can be in, each
+    /// with a label of its own. Assigned reads as its code, as it did before
+    /// it was listed, because the walkthroughs read it so.
+    /// </summary>
+    private static readonly IReadOnlyList<(string Code, string Label)> States =
+    [
+        ("entry", "Queued for review"),
+        ("pending", "Held for review"),
+        ("exception", "Exception"),
+        (AssignedCode, "assigned"),
+        ("filtered", "Filtered out"),
+        ("locked", "Locked"),
+        ("qa", "Quality assurance"),
+        ("out-of-state", "Out of state"),
+        ("semi-auto", "Semi-automatic"),
+        ("unprocessed", "Unprocessed"),
+        ("gray", "Graylisted"),
+        ("gray-pending", "Graylist pending"),
+        ("gray-processed", "Graylist processed"),
+        ("gray-unprocessable", "Graylist unprocessable"),
+        ("gray-exception", "Graylist exception"),
+    ];
+
+    private const string AssignedCode = "assigned";
+
+    /// <summary>
+    /// The states a retry takes a message out of: the held ones, which wait on
+    /// the vocabulary and rules. The API tier refuses anything else, and the
+    /// screen leaves Retry off rather than send what it would refuse.
+    /// </summary>
+    private static readonly IReadOnlySet<string> Retryable =
+        new HashSet<string> { "exception", "unprocessed", "locked", "gray-exception" };
+
+    /// <summary>The messages selected, each to its review state, across pages and filters.</summary>
+    private readonly Dictionary<int, string> selected = [];
+
+    private string? moveTo;
+
+    private bool acting;
+
+    private string? acted;
+
+    private string? actionFailure;
+
+    private bool CanMove => selected.Count > 0 && moveTo is not null && !selected.ContainsValue(AssignedCode);
+
+    private bool CanDelete => selected.Count > 0 && !selected.ContainsValue(AssignedCode);
+
+    private bool CanRetry => selected.Count > 0 && selected.Values.All(Retryable.Contains);
+
+    private string status = AllStates;
+
+    private int page = 1;
+
+    private Asked<PagedResult<StagedMessageResponse>>? asked;
+
+    private int LastPage => Math.Max(1, ((asked?.Value?.TotalCount ?? 0) + PageSize - 1) / PageSize);
+
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load()
+    {
+        asked = null;
+        asked = await Client.Page(string.IsNullOrEmpty(status) ? null : status, page, PageSize);
+    }
+
+    private void Toggle(StagedMessageResponse message, bool on)
+    {
+        if (on)
+        {
+            selected[message.Id] = message.ReviewStatus;
+        }
+        else
+        {
+            selected.Remove(message.Id);
+        }
+    }
+
+    private void SelectPage(IReadOnlyList<StagedMessageResponse> messages)
+    {
+        foreach (var message in messages)
+        {
+            selected[message.Id] = message.ReviewStatus;
+        }
+    }
+
+    private Task Move() =>
+        Act(ids => Client.Move(ids, moveTo!), $"moved to {Label(moveTo!)}");
+
+    private Task Delete() => Act(ids => Client.Delete(ids), "deleted");
+
+    private Task Retry() => Act(ids => Client.Retry(ids), "retried");
+
+    /// <summary>
+    /// Takes an action on every message selected, then says what it did or
+    /// why it could not, clears the selection when it did, and reloads the page.
+    /// </summary>
+    private async Task Act(
+        Func<IReadOnlyList<int>, Task<Asked<StagedMessageActionResponse>>> action, string done)
+    {
+        acting = true;
+        acted = null;
+        actionFailure = null;
+
+        var answer = await action(selected.Keys.ToList());
+        if (answer.Value is { } response)
+        {
+            acted = $"{response.Count} message(s) {done}.";
+            selected.Clear();
+        }
+        else
+        {
+            actionFailure = answer.Failure;
+        }
+
+        acting = false;
+        await Load();
+    }
+
+    private async Task OnFilterChanged(string chosen)
+    {
+        status = chosen ?? AllStates;
+        page = 1;
+        await Load();
+    }
+
+    private async Task PreviousPage()
+    {
+        if (page > 1)
+        {
+            page--;
+            await Load();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (page < LastPage)
+        {
+            page++;
+            await Load();
+        }
+    }
+
+    /// <summary>
+    /// A review-state code read as its label, falling back to the code itself
+    /// for one this screen does not list — a later session's states read as
+    /// their code rather than as nothing.
+    /// </summary>
+    private static string Label(string reviewStatus)
+    {
+        foreach (var state in States)
+        {
+            if (state.Code == reviewStatus)
+            {
+                return state.Label;
+            }
+        }
+
+        return reviewStatus;
+    }
+}

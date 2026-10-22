@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 081 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 081 transcript</h1>
+<p class="stamp">Rendered 2026-10-20T08:14:08.087Z by dabbler-ai-router 3.21.0 at 856907472f6849018a87d7212c6c72061171562e.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-20T03:53:02.556-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 81: Connecticut planning regions as county equivalents</h3>
+<p>*Inserted after session 80. Since 2022 the Census Bureau has counted Connecticut's nine planning regions as its county equivalents (FIPS 09110 to 09190), in place of its eight historical counties (09001 to 09015), and CDC expects the planning region's FIPS code for a Connecticut address. Today the <code>county</code> code list holds only Utah's legacy two-letter codes and &quot;Out-of-state&quot;, an address's county is one of those, and <code>OruR01Generator</code> writes that code unchanged into PID-11 for <code>DEM165</code>. A Connecticut zip code can also cross a planning region's boundary, so the zip-to-county table session 69 added cannot fill a region reliably on its own. This follows session 80 because it uses that session's list of the 169 CT towns.*</p>
+<p>*Amended before it ran: not every program has moved to the planning regions. ELR and eCR still derive the historical county, not the county equivalent. So a Connecticut address keeps both, and each program is configured to use one or the other. The historical counties stay choosable rather than being refused.*</p>
+<ol><li>Register.</li><li><code>Survsys.Data</code>: the <code>county</code> code list carries each value's state, its FIPS code, and whether it is a county or a county equivalent. Connecticut's eight historical counties are seeded as counties and its nine planning regions as county equivalents, each with its FIPS code, and both stay choosable. An address gains a county equivalent beside its county. A <code>ct_towns</code> table maps each of the 169 towns to its historical county and its planning region. One migration adds all of these, changes no existing address, and keeps every Utah code as it is.</li><li><code>Survsys.Api</code>: where the state is CT, a save that leaves an address's county or county equivalent blank fills each one from the town, and fills the county from the zip only when the town gives none.</li><li><code>Survsys.Api</code>: a setting per program — <code>elr</code>, <code>ecr</code> and <code>cdc-notification</code> — names which of the two that program uses, <code>county</code> or <code>county-equivalent</code>. The defaults are <code>county</code> for ELR and eCR and <code>county-equivalent</code> for CDC notification. ELR intake stores the county code a message carries in whichever of the two it names, by the code list, and fills the other from the town. <code>OruR01Generator</code> writes the FIPS code of the one <code>cdc-notification</code> names to PID-11, and the legacy code where the list has no FIPS code. Session 100 reads <code>ecr</code> the same way when it writes an eICR's address to a case.</li><li><code>Survsys.Web</code>: the Demographics tab, the person screen and the case search show the county equivalent beside the county for a CT address. Its label comes from configuration (&quot;Planning region&quot; by default, or &quot;County equivalent&quot;), and every existing element id stays unchanged.</li><li><code>Survsys.UnitTests</code> and <code>Survsys.IntegrationTests</code>: both values filled from a CT town, the zip used when the town is unknown, ELR intake storing a historical county and a planning region each in its own field, PID-11 carrying the configured one's FIPS code under each setting, and the configured label.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Give a Connecticut address both of its county values. Survsys.Data: CodeValue gains nullable State, Fips and Kind (&quot;county&quot; or &quot;county-equivalent&quot;) columns; the county list's Utah rows are stamped state UT and kind county with their codes unchanged and no FIPS, and Connecticut's eight historical counties (09001-09015, kind county) and nine planning regions (09110-09190, kind county-equivalent) are seeded with their FIPS code as both code and FIPS, all active. PersonAddress gains CountyEquivalent; StagedMessage gains PatientCounty (PID-11.9); a ct_towns table, seeded from a CtTownSeed of the 169 towns, maps each town to its historical county and planning region code. One migration adds all of it and changes no existing address. AddressRules gains a pure FillConnecticutCounties that, for a CT address, fills a blank county and county equivalent from the town (by the seed) and the county from the zip only when the town gives none; PersonEndpoints' save uses it in place of its zip-only fill. Survsys.Api gets a CountyPrograms options section (elr and ecr default county, cdc-notification defaults county-equivalent) with a Pick(program, address) that reads the configured value. ELR: OruR01Parser reads PID-11.9, intake stages it, and MessageCaseWriter's AddAddress stores it (matched on the county list by code or FIPS) in the field the elr setting names and fills the other from the town. OruR01Generator takes an optional code-to-FIPS map on its input and writes DEM165 as the FIPS code where the map has one and the code as given otherwise, the caller passing the code CountyPrograms picks for cdc-notification. Survsys.Web: CodeResponse carries State, Fips and Kind, CodeSelect gains a Kind filter, and the Demographics tab, person screen and case search (whose rows gain the patient's current county and county equivalent) show the county equivalent beside the county for a CT address under a label from Web configuration (&quot;Planning region&quot; by default), every existing element id unchanged.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/84440e25431a1284955a0c3a69a2b6f5caeb8b4a"><code>84440e25431a1284955a0c3a69a2b6f5caeb8b4a</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Data model</td><td><p>In Survsys.Data: add nullable State, Fips and Kind to CodeValue and map them in CodeValueConfiguration; stamp the Utah county seed rows with State UT and Kind county (codes unchanged, Out-of-state with Kind county and no state), and seed CT's eight historical counties (Kind county) and nine planning regions (Kind county-equivalent) with State CT, Code and Fips their FIPS code, at new ids after 1157. Add CountyEquivalent (county_equivalent, max 50) to PersonAddress and its configuration, PatientCounty (patient_county) to StagedMessage and its configuration. Add CtTown (Town, County, PlanningRegion) with CtTownConfiguration onto ct_towns seeded from CtTownSeed.Rows (all 169 towns with their historical county and planning region FIPS codes) and a DbSet on SurvsysDbContext. Add one migration, CountyEquivalents, adding these columns, rows and the table. Unit tests in CodeValueSeedTests.cs (the CT counties and regions present with state, FIPS and kind, the Utah codes unchanged) and CtTownSeedTests.cs (169 distinct towns, every county and region code on the county list with the right kind).</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CodeValueSeedTests|FullyQualifiedName~CtTownSeedTests</code></td><td>yes</td></tr>
+<tr><td>Save fill</td><td><p>In Survsys.Data AddressRules add FillConnecticutCounties(PersonAddress, IReadOnlyDictionary&lt;string,string&gt;? countiesByZip): where the state is CT, a blank county and a blank county equivalent are each filled from the town by CtTownSeed, and the county from the zip only when the town gives none; elsewhere the county is filled from the zip as before. Normalize upper-cases CountyEquivalent as it does County. Add CountyEquivalent to PersonAddressRequest and PersonAddressResponse (optional, last) and carry it through PersonEndpoints' Apply, read and person projection, Apply calling FillConnecticutCounties in place of its zip-only fill. Tests in AddressRulesTests.cs (both from a CT town, zip used when the town is unknown, a given value kept, non-CT unchanged) and PersonEndpointsTests.cs.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~AddressRulesTests|FullyQualifiedName~PersonEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Program setting</td><td><p>In Survsys.Api add CountyPrograms.cs: an options class bound from a CountyPrograms section with Elr, Ecr and CdcNotification each &quot;county&quot; or &quot;county-equivalent&quot; (defaults county, county, county-equivalent), and Pick(string program, PersonAddress) returning that address's County or CountyEquivalent. Register it in Program.cs and declare the defaults in appsettings.json. Tests in CountyProgramsTests.cs.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CountyProgramsTests</code></td><td>yes</td></tr>
+<tr><td>Elr county</td><td><p>ParsedPatient gains County, OruR01Parser reads PID-11.9 into it, and ElrIntakeService stages it as PatientCounty. MessageCaseWriter.AddAddress takes the elr setting (passed from MessageProcessingService and MessageQueueEndpoints via CountyPrograms), finds the staged code on the county list by code or FIPS, stores that code in the field the setting names, and fills the other (and a blank county from the zip as the save does) by AddressRules.FillConnecticutCounties. Unit tests in OruR01ParserTests.cs and ElrIntakeServiceTests.cs; integration tests in MessageCaseWriterTests.cs for a historical county and a planning region each landing in its own field with the other filled from the town.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~OruR01ParserTests|FullyQualifiedName~ElrIntakeServiceTests|FullyQualifiedName~MessageCaseWriterTests</code></td><td>yes</td></tr>
+<tr><td>Notification fips</td><td><p>OruR01GenerationInput gains an optional CountyFips map (county code to FIPS), and OruR01Generator writes DEM165 to PID-11.9 as the FIPS code where the map has one for the value and the value as given otherwise. CountyPrograms gains NotificationCounty(PersonAddress) picking by the cdc-notification setting. Tests in OruR01GeneratorTests.cs (FIPS written, legacy code kept where the map has none) and CountyProgramsTests.cs (under each setting the generated PID-11.9 carries that value's FIPS code).</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~OruR01GeneratorTests|FullyQualifiedName~CountyProgramsTests</code></td><td>yes</td></tr>
+<tr><td>Codes and search</td><td><p>CodeResponse gains optional State, Fips and Kind, filled by CodeEndpoints. CaseSearchItemResponse gains optional County and CountyEquivalent of the patient's current address, projected by CaseSearchEndpoints. Tests updated in CodeEndpointsTests.cs and CaseSearchEndpointsTests.cs (unit) and the integration CaseSearchEndpointsTests.cs for a CT patient's two values.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CodeEndpointsTests|FullyQualifiedName~CaseSearchEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Web screens</td><td><p>In Survsys.Web add AddressLabels.cs reading Survsys:CountyEquivalentLabel from configuration with &quot;Planning region&quot; as the default (declared in appsettings.json). CodeSelect gains a Kind filter. The Demographics tab offers the county picker the county-kind codes and, for a CT address, a county-equivalent picker of the county-equivalent codes (id demographics-address-{at}-county-equivalent) under that label, carrying CountyEquivalent through its model and request; the person screen's address table and the Events results show the county equivalent beside the county under that label. Every existing element id stays unchanged. Tests in AddressLabelsTests.cs (default and configured label).</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~AddressLabelsTests</code></td><td>yes</td></tr>
+<tr><td>Integration save</td><td><p>Integration tests in Survsys.IntegrationTests/PersonEndpointsTests.cs: saving a CT address with only its town fills both the county and the planning region; saving one whose town is unknown takes the county from the zip; a given planning region is kept.</p></td><td></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No existing address is rewritten or back-filled: the migration only adds columns, rows and the ct_towns table.</li><li>Utah's legacy county codes are not changed, retired, or given FIPS codes.</li><li>The historical CT counties are not refused or retired; both values stay choosable.</li><li>No eCR intake is built: the ecr setting is declared for session 100 to read, nothing here reads it.</li><li>No CDC notification projection from a case is built or wired; the generator only maps the DEM165 code it is handed.</li><li>The Codes administration screen does not gain editing of a code's state, FIPS or kind.</li><li>No zip-to-planning-region table: a planning region comes only from the town.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[07:53:02]</span> <span class="muted">run-started</span> session=081 mode=pull</div>
+<div class="line"><span class="at">[07:53:02]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[07:56:10]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[07:56:10]</span> <span class="muted">plan-accepted</span> steps=[&quot;data-model&quot;,&quot;save-fill&quot;,&quot;program-setting&quot;,&quot;elr-county&quot;,&quot;notification-fips&quot;,&quot;codes-and-search&quot;,&quot;web-screens&quot;,&quot;integration-save&quot;] non_goals=7</div>
+<div class="line"><span class="at">[07:56:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[07:56:11]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=data-model</div>
+<div class="line"><span class="at">[08:00:09]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:00:12]</span> <span class="muted">check-passed</span> step=data-model argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[08:00:16]</span> <span class="muted">check-passed</span> step=data-model argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CodeValueSeedTests|FullyQualifiedName~CtTownSeedTests&quot;]</div>
+<div class="line"><span class="at">[08:00:17]</span> <span class="muted">report-accepted</span> seq=2 step=data-model files=[] notes=County list gains state/FIPS/kind with CT counties and planning regions; address county_equivalent, staged patient_county, ct_towns seeded with 169 towns; one migration (redundant null UpdateData rows pruned)</div>
+<div class="line"><span class="at">[08:00:17]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=save-fill</div>
+<div class="line"><span class="at">[08:01:45]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:01:47]</span> <span class="muted">check-passed</span> step=save-fill argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[08:01:51]</span> <span class="muted">check-passed</span> step=save-fill argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~AddressRulesTests|FullyQualifiedName~PersonEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[08:01:52]</span> <span class="muted">report-accepted</span> seq=3 step=save-fill files=[] notes=AddressRules.FillConnecticutCounties fills a CT address's county and planning region from its town, the county from the zip otherwise; contracts and PersonEndpoints carry CountyEquivalent</div>
+<div class="line"><span class="at">[08:01:52]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=program-setting</div>
+<div class="line"><span class="at">[08:02:49]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:02:52]</span> <span class="muted">check-passed</span> step=program-setting argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[08:02:55]</span> <span class="muted">check-passed</span> step=program-setting argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CountyProgramsTests&quot;]</div>
+<div class="line"><span class="at">[08:02:56]</span> <span class="muted">report-accepted</span> seq=4 step=program-setting files=[] notes=CountyPrograms options (elr/ecr county, cdc-notification county-equivalent) with UsesCountyEquivalent and Pick, registered and declared in appsettings</div>
+<div class="line"><span class="at">[08:02:56]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=elr-county</div>
+<div class="line"><span class="at">[08:05:56]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:05:57]</span> <span class="muted">step-file-unchanged</span> step=elr-county file=Survsys.UnitTests/MessageCaseWriterTests.cs</div>
+<div class="line"><span class="at">[08:05:59]</span> <span class="muted">check-passed</span> step=elr-county argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[08:06:03]</span> <span class="muted">check-passed</span> step=elr-county argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~OruR01ParserTests|FullyQualifiedName~ElrIntakeServiceTests|FullyQualifiedName~MessageCaseWriterTests&quot;]</div>
+<div class="line"><span class="at">[08:06:03]</span> <span class="muted">report-accepted</span> seq=5 step=elr-county files=[] notes=Parser reads PID-11.9, intake stages PatientCounty; MessageCaseWriter stores it by the county list in the field the elr setting names and fills the other from the town (setting threaded from MessageProcessingService and MessageQueueQueries); unit MessageCaseWriterTests needed no change</div>
+<div class="line"><span class="at">[08:06:03]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=notification-fips</div>
+<div class="line"><span class="at">[08:07:01]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:07:04]</span> <span class="muted">check-passed</span> step=notification-fips argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[08:07:07]</span> <span class="muted">check-passed</span> step=notification-fips argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~OruR01GeneratorTests|FullyQualifiedName~CountyProgramsTests&quot;]</div>
+<div class="line"><span class="at">[08:07:08]</span> <span class="muted">report-accepted</span> seq=6 step=notification-fips files=[] notes=OruR01GenerationInput gains CountyFips; generator writes DEM165 as its FIPS code where mapped, as given otherwise; CountyPrograms.NotificationCounty picks by the cdc-notification setting</div>
+<div class="line"><span class="at">[08:07:08]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=codes-and-search</div>
+<div class="line"><span class="at">[08:09:14]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:09:15]</span> <span class="muted">step-file-unchanged</span> step=codes-and-search file=Survsys.UnitTests/CodeEndpointsTests.cs</div>
+<div class="line"><span class="at">[08:09:17]</span> <span class="muted">check-passed</span> step=codes-and-search argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[08:09:28]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:09:29]</span> <span class="muted">step-file-unchanged</span> step=codes-and-search file=Survsys.UnitTests/CodeEndpointsTests.cs</div>
+<div class="line"><span class="at">[08:09:31]</span> <span class="muted">check-passed</span> step=codes-and-search argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[08:09:34]</span> <span class="muted">check-passed</span> step=codes-and-search argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CodeEndpointsTests|FullyQualifiedName~CaseSearchEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[08:09:35]</span> <span class="muted">report-accepted</span> seq=7 step=codes-and-search files=[] notes=CodeResponse carries State/Fips/Kind; case search rows carry the current address's County and CountyEquivalent; unit CodeEndpointsTests (validation only) unchanged, the projection proven in the integration CodeEndpointsTests</div>
+<div class="line"><span class="at">[08:09:35]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=web-screens</div>
+<div class="line"><span class="at">[08:10:45]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:10:47]</span> <span class="muted">check-passed</span> step=web-screens argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[08:10:51]</span> <span class="muted">check-passed</span> step=web-screens argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~AddressLabelsTests&quot;]</div>
+<div class="line"><span class="at">[08:10:52]</span> <span class="muted">report-accepted</span> seq=8 step=web-screens files=[] notes=AddressLabels reads Survsys:CountyEquivalentLabel (Planning region by default); CodeSelect gains Kind; Demographics tab offers a county-equivalent picker for a CT address, person screen and Events show it beside the county; existing ids unchanged</div>
+<div class="line"><span class="at">[08:10:52]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=integration-save</div>
+<div class="line"><span class="at">[08:12:23]</span> <span class="muted">run-resumed</span> session=081 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:12:26]</span> <span class="muted">check-passed</span> step=integration-save argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[08:12:27]</span> <span class="muted">report-accepted</span> seq=9 step=integration-save files=[] notes=Integration test: a CT address fills county and planning region from its town, an unknown town takes the county from the zip, a given planning region is kept</div>
+<div class="line"><span class="at">[08:12:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[08:12:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[08:12:29]</span> <span class="muted">job-started</span> name=verification pid=48496 log=.dabbler/runs/s81/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:13:40]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s81/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:13:40]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[08:13:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[08:13:40]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[08:13:41]</span> <span class="muted">job-started</span> name=run of record: unit pid=49212 log=.dabbler/runs/s81/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:13:50]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s81/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:13:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[08:13:56]</span> <span class="muted">landed</span> commit=84440e25431a1284955a0c3a69a2b6f5caeb8b4a</div>
+<div class="line"><span class="at">[08:13:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[08:13:56]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[08:13:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[08:13:58]</span> <span class="muted">job-started</span> name=close pid=42752 log=.dabbler/runs/s81/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:14:08]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s81/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:14:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>6 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** ELR-created addresses are not normalized before Connecticut-town lookup.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Evidence:** `Survsys.Api/MessageCaseWriter.cs`, `Survsys.Data/AddressRules.cs`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Test case:** With a staged ELR message for a new address having `PatientState = &quot;ct&quot;`, `PatientCity = &quot;Hartford&quot;`, and default ELR county selection, promote the message. Expect the stored address to have `County = &quot;09003&quot;` and `CountyEquivalent = &quot;09110&quot;`. Today `AddAddress` only trims the state, and `FillConnecticutCounties` requires `address.State == &quot;CT&quot;`, so the planning region remains null. This is low-risk because conformant HL7 state codes are normally uppercase.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Nit:** The ELR integration test does not discriminate the documented FIPS-alias lookup branch from code lookup because every seeded Connecticut county’s `Code` equals its `Fips`.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Evidence:** `Survsys.Api/MessageCaseWriter.cs`, `Survsys.IntegrationTests/MessageCaseWriterTests.cs`</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Test case:** Seed an active county-list row whose `Code` differs from its `Fips`, stage an ELR message whose `PatientCounty` is that FIPS value, then promote under each ELR setting. Expect the relevant address field to store the row’s `Code`, not the incoming FIPS alias. Today’s implementation appears to support this via `(value.Code == carried || value.Fips == carried)`, but the visible tests would also pass if the `Fips` predicate were removed.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>7s</td><td>1826</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

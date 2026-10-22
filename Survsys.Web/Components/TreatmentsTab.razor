@@ -1,0 +1,322 @@
+@* The Treatments tab of a case morbidity report: the treatments given to the
+   case's person. The records are listed; a form below adds a record or edits
+   one, choosing a treatment from the case condition's treatment list — or from
+   the whole catalogue, with the show-all switch on — and entering the start
+   and stop dates, the dose and a comment. The date and reference rules stay
+   the API tier's; a record it refuses is shown as the client's message rather
+   than re-checked here.
+
+   Every element carries a stable identifier: the edit and remove buttons for a
+   record are treatments-tab-edit-{id} and treatments-tab-remove-{id}, and the
+   form fields are treatments-tab-treatment, treatments-show-all,
+   treatments-tab-start, -stop, -dose and -comment. *@
+@using System.Globalization
+@inject TreatmentsClient Api
+
+@if (records is null)
+{
+    <MudProgressCircular id="treatments-tab-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (listFailure is { } badList)
+    {
+        <MudAlert id="treatments-tab-list-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @badList
+        </MudAlert>
+    }
+
+    <MudPaper id="treatments-tab-list" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Treatments</MudText>
+
+        <MudSimpleTable id="treatments-tab-table" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Treatment</th>
+                    <th>Started</th>
+                    <th>Stopped</th>
+                    <th>Dose</th>
+                    <th>Comment</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (records.Count == 0)
+                {
+                    <tr id="treatments-tab-empty">
+                        <td colspan="6">No treatments are recorded for this case.</td>
+                    </tr>
+                }
+                @foreach (var record in records)
+                {
+                    <tr data-treatment="@record.Id">
+                        <td data-treatment-name>@record.TreatmentName</td>
+                        <td data-treatment-start>@Day(record.TreatmentDate)</td>
+                        <td data-treatment-stop>@Day(record.StopTreatmentDate)</td>
+                        <td data-treatment-dose>@record.Dose</td>
+                        <td data-treatment-comment>@record.Comment</td>
+                        <td>
+                            <MudButton id="@($"treatments-tab-edit-{record.Id}")" Variant="Variant.Text"
+                                       Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => Edit(record))">
+                                Edit
+                            </MudButton>
+                            <MudButton id="@($"treatments-tab-remove-{record.Id}")" Variant="Variant.Text"
+                                       Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => Remove(record.Id))">
+                                Remove
+                            </MudButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+
+    <MudPaper id="treatments-tab-form" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">@(editingId is null ? "Add a treatment" : "Edit treatment")</MudText>
+
+        @if (saved is { } ok)
+        {
+            <MudAlert id="treatments-tab-saved" Severity="Severity.Success" Class="mb-2">@ok</MudAlert>
+        }
+        @if (saveFailure is { } bad)
+        {
+            <MudAlert id="treatments-tab-error" Severity="Severity.Error" Class="mb-2">@bad</MudAlert>
+        }
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int?" @bind-Value="treatmentId" id="treatments-tab-treatment" Label="Treatment"
+                           Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var treatment in Offered)
+                    {
+                        <MudSelectItem T="int?" Value="@treatment.Id">@treatment.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSwitch T="bool" @bind-Value="showAll" id="treatments-show-all" Color="Color.Primary"
+                           Label="Show every treatment, not only this condition's" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="startDate" id="treatments-tab-start" Label="Start date"
+                              Variant="Variant.Outlined" InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="stopDate" id="treatments-tab-stop" Label="Stop date"
+                              Variant="Variant.Outlined" InputType="InputType.Date" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="dose" id="treatments-tab-dose" Label="Dose"
+                              Variant="Variant.Outlined" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="comment" id="treatments-tab-comment" Label="Comment"
+                              Variant="Variant.Outlined" Lines="2" />
+            </MudItem>
+        </MudGrid>
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="treatments-tab-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                @(editingId is null ? "Add treatment" : "Save treatment")
+            </MudButton>
+            @if (editingId is not null)
+            {
+                <MudButton id="treatments-tab-cancel" Variant="Variant.Outlined" Disabled="@saving"
+                           OnClick="@Reset">
+                    Cancel
+                </MudButton>
+            }
+        </div>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>The case these treatments are recorded against, from the shell.</summary>
+    [Parameter, EditorRequired]
+    public int ReportId { get; set; }
+
+    /// <summary>The case's condition, whose treatment list the picker offers first.</summary>
+    [Parameter, EditorRequired]
+    public int ConditionId { get; set; }
+
+    private const string DateForm = "yyyy-MM-dd";
+
+    private List<TreatmentRecordResponse>? records;
+
+    private IReadOnlyList<TreatmentResponse> forCondition = [];
+
+    private IReadOnlyList<TreatmentResponse> catalogue = [];
+
+    private bool showAll;
+
+    private string? listFailure;
+
+    private int? editingId;
+
+    private int? treatmentId;
+
+    private string? startDate;
+
+    private string? stopDate;
+
+    private string? dose;
+
+    private string? comment;
+
+    private bool saving;
+
+    private string? saved;
+
+    private string? saveFailure;
+
+    /// <summary>
+    /// The treatments the picker offers: the condition's list, or the whole
+    /// catalogue with the switch on — and, either way, the one a record being
+    /// edited names, so editing never loses it.
+    /// </summary>
+    private IEnumerable<TreatmentResponse> Offered =>
+        showAll || (treatmentId is { } chosen && forCondition.All(treatment => treatment.Id != chosen))
+            ? catalogue
+            : forCondition;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if ((await Api.ForCondition(ConditionId)).Value is { } listed)
+        {
+            forCondition = listed.Items;
+        }
+
+        if ((await Api.All()).Value is { } all)
+        {
+            catalogue = all.Items;
+        }
+
+        await LoadRecords();
+    }
+
+    private async Task LoadRecords()
+    {
+        var asked = await Api.Records(ReportId);
+        records = asked.Value ?? [];
+        listFailure = asked.Failure;
+    }
+
+    private void Edit(TreatmentRecordResponse record)
+    {
+        editingId = record.Id;
+        treatmentId = record.TreatmentId;
+        startDate = Written(record.TreatmentDate);
+        stopDate = Written(record.StopTreatmentDate);
+        dose = record.Dose;
+        comment = record.Comment;
+        saved = null;
+        saveFailure = null;
+    }
+
+    private void Reset()
+    {
+        editingId = null;
+        treatmentId = null;
+        startDate = null;
+        stopDate = null;
+        dose = null;
+        comment = null;
+    }
+
+    private async Task Save()
+    {
+        saved = null;
+        saveFailure = null;
+
+        if (treatmentId is not { } chosen)
+        {
+            saveFailure = "Choose a treatment before saving the record.";
+
+            return;
+        }
+
+        if (!TryDate(startDate, out var started) || !TryDate(stopDate, out var stopped))
+        {
+            saveFailure = "Give each date as yyyy-mm-dd, or leave it empty.";
+
+            return;
+        }
+
+        saving = true;
+
+        var request = new SaveTreatmentRecordRequest(chosen, started, stopped, Blank(dose), Blank(comment));
+
+        var answered = editingId is { } id
+            ? await Api.Update(id, request)
+            : await Api.Add(ReportId, request);
+
+        saving = false;
+
+        if (answered.Succeeded)
+        {
+            Reset();
+            saved = "The treatment record has been saved.";
+            await LoadRecords();
+
+            return;
+        }
+
+        saveFailure = answered.Failure;
+    }
+
+    private async Task Remove(int id)
+    {
+        saving = true;
+        saved = null;
+        saveFailure = null;
+
+        var why = await Api.Delete(id);
+
+        saving = false;
+
+        if (why is null)
+        {
+            if (editingId == id)
+            {
+                Reset();
+            }
+
+            await LoadRecords();
+
+            return;
+        }
+
+        saveFailure = why;
+    }
+
+    private static string Day(DateOnly? date) => Written(date) ?? string.Empty;
+
+    private static string? Written(DateOnly? date) =>
+        date?.ToString(DateForm, CultureInfo.InvariantCulture);
+
+    private static string? Blank(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static bool TryDate(string? typed, out DateOnly? date)
+    {
+        date = null;
+
+        if (string.IsNullOrWhiteSpace(typed))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParseExact(typed.Trim(), DateForm, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var parsed))
+        {
+            date = parsed;
+
+            return true;
+        }
+
+        return false;
+    }
+}
