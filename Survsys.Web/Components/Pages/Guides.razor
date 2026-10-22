@@ -1,0 +1,270 @@
+@* The notification guides, for their management: every guide by name and
+   version, each the way into its editor, a form to add one, and a guide's
+   JSON imported from a file — matched to a guide on file by its name and
+   version, or added as a new one. Below, the header variables every guide
+   uses unless it sets its own: added, edited, deleted, and exported and
+   imported as CSV with a preview. *@
+@page "/guides"
+@using System.Text.Json
+@inject GuidesClient Client
+@inject NavigationManager Navigation
+
+<PageTitle>Notification guides — Survsys</PageTitle>
+
+<MudText id="guides-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Notification guides
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="guides-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@whyNot</MudAlert>
+}
+
+@if (loading)
+{
+    <MudProgressCircular id="guides-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudPaper id="guides-new-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">New guide</MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="newName" id="guides-new-name" Label="Name" Variant="Variant.Outlined"
+                              Required="true" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="newVersion" id="guides-new-version" Label="Version" Variant="Variant.Outlined"
+                              MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-center">
+                <MudButton id="guides-new-save" Variant="Variant.Filled" Color="Color.Primary" Disabled="@saving"
+                           OnClick="@Create">
+                    Add
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+        <div class="d-flex gap-4 align-center mt-4">
+            <label for="guides-import">Import a guide's JSON</label>
+            <InputFile @key="chooser" id="guides-import" accept=".json" OnChange="@Import" />
+        </div>
+    </MudPaper>
+
+    <MudSimpleTable id="guides-table" Dense="true" Hover="true" Class="mb-8">
+        <thead>
+            <tr><th>Name</th><th>Version</th></tr>
+        </thead>
+        <tbody>
+            @if (guides.Count == 0)
+            {
+                <tr id="guides-empty"><td colspan="2">No guides have been added.</td></tr>
+            }
+            @foreach (var guide in guides)
+            {
+                <tr id="@($"guides-row-{guide.Id}")">
+                    <td><MudLink Href="@($"/guides/{guide.Id}")">@guide.Name</MudLink></td>
+                    <td>@guide.Version</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    <MudText id="guide-variable-defaults-heading" HtmlTag="h2" Typo="Typo.h5" GutterBottom="true">
+        Header variable defaults
+    </MudText>
+    <MudText Typo="Typo.body2" Class="mb-2">
+        An application or facility is written namespace^universal id^type, for example
+        CTDPH^2.16.840.1.114222.4.1.3650^ISO.
+    </MudText>
+    <div class="d-flex gap-4 align-start mb-4">
+        <MudButton id="guide-variable-defaults-export" Variant="Variant.Outlined" Href="/guides/variable-defaults/export"
+                   Target="_blank">
+            Export defaults CSV
+        </MudButton>
+        <div>
+            <ImportPreview Prefix="guide-variable-defaults-import" Label="Import defaults CSV"
+                           Import="@((csv, confirm) => Client.ImportDefaults(csv, confirm))" Imported="@Load" />
+        </div>
+    </div>
+
+    <MudPaper id="guide-variable-defaults-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="variable.Name" id="guide-variable-defaults-name" Label="Name"
+                              Variant="Variant.Outlined" Required="true" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="variable.DefaultValue" id="guide-variable-defaults-value" Label="Default value"
+                              Variant="Variant.Outlined" MaxLength="500" />
+            </MudItem>
+        </MudGrid>
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="guide-variable-defaults-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@SaveDefault">
+                Save
+            </MudButton>
+            <MudButton id="guide-variable-defaults-new" Variant="Variant.Outlined" Disabled="@saving"
+                       OnClick="@(() => { variable = new(); failure = null; })">
+                New
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    <MudSimpleTable id="guide-variable-defaults-table" Dense="true" Hover="true">
+        <thead>
+            <tr><th>Name</th><th>Default value</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var row in defaults)
+            {
+                <tr id="@($"guide-variable-defaults-row-{row.Id}")">
+                    <td>@row.Name</td>
+                    <td>@row.DefaultValue</td>
+                    <td>
+                        <MudButton id="@($"guide-variable-defaults-edit-{row.Id}")" Size="Size.Small" Variant="Variant.Text"
+                                   OnClick="@(() => { variable = new DefaultForm(row); failure = null; })">
+                            Edit
+                        </MudButton>
+                        <MudButton id="@($"guide-variable-defaults-delete-{row.Id}")" Size="Size.Small"
+                                   Variant="Variant.Text" Color="Color.Error" OnClick="@(() => DeleteDefault(row.Id))">
+                            Delete
+                        </MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+@code {
+    private const long MaxJsonBytes = 5 * 1024 * 1024;
+
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+    private IReadOnlyList<GuideRow> guides = [];
+
+    private IReadOnlyList<GuideVariableDefaultRow> defaults = [];
+
+    private DefaultForm variable = new();
+
+    private string? newName;
+
+    private string? newVersion;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    private int chooser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+        loading = false;
+    }
+
+    private async Task Load()
+    {
+        var loadedGuides = await Client.List();
+        var loadedDefaults = await Client.Defaults();
+
+        guides = loadedGuides.Value ?? [];
+        defaults = loadedDefaults.Value ?? [];
+        failure ??= loadedGuides.Failure ?? loadedDefaults.Failure;
+    }
+
+    private async Task Create()
+    {
+        saving = true;
+        failure = null;
+        var created = await Client.Create(new GuideRow(0, newName ?? "", newVersion));
+        saving = false;
+
+        if (created.Value is { } guide)
+        {
+            Navigation.NavigateTo($"/guides/{guide.Id}");
+            return;
+        }
+
+        failure = created.Failure;
+    }
+
+    private async Task Import(InputFileChangeEventArgs chosen)
+    {
+        failure = null;
+        chooser++;
+
+        GuideExport? export;
+        try
+        {
+            await using var stream = chosen.File.OpenReadStream(MaxJsonBytes);
+            export = await JsonSerializer.DeserializeAsync<GuideExport>(stream, Json);
+        }
+        catch (Exception unreadable) when (unreadable is JsonException or IOException)
+        {
+            failure = $"{GuidesClient.ImportFailurePrefix}: the file is not a guide's JSON.";
+            return;
+        }
+
+        if (export is null)
+        {
+            failure = $"{GuidesClient.ImportFailurePrefix}: the file is empty.";
+            return;
+        }
+
+        var imported = await Client.Import(export);
+        if (imported.Value is { } guide)
+        {
+            Navigation.NavigateTo($"/guides/{guide.Id}");
+            return;
+        }
+
+        failure = imported.Failure;
+    }
+
+    private async Task SaveDefault()
+    {
+        saving = true;
+        failure = null;
+        var saved = await Client.SaveDefault(variable.ToRow());
+        saving = false;
+
+        if (saved.Value is not null)
+        {
+            variable = new();
+            await Load();
+            return;
+        }
+
+        failure = saved.Failure;
+    }
+
+    private async Task DeleteDefault(int id)
+    {
+        failure = await Client.DeleteDefault(id);
+
+        if (failure is null)
+        {
+            await Load();
+        }
+    }
+
+    private sealed class DefaultForm
+    {
+        public DefaultForm()
+        {
+        }
+
+        public DefaultForm(GuideVariableDefaultRow row) => (Id, Name, DefaultValue) = (row.Id, row.Name, row.DefaultValue);
+
+        public int Id { get; }
+
+        public string? Name { get; set; }
+
+        public string? DefaultValue { get; set; }
+
+        public GuideVariableDefaultRow ToRow() => new(Id, Name ?? "", DefaultValue);
+    }
+}
