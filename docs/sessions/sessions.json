@@ -2222,9 +2222,9 @@
     {
       "number": 107,
       "title": "The integration suite before every release, on SQL Server in a container",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-22T15:42:56.886000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-22T16:07:44.661000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
