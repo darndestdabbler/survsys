@@ -1201,6 +1201,13 @@
       "what": "step 'ecr-case-integration-tests': its files",
       "reason": "The eICR R3.1.1 sample lives in Survsys.UnitTests/Fixtures/Cda; the integration project links it as content so the tests can take it in",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 105,
+      "dateTime": "2026-10-22T12:59:38.074000-04:00",
+      "task": "Register eCR senders and show eCR data quality by sender and condition. Survsys.Messaging's CdaParser reads each document's creation time (ClinicalDocument/effectiveTime) into CdaDocument. Survsys.Data gets an ecr_sender table (the sender's id as an eICR's custodian names it, unique; its name; its onboarding stage, 'test', 'validation' or 'production'; and its one setting, whether its eICR results are written to a case as labs) and ecr_document gains the document's sender (its custodian, as parsed) and its creation time, in one migration, EcrSenders. EcrIntakeService records both at intake. The senders whose results are written as labs move from the EcrIntakeOptions.LabSenders configuration list onto the sender rows, read where EcrCaseSettings is built. Survsys.Api adds /api/ecr-senders (list, add, save, delete, validated: id and name required, the id unique, the stage one of the three), gated as reference data, and GET /api/ecr-quality (optional feed and received-from/to dates) behind the privilege the eCR queue uses, answering one row per sender and condition: the sender is an eICR's own and an RR's eICR's, none for an RR with no eICR; the condition is each mapped catalogue condition (else the code's display name) an eICR's RRs keep, none for an eICR without one; and each row gives the eICRs and RRs received, their validation errors and warnings, the average and longest receipt latency (an eICR's received time less its creation time), the eICRs with no RR and the RRs with no eICR. A static EcrQuality computes the rows from the documents in memory. Survsys.Web adds an eCR senders screen (list, add, edit, delete) and an eCR data quality screen (the rows in a table with the feed and date filters), each with a nav entry. Integration tests prove the quality figures over seeded documents and the sender endpoints against SQL Server.",
+      "releasable": false
     }
   ]
 }

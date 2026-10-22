@@ -27,6 +27,7 @@ public class CdaParserTests
 
         Assert.Equal(CdaParser.EicrKind, document.Kind);
         Assert.Equal("R1.1", document.IgVersion);
+        Assert.Equal(new DateTimeOffset(2016, 11, 7, 9, 44, 21, TimeSpan.FromHours(-5)), document.Created);
         Assert.Equal("db734647-fc99-424c-a864-7e3cda82e703", document.DocumentId);
         Assert.Null(document.SetId);
         Assert.Null(document.VersionNumber);
@@ -100,6 +101,7 @@ public class CdaParserTests
 
         Assert.Equal(CdaParser.EicrKind, document.Kind);
         Assert.Equal("R3.1.1", document.IgVersion);
+        Assert.Equal(new DateTimeOffset(2020, 11, 7, 9, 44, 21, TimeSpan.FromHours(-5)), document.Created);
         Assert.Equal("2.16.840.1.113883.9.9.9.9.9^db734647-fc99-424c-a864-7e3cda82e704", document.DocumentId);
         Assert.Equal("2.16.840.1.113883.3.117.1.1.5.2.1.1.1^31", document.SetId);
         Assert.Equal(2, document.VersionNumber);
@@ -135,6 +137,7 @@ public class CdaParserTests
 
         Assert.Equal(CdaParser.EicrKind, document.Kind);
         Assert.Equal("R3.1", document.IgVersion);
+        Assert.Equal(new DateTimeOffset(2020, 11, 7, 9, 44, 21, TimeSpan.FromHours(-5)), document.Created);
         Assert.Equal("2.16.840.1.113883.9.9.9.9.9^db734647-fc99-424c-a864-7e3cda82e704", document.DocumentId);
         Assert.Equal("2.16.840.1.113883.3.117.1.1.5.2.1.1.1^31", document.SetId);
         Assert.Equal(2, document.VersionNumber);
@@ -162,6 +165,7 @@ public class CdaParserTests
 
         Assert.Equal(CdaParser.RrKind, document.Kind);
         Assert.Equal("1.1", document.IgVersion);
+        Assert.Equal(new DateTimeOffset(2017, 11, 14, 12, 15, 0, TimeSpan.FromHours(-7)), document.Created);
         Assert.Equal("18218889-5d7d-47d4-b329-31bb1c28d3b3", document.DocumentId);
         Assert.Equal("ca316e79-aaf2-4e8c-aa5f-848093bb8bb1", document.EicrDocumentId);
         Assert.Equal("Everywoman", document.Patient.Person.LastName);
@@ -220,6 +224,28 @@ public class CdaParserTests
             """;
 
         Assert.Throws<Hl7ParseException>(() => new CdaParser().Read(eicr));
+    }
+
+    [Fact]
+    public void CreatedIsNullWhereTheEffectiveTimeIsAbsent()
+    {
+        var xml = XDocument.Parse(ReadFixture(EicrR311));
+        xml.Root!.Element(XName.Get("effectiveTime", "urn:hl7-org:v3"))!.Remove();
+
+        Assert.Null(new CdaParser().Read(xml.ToString()).Created);
+    }
+
+    [Theory]
+    [InlineData("20201107", 2020, 11, 7, 0, 0)]
+    [InlineData("202011070944", 2020, 11, 7, 9, 44)]
+    public void CreatedWithNoOffsetIsUtc(string value, int year, int month, int day, int hour, int minute)
+    {
+        var xml = XDocument.Parse(ReadFixture(EicrR311));
+        xml.Root!.Element(XName.Get("effectiveTime", "urn:hl7-org:v3"))!.SetAttributeValue("value", value);
+
+        Assert.Equal(
+            new DateTimeOffset(year, month, day, hour, minute, 0, TimeSpan.Zero),
+            new CdaParser().Read(xml.ToString()).Created);
     }
 
     [Fact]

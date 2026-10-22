@@ -169,6 +169,45 @@ public class EcrClientTests
         Assert.Equal("error", Assert.Single(detail.Value.Findings).Severity);
     }
 
+    [Theory]
+    [InlineData(null, "http://api.example.test/api/ecr-quality?from=2026-09-01&to=2026-09-30")]
+    [InlineData("production", "http://api.example.test/api/ecr-quality?from=2026-09-01&to=2026-09-30&feed=production")]
+    public async Task QualityAsksForTheDaysAndTheFeedWhenOneIsChosen(string? feed, string expected)
+    {
+        HttpRequestMessage? sent = null;
+        var client = new EcrClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(
+                HttpStatusCode.OK,
+                """
+                [{ "sender": "2.16.840.1.113883.4.6^88888888", "senderName": "Salem Medical Center",
+                   "condition": "Pertussis", "eicrs": 2, "rrs": 1, "errors": 0, "warnings": 3,
+                   "averageLatencyMinutes": 45.5, "longestLatencyMinutes": 60, "eicrsWithoutRr": 1,
+                   "rrsWithoutEicr": 0 }]
+                """);
+        }));
+
+        var quality = await client.Quality(feed, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 30));
+
+        Assert.Equal(expected, sent?.RequestUri?.ToString());
+        var row = Assert.Single(quality.Value!);
+        Assert.Equal("Salem Medical Center", row.SenderName);
+        Assert.Equal(2, row.Eicrs);
+        Assert.Equal(45.5, row.AverageLatencyMinutes);
+        Assert.Equal(1, row.EicrsWithoutRr);
+    }
+
+    [Fact]
+    public async Task AQualityFailureSaysSo()
+    {
+        var client = new EcrClient(Transport(_ => Answer(HttpStatusCode.InternalServerError, "{}")));
+
+        var quality = await client.Quality(null, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 30));
+
+        Assert.StartsWith(EcrClient.QualityFailurePrefix, quality.Failure);
+    }
+
     [Fact]
     public async Task AQueueFailureAndADocumentFailureSayWhichFailed()
     {

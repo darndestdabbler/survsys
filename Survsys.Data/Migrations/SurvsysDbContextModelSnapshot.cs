@@ -12365,6 +12365,10 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("nvarchar(10)")
                         .HasColumnName("case_status");
 
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
                     b.Property<string>("DocumentId")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -12397,6 +12401,11 @@ namespace Survsys.Data.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("received_at");
 
+                    b.Property<string>("Sender")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("sender");
+
                     b.Property<string>("SetId")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)")
@@ -12417,6 +12426,8 @@ namespace Survsys.Data.Migrations
                         .IsUnique();
 
                     b.HasIndex("EicrDocumentId");
+
+                    b.HasIndex("Sender");
 
                     b.HasIndex("SetId");
 
@@ -12472,6 +12483,45 @@ namespace Survsys.Data.Migrations
                     b.HasIndex("EcrDocumentId");
 
                     b.ToTable("ecr_rr_condition", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.EcrSender", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("sender_id");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("stage");
+
+                    b.Property<bool>("TakesLabResults")
+                        .HasColumnType("bit")
+                        .HasColumnName("takes_lab_results");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SenderId")
+                        .IsUnique();
+
+                    b.ToTable("ecr_sender", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.EcrValidationFinding", b =>

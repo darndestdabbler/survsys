@@ -12,6 +12,7 @@ namespace Survsys.Messaging;
 /// <param name="DocumentId">The document's id (ClinicalDocument/id), as <see cref="CdaParser.FormatId"/> writes it.</param>
 /// <param name="SetId">The id shared by every version of the document (ClinicalDocument/setId), or null where it has none.</param>
 /// <param name="VersionNumber">The document's version within its set (ClinicalDocument/versionNumber), or null where it has none.</param>
+/// <param name="Created">When the document was created (ClinicalDocument/effectiveTime), or null where it is absent or unreadable.</param>
 /// <param name="Custodian">The custodian organisation's id, else its name: the sender of the document.</param>
 /// <param name="Patient">The patient (recordTarget), with one order per result organizer.</param>
 /// <param name="Encounter">The encounter the document reports (componentOf/encompassingEncounter), or null.</param>
@@ -28,6 +29,7 @@ public record CdaDocument(
     string DocumentId,
     string? SetId,
     int? VersionNumber,
+    DateTimeOffset? Created,
     string? Custodian,
     ParsedPatient Patient,
     CdaEncounter? Encounter,

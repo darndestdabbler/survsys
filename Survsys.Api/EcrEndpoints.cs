@@ -13,7 +13,8 @@ namespace Survsys.Api;
 /// newest first, paged and filterable by feed. <c>GET /api/ecr-documents/{id}</c>:
 /// one document with its pair, the eICR rendered through the HL7 CDA
 /// stylesheet beside the RR's conditions and both documents' validation
-/// findings.
+/// findings. <c>GET /api/ecr-quality</c>: the data quality figures by sender
+/// and condition, as <see cref="EcrQuality"/> makes them.
 /// </summary>
 /// <remarks>
 /// An RR's conditions are routed as <see cref="EcrReportability"/> decides,
@@ -136,6 +137,11 @@ public static class EcrEndpoints
             .WithName("GetEcrPersonMatches")
             .WithSummary("An eICR's patient and the people on file who may be them, best first.");
 
+        routes.MapGet("/api/ecr-quality", GetEcrQuality)
+            .WithName("GetEcrQuality")
+            .WithSummary("The eCR data quality figures by sender and condition: the documents received, their "
+                + "validation findings, receipt latency, and the eICRs with no RR and RRs with no eICR.");
+
         routes.MapPost("/api/ecr-documents/{id:int}/case", LinkEcrCase)
             .WithName("LinkEcrCase")
             .WithSummary("Settles an eICR held for review: writes it to the cases of the person a reviewer names, "
@@ -161,6 +167,24 @@ public static class EcrEndpoints
         }
 
         return TypedResults.Ok(await documents.Page(feed, review, page, pageSize, cancellationToken));
+    }
+
+    private static async Task<Results<Ok<IReadOnlyList<EcrQualityRowResponse>>, ProblemHttpResult>> GetEcrQuality(
+        EcrQueries documents,
+        string? feed = null,
+        DateOnly? from = null,
+        DateOnly? to = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (from > to)
+        {
+            return TypedResults.Problem(
+                detail: $"from {from:yyyy-MM-dd} is after to {to:yyyy-MM-dd}.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "The window asked for is not one this endpoint can return.");
+        }
+
+        return TypedResults.Ok(await documents.Quality(feed, from, to, cancellationToken));
     }
 
     private static async Task<Results<Ok<EcrDocumentDetailResponse>, ProblemHttpResult>> GetEcrDocument(
@@ -254,12 +278,12 @@ internal sealed class EcrQueries(
     }
 
     /// <summary>A reviewer's settling of an eICR, as <see cref="EcrCaseWriter.Link"/> makes it.</summary>
-    public Task<EcrLinkOutcome?> Link(
+    public async Task<EcrLinkOutcome?> Link(
         int id, LinkEcrCaseRequest request, DateTimeOffset now, CancellationToken cancellationToken) =>
-        EcrCaseWriter.Link(
+        await EcrCaseWriter.Link(
             database,
             parser,
-            new EcrCaseSettings(counties.Value, options.Value.LabSenders),
+            new EcrCaseSettings(counties.Value, await EcrIntakeService.LabSenders(database, cancellationToken)),
             id,
             request.PersonId,
             request.PersonConditionId,
@@ -305,6 +329,114 @@ internal sealed class EcrQueries(
 
         return new PagedResult<EcrDocumentResponse>(rows, page, pageSize, total);
     }
+
+    /// <summary>
+    /// The quality figures, as <see cref="EcrQuality.Rows"/> makes them, over
+    /// the documents received from <paramref name="from"/> to
+    /// <paramref name="to"/> (UTC dates, inclusive, either open), on one feed
+    /// when a feed is given, each paired with its counterpart whenever that was
+    /// received; each registered sender's name filled in.
+    /// </summary>
+    public async Task<IReadOnlyList<EcrQualityRowResponse>> Quality(
+        string? feed, DateOnly? from, DateOnly? to, CancellationToken cancellationToken)
+    {
+        var onFeed = database.EcrDocuments.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(feed))
+        {
+            var wanted = feed.Trim();
+            onFeed = onFeed.Where(document => document.Feed == wanted);
+        }
+
+        var inWindow = onFeed;
+        if (from is { } first)
+        {
+            var start = first.ToDateTime(TimeOnly.MinValue);
+            inWindow = inWindow.Where(document => document.ReceivedAt >= start);
+        }
+
+        if (to is { } last)
+        {
+            var end = last.AddDays(1).ToDateTime(TimeOnly.MinValue);
+            inWindow = inWindow.Where(document => document.ReceivedAt < end);
+        }
+
+        var counted = await QualityDocuments(inWindow, cancellationToken);
+        var countedIds = counted.Select(document => document.Id).ToList();
+        var eicrIdsOfRrs = counted
+            .Where(document => document.Kind == EcrDocument.RrKind)
+            .Select(document => document.EicrDocumentId)
+            .OfType<string>()
+            .Distinct()
+            .ToList();
+        var countedEicrIds = counted
+            .Where(document => document.Kind == EcrDocument.EicrKind)
+            .Select(document => document.DocumentId)
+            .ToList();
+        var counterparts = await QualityDocuments(
+            onFeed.Where(document => !countedIds.Contains(document.Id)
+                && ((document.Kind == EcrDocument.EicrKind && eicrIdsOfRrs.Contains(document.DocumentId))
+                    || (document.Kind == EcrDocument.RrKind && countedEicrIds.Contains(document.EicrDocumentId!)))),
+            cancellationToken);
+
+        var documents = counted.Concat(counterparts.Select(document => document with { Counted = false })).ToList();
+        var rrIds = documents
+            .Where(document => document.Kind == EcrDocument.RrKind)
+            .Select(document => document.Id)
+            .ToList();
+        var conditions = (await database.EcrRrConditions
+                .Where(condition => rrIds.Contains(condition.EcrDocumentId))
+                .Select(condition => new
+                {
+                    condition.EcrDocumentId,
+                    Name = (
+                            from mapping in database.EcrConditionMappings
+                            join catalogue in database.Conditions on mapping.ConditionId equals catalogue.Id
+                            where mapping.CodeSystem == condition.CodeSystem && mapping.Code == condition.Code
+                            select catalogue.Name)
+                        .FirstOrDefault()
+                        ?? condition.DisplayName
+                        ?? condition.Code,
+                })
+                .ToListAsync(cancellationToken))
+            .Where(condition => condition.Name is not null)
+            .ToLookup(condition => condition.EcrDocumentId, condition => condition.Name!);
+
+        var rows = EcrQuality.Rows(documents
+            .Select(document => document with { Conditions = conditions[document.Id].ToList() })
+            .ToList());
+
+        var senderIds = rows.Select(row => row.Sender).OfType<string>().Distinct().ToList();
+        var names = await database.EcrSenders
+            .Where(sender => senderIds.Contains(sender.SenderId))
+            .ToDictionaryAsync(sender => sender.SenderId, sender => sender.Name, cancellationToken);
+
+        return rows
+            .Select(row => row with
+            {
+                SenderName = row.Sender is { } sender && names.TryGetValue(sender, out var name) ? name : null,
+            })
+            .ToList();
+    }
+
+    /// <summary>The documents as the quality figures read them, counted, with no conditions yet.</summary>
+    private static async Task<List<EcrQualityDocument>> QualityDocuments(
+        IQueryable<EcrDocument> documents, CancellationToken cancellationToken) =>
+        await documents
+            .Select(document => new EcrQualityDocument(
+                document.Id,
+                document.Kind,
+                document.Feed,
+                document.DocumentId,
+                document.Sender,
+                document.ReceivedAt,
+                document.CreatedAt,
+                document.Findings.Count(finding =>
+                    finding.Severity == CdaValidator.Fatal || finding.Severity == CdaValidator.Error),
+                document.Findings.Count(finding => finding.Severity == CdaValidator.Warning),
+                document.EicrDocumentId,
+                Array.Empty<string>(),
+                true))
+            .ToListAsync(cancellationToken);
 
     /// <summary>
     /// One document with its pair, or null where no document has that id: for

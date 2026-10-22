@@ -116,7 +116,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 102 | eCR validation and the eICR viewer | no | 2026-10-22 |
 | 103 | Reportability and condition mapping | no | 2026-10-22 |
 | 104 | Cases from eCR | no | 2026-10-22 |
-| 105 | eCR senders and data quality | — | not declared |
+| 105 | eCR senders and data quality | no | 2026-10-22 |
 | 106 | Phase 13 walkthroughs | — | not declared |
 | 107 | The integration suite before every release, on SQL Server in a container | — | not declared |
 | 108 | Release 0.14.0 (release: 0.14.0) | — | not declared |
@@ -928,3 +928,9 @@ Turn a reportable eICR into a case. Survsys.Data gets two tables in one migratio
 
 - 2026-10-22 — step 'ecr-case-values': its files: The reviewer's link endpoint must pass the county setting and lab senders to EcrCaseWriter.Link, so EcrQueries in EcrEndpoints.cs takes them (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-22 — step 'ecr-case-integration-tests': its files: The eICR R3.1.1 sample lives in Survsys.UnitTests/Fixtures/Cda; the integration project links it as content so the tests can take it in (claude-code (anthropic, claude-opus-5-5))
+
+### Session 105 — eCR senders and data quality
+
+**Releasable: no.**
+
+Register eCR senders and show eCR data quality by sender and condition. Survsys.Messaging's CdaParser reads each document's creation time (ClinicalDocument/effectiveTime) into CdaDocument. Survsys.Data gets an ecr_sender table (the sender's id as an eICR's custodian names it, unique; its name; its onboarding stage, 'test', 'validation' or 'production'; and its one setting, whether its eICR results are written to a case as labs) and ecr_document gains the document's sender (its custodian, as parsed) and its creation time, in one migration, EcrSenders. EcrIntakeService records both at intake. The senders whose results are written as labs move from the EcrIntakeOptions.LabSenders configuration list onto the sender rows, read where EcrCaseSettings is built. Survsys.Api adds /api/ecr-senders (list, add, save, delete, validated: id and name required, the id unique, the stage one of the three), gated as reference data, and GET /api/ecr-quality (optional feed and received-from/to dates) behind the privilege the eCR queue uses, answering one row per sender and condition: the sender is an eICR's own and an RR's eICR's, none for an RR with no eICR; the condition is each mapped catalogue condition (else the code's display name) an eICR's RRs keep, none for an eICR without one; and each row gives the eICRs and RRs received, their validation errors and warnings, the average and longest receipt latency (an eICR's received time less its creation time), the eICRs with no RR and the RRs with no eICR. A static EcrQuality computes the rows from the documents in memory. Survsys.Web adds an eCR senders screen (list, add, edit, delete) and an eCR data quality screen (the rows in a table with the feed and date filters), each with a nav entry. Integration tests prove the quality figures over seeded documents and the sender endpoints against SQL Server.

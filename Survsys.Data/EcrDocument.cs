@@ -55,6 +55,15 @@ public class EcrDocument
     /// <summary>The document as it arrived, unchanged.</summary>
     public string RawXml { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The document's sender: its custodian's id (else name) as parsed, which
+    /// an <see cref="EcrSender"/> is matched by; null where it names none.
+    /// </summary>
+    public string? Sender { get; set; }
+
+    /// <summary>When the document says it was created (ClinicalDocument/effectiveTime), in UTC, or null.</summary>
+    public DateTime? CreatedAt { get; set; }
+
     /// <summary>The name of the file the document was read from.</summary>
     public string? Source { get; set; }
 

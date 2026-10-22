@@ -113,6 +113,7 @@ builder.Services.AddHttpClient<MessageQueueClient>(http => http.BaseAddress = ap
 builder.Services.AddHttpClient<EcrClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<EcrConditionMappingsClient>(http => http.BaseAddress = api)
     .AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<EcrSendersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<NotificationQueueClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<ExportLogClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<AuditClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();

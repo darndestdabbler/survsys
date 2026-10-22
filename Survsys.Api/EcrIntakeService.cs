@@ -34,13 +34,6 @@ public sealed class EcrIntakeOptions
     /// not kept, so none is kept until this is set.
     /// </summary>
     public string[] ResponsibleAgencyIds { get; set; } = [];
-
-    /// <summary>
-    /// The senders, by the custodian id an eICR names, whose results are
-    /// written to a case as labs. Every other sender's are not, their labs
-    /// arriving by ELR, so none is written until this is set.
-    /// </summary>
-    public string[] LabSenders { get; set; } = [];
 }
 
 /// <summary>
@@ -50,7 +43,7 @@ public sealed class EcrIntakeOptions
 /// </summary>
 /// <remarks>
 /// A document is read by <see cref="CdaParser"/> for its kind, id, set and
-/// version, and for the eICR an RR responds to; the rest of what the parser
+/// version, its sender and creation time, and for the eICR an RR responds to; the rest of what the parser
 /// reads is the later eCR sessions'. An RR's conditions this jurisdiction is
 /// to act on are kept with it, as <see cref="EcrReportability"/> decides. Each
 /// is validated by
@@ -115,6 +108,8 @@ public sealed class EcrIntakeService(
             SetId = document.SetId,
             VersionNumber = document.VersionNumber,
             EicrDocumentId = document.EicrDocumentId,
+            Sender = document.Custodian,
+            CreatedAt = document.Created?.UtcDateTime,
             RawXml = raw,
             Source = source,
             ReceivedAt = DateTime.UtcNow,
@@ -158,6 +153,23 @@ public sealed class EcrIntakeService(
         database.EcrDocuments.Add(document);
         await database.SaveChangesAsync(cancellationToken);
         return document;
+    }
+
+    /// <summary>
+    /// The senders, by the custodian id an eICR names, whose results are
+    /// written to a case as labs: those registered with
+    /// <see cref="EcrSender.TakesLabResults"/> set. Every other sender's labs
+    /// arrive by ELR.
+    /// </summary>
+    public static async Task<IReadOnlyCollection<string>> LabSenders(
+        SurvsysDbContext database, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+
+        return await database.EcrSenders
+            .Where(sender => sender.TakesLabResults)
+            .Select(sender => sender.SenderId)
+            .ToListAsync(cancellationToken);
     }
 
     /// <summary>
@@ -309,7 +321,7 @@ public sealed class EcrIntakeService(
                             parser,
                             database,
                             thresholds,
-                            new EcrCaseSettings(counties.Value, options.Value.LabSenders),
+                            new EcrCaseSettings(counties.Value, await LabSenders(database, stoppingToken)),
                             stored,
                             DateTimeOffset.Now,
                             stoppingToken);

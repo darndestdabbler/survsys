@@ -125,6 +125,7 @@ public sealed class CdaParser : IMessageParser
             documentId,
             FormatId(root.Element(V3 + "setId")),
             int.TryParse(Attribute(root.Element(V3 + "versionNumber"), "value"), out var number) ? number : null,
+            Instant(Attribute(root.Element(V3 + "effectiveTime"), "value")),
             Custodian(root),
             Patient(root),
             Encounter(root),
@@ -426,6 +427,48 @@ public sealed class CdaParser : IMessageParser
         return padded is not null
             && DateOnly.TryParseExact(padded, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
             ? date
+            : null;
+    }
+
+    /// <summary>
+    /// The instant an HL7 timestamp names, to the precision it gives — at
+    /// least a day, the missing time of day read as zeros and any fraction of
+    /// a second dropped — at its offset, else at UTC; null where it is not one.
+    /// </summary>
+    private static DateTimeOffset? Instant(string? timestamp)
+    {
+        if (timestamp is null)
+        {
+            return null;
+        }
+
+        var digits = new string(timestamp.TakeWhile(char.IsAsciiDigit).ToArray());
+        var zone = timestamp.IndexOfAny(['+', '-']);
+        var offset = TimeSpan.Zero;
+        if (zone >= 0)
+        {
+            var sign = timestamp[zone] == '-' ? -1 : 1;
+            var zoneDigits = timestamp[(zone + 1)..];
+            if (zoneDigits.Length != 4
+                || !int.TryParse(zoneDigits[..2], NumberStyles.None, CultureInfo.InvariantCulture, out var hours)
+                || !int.TryParse(zoneDigits[2..], NumberStyles.None, CultureInfo.InvariantCulture, out var minutes)
+                || hours > 14
+                || minutes > 59)
+            {
+                return null;
+            }
+
+            offset = sign * new TimeSpan(hours, minutes, 0);
+        }
+
+        return digits.Length is >= 8 and <= 14 && digits.Length % 2 == 0
+            && DateTime.TryParseExact(
+                digits.PadRight(14, '0'),
+                "yyyyMMddHHmmss",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var time)
+            ? new DateTimeOffset(time, offset)
             : null;
     }
 

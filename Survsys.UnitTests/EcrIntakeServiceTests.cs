@@ -45,6 +45,16 @@ public class EcrIntakeServiceTests
     }
 
     [Fact]
+    public void StageRecordsTheSenderAndWhenTheDocumentWasCreated()
+    {
+        var document = EcrIntakeService.Stage(
+            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.EicrR11), EcrDocument.ProductionFeed, null, NoAgencies);
+
+        Assert.Equal("2.16.840.1.113883.4.6^88888888", document.Sender);
+        Assert.Equal(new DateTime(2016, 11, 7, 14, 44, 21, DateTimeKind.Utc), document.CreatedAt);
+    }
+
+    [Fact]
     public void StageRecordsTheEicrAnRrRespondsTo()
     {
         var document = EcrIntakeService.Stage(

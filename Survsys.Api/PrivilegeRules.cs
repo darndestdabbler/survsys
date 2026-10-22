@@ -49,7 +49,7 @@ public static class PrivilegeRules
     [
         "/api/conditions", "/api/agencies", "/api/facilities", "/api/core-elements", "/api/codes", "/api/vocabulary",
         "/api/ct-towns", "/api/zip-codes", "/api/vaccines", "/api/notification-setup", "/api/forms", "/api/treatments",
-        "/api/ecr-condition-mappings",
+        "/api/ecr-condition-mappings", "/api/ecr-senders",
     ];
 
     private static readonly string[] AnySignedIn = ["/api/me"];
