@@ -2042,7 +2042,29 @@
         "identityProvenance": "direct"
       },
       "verificationVerdict": "VERIFIED",
-      "startCommit": "d640494983110d6316949d8999bca10044202e4f",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.23.0",
+      "startCommit": "d640494983110d6316949d8999bca10044202e4f"
+    },
+    {
+      "number": 99,
+      "title": "Phase 12 walkthroughs",
+      "status": "in-progress",
+      "startedAt": "2026-10-22T06:15:59.417000-04:00",
+      "completedAt": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "startCommit": "bc46ccc1dae77816fb1a32df5041cf68c3a317b3",
       "frameworkVersion": "3.23.0",
       "verification": {
         "rounds": 1,
@@ -2050,15 +2072,6 @@
         "verifierProvider": "openai",
         "transport": "api"
       }
-    },
-    {
-      "number": 99,
-      "title": "Phase 12 walkthroughs",
-      "status": "not-started",
-      "startedAt": null,
-      "completedAt": null,
-      "orchestrator": null,
-      "verificationVerdict": null
     },
     {
       "number": 100,

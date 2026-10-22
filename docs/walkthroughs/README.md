@@ -44,6 +44,10 @@ running Survsys. Perform them in any order; each one stands alone.
 | [Send a case to CDC](send-a-case-to-cdc.md) | A surveillance reviewer queues a case for CDC notification, processes the notification queue, finds the case gone from the queue and its export sent and accepted in the export log, and reads the message in the file written to the outbox. | `Survsys.E2ETests/SendACaseToCdcTests.cs` |
 | [Retract a notification](retract-a-notification.md) | A surveillance reviewer sends a case to CDC, retracts its accepted export from the export log, processes the queue again, and reads the retraction's message, whose OBR carries the notification status X. | `Survsys.E2ETests/RetractANotificationTests.cs` |
 | [Configure a notification guide](configure-a-notification-guide.md) | A surveillance administrator adds a PHIN variable to the catalogue, adds a notification guide, gives it that variable and its own sending facility in place of the default, saves both, and reads them back. | `Survsys.E2ETests/ConfigureANotificationGuideTests.cs` |
+| [Review a case's audit history](review-a-cases-audit-history.md) | A surveillance administrator sets a case's event name, opens the case's history of changes, and reads the update — who made it, when, and the event name before and after — and the insert that created the case. | `Survsys.E2ETests/ReviewACasesAuditHistoryTests.cs` |
+| [Run an ad-hoc report](run-an-ad-hoc-report.md) | An epidemiologist opens two Lyme disease cases, saves a view that selects them, counts the cases it selects grouped by agency on the Reports screen, and exports the counts as a CSV file. | `Survsys.E2ETests/RunAnAdHocReportTests.cs` |
+| [Send a case to IBIS](send-a-case-to-ibis.md) | An investigator opens a case, sends it to IBIS from the report's IBIS panel, and reads the date IBIS accepted it. | `Survsys.E2ETests/SendACaseToIbisTests.cs` |
+| [See a case classified on save](see-a-case-classified-on-save.md) | An investigator records a positive *Chlamydia trachomatis* culture on a chlamydia case with no status, and without a reload sees the header read the case confirmed and the finding that confirmed it beside the save. | `Survsys.E2ETests/SeeACaseClassifiedOnSaveTests.cs` |
 
 ## The contract every entry here is held to
 
@@ -82,7 +86,7 @@ LOINC mapping, which needs the sending lab their seed puts on file — run
 against a second pair of tiers over a database of their own, the first one's
 name with `_intake` on the end, with the intake and its assignment pass turned
 on. The whole run is the full walkthrough regression a release runs: it
-performs all thirty-six walkthroughs above, every one of them, with nothing
+performs all forty-three walkthroughs above, every one of them, with nothing
 selected out. It needs a reachable SQL
 Server; each walkthrough's own **Before you start** says what it needs to be
 performed by hand instead.

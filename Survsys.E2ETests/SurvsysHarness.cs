@@ -322,8 +322,19 @@ public class SurvsysHarness : IDisposable
     private static readonly string[] Fixtures = ["conditions.sql", "persons.sql", "staged-messages.sql", "notification-guide.sql"];
 
     /// <summary>
+    /// The stand-in for IBIS the main harness's API tier sends to, started by
+    /// <see cref="Settings"/>. It is not stopped with a harness, because the
+    /// intake harness's disposal runs this class's while the main harness's
+    /// tests may still be sending; its socket closes when the test run's
+    /// process exits.
+    /// </summary>
+    private static IbisStandIn? ibis;
+
+    /// <summary>
     /// What the main harness gives the API tier: the CDC file transport,
-    /// writing into <see cref="OutboxDirectory"/>, emptied here. The queue
+    /// writing into <see cref="OutboxDirectory"/>, emptied here, and an IBIS
+    /// endpoint that is a stand-in on this host's loopback, so a walkthrough
+    /// sends a case to IBIS without anything leaving this host. The queue
     /// worker stays off, as the shipped configuration leaves it, so a case is
     /// sent when a walkthrough presses Process now and not before.
     /// </summary>
@@ -336,11 +347,111 @@ public class SurvsysHarness : IDisposable
 
         Directory.CreateDirectory(OutboxDirectory);
 
+        ibis = IbisStandIn.Start();
+
         return new Dictionary<string, string>
         {
             ["CdcTransmission__Transport"] = "File",
             ["CdcTransmission__OutboxDirectory"] = OutboxDirectory,
+            ["IbisTransmission__Endpoint"] = ibis.Url,
         };
+    }
+
+    /// <summary>
+    /// A stand-in for IBIS on an OS-assigned loopback port, answering every
+    /// request <c>200 OK</c> — which is all the API tier's transmitter asks of
+    /// IBIS to call a case accepted. Plain sockets rather than a web host,
+    /// because this project hosts nothing else and one fixed answer needs no
+    /// more; it does not model IBIS refusing a case or timing out.
+    /// </summary>
+    private sealed class IbisStandIn
+    {
+        private readonly TcpListener listener;
+
+        private IbisStandIn(TcpListener listener)
+        {
+            this.listener = listener;
+            Url = $"http://127.0.0.1:{((System.Net.IPEndPoint)listener.LocalEndpoint).Port}/";
+        }
+
+        /// <summary>The address the API tier posts each case to.</summary>
+        public string Url { get; }
+
+        public static IbisStandIn Start()
+        {
+            var listener = new TcpListener(System.Net.IPAddress.Loopback, 0);
+            listener.Start();
+
+            var standIn = new IbisStandIn(listener);
+            _ = standIn.Accept();
+
+            return standIn;
+        }
+
+        private async Task Accept()
+        {
+            while (true)
+            {
+                TcpClient client;
+
+                try
+                {
+                    client = await listener.AcceptTcpClientAsync();
+                }
+                catch (Exception stopped) when (stopped is SocketException or ObjectDisposedException)
+                {
+                    return;
+                }
+
+                _ = Answer(client);
+            }
+        }
+
+        /// <summary>
+        /// Reads one request — its headers, then as much body as they say —
+        /// so the reply never cuts off a request still being sent, and
+        /// answers it accepted.
+        /// </summary>
+        private static async Task Answer(TcpClient client)
+        {
+            using (client)
+            {
+                var stream = client.GetStream();
+                var received = new List<byte>();
+                var buffer = new byte[4096];
+                var headersEnd = -1;
+                var length = 0;
+
+                while (headersEnd < 0 || received.Count < headersEnd + length)
+                {
+                    var read = await stream.ReadAsync(buffer);
+
+                    if (read == 0)
+                    {
+                        return;
+                    }
+
+                    received.AddRange(buffer.AsSpan(0, read).ToArray());
+
+                    if (headersEnd < 0)
+                    {
+                        var text = System.Text.Encoding.ASCII.GetString(received.ToArray());
+                        var end = text.IndexOf("\r\n\r\n", StringComparison.Ordinal);
+
+                        if (end >= 0)
+                        {
+                            headersEnd = end + 4;
+                            length = text[..end].Split("\r\n")
+                                .Where(header => header.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase))
+                                .Select(header => int.Parse(header["Content-Length:".Length..].Trim()))
+                                .FirstOrDefault();
+                        }
+                    }
+                }
+
+                await stream.WriteAsync("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray());
+            }
+        }
     }
 
     /// <summary>
