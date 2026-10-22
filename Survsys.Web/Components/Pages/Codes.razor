@@ -1,0 +1,249 @@
+@* The reference code lists every coded field is chosen from, and their
+   maintenance: choose a list, see every code on it including the retired
+   ones, and add a code or edit one. A code is never deleted — it is retired by
+   clearing Active, so the records naming it still do. A test type also carries
+   the conditions it is offered for. Each list exports as CSV and imports from
+   it, previewed before it is saved; the CSV also carries the county list's
+   state, FIPS code and kind, which the form does not. *@
+@page "/codes"
+@inject CodesClient Client
+@inject ConditionsClient Conditions
+
+<PageTitle>Code lists — Survsys</PageTitle>
+
+<MudText id="codes-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Code lists
+</MudText>
+
+<MudSelect T="string" id="codes-list" Label="List" Variant="Variant.Outlined" Class="mb-4"
+           Value="@list" ValueChanged="@ChooseList">
+    @foreach (var name in CodeLists.All)
+    {
+        <MudSelectItem Value="@name">@Label(name)</MudSelectItem>
+    }
+</MudSelect>
+
+<div class="d-flex gap-4 align-start mb-4">
+    <MudButton id="codes-export" Variant="Variant.Outlined" Href="@($"/codes/{list}/export")" Target="_blank">
+        Export @Label(list) CSV
+    </MudButton>
+    <div>
+        <ImportPreview @key="list" Prefix="codes-import" Label="@($"Import {Label(list)} CSV")"
+                       Import="@((csv, confirm) => Client.Import(list, csv, confirm))" Imported="@Load" />
+    </div>
+</div>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="codes-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+<MudPaper id="code-form" Elevation="1" Class="pa-4 mb-4">
+    <MudText id="code-form-heading" Typo="Typo.h6" GutterBottom="true">
+        @(editingId is null ? "New code" : "Edit code")
+    </MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="3">
+            <MudTextField @bind-Value="code" id="code-code" Label="Code"
+                          Variant="Variant.Outlined" Required="true" MaxLength="100" />
+        </MudItem>
+        <MudItem xs="12" sm="5">
+            <MudTextField @bind-Value="description" id="code-description" Label="Description"
+                          Variant="Variant.Outlined" MaxLength="400" />
+        </MudItem>
+        <MudItem xs="12" sm="2">
+            <MudNumericField @bind-Value="sortOrder" id="code-sort-order" Label="Sort order"
+                             Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12" sm="2">
+            <MudCheckBox @bind-Value="active" id="code-active" Label="Active" />
+        </MudItem>
+    </MudGrid>
+
+    @if (list == CodeLists.TestType)
+    {
+        <MudText Typo="Typo.h6" Class="mt-4" GutterBottom="true">Conditions</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            The conditions this test type is offered for. A condition with no test
+            type ticked is offered every test type.
+        </MudText>
+
+        @foreach (var condition in conditions)
+        {
+            <MudCheckBox T="bool" id="@($"code-condition-{condition.Id}")"
+                         Value="@conditionIds.Contains(condition.Id)"
+                         ValueChanged="@(on => ToggleCondition(condition.Id, on))"
+                         Label="@condition.Name" />
+        }
+    }
+
+    <div class="d-flex gap-2 mt-4">
+        <MudButton id="code-save" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@saving" OnClick="@Save">
+            Save
+        </MudButton>
+        <MudButton id="code-new" Variant="Variant.Outlined" Disabled="@saving" OnClick="@Clear">
+            New code
+        </MudButton>
+    </div>
+</MudPaper>
+
+@if (loading)
+{
+    <MudProgressCircular id="codes-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudSimpleTable id="codes-table" Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Description</th>
+                <th>Sort order</th>
+                <th>Active</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in codes)
+            {
+                <tr id="@($"code-row-{row.Id}")">
+                    <td>@row.Code</td>
+                    <td>@row.Description</td>
+                    <td>@row.SortOrder</td>
+                    <td>@(row.Active ? "Yes" : "No")</td>
+                    <td>
+                        <MudButton id="@($"code-edit-{row.Id}")" Size="Size.Small"
+                                   Variant="Variant.Text" OnClick="@(() => Edit(row))">
+                            Edit
+                        </MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+@code {
+    private string list = CodeLists.All[0];
+
+    private IReadOnlyList<CodeResponse> codes = [];
+
+    private IReadOnlyList<ConditionResponse> conditions = [];
+
+    private int? editingId;
+
+    private string? code;
+
+    private string? description;
+
+    private int sortOrder;
+
+    private bool active = true;
+
+    private readonly HashSet<int> conditionIds = [];
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if ((await Conditions.Page(1, 200)).Value is { } loaded)
+        {
+            conditions = loaded.Items;
+        }
+
+        await Load();
+    }
+
+    /// <summary>A list's name as a person reads it: specimen_source is "Specimen source".</summary>
+    private static string Label(string name) =>
+        char.ToUpperInvariant(name[0]) + name[1..].Replace('_', ' ');
+
+    private async Task ChooseList(string chosen)
+    {
+        list = chosen;
+        Clear();
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        loading = true;
+
+        var loaded = await Client.List(list, inactive: true);
+        codes = loaded.Value ?? [];
+        failure = loaded.Failure;
+
+        loading = false;
+    }
+
+    private void Edit(CodeResponse row)
+    {
+        editingId = row.Id;
+        code = row.Code;
+        description = row.Description;
+        sortOrder = row.SortOrder;
+        active = row.Active;
+        conditionIds.Clear();
+        conditionIds.UnionWith(row.ConditionIds);
+        failure = null;
+    }
+
+    private void Clear()
+    {
+        editingId = null;
+        code = null;
+        description = null;
+        sortOrder = 0;
+        active = true;
+        conditionIds.Clear();
+        failure = null;
+    }
+
+    private void ToggleCondition(int conditionId, bool offered)
+    {
+        if (offered)
+        {
+            conditionIds.Add(conditionId);
+        }
+        else
+        {
+            conditionIds.Remove(conditionId);
+        }
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        failure = null;
+
+        var request = new SaveCodeRequest(
+            code,
+            description,
+            sortOrder,
+            active,
+            list == CodeLists.TestType ? conditionIds.ToList() : null);
+
+        var saved = editingId is { } id
+            ? await Client.Update(id, request)
+            : await Client.Create(list, request);
+
+        saving = false;
+
+        if (saved.Succeeded)
+        {
+            Clear();
+            await Load();
+
+            return;
+        }
+
+        failure = saved.Failure;
+    }
+}
