@@ -1800,8 +1800,9 @@ Windows-only feature. This comes before release 0.14.0 so that release is the
 first one the integration suite gates.*
 
 *Non-goals: ordinary sessions keep the unit suite as their run of record, and
-no CI pipeline runs the integration suite. No password, connection string or
-other credential is written to any file. No product code changes. If the first
+no CI pipeline runs the integration suite. Nothing about the container is
+treated as a secret: it holds only test data and can be discarded at any
+time. No product code changes. If the first
 run in the container fails because of the product rather than the container,
 the failure is recorded in the session's notes and a repair session is planned
 before the release.*
@@ -1812,9 +1813,10 @@ before the release.*
    it on the first run. It waits until the server accepts a SQL sign-in,
    giving up with a clear message after a bounded wait. It sets
    `SURVSYS_SQLSERVER` and `SURVSYS_E2E_SQLSERVER` for the command it runs.
-   The `sa` password comes from an environment variable and nowhere else, and
-   the script refuses to start without it. A second switch stops the
-   container.
+   The `sa` password is a fixed throwaway written in the script, so the
+   operator stores nothing. The port is published on `127.0.0.1` only, so
+   nothing beyond the machine reaches the server. A second switch stops the
+   container, and a third removes it.
 3. `dabbler.yaml`: the integration suite becomes one a release session must
    run whole and green, while an ordinary session's run of record stays the
    unit suite. Its command runs `dotnet test` through the step 2 script, so
@@ -1824,8 +1826,8 @@ before the release.*
    router can express neither, the release gate becomes a documented step of
    the release session, and the notes say so.
 4. `docs/technical/README.md`: the suites table and its paragraph describe
-   the container. That covers the image, the environment variables, the
-   script, and the Podman machine memory the suite needs (4 GiB, where 2 GiB
+   the container. That covers the image, the script, the environment
+   variables it sets, and the Podman machine memory the suite needs (4 GiB, where 2 GiB
    is SQL Server's bare minimum).
 5. The whole integration suite run in the container by the step 2 script.
    Failures caused by the container (sign-in, timing, collation) are fixed
