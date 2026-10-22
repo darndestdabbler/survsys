@@ -189,7 +189,9 @@ public static class EncounterEndpoints
 /// <remarks>
 /// Internal, as every slice's queries are. It reads the cases and the
 /// facilities directly rather than through their slices' queries, as
-/// <c>VaccineQueries</c> reads the cases.
+/// <c>VaccineQueries</c> reads the cases. Adding, saving over and removing an
+/// encounter runs <see cref="CaseClassifier"/> over its case, because a
+/// facility encounter is what the influenza rule reads as a hospitalization.
 /// </remarks>
 internal sealed class EncounterQueries(SurvsysDbContext database)
 {
@@ -239,6 +241,7 @@ internal sealed class EncounterQueries(SurvsysDbContext database)
         Fill(encounter, request);
         database.Encounters.Add(encounter);
         await database.SaveChangesAsync(cancellationToken);
+        await new CaseClassifier(database).ClassifyAsync(personConditionId, cancellationToken);
 
         return await Respond(encounter, cancellationToken);
     }
@@ -262,15 +265,31 @@ internal sealed class EncounterQueries(SurvsysDbContext database)
 
         Fill(encounter, request);
         await database.SaveChangesAsync(cancellationToken);
+        await new CaseClassifier(database).ClassifyAsync(encounter.PersonConditionId, cancellationToken);
 
         return await Respond(encounter, cancellationToken);
     }
 
     /// <summary>Deletes the encounter and answers whether one was there to delete.</summary>
-    public async Task<bool> Delete(int id, CancellationToken cancellationToken) =>
+    public async Task<bool> Delete(int id, CancellationToken cancellationToken)
+    {
+        var reportId = await database.Encounters
+            .Where(encounter => encounter.Id == id)
+            .Select(encounter => (int?)encounter.PersonConditionId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (reportId is not { } caseId)
+        {
+            return false;
+        }
+
         await database.Encounters
             .Where(encounter => encounter.Id == id)
-            .ExecuteDeleteAsync(cancellationToken) > 0;
+            .ExecuteDeleteAsync(cancellationToken);
+        await new CaseClassifier(database).ClassifyAsync(caseId, cancellationToken);
+
+        return true;
+    }
 
     /// <summary>Whether a case this tier knows has that id.</summary>
     public Task<bool> CaseExists(int id, CancellationToken cancellationToken) =>

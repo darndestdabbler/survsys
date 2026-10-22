@@ -224,6 +224,9 @@ app.UseAuthorization();
 // 404 on every route about it; CaseAccess says which routes those are.
 app.UseCaseAccess();
 
+// A route that classified a case answers with what was decided.
+app.UseCaseClassificationHeader();
+
 // What the walkthrough harness waits on before its first click. This tier
 // answers here only once startup has finished -- the migration gate above
 // included -- so a 200 means it is serving a database at its own migration

@@ -39,10 +39,79 @@ public class CaseClassifierTests(SqlServerFixture server)
 
             var note = Assert.Single(await context.Notes.Where(candidate => candidate.PersonConditionId == reportId).ToListAsync());
             Assert.Equal(NoteEndpoints.AdministrativeNoteType, note.NoteType);
+            Assert.StartsWith(CaseClassifier.NotePrefix, note.Text, StringComparison.Ordinal);
             Assert.Contains("Chlamydia", note.Text, StringComparison.Ordinal);
 
             await Classify(reportId);
             Assert.Single(await context.Notes.Where(candidate => candidate.PersonConditionId == reportId).ToListAsync());
+        }
+        finally
+        {
+            await Clear(personId);
+        }
+    }
+
+    [Fact]
+    public async Task ClassifyAsyncReadsAnOrganismEnteredFromTheOrganismCodeList()
+    {
+        var (personId, reportId) = await Open(Chlamydia, "CT");
+
+        try
+        {
+            await using (var context = server.NewContext())
+            {
+                var organism = await context.CodeValues
+                    .Where(row => row.List == "organism" && row.Code == "Chlamydia trachomatis")
+                    .Select(row => row.Id)
+                    .SingleAsync();
+                var lab = context.Labs.Add(new Lab { PersonId = personId, PersonConditionId = reportId }).Entity;
+                await context.SaveChangesAsync();
+
+                var test = context.LabTests.Add(new LabTest { LabId = lab.Id, TestTypeId = await CultureId(context) }).Entity;
+                await context.SaveChangesAsync();
+
+                context.LabTestResults.Add(new LabTestResult { LabTestId = test.Id, OrganismId = organism, TestResult = "POSITIVE" });
+                await context.SaveChangesAsync();
+            }
+
+            await Classify(reportId);
+
+            await using var read = server.NewContext();
+            var report = await read.PersonConditions.SingleAsync(candidate => candidate.Id == reportId);
+            Assert.Equal(CaseStatusRules.ConfirmedCode, report.CaseStatus);
+        }
+        finally
+        {
+            await Clear(personId);
+        }
+    }
+
+    [Fact]
+    public async Task ClassifyAsyncStrikesTheNoteOfAFindingThatNoLongerHolds()
+    {
+        var (personId, reportId) = await Open(Chlamydia, "CT");
+
+        try
+        {
+            await Classify(reportId);
+            await Classify(reportId);
+
+            await using var context = server.NewContext();
+            var noLab = Assert.Single(await context.Notes.Where(candidate => candidate.PersonConditionId == reportId).ToListAsync());
+            Assert.Equal(CaseClassifier.NotePrefix + ClassificationRules.NoValidLab, noLab.Text);
+            Assert.False(noLab.Struckthrough);
+
+            await AddPositiveCulture(personId, reportId);
+            await Classify(reportId);
+
+            var notes = await context.Notes.AsNoTracking()
+                .Where(candidate => candidate.PersonConditionId == reportId)
+                .ToListAsync();
+            Assert.Equal(2, notes.Count);
+            Assert.True(notes.Single(candidate => candidate.Id == noLab.Id).Struckthrough);
+            var confirmed = notes.Single(candidate => candidate.Id != noLab.Id);
+            Assert.False(confirmed.Struckthrough);
+            Assert.Contains("Chlamydia", confirmed.Text, StringComparison.Ordinal);
         }
         finally
         {

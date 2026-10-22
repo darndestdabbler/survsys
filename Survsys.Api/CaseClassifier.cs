@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Survsys.Contracts;
 using Survsys.Data;
 
 namespace Survsys.Api;
@@ -11,13 +12,20 @@ namespace Survsys.Api;
 /// <remarks>
 /// Called after the save that changed the case, by every route that saves one
 /// except the status route — a status a person sets is theirs — so the rules
-/// read the labs and address as stored. It saves what it changes itself. A
-/// note is written only where no note on the case already says the same, so
-/// saving a case twice does not repeat it. A contact the rules close gets a
-/// workflow history row where the save has a signed-in user to name.
+/// read the labs and address as stored. It saves what it changes itself. Each
+/// finding is its own note, its text starting <see cref="NotePrefix"/>; a
+/// finding is noted only where no unstruck note on the case already records
+/// it, so saving a case twice does not repeat it, and a classification note
+/// whose finding no longer holds is struck. A contact the rules close gets a
+/// workflow history row where the save has a signed-in user to name. What it
+/// decided is left on <see cref="SurvsysDbContext.Classified"/>, which
+/// <see cref="CaseClassificationHeader"/> answers the request with.
 /// </remarks>
 public sealed class CaseClassifier(SurvsysDbContext database)
 {
+    /// <summary>How the text of a note the classifier writes starts, which is what marks it as one.</summary>
+    public const string NotePrefix = "Classification: ";
+
     /// <summary>Classifies the case with that id; a case not on file is left alone.</summary>
     public async Task ClassifyAsync(int reportId, CancellationToken cancellationToken)
     {
@@ -52,9 +60,15 @@ public sealed class CaseClassifier(SurvsysDbContext database)
             join result in database.LabTestResults on test.Id equals result.LabTestId
             where lab.PersonConditionId == reportId
             select new ClassificationLab(
+                // A message's result names a vocabulary organism; one entered
+                // on the Laboratory tab names the organism code list's entry.
                 database.VocabMasterOrganisms
                     .Where(organism => organism.Id == result.OrganismId)
                     .Select(organism => organism.OrganismName)
+                    .FirstOrDefault()
+                ?? database.CodeValues
+                    .Where(organism => organism.List == CodeLists.Organism && organism.Id == result.OrganismId)
+                    .Select(organism => organism.Code)
                     .FirstOrDefault(),
                 database.CodeValues
                     .Where(type => type.Id == test.TestTypeId)
@@ -102,9 +116,20 @@ public sealed class CaseClassifier(SurvsysDbContext database)
             }
         }
 
-        var text = string.Join(Environment.NewLine, outcome.Findings);
-        if (text.Length > 0 && !await database.Notes.AnyAsync(
-            note => note.PersonConditionId == reportId && !note.Struckthrough && note.Text == text, cancellationToken))
+        var findings = outcome.Findings.Select(finding => NotePrefix + finding).ToList();
+        var noted = await database.Notes
+            .Where(note => note.PersonConditionId == reportId
+                && !note.Struckthrough
+                && note.NoteType == NoteEndpoints.AdministrativeNoteType
+                && note.Text!.StartsWith(NotePrefix))
+            .ToListAsync(cancellationToken);
+
+        foreach (var stale in noted.Where(note => !findings.Contains(note.Text!)))
+        {
+            stale.Struckthrough = true;
+        }
+
+        foreach (var text in findings.Except(noted.Select(note => note.Text!)))
         {
             database.Notes.Add(new Note
             {
@@ -116,5 +141,6 @@ public sealed class CaseClassifier(SurvsysDbContext database)
         }
 
         await database.SaveChangesAsync(cancellationToken);
+        database.Classified = (reportId, outcome);
     }
 }

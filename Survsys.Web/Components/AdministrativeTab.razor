@@ -40,6 +40,7 @@
     <MudAlert id="administrative-saved" Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
         @stored
     </MudAlert>
+    <ClassificationFindings ReportId="@Report.Id" Id="administrative-classification-findings" />
 }
 
 @if (failure is { } whyNot)

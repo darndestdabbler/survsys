@@ -68,6 +68,11 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddCircuitServicesAccessor();
 builder.Services.AddTransient<ApiTokenHandler>();
 
+// What a case's save classified, read off the answer of the clients whose
+// saves classify and kept for the circuit's report page.
+builder.Services.AddScoped<CaseClassifications>();
+builder.Services.AddTransient<CaseClassificationHandler>();
+
 // The trailing slash matters: a base address without one would drop the last
 // path segment when a relative request is resolved against it, so an API
 // hosted under a path prefix would be asked the wrong URL.
@@ -86,10 +91,14 @@ builder.Services.AddHttpClient<AgenciesClient>(http => http.BaseAddress = api).A
 builder.Services.AddHttpClient<FacilitiesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<CoreElementsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<PersonConditionsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
-builder.Services.AddHttpClient<ClinicalClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
-builder.Services.AddHttpClient<InvestigationClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
-builder.Services.AddHttpClient<AdministrativeClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
-builder.Services.AddHttpClient<LabsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<ClinicalClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>()
+    .AddHttpMessageHandler<CaseClassificationHandler>();
+builder.Services.AddHttpClient<InvestigationClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>()
+    .AddHttpMessageHandler<CaseClassificationHandler>();
+builder.Services.AddHttpClient<AdministrativeClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>()
+    .AddHttpMessageHandler<CaseClassificationHandler>();
+builder.Services.AddHttpClient<LabsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>()
+    .AddHttpMessageHandler<CaseClassificationHandler>();
 builder.Services.AddHttpClient<ExposuresClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<NotesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<AttachmentsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
@@ -109,7 +118,8 @@ builder.Services.AddHttpClient<OutbreaksClient>(http => http.BaseAddress = api).
 builder.Services.AddHttpClient<FormsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<TreatmentsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<VaccinesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
-builder.Services.AddHttpClient<EncountersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<EncountersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>()
+    .AddHttpMessageHandler<CaseClassificationHandler>();
 builder.Services.AddHttpClient<CodesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<VocabularyClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<ValueSetsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();

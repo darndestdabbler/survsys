@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Survsys.Api;
 using Survsys.Contracts;
 using Survsys.Data;
 using Xunit;
@@ -149,6 +150,74 @@ public class EncounterEndpointsTests(SqlServerFixture server) : IDisposable
 
         using var removed = await api.CreateClient().DeleteAsync("/api/cases/encounters/987654321");
         Assert.Equal(HttpStatusCode.NotFound, removed.StatusCode);
+    }
+
+    [Fact]
+    public async Task AFacilityEncounterReclassifiesAnInfluenzaHospitalizationCase()
+    {
+        const string influenza = "Influenza-associated hospitalization (session 97 test)";
+        const string recorded = CaseClassifier.NotePrefix + "Influenza: the hospitalization is recorded.";
+        const string missing = CaseClassifier.NotePrefix + "Auto Validation Error: Influenza: no hospitalization is recorded.";
+        int caseId = 0;
+        int facilityId = 0;
+        int personId = 0;
+
+        try
+        {
+            // A person with no address, so the case is not out of state and
+            // the influenza rule is the one that speaks.
+            await using (var context = server.NewContext())
+            {
+                var condition = context.Conditions.Add(new Condition { Name = influenza, Active = true }).Entity;
+                var person = context.Persons.Add(new Person { LastName = "Encounter", FirstName = "Session97" }).Entity;
+                await context.SaveChangesAsync();
+                personId = person.Id;
+
+                using var opened = await api.CreateClient().PostAsJsonAsync(
+                    "/api/person-conditions", new CreatePersonConditionRequest(person.Id, condition.Id), Json);
+                opened.EnsureSuccessStatusCode();
+                caseId = (await opened.Content.ReadFromJsonAsync<PersonConditionResponse>(Json))!.Id;
+            }
+
+            facilityId = await CreateFacility("Influenza Test Hospital");
+            Assert.Equal([missing], await UnstruckNotes(caseId));
+
+            var created = await Add(caseId, new SaveEncounterRequest(new DateOnly(2026, 3, 2), "IP", facilityId));
+            Assert.Equal([recorded], await UnstruckNotes(caseId));
+
+            using var removed = await api.CreateClient().DeleteAsync($"/api/cases/encounters/{created.Id}");
+            Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
+            Assert.Equal([missing], await UnstruckNotes(caseId));
+        }
+        finally
+        {
+            await using (var context = server.NewContext())
+            {
+                await context.Notes.Where(note => note.PersonConditionId == caseId).ExecuteDeleteAsync();
+            }
+
+            await DeleteCase(caseId);
+            await DeleteFacility(facilityId);
+
+            await using (var context = server.NewContext())
+            {
+                await context.Persons.Where(person => person.Id == personId).ExecuteDeleteAsync();
+                await context.Conditions.Where(condition => condition.Name == influenza).ExecuteDeleteAsync();
+            }
+        }
+    }
+
+    /// <summary>The texts of the case's unstruck classification notes.</summary>
+    private async Task<List<string?>> UnstruckNotes(int caseId)
+    {
+        await using var context = server.NewContext();
+
+        return await context.Notes
+            .Where(note => note.PersonConditionId == caseId
+                && !note.Struckthrough
+                && note.Text!.StartsWith(CaseClassifier.NotePrefix))
+            .Select(note => note.Text)
+            .ToListAsync();
     }
 
     private async Task<EncounterResponse> Add(int personConditionId, SaveEncounterRequest request)

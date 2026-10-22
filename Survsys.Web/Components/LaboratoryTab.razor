@@ -38,6 +38,7 @@
     <MudAlert id="lab-entry-saved" Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
         @stored
     </MudAlert>
+    <ClassificationFindings ReportId="@ReportId" Id="lab-classification-findings" />
 }
 
 @if (entryFailure is { } whyNot)

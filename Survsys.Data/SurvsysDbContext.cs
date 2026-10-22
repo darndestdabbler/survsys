@@ -22,6 +22,13 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options, IAudit
     /// <summary>The user the change audit names for this context's saves, if any.</summary>
     public int? AuditUserId => auditUser?.UserId;
 
+    /// <summary>
+    /// The last case this context's request classified and what the rules
+    /// decided for it, so the request can answer with it; null until a case
+    /// is classified.
+    /// </summary>
+    public (int ReportId, ClassificationOutcome Outcome)? Classified { get; set; }
+
     public DbSet<Condition> Conditions => Set<Condition>();
 
     public DbSet<Agency> Agencies => Set<Agency>();

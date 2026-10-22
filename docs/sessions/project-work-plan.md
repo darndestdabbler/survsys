@@ -108,18 +108,19 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 94 | Audit with its user and values, and its screens | no | 2026-10-21 |
 | 95 | Jurisdiction-scoped access and sign-in protection | no | 2026-10-21 |
 | 96 | Classification rules on save | no | 2026-10-21 |
-| 97 | IBIS, ad-hoc reporting and system configuration | — | not declared |
-| 98 | Phase 12 walkthroughs | — | not declared |
-| 99 | Release 0.13.0 (release: 0.13.0) | — | not declared |
-| 100 | eICR and RR parsing and document intake | — | not declared |
-| 101 | eCR validation and the eICR viewer | — | not declared |
-| 102 | Reportability and condition mapping | — | not declared |
-| 103 | Cases from eCR | — | not declared |
-| 104 | eCR senders and data quality | — | not declared |
-| 105 | Phase 13 walkthroughs | — | not declared |
-| 106 | Release 0.14.0 (release: 0.14.0) | — | not declared |
-| 107 | The parity check and the documentation for 1.0.0 | — | not declared |
-| 108 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 97 | Classification shown on save, and on encounter saves | no | 2026-10-22 |
+| 98 | IBIS, ad-hoc reporting and system configuration | — | not declared |
+| 99 | Phase 12 walkthroughs | — | not declared |
+| 100 | Release 0.13.0 (release: 0.13.0) | — | not declared |
+| 101 | eICR and RR parsing and document intake | — | not declared |
+| 102 | eCR validation and the eICR viewer | — | not declared |
+| 103 | Reportability and condition mapping | — | not declared |
+| 104 | Cases from eCR | — | not declared |
+| 105 | eCR senders and data quality | — | not declared |
+| 106 | Phase 13 walkthroughs | — | not declared |
+| 107 | Release 0.14.0 (release: 0.14.0) | — | not declared |
+| 108 | The parity check and the documentation for 1.0.0 | — | not declared |
+| 109 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -869,3 +870,13 @@ Scope a user's case access to their agencies' jurisdictions and to cases shared 
 **Releasable: no.**
 
 Run the validation and classification rules of CLASSIFICATION_RULES.md on every save of a case. The case status vocabulary gains Out of State (OS), shown and selectable wherever a status is. A pure, static ClassificationRules in Survsys.Data takes what a case's rules read (its condition, its event type, its workflow state, its current status, the state and resolved agency of the patient's current address, and its labs' organism, test type and result) and returns an outcome: a status to set (or none), an agency to set (or none), whether a contact is closed, and one line per rule saying what it found. Out-of-state: a patient whose current address is in a state other than Connecticut is OS, and a case leaving OS is reclassified. Jurisdiction: a case with no agency takes the agency its patient's zip resolves to through ZipAgencyRules. Chlamydia: a positive Chlamydia trachomatis result on an approved test type is Confirmed, and no such lab is reported as "No valid lab exists". Gonorrhea: a positive Neisseria gonorrhoeae result is Confirmed, or Probable when its only evidence is a Gram stain. Hepatitis C: a positive HCV RNA, antigen or genotype result is Confirmed. Influenza: a case is reported when its hospitalization is not recorded. Syphilis and measles: no status is assigned (the document leaves them to the investigation), and the rule reports that. COVID-19: a positive PCR/amplification or antigen result is Confirmed, a positive IgG antibody with an epidemiological link Probable, and a positive test with neither symptoms nor link Not a Case. A rule sets a status only where the case has none or is OS, so a status a person set is never overwritten. Contacts of chlamydia, gonorrhea and syphilis cases are closed when they reach the LHD's acceptance, this workflow's counterpart of the legacy approved_by_lhd. In Survsys.Api a CaseClassifier loads those inputs, applies the outcome and records each rule's line as an administrative note on the case, which is how the user sees it on save; it is called at the end of every route that saves a case (create, clinical, investigation, administrative, workflow, labs and contact events) and not from the manual status route, which is the person's own setting.
+
+### Session 97 — Classification shown on save, and on encounter saves
+
+**Releasable: no.**
+
+Show the user each save's classification without a reload, and run the classifier on encounter saves. In Survsys.Api the CaseClassifier keeps the outcome of the case it classified (the report id, the case status after it and that save's findings) on the request's SurvsysDbContext, and one small middleware answers every route with a Case-Classification response header carrying it as JSON (a CaseClassificationResponse contract), which reaches the 204 deletes as well as the bodies, so every classifying route answers with its outcome without changing any response shape. The encounter add, edit and delete routes call the classifier, so an influenza hospitalization case's finding follows its facility encounters. The classifier writes one administrative note per finding, marked by a fixed prefix, and strikes any unstruck classification note on the case whose finding no longer holds; a finding that still holds keeps its one note. In Survsys.Web a delegating handler on the Clinical, Investigation, Administrative, Labs and Encounters clients reads the header into a circuit-scoped CaseClassifications service; the report page listens to it and re-reads the case so the header's case status is current, and a small ClassificationFindings component beside each of those tabs' save shows that save's findings. No existing element id changes. Unit tests cover the header middleware, the handler and the service; integration tests cover the header each classifying route answers with, an encounter save reclassifying an influenza case, and a stale note struck; a Playwright test adds a positive lab to a case with no status and sees Confirmed in the header and the findings beside the save without a reload.
+
+**Amended after acceptance:**
+
+- 2026-10-22 — step 'e2e-classified-on-save': its files: A result entered on the Laboratory tab stores its organism as an id on the organism code list, while the classifier read only vocab_master_organisms, so a hand-entered positive Chlamydia trachomatis lab never confirms the case; the classifier falls back to the organism code list, proven in CaseClassifierTests, and the E2E needs it (claude-code (anthropic, claude-opus-5-5))

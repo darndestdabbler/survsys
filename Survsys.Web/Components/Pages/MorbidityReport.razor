@@ -33,6 +33,7 @@
 @inject NotificationQueueClient Notifications
 @inject UsersClient Users
 @inject IDialogService Dialogs
+@inject CaseClassifications Classifications
 @implements IAsyncDisposable
 
 <PageTitle>@Title — Survsys</PageTitle>
@@ -594,6 +595,28 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     /// </summary>
     private int? loadedId;
 
+    protected override void OnInitialized() => Classifications.Classified += Reclassified;
+
+    /// <summary>
+    /// A tab's save classified a case: where it is this one, the case is read
+    /// again, so the header shows the status and agency the save left it with.
+    /// </summary>
+    private void Reclassified(CaseClassificationResponse classification)
+    {
+        if (classification.ReportId == loadedId)
+        {
+            _ = InvokeAsync(async () =>
+            {
+                if ((await Reports.Find(classification.ReportId)).Value is { } reread && reread.Id == loadedId)
+                {
+                    report = reread;
+                    statusCode = reread.CaseStatus;
+                    StateHasChanged();
+                }
+            });
+        }
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         canSeeHistory = AuthenticationState is { } state
@@ -806,6 +829,8 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     /// </summary>
     public async ValueTask DisposeAsync()
     {
+        Classifications.Classified -= Reclassified;
+
         if (editing && loadedId is { } held)
         {
             editing = false;

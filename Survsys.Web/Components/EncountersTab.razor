@@ -75,6 +75,7 @@ else
         @if (saved is { } ok)
         {
             <MudAlert id="encounters-tab-saved" Severity="Severity.Success" Class="mb-2">@ok</MudAlert>
+            <ClassificationFindings ReportId="@ReportId" Id="encounters-tab-classification-findings" />
         }
         @if (saveFailure is { } bad)
         {
