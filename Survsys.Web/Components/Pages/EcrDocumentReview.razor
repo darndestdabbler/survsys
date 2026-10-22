@@ -63,6 +63,8 @@ else if (asked.Value is { } detail)
                                 <th>Determination</th>
                                 <th>Responsible agency</th>
                                 <th>Report within</th>
+                                <th>Maps to</th>
+                                <th>Routing</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -79,6 +81,21 @@ else if (asked.Value is { } detail)
                                     </td>
                                     <td>@Shown(condition.ResponsibleAgencyName, condition.ResponsibleAgencyId)</td>
                                     <td>@(condition.ReportingTimeframe ?? "—")</td>
+                                    <td data-ecr-mapped>@(condition.MappedConditionName ?? "—")</td>
+                                    <td data-ecr-routing>
+                                        @switch (condition.Routing)
+                                        {
+                                            case "reportable":
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Reportable</MudChip>
+                                                break;
+                                            case "review":
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Needs review</MudChip>
+                                                break;
+                                            default:
+                                                <span>Not kept</span>
+                                                break;
+                                        }
+                                    </td>
                                 </tr>
                             }
                         </tbody>

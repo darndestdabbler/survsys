@@ -20,6 +20,11 @@ public class EcrIntakeServiceTests
 
     private static readonly CdaValidator Validator = new();
 
+    private static readonly string[] NoAgencies = [];
+
+    /// <summary>The responsible agency the RR sample names.</summary>
+    private const string SampleAgency = "2.16.840.1.113883.4.6^12341234";
+
     [Theory]
     [InlineData(EcrDocument.TestFeed)]
     [InlineData(EcrDocument.ProductionFeed)]
@@ -27,7 +32,7 @@ public class EcrIntakeServiceTests
     {
         var raw = CdaParserTests.ReadFixture(CdaParserTests.EicrR311);
 
-        var document = EcrIntakeService.Stage(Parser, Validator, raw, feed, "eicr.xml");
+        var document = EcrIntakeService.Stage(Parser, Validator, raw, feed, "eicr.xml", NoAgencies);
 
         Assert.Same(raw, document.RawXml);
         Assert.Equal(feed, document.Feed);
@@ -43,33 +48,54 @@ public class EcrIntakeServiceTests
     public void StageRecordsTheEicrAnRrRespondsTo()
     {
         var document = EcrIntakeService.Stage(
-            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.RrR11), EcrDocument.ProductionFeed, null);
+            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.RrR11), EcrDocument.ProductionFeed, null, NoAgencies);
 
         Assert.Equal(EcrDocument.RrKind, document.Kind);
         Assert.Equal("ca316e79-aaf2-4e8c-aa5f-848093bb8bb1", document.EicrDocumentId);
     }
 
     [Fact]
+    public void StageKeepsTheRrConditionsThisJurisdictionIsResponsibleFor()
+    {
+        var rr = EcrIntakeService.Stage(
+            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.RrR11), EcrDocument.ProductionFeed, null, [SampleAgency]);
+        var forAnother = EcrIntakeService.Stage(
+            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.RrR11), EcrDocument.ProductionFeed, null, NoAgencies);
+        var eicr = EcrIntakeService.Stage(
+            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.EicrR11), EcrDocument.ProductionFeed, null, [SampleAgency]);
+
+        var kept = Assert.Single(rr.RrConditions);
+        Assert.Equal("3928002", kept.Code);
+        Assert.Equal("2.16.840.1.113883.6.96", kept.CodeSystem);
+        Assert.Equal("Zika virus disease (disorder)", kept.DisplayName);
+        Assert.Equal(EcrReportability.Reportable, kept.DeterminationCode);
+        Assert.Equal(SampleAgency, kept.ResponsibleAgencyId);
+        Assert.Equal("24 h", kept.ReportingTimeframe);
+        Assert.Empty(forAnother.RrConditions);
+        Assert.Empty(eicr.RrConditions);
+    }
+
+    [Fact]
     public void StageRefusesAnUnreadableDocumentAndAnUnknownFeed()
     {
         Assert.Throws<Hl7ParseException>(
-            () => EcrIntakeService.Stage(Parser, Validator, "not xml", EcrDocument.TestFeed, null));
+            () => EcrIntakeService.Stage(Parser, Validator, "not xml", EcrDocument.TestFeed, null, NoAgencies));
         Assert.Throws<ArgumentException>(
             () => EcrIntakeService.Stage(
-                Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.EicrR11), "staging", null));
+                Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.EicrR11), "staging", null, NoAgencies));
     }
 
     [Fact]
     public void StageKeepsAnInvalidDocumentWithItsFindings()
     {
         var valid = EcrIntakeService.Stage(
-            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.EicrR11), EcrDocument.TestFeed, null);
+            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.EicrR11), EcrDocument.TestFeed, null, NoAgencies);
         // The parser needs a document's id, so the invalid document lacks the
         // effectiveTime that the schema and the schematron both require instead.
         var xml = XDocument.Parse(CdaParserTests.ReadFixture(CdaParserTests.EicrR11));
         xml.Root!.Element(XName.Get("effectiveTime", "urn:hl7-org:v3"))!.Remove();
         var withoutEffectiveTime = xml.ToString();
-        var invalid = EcrIntakeService.Stage(Parser, Validator, withoutEffectiveTime, EcrDocument.TestFeed, null);
+        var invalid = EcrIntakeService.Stage(Parser, Validator, withoutEffectiveTime, EcrDocument.TestFeed, null, NoAgencies);
 
         Assert.NotEmpty(valid.Findings);
         Assert.All(valid.Findings, finding => Assert.Equal(CdaValidator.Warning, finding.Severity));
@@ -90,11 +116,11 @@ public class EcrIntakeServiceTests
             """<versionNumber value="2" />""",
             """<versionNumber value="3" />""");
 
-        var third = EcrIntakeService.Stage(Parser, Validator, resent, EcrDocument.ProductionFeed, null);
-        var second = EcrIntakeService.Stage(Parser, Validator, sample, EcrDocument.ProductionFeed, null);
-        var onTest = EcrIntakeService.Stage(Parser, Validator, sample, EcrDocument.TestFeed, null);
+        var third = EcrIntakeService.Stage(Parser, Validator, resent, EcrDocument.ProductionFeed, null, NoAgencies);
+        var second = EcrIntakeService.Stage(Parser, Validator, sample, EcrDocument.ProductionFeed, null, NoAgencies);
+        var onTest = EcrIntakeService.Stage(Parser, Validator, sample, EcrDocument.TestFeed, null, NoAgencies);
         var other = EcrIntakeService.Stage(
-            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.EicrR11), EcrDocument.ProductionFeed, null);
+            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.EicrR11), EcrDocument.ProductionFeed, null, NoAgencies);
 
         var versions = EcrIntakeService
             .Versions(new[] { third, other, onTest, second }.AsQueryable(), EcrDocument.ProductionFeed, second.SetId!)
@@ -108,15 +134,15 @@ public class EcrIntakeServiceTests
     public void AnRrIsPairedWithItsEicrWhicheverArrivesFirst()
     {
         var rr = EcrIntakeService.Stage(
-            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.RrR11), EcrDocument.ProductionFeed, null);
+            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.RrR11), EcrDocument.ProductionFeed, null, NoAgencies);
         var eicr = EcrIntakeService.Stage(
             Parser, Validator,
             CdaParserTests.ReadFixture(CdaParserTests.EicrR11)
                 .Replace("db734647-fc99-424c-a864-7e3cda82e703", "ca316e79-aaf2-4e8c-aa5f-848093bb8bb1"),
             EcrDocument.ProductionFeed,
-            null);
+            null, NoAgencies);
         var onTest = EcrIntakeService.Stage(
-            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.RrR11), EcrDocument.TestFeed, null);
+            Parser, Validator, CdaParserTests.ReadFixture(CdaParserTests.RrR11), EcrDocument.TestFeed, null, NoAgencies);
 
         foreach (var stored in new[] { new[] { rr, onTest, eicr }, new[] { eicr, onTest, rr } })
         {

@@ -14,6 +14,12 @@ namespace Survsys.Contracts;
 /// <param name="ResponsibleAgencyId">The responsible agency's id, or null.</param>
 /// <param name="ResponsibleAgencyName">The responsible agency's name, or null.</param>
 /// <param name="ReportingTimeframe">The time to report within, or null.</param>
+/// <param name="MappedConditionId">The catalogue condition the condition's code maps to, or null where it is unmapped.</param>
+/// <param name="MappedConditionName">That condition's name, or null.</param>
+/// <param name="Routing">
+/// "reportable" or "review" for a condition this jurisdiction keeps, or null
+/// for one it does not: another agency's, not reportable or with no rule met.
+/// </param>
 public record EcrConditionResponse(
     string RrDocumentId,
     string? ConditionCode,
@@ -24,4 +30,7 @@ public record EcrConditionResponse(
     string? LocationName,
     string? ResponsibleAgencyId,
     string? ResponsibleAgencyName,
-    string? ReportingTimeframe);
+    string? ReportingTimeframe,
+    int? MappedConditionId,
+    string? MappedConditionName,
+    string? Routing);

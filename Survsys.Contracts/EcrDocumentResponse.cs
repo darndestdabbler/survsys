@@ -18,6 +18,11 @@ namespace Survsys.Contracts;
 /// <param name="ReceivedAt">When the document was taken in, in UTC.</param>
 /// <param name="ErrorCount">How many fatal and error findings validation made on it.</param>
 /// <param name="WarningCount">How many warning findings validation made on it.</param>
+/// <param name="ReviewCount">
+/// For an RR, how many of the conditions kept for this jurisdiction go to
+/// review: may be reportable, or with no catalogue condition mapped to their
+/// code. Zero for an eICR.
+/// </param>
 public record EcrDocumentResponse(
     int Id,
     string Kind,
@@ -27,4 +32,5 @@ public record EcrDocumentResponse(
     string? Source,
     DateTime ReceivedAt,
     int ErrorCount,
-    int WarningCount);
+    int WarningCount,
+    int ReviewCount);

@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Survsys.Contracts;
 using Survsys.Data;
 using Survsys.Messaging;
@@ -15,6 +16,13 @@ namespace Survsys.Api;
 /// findings.
 /// </summary>
 /// <remarks>
+/// An RR's conditions are routed as <see cref="EcrReportability"/> decides,
+/// with each code looked up in the eCR condition mapping as it is read, so a
+/// code mapped after its RR arrived is routed by that mapping. The queue
+/// counts each RR's kept conditions that go to review and can be narrowed to
+/// the RRs that have one.
+/// </remarks>
+/// <remarks>
 /// Read-only: the intake service fills the queue, and what a reviewer does
 /// with a document is a later session's. Both are reads under <c>/api</c>, so
 /// <see cref="PrivilegeRules"/> asks the case-viewing privilege of them, as it
@@ -25,13 +33,32 @@ namespace Survsys.Api;
 /// </remarks>
 public static class EcrEndpoints
 {
-    /// <summary>The projection from a stored document to its queue-summary wire shape.</summary>
+    /// <summary>
+    /// Whether a kept RR condition goes to review, its code looked up in
+    /// <paramref name="mappings"/>: it may be reportable, or no mapping of its
+    /// code names a catalogue condition. Public because the unit suite proves it.
+    /// </summary>
+    public static Expression<Func<EcrRrCondition, bool>> InReview(IQueryable<EcrConditionMapping> mappings) =>
+        condition => condition.DeterminationCode != EcrReportability.Reportable
+            || !mappings.Any(mapping => mapping.ConditionId != null
+                && mapping.CodeSystem == condition.CodeSystem
+                && mapping.Code == condition.Code);
+
+    /// <summary>
+    /// The projection from a stored document to its queue-summary wire shape,
+    /// its kept conditions' codes looked up in <paramref name="mappings"/>.
+    /// </summary>
     /// <remarks>
-    /// An <see cref="Expression"/>, so EF Core translates the finding counts
-    /// into the <c>SELECT</c>. Public because the unit suite proves it.
+    /// An <see cref="Expression"/>, so EF Core translates the finding and
+    /// review counts into the <c>SELECT</c>. Public because the unit suite
+    /// proves it.
     /// </remarks>
-    public static readonly Expression<Func<EcrDocument, EcrDocumentResponse>> DocumentToResponse =
-        document => new EcrDocumentResponse(
+    public static Expression<Func<EcrDocument, EcrDocumentResponse>> DocumentToResponse(
+        IQueryable<EcrConditionMapping> mappings)
+    {
+        var inReview = InReview(mappings);
+
+        return document => new EcrDocumentResponse(
             document.Id,
             document.Kind,
             document.Feed,
@@ -41,28 +68,48 @@ public static class EcrEndpoints
             document.ReceivedAt,
             document.Findings.Count(finding =>
                 finding.Severity == CdaValidator.Fatal || finding.Severity == CdaValidator.Error),
-            document.Findings.Count(finding => finding.Severity == CdaValidator.Warning));
+            document.Findings.Count(finding => finding.Severity == CdaValidator.Warning),
+            document.RrConditions.AsQueryable().Count(inReview));
+    }
 
     /// <summary>
-    /// The conditions of one parsed RR as the document screen shows them.
-    /// Public because the unit suite proves it.
+    /// The conditions of one parsed RR as the document screen shows them, each
+    /// with the catalogue condition <paramref name="mappings"/> maps its code
+    /// to and its routing for <paramref name="responsibleAgencyIds"/>. Public
+    /// because the unit suite proves it.
     /// </summary>
-    public static IReadOnlyList<EcrConditionResponse> Conditions(CdaDocument rr)
+    public static IReadOnlyList<EcrConditionResponse> Conditions(
+        CdaDocument rr,
+        IReadOnlyCollection<string> responsibleAgencyIds,
+        IReadOnlyCollection<EcrConditionMappingResponse> mappings)
     {
         ArgumentNullException.ThrowIfNull(rr);
+        ArgumentNullException.ThrowIfNull(mappings);
 
         return rr.Conditions
-            .Select(condition => new EcrConditionResponse(
-                rr.DocumentId,
-                condition.Condition?.Code,
-                condition.Condition?.DisplayName,
-                condition.Determination?.Code,
-                condition.Determination?.DisplayName,
-                condition.Location?.Code,
-                condition.Location?.DisplayName,
-                condition.ResponsibleAgencyId,
-                condition.ResponsibleAgencyName,
-                condition.ReportingTimeframe))
+            .Select(condition =>
+            {
+                var mapped = mappings.FirstOrDefault(mapping => mapping.ConditionId is not null
+                    && mapping.CodeSystem == condition.Condition?.CodeSystem
+                    && mapping.Code == condition.Condition?.Code);
+
+                return new EcrConditionResponse(
+                    rr.DocumentId,
+                    condition.Condition?.Code,
+                    condition.Condition?.DisplayName,
+                    condition.Determination?.Code,
+                    condition.Determination?.DisplayName,
+                    condition.Location?.Code,
+                    condition.Location?.DisplayName,
+                    condition.ResponsibleAgencyId,
+                    condition.ResponsibleAgencyName,
+                    condition.ReportingTimeframe,
+                    mapped?.ConditionId,
+                    mapped?.ConditionName,
+                    EcrReportability.IsKept(condition, responsibleAgencyIds)
+                        ? EcrReportability.Route(condition.Determination?.Code, mapped is not null)
+                        : null);
+            })
             .ToList();
     }
 
@@ -74,7 +121,8 @@ public static class EcrEndpoints
     {
         routes.MapGet("/api/ecr-documents", GetEcrDocuments)
             .WithName("GetEcrDocuments")
-            .WithSummary("The eCR queue: eICRs and RRs taken in, newest first, paged and filterable by feed.");
+            .WithSummary("The eCR queue: eICRs and RRs taken in, newest first, paged and filterable by feed and "
+                + "by whether an RR has a condition to review.");
 
         routes.MapGet("/api/ecr-documents/{id:int}", GetEcrDocument)
             .WithName("GetEcrDocument")
@@ -86,6 +134,7 @@ public static class EcrEndpoints
     private static async Task<Results<Ok<PagedResult<EcrDocumentResponse>>, ProblemHttpResult>> GetEcrDocuments(
         EcrQueries documents,
         string? feed = null,
+        bool review = false,
         int page = Paging.DefaultPage,
         int pageSize = Paging.DefaultPageSize,
         CancellationToken cancellationToken = default)
@@ -98,7 +147,7 @@ public static class EcrEndpoints
                 title: "The page asked for is not one this endpoint can return.");
         }
 
-        return TypedResults.Ok(await documents.Page(feed, page, pageSize, cancellationToken));
+        return TypedResults.Ok(await documents.Page(feed, review, page, pageSize, cancellationToken));
     }
 
     private static async Task<Results<Ok<EcrDocumentDetailResponse>, ProblemHttpResult>> GetEcrDocument(
@@ -119,15 +168,21 @@ public static class EcrEndpoints
 }
 
 /// <summary>The eCR endpoints' reads of the stored documents.</summary>
-internal sealed class EcrQueries(SurvsysDbContext database, CdaParser parser, CdaStylesheet stylesheet)
+internal sealed class EcrQueries(
+    SurvsysDbContext database,
+    CdaParser parser,
+    CdaStylesheet stylesheet,
+    IOptions<EcrIntakeOptions> options)
 {
     /// <summary>
     /// One page of the queue, newest first, with the id as the tie-break so a
     /// document cannot appear on two pages, narrowed to one feed when a feed is
-    /// given.
+    /// given and to the RRs with a condition to review when
+    /// <paramref name="review"/> is true.
     /// </summary>
     public async Task<PagedResult<EcrDocumentResponse>> Page(
         string? feed,
+        bool review,
         int page,
         int pageSize,
         CancellationToken cancellationToken)
@@ -140,6 +195,12 @@ internal sealed class EcrQueries(SurvsysDbContext database, CdaParser parser, Cd
             documents = documents.Where(document => document.Feed == wanted);
         }
 
+        if (review)
+        {
+            var inReview = EcrEndpoints.InReview(database.EcrConditionMappings);
+            documents = documents.Where(document => document.RrConditions.AsQueryable().Any(inReview));
+        }
+
         var total = await documents.CountAsync(cancellationToken);
 
         var rows = await documents
@@ -147,7 +208,7 @@ internal sealed class EcrQueries(SurvsysDbContext database, CdaParser parser, Cd
             .ThenByDescending(document => document.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(EcrEndpoints.DocumentToResponse)
+            .Select(EcrEndpoints.DocumentToResponse(database.EcrConditionMappings))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<EcrDocumentResponse>(rows, page, pageSize, total);
@@ -161,7 +222,7 @@ internal sealed class EcrQueries(SurvsysDbContext database, CdaParser parser, Cd
     {
         var summary = await database.EcrDocuments
             .Where(document => document.Id == id)
-            .Select(EcrEndpoints.DocumentToResponse)
+            .Select(EcrEndpoints.DocumentToResponse(database.EcrConditionMappings))
             .SingleOrDefaultAsync(cancellationToken);
 
         if (summary is null)
@@ -185,6 +246,24 @@ internal sealed class EcrQueries(SurvsysDbContext database, CdaParser parser, Cd
             rrs = await EcrIntakeService.ResponsesTo(documents, document).ToListAsync(cancellationToken);
         }
 
+        var parsed = rrs.Select(rr => parser.Read(rr.RawXml)).ToList();
+        var codes = parsed
+            .SelectMany(rr => rr.Conditions)
+            .Select(condition => condition.Condition?.Code)
+            .OfType<string>()
+            .Distinct()
+            .ToList();
+        var mappings = await (
+            from mapping in database.EcrConditionMappings
+            where codes.Contains(mapping.Code)
+            join condition in database.Conditions on mapping.ConditionId equals condition.Id
+            select new EcrConditionMappingResponse(
+                mapping.Id, mapping.CodeSystem, mapping.Code, mapping.DisplayName, mapping.ConditionId, condition.Name))
+            .ToListAsync(cancellationToken);
+        var conditions = parsed
+            .SelectMany(rr => EcrEndpoints.Conditions(rr, options.Value.ResponsibleAgencyIds, mappings))
+            .ToList();
+
         var pair = eicr is null ? rrs : rrs.Prepend(eicr);
         var findings = pair
             .SelectMany(each => each.Findings
@@ -196,7 +275,7 @@ internal sealed class EcrQueries(SurvsysDbContext database, CdaParser parser, Cd
         return new EcrDocumentDetailResponse(
             summary,
             eicr is null ? null : stylesheet.Render(eicr.RawXml),
-            rrs.SelectMany(rr => EcrEndpoints.Conditions(parser.Read(rr.RawXml))).ToList(),
+            conditions,
             findings);
     }
 }

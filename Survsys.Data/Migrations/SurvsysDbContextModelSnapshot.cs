@@ -12233,6 +12233,46 @@ namespace Survsys.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Survsys.Data.EcrConditionMapping", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("CodeSystem")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("code_system");
+
+                    b.Property<int?>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("display_name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConditionId");
+
+                    b.HasIndex("CodeSystem", "Code")
+                        .IsUnique();
+
+                    b.ToTable("ecr_condition_mapping", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.EcrDocument", b =>
                 {
                     b.Property<int>("Id")
@@ -12298,6 +12338,57 @@ namespace Survsys.Data.Migrations
                     b.HasIndex("SetId");
 
                     b.ToTable("ecr_document", (string)null);
+                });
+
+            modelBuilder.Entity("Survsys.Data.EcrRrCondition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("CodeSystem")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("code_system");
+
+                    b.Property<string>("DeterminationCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("determination_code");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("display_name");
+
+                    b.Property<int>("EcrDocumentId")
+                        .HasColumnType("int")
+                        .HasColumnName("ecr_document_id");
+
+                    b.Property<string>("ReportingTimeframe")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("reporting_timeframe");
+
+                    b.Property<string>("ResponsibleAgencyId")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("responsible_agency_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EcrDocumentId");
+
+                    b.ToTable("ecr_rr_condition", (string)null);
                 });
 
             modelBuilder.Entity("Survsys.Data.EcrValidationFinding", b =>
@@ -16005,6 +16096,25 @@ namespace Survsys.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Survsys.Data.EcrConditionMapping", b =>
+                {
+                    b.HasOne("Survsys.Data.Condition", null)
+                        .WithMany()
+                        .HasForeignKey("ConditionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Survsys.Data.EcrRrCondition", b =>
+                {
+                    b.HasOne("Survsys.Data.EcrDocument", "EcrDocument")
+                        .WithMany("RrConditions")
+                        .HasForeignKey("EcrDocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EcrDocument");
+                });
+
             modelBuilder.Entity("Survsys.Data.EcrValidationFinding", b =>
                 {
                     b.HasOne("Survsys.Data.EcrDocument", "EcrDocument")
@@ -16549,6 +16659,8 @@ namespace Survsys.Data.Migrations
             modelBuilder.Entity("Survsys.Data.EcrDocument", b =>
                 {
                     b.Navigation("Findings");
+
+                    b.Navigation("RrConditions");
                 });
 
             modelBuilder.Entity("Survsys.Data.Person", b =>

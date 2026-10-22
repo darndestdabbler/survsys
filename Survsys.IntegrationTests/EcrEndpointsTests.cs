@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Api;
 using Survsys.Contracts;
@@ -14,12 +15,20 @@ namespace Survsys.IntegrationTests;
 /// The eCR queue and document screen's reads against the real host and
 /// database: the queue lists a feed's documents newest first with their
 /// finding counts, and an eICR and its RR each read as the pair, the eICR
-/// rendered beside the RR's conditions and both documents' findings.
+/// rendered beside the RR's conditions and both documents' findings; and each
+/// determination code's routing, from intake to the queue's review filter and
+/// the document's conditions.
 /// </summary>
 [Collection(SqlServerCollection.Name)]
 public class EcrEndpointsTests(SqlServerFixture server) : IAsyncLifetime
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+    /// <summary>The responsible agency the routing test configures as this jurisdiction.</summary>
+    private const string Agency = "2.16.840.1.113883.4.6^12341234";
+
+    /// <summary>The code system the routing test's condition codes and their mappings are in.</summary>
+    private const string TestCodeSystem = "2.16.840.1.113883.9.9.9.ITEST-ECR";
 
     private readonly SurvsysApi api = new(server.ConnectionString);
     private readonly string eicrId = $"itest-eicr-{Guid.NewGuid():N}";
@@ -36,6 +45,9 @@ public class EcrEndpointsTests(SqlServerFixture server) : IAsyncLifetime
                 .Where(document => document.DocumentId == eicrId
                     || document.DocumentId == rrId
                     || document.DocumentId == secondRrId)
+                .ExecuteDeleteAsync();
+            await context.EcrConditionMappings
+                .Where(mapping => mapping.CodeSystem == TestCodeSystem)
                 .ExecuteDeleteAsync();
         }
 
@@ -112,6 +124,69 @@ public class EcrEndpointsTests(SqlServerFixture server) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task EachDeterminationCodeIsRoutedFromIntakeToTheQueue()
+    {
+        var (eicr, _) = await StorePair();
+        await using (var context = server.NewContext())
+        {
+            await context.EcrDocuments.Where(document => document.DocumentId == rrId).ExecuteDeleteAsync();
+
+            var malaria = await context.Conditions
+                .Where(condition => condition.Name == "Malaria")
+                .Select(condition => condition.Id)
+                .SingleAsync();
+            context.EcrConditionMappings.AddRange(
+                new EcrConditionMapping { CodeSystem = TestCodeSystem, Code = "reportable-mapped", ConditionId = malaria },
+                new EcrConditionMapping { CodeSystem = TestCodeSystem, Code = "may-be-mapped", ConditionId = malaria },
+                new EcrConditionMapping { CodeSystem = TestCodeSystem, Code = "reportable-listed", ConditionId = null });
+
+            var raw = RoutedRr(
+                ("reportable-mapped", EcrReportability.Reportable, Agency),
+                ("reportable-listed", EcrReportability.Reportable, Agency),
+                ("reportable-absent", EcrReportability.Reportable, Agency),
+                ("may-be-mapped", EcrReportability.MayBeReportable, Agency),
+                ("not-reportable", EcrReportability.NotReportable, Agency),
+                ("no-rule-met", EcrReportability.NoRuleMet, Agency),
+                ("another-agency", EcrReportability.Reportable, "2.16.840.1.113883.4.6^999"));
+            context.EcrDocuments.Add(
+                EcrIntakeService.Stage(new CdaParser(), new CdaValidator(), raw, EcrDocument.TestFeed, null, [Agency]));
+            await context.SaveChangesAsync();
+
+            var kept = await context.EcrRrConditions
+                .Where(condition => condition.EcrDocument!.DocumentId == rrId)
+                .OrderBy(condition => condition.Id)
+                .Select(condition => condition.Code)
+                .ToListAsync();
+            Assert.Equal(["reportable-mapped", "reportable-listed", "reportable-absent", "may-be-mapped"], kept);
+        }
+
+        using var routed = api.WithWebHostBuilder(builder =>
+            builder.UseSetting("EcrIntake:ResponsibleAgencyIds:0", Agency));
+        var client = routed.CreateClient();
+
+        var inReview = await client.GetFromJsonAsync<PagedResult<EcrDocumentResponse>>(
+            $"/api/ecr-documents?feed={EcrDocument.TestFeed}&review=true&pageSize={Paging.MaxPageSize}", Json);
+        var rr = Assert.Single(inReview!.Items, row => row.DocumentId == rrId);
+        Assert.Equal(3, rr.ReviewCount);
+        Assert.DoesNotContain(inReview.Items, row => row.Id == eicr);
+        Assert.All(inReview.Items, row => Assert.True(row.ReviewCount > 0));
+
+        var detail = await client.GetFromJsonAsync<EcrDocumentDetailResponse>($"/api/ecr-documents/{rr.Id}", Json);
+        Assert.Equal(
+            [
+                ("reportable-mapped", "Malaria", EcrReportability.ReportableRouting),
+                ("reportable-listed", null, EcrReportability.ReviewRouting),
+                ("reportable-absent", null, EcrReportability.ReviewRouting),
+                ("may-be-mapped", "Malaria", EcrReportability.ReviewRouting),
+                ("not-reportable", null, null),
+                ("no-rule-met", null, null),
+                ("another-agency", null, null),
+            ],
+            detail!.Conditions.Select(condition =>
+                (condition.ConditionCode!, condition.MappedConditionName, condition.Routing)));
+    }
+
+    [Fact]
     public async Task AnUnknownDocumentIsNotFound()
     {
         using var response = await api.CreateClient().GetAsync("/api/ecr-documents/2147483647");
@@ -150,6 +225,50 @@ public class EcrEndpointsTests(SqlServerFixture server) : IAsyncLifetime
         context.EcrDocuments.AddRange(eicr, rr);
         await context.SaveChangesAsync();
         return (eicr.Id, rr.Id);
+    }
+
+    /// <summary>
+    /// An RR to the eICR, numbered <c>rrId</c>, with one condition in the test
+    /// code system for each code, determination and responsible agency given.
+    /// </summary>
+    private string RoutedRr(params (string Code, string Determination, string Agency)[] conditions)
+    {
+        var entries = conditions.Select(condition =>
+        {
+            var agency = condition.Agency.Split('^');
+            return $"""
+                <entry><observation>
+                  <templateId root="2.16.840.1.113883.10.20.15.2.3.12" />
+                  <value code="{condition.Code}" codeSystem="{TestCodeSystem}" displayName="{condition.Code}" />
+                  <entryRelationship><organizer>
+                    <templateId root="2.16.840.1.113883.10.20.15.2.3.13" />
+                    <code code="RRVS7" />
+                    <participant>
+                      <templateId root="2.16.840.1.113883.10.20.15.2.4.2" />
+                      <participantRole><id root="{agency[0]}" extension="{agency[1]}" /></participantRole>
+                    </participant>
+                    <component><observation>
+                      <templateId root="2.16.840.1.113883.10.20.15.2.3.19" />
+                      <value code="{condition.Determination}" />
+                    </observation></component>
+                  </organizer></entryRelationship>
+                </observation></entry>
+                """;
+        });
+
+        return $"""
+            <ClinicalDocument xmlns="urn:hl7-org:v3">
+              <templateId root="2.16.840.1.113883.10.20.15.2.1.2" extension="2017-04-01" />
+              <id root="{rrId}" />
+              <component><structuredBody><component><section>
+                <entry><act>
+                  <templateId root="2.16.840.1.113883.10.20.15.2.3.10" />
+                  <id root="{eicrId}" />
+                </act></entry>
+                {string.Concat(entries)}
+              </section></component></structuredBody></component>
+            </ClinicalDocument>
+            """;
     }
 
     /// <summary>An RR to the eICR, finding Pertussis reportable to the State Department of Health.</summary>

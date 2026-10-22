@@ -57,4 +57,7 @@ public class EcrDocument
 
     /// <summary>What validation against the CDA schema and the HL7 schematron found, if anything.</summary>
     public List<EcrValidationFinding> Findings { get; set; } = [];
+
+    /// <summary>For an RR, the conditions kept at intake as this jurisdiction's to act on; empty for an eICR.</summary>
+    public List<EcrRrCondition> RrConditions { get; set; } = [];
 }

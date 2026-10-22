@@ -35,7 +35,8 @@ public class EcrClientTests
               "source": "rr.xml",
               "receivedAt": "2026-10-22T12:01:00Z",
               "errorCount": 0,
-              "warningCount": 18
+              "warningCount": 18,
+              "reviewCount": 2
             }
           ],
           "page": 1,
@@ -56,7 +57,8 @@ public class EcrClientTests
             "source": "eicr.xml",
             "receivedAt": "2026-10-22T12:00:00Z",
             "errorCount": 1,
-            "warningCount": 0
+            "warningCount": 0,
+            "reviewCount": 0
           },
           "eicrHtml": "<html><body>Initial Public Health Case Report</body></html>",
           "conditions": [
@@ -70,7 +72,10 @@ public class EcrClientTests
               "locationName": "Both patient home address and provider facility address",
               "responsibleAgencyId": "2.16.840.1.113883.4.6^12341234",
               "responsibleAgencyName": "State Department of Health",
-              "reportingTimeframe": "24 h"
+              "reportingTimeframe": "24 h",
+              "mappedConditionId": 12,
+              "mappedConditionName": "Zika virus",
+              "routing": "reportable"
             }
           ],
           "findings": [
@@ -96,7 +101,7 @@ public class EcrClientTests
             return Answer(HttpStatusCode.OK, QueuePage);
         }));
 
-        var queue = await client.List(feed: null, page: 1, pageSize: 50);
+        var queue = await client.List(feed: null, review: false, page: 1, pageSize: 50);
 
         Assert.Equal(HttpMethod.Get, sent?.Method);
         Assert.Equal("http://api.example.test/api/ecr-documents?page=1&pageSize=50", sent?.RequestUri?.ToString());
@@ -104,6 +109,7 @@ public class EcrClientTests
         var row = Assert.Single(queue.Value!.Items);
         Assert.Equal("RR", row.Kind);
         Assert.Equal(18, row.WarningCount);
+        Assert.Equal(2, row.ReviewCount);
     }
 
     [Fact]
@@ -116,10 +122,27 @@ public class EcrClientTests
             return Answer(HttpStatusCode.OK, QueuePage);
         }));
 
-        await client.List(feed: "production", page: 2, pageSize: 50);
+        await client.List(feed: "production", review: false, page: 2, pageSize: 50);
 
         Assert.Equal(
-            "http://api.example.test/api/ecr-documents?feed=production&page=2&pageSize=50",
+            "http://api.example.test/api/ecr-documents?page=2&pageSize=50&feed=production",
+            sent?.RequestUri?.ToString());
+    }
+
+    [Fact]
+    public async Task TheReviewFlagIsCarriedWhenAsked()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new EcrClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, QueuePage);
+        }));
+
+        await client.List(feed: "test", review: true, page: 1, pageSize: 50);
+
+        Assert.Equal(
+            "http://api.example.test/api/ecr-documents?page=1&pageSize=50&feed=test&review=true",
             sent?.RequestUri?.ToString());
     }
 
@@ -139,7 +162,10 @@ public class EcrClientTests
         Assert.True(detail.Succeeded);
         Assert.Equal(4, detail.Value!.Document.Id);
         Assert.Contains("Initial Public Health Case Report", detail.Value.EicrHtml);
-        Assert.Equal("RRVS1", Assert.Single(detail.Value.Conditions).DeterminationCode);
+        var condition = Assert.Single(detail.Value.Conditions);
+        Assert.Equal("RRVS1", condition.DeterminationCode);
+        Assert.Equal("Zika virus", condition.MappedConditionName);
+        Assert.Equal("reportable", condition.Routing);
         Assert.Equal("error", Assert.Single(detail.Value.Findings).Severity);
     }
 
@@ -149,7 +175,7 @@ public class EcrClientTests
         var client = new EcrClient(Transport(_ =>
             Answer(HttpStatusCode.InternalServerError, "{}")));
 
-        var queue = await client.List(null, 1, 50);
+        var queue = await client.List(null, false, 1, 50);
         var document = await client.Get(4);
 
         Assert.StartsWith(EcrClient.QueueFailurePrefix, queue.Failure);

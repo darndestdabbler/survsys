@@ -111,6 +111,8 @@ builder.Services.AddHttpClient<SavedViewsClient>(http => http.BaseAddress = api)
 builder.Services.AddHttpClient<SystemSettingsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<MessageQueueClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<EcrClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<EcrConditionMappingsClient>(http => http.BaseAddress = api)
+    .AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<NotificationQueueClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<ExportLogClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<AuditClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
@@ -282,6 +284,12 @@ app.MapGet("/treatments/export", async (TreatmentsClient treatments, Cancellatio
 app.MapGet("/vaccines/export", async (VaccinesClient vaccines, CancellationToken cancellationToken) =>
     await vaccines.Export(cancellationToken) is var exported && exported.Value is { } csv
         ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "vaccines.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// The eCR condition mapping as CSV, handed over the same way from the eCR condition mapping screen.
+app.MapGet("/ecr/condition-mappings/export", async (EcrConditionMappingsClient mappings, CancellationToken cancellationToken) =>
+    await mappings.Export(cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "ecr-condition-mappings.csv")
         : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();

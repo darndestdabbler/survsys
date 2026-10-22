@@ -27,6 +27,13 @@ public sealed class EcrIntakeOptions
 
     /// <summary>How often the folders are polled, in seconds.</summary>
     public int PollIntervalSeconds { get; set; } = 120;
+
+    /// <summary>
+    /// This jurisdiction's ids as an RR names its responsible agency, root and
+    /// extension joined by a caret. An RR's conditions for any other agency are
+    /// not kept, so none is kept until this is set.
+    /// </summary>
+    public string[] ResponsibleAgencyIds { get; set; } = [];
 }
 
 /// <summary>
@@ -37,7 +44,9 @@ public sealed class EcrIntakeOptions
 /// <remarks>
 /// A document is read by <see cref="CdaParser"/> for its kind, id, set and
 /// version, and for the eICR an RR responds to; the rest of what the parser
-/// reads is the later eCR sessions'. Each is validated by
+/// reads is the later eCR sessions'. An RR's conditions this jurisdiction is
+/// to act on are kept with it, as <see cref="EcrReportability"/> decides. Each
+/// is validated by
 /// <see cref="CdaValidator"/> against the CDA schema and the HL7 schematron,
 /// and its findings are stored with it: a finding of any severity never stops
 /// a document from being stored. A document whose id is already on file
@@ -65,13 +74,22 @@ public sealed class EcrIntakeService(
     /// <paramref name="validator"/> finds wrong with it as its findings. Throws
     /// <see cref="Hl7ParseException"/> for a document the parser cannot read,
     /// and <see cref="ArgumentException"/> for a feed that is neither test nor
-    /// production.
+    /// production. An RR carries the conditions
+    /// <see cref="EcrReportability"/> keeps for
+    /// <paramref name="responsibleAgencyIds"/>.
     /// </summary>
-    public static EcrDocument Stage(CdaParser parser, CdaValidator validator, string raw, string feed, string? source)
+    public static EcrDocument Stage(
+        CdaParser parser,
+        CdaValidator validator,
+        string raw,
+        string feed,
+        string? source,
+        IReadOnlyCollection<string> responsibleAgencyIds)
     {
         ArgumentNullException.ThrowIfNull(parser);
         ArgumentNullException.ThrowIfNull(validator);
         ArgumentNullException.ThrowIfNull(raw);
+        ArgumentNullException.ThrowIfNull(responsibleAgencyIds);
         if (feed is not (EcrDocument.TestFeed or EcrDocument.ProductionFeed))
         {
             throw new ArgumentException($"The feed '{feed}' is neither test nor production.", nameof(feed));
@@ -98,6 +116,9 @@ public sealed class EcrIntakeService(
                     Location = finding.Location,
                 })
                 .ToList(),
+            RrConditions = document.Kind == EcrDocument.RrKind
+                ? EcrReportability.Kept(document, responsibleAgencyIds)
+                : [],
         };
     }
 
@@ -112,11 +133,12 @@ public sealed class EcrIntakeService(
         string raw,
         string feed,
         string? source,
+        IReadOnlyCollection<string> responsibleAgencyIds,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(database);
 
-        var document = Stage(parser, validator, raw, feed, source);
+        var document = Stage(parser, validator, raw, feed, source, responsibleAgencyIds);
         if (await database.EcrDocuments.AnyAsync(taken => taken.DocumentId == document.DocumentId, cancellationToken))
         {
             return null;
@@ -227,7 +249,8 @@ public sealed class EcrIntakeService(
 
                 using var scope = scopeFactory.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<SurvsysDbContext>();
-                var stored = await Receive(parser, validator, database, raw, feed, fileName, stoppingToken);
+                var stored = await Receive(
+                    parser, validator, database, raw, feed, fileName, options.Value.ResponsibleAgencyIds, stoppingToken);
 
                 if (stored is null)
                 {

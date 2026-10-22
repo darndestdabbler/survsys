@@ -1,10 +1,11 @@
 @* The eCR queue: the eICRs and RRs taken in, newest first, as the eCR
-   endpoint returns them, with a feed filter above them and each row a way
+   endpoint returns them, with a feed filter and a "Needs review" filter above
+   them, each RR's count of conditions routed to review, and each row a way
    into the document on its own. Read-only: what a reviewer does with a
    document is a later session's.
 
    Every element a later walkthrough will name carries an identifier of its
-   own — `ecr-queue-heading`, `ecr-queue-filter`, `ecr-queue-total`,
+   own — `ecr-queue-heading`, `ecr-queue-filter`, `ecr-queue-review`, `ecr-queue-total`,
    `ecr-queue-loading`, `ecr-queue-error`, `ecr-queue-none`, the table and one
    row per document keyed by its id. *@
 @page "/ecr"
@@ -21,12 +22,16 @@
     newest first, with what validation found in each.
 </MudText>
 
-<MudSelect id="ecr-queue-filter" T="string" Label="Feed" Value="feed"
-           ValueChanged="OnFilterChanged" Dense="true" Class="mb-4" Style="max-width: 20rem;">
-    <MudSelectItem T="string" Value="@AllFeeds">All feeds</MudSelectItem>
-    <MudSelectItem T="string" Value="@("production")">Production</MudSelectItem>
-    <MudSelectItem T="string" Value="@("test")">Test</MudSelectItem>
-</MudSelect>
+<div class="d-flex align-center gap-4 mb-4">
+    <MudSelect id="ecr-queue-filter" T="string" Label="Feed" Value="feed"
+               ValueChanged="OnFilterChanged" Dense="true" Style="max-width: 20rem;">
+        <MudSelectItem T="string" Value="@AllFeeds">All feeds</MudSelectItem>
+        <MudSelectItem T="string" Value="@("production")">Production</MudSelectItem>
+        <MudSelectItem T="string" Value="@("test")">Test</MudSelectItem>
+    </MudSelect>
+    <MudCheckBox id="ecr-queue-review" T="bool" Label="Needs review" Value="review"
+                 ValueChanged="OnReviewChanged" />
+</div>
 
 @if (asked is null)
 {
@@ -55,6 +60,7 @@ else if (asked.Value is { } result)
                         <th>Received</th>
                         <th>Errors</th>
                         <th>Warnings</th>
+                        <th>To review</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -70,6 +76,7 @@ else if (asked.Value is { } result)
                             <td>@document.ReceivedAt.ToString("yyyy-MM-dd HH:mm")</td>
                             <td data-ecr-errors>@document.ErrorCount</td>
                             <td data-ecr-warnings>@document.WarningCount</td>
+                            <td data-ecr-review>@document.ReviewCount</td>
                         </tr>
                     }
                 </tbody>
@@ -106,6 +113,8 @@ else
 
     private string feed = AllFeeds;
 
+    private bool review;
+
     private int page = 1;
 
     private Asked<PagedResult<EcrDocumentResponse>>? asked;
@@ -117,12 +126,19 @@ else
     private async Task Load()
     {
         asked = null;
-        asked = await Client.List(string.IsNullOrEmpty(feed) ? null : feed, page, PageSize);
+        asked = await Client.List(string.IsNullOrEmpty(feed) ? null : feed, review, page, PageSize);
     }
 
     private async Task OnFilterChanged(string chosen)
     {
         feed = chosen ?? AllFeeds;
+        page = 1;
+        await Load();
+    }
+
+    private async Task OnReviewChanged(bool chosen)
+    {
+        review = chosen;
         page = 1;
         await Load();
     }

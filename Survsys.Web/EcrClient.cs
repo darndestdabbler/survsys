@@ -25,16 +25,29 @@ public sealed class EcrClient(HttpClient http)
 
     private static readonly ApiAsk Reading = new(DocumentFailurePrefix, "the eCR document");
 
-    /// <summary>One page of the eCR queue, narrowed to one feed where one is given, or why there is none.</summary>
+    /// <summary>
+    /// One page of the eCR queue, narrowed to one feed where one is given and
+    /// to the RRs with a condition to review where <paramref name="review"/>
+    /// is true, or why there is none.
+    /// </summary>
     public Task<Asked<PagedResult<EcrDocumentResponse>>> List(
         string? feed,
+        bool review,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var url = string.IsNullOrWhiteSpace(feed)
-            ? $"api/ecr-documents?page={page}&pageSize={pageSize}"
-            : $"api/ecr-documents?feed={Uri.EscapeDataString(feed.Trim())}&page={page}&pageSize={pageSize}";
+        var url = $"api/ecr-documents?page={page}&pageSize={pageSize}";
+
+        if (!string.IsNullOrWhiteSpace(feed))
+        {
+            url += $"&feed={Uri.EscapeDataString(feed.Trim())}";
+        }
+
+        if (review)
+        {
+            url += "&review=true";
+        }
 
         return Queuing.Get<PagedResult<EcrDocumentResponse>>(http, url, cancellationToken);
     }

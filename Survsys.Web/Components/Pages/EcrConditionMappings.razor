@@ -1,0 +1,215 @@
+@* The eCR condition mapping and its maintenance: every condition code a
+   reportability response can carry, an RCTC condition grouper or a SNOMED
+   condition code, with the catalogue condition it maps to; a form that adds
+   one or edits one, its condition chosen from the catalogue; a delete; and a
+   CSV export and an import previewed before it is saved, which is how an
+   RCTC release's condition list comes in. A kept RR condition whose code maps
+   to no condition goes to review on the eCR queue. *@
+@page "/ecr/condition-mappings"
+@inject EcrConditionMappingsClient Client
+@inject ConditionsClient Conditions
+
+<PageTitle>eCR condition mapping — Survsys</PageTitle>
+
+<MudText id="ecr-mappings-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    eCR condition mapping
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    The RCTC and SNOMED condition codes reportability responses carry, and the
+    condition each is reported as. A reportable condition whose code maps to no
+    condition is sent to the eCR queue for review.
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="ecr-mappings-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (loading)
+{
+    <MudProgressCircular id="ecr-mappings-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <div class="d-flex gap-4 align-start mb-4">
+        <MudButton id="ecr-mappings-export" Variant="Variant.Outlined" Href="/ecr/condition-mappings/export"
+                   Target="_blank">
+            Export mapping CSV
+        </MudButton>
+        <div>
+            <ImportPreview Prefix="ecr-mappings-import" Label="Import mapping CSV"
+                           Import="@((csv, confirm) => Client.Import(csv, confirm))" Imported="@Load" />
+        </div>
+    </div>
+
+    <MudPaper id="ecr-mapping-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">@(editingId is null ? "New code" : "Edit code")</MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="codeSystem" id="ecr-mapping-code-system" Label="Code system OID"
+                              Variant="Variant.Outlined" Required="true" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="code" id="ecr-mapping-code" Label="Code" Variant="Variant.Outlined"
+                              Required="true" MaxLength="50" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="displayName" id="ecr-mapping-display-name" Label="Display name"
+                              Variant="Variant.Outlined" MaxLength="500" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                @* One MudSelectItem per condition rather than a ToStringFunc:
+                   see NewMorbidityReportDetails. *@
+                <MudSelect @bind-Value="conditionId" id="ecr-mapping-condition" Label="Condition (empty for unmapped)"
+                           Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var condition in conditions)
+                    {
+                        <MudSelectItem T="int?" Value="@condition.Id">@condition.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="ecr-mapping-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                Save
+            </MudButton>
+            <MudButton id="ecr-mapping-new" Variant="Variant.Outlined" Disabled="@saving" OnClick="@Clear">
+                New code
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    <MudSimpleTable id="ecr-mappings-table" Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th>Code system</th>
+                <th>Code</th>
+                <th>Display name</th>
+                <th>Condition</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in mappings)
+            {
+                <tr id="@($"ecr-mapping-row-{row.Id}")">
+                    <td>@row.CodeSystem</td>
+                    <td>@row.Code</td>
+                    <td>@row.DisplayName</td>
+                    <td>@(row.ConditionName ?? "Unmapped")</td>
+                    <td>
+                        <MudButton id="@($"ecr-mapping-edit-{row.Id}")" Size="Size.Small"
+                                   Variant="Variant.Text" OnClick="@(() => Edit(row))">
+                            Edit
+                        </MudButton>
+                        <MudButton id="@($"ecr-mapping-delete-{row.Id}")" Size="Size.Small" Color="Color.Error"
+                                   Variant="Variant.Text" Disabled="@saving" OnClick="@(() => Delete(row))">
+                            Delete
+                        </MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+@code {
+    /// <summary>How many conditions the picker asks for: more than the catalogue holds.</summary>
+    private const int Catalogue = 200;
+
+    private IReadOnlyList<EcrConditionMappingResponse> mappings = [];
+
+    private IReadOnlyList<ConditionResponse> conditions = [];
+
+    private int? editingId;
+
+    private string? codeSystem;
+
+    private string? code;
+
+    private string? displayName;
+
+    private int? conditionId;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var catalogue = await Conditions.Page(1, Catalogue);
+        conditions = catalogue.Value?.Items ?? [];
+        failure = catalogue.Failure;
+
+        await Load();
+        loading = false;
+    }
+
+    private async Task Load()
+    {
+        var loaded = await Client.List();
+        mappings = loaded.Value ?? [];
+        failure ??= loaded.Failure;
+    }
+
+    private void Edit(EcrConditionMappingResponse row)
+    {
+        editingId = row.Id;
+        codeSystem = row.CodeSystem;
+        code = row.Code;
+        displayName = row.DisplayName;
+        conditionId = row.ConditionId;
+        failure = null;
+    }
+
+    private void Clear()
+    {
+        editingId = null;
+        codeSystem = code = displayName = null;
+        conditionId = null;
+        failure = null;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        failure = null;
+
+        var request = new SaveEcrConditionMappingRequest(codeSystem ?? "", code ?? "", displayName, conditionId);
+        var saved = editingId is { } id
+            ? await Client.Save(id, request)
+            : await Client.Add(request);
+
+        saving = false;
+        failure = saved.Failure;
+
+        if (saved.Succeeded)
+        {
+            Clear();
+            await Load();
+        }
+    }
+
+    private async Task Delete(EcrConditionMappingResponse row)
+    {
+        saving = true;
+        failure = await Client.Delete(row.Id);
+        saving = false;
+
+        if (failure is null)
+        {
+            if (editingId == row.Id)
+            {
+                Clear();
+            }
+
+            await Load();
+        }
+    }
+}
