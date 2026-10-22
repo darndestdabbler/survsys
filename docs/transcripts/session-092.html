@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 092 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 092 transcript</h1>
+<p class="stamp">Rendered 2026-10-21T14:06:05.623Z by dabbler-ai-router 3.21.0 at ecfa1906e9030e8e0986afe06651216c6f3b0981.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-21T09:46:28.222-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 92: Phase 11 walkthroughs</h3>
+<ol><li>Register.</li><li><code>docs/walkthroughs/</code>: three documents — send a case to CDC, retract a notification, configure a notification guide. Review a generated message and inspect the export log are rewritten to read rows the worker made, not seeded ones.</li><li><code>Survsys.E2ETests</code>: the three Playwright tests named after them, and the two rewritten tests.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Write the Phase 11 walkthroughs and the Playwright tests that perform them. The E2E harness turns on the CDC file transport, writing into an outbox under its own build output, so the notification queue worker's &quot;process queue now&quot; makes real export-log rows without anything leaving the machine, and it stops seeding nmi-log.sql. Review a generated message and inspect the export log are rewritten to read an export the worker made for a case the walkthrough queued itself, found by its own record number rather than seeded counts, and their tests follow. Three new documents are added to docs/walkthroughs/ and linked from its README — send a case to CDC, retract a notification, configure a notification guide — each with the one test named after it in Survsys.E2ETests.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/698e108a7fbf70e437f423764c064a21e6a165ad"><code>698e108a7fbf70e437f423764c064a21e6a165ad</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Export log walkthroughs from the worker</td><td><p>In the E2E harness, give the main tiers the CDC file transport with an outbox folder under the build output (emptied before the tier starts, as the intake drop directory is), stop seeding and copying nmi-log.sql, and drop the SeededExportLog constants and the harness test's assertions about that seed. Rewrite docs/walkthroughs/review-a-generated-message.md and docs/walkthroughs/inspect-the-export-log.md so each queues a case of its own, presses Process queue now on the Notification queue, and then reads the export the worker made for that record number (the review reads the generated message's segments the worker built), and rewrite ReviewAGeneratedMessageTests.cs and InspectTheExportLogTests.cs to perform them step for step.</p></td><td><span class="mono">Survsys.E2ETests/SurvsysHarness.cs</span><br><span class="mono">Survsys.E2ETests/SurvsysHarnessTests.cs</span><br><span class="mono">Survsys.E2ETests/Survsys.E2ETests.csproj</span><br><span class="mono">Survsys.E2ETests/Fixtures/notification-guide.sql</span><br><span class="mono">docs/walkthroughs/review-a-generated-message.md</span><br><span class="mono">docs/walkthroughs/inspect-the-export-log.md</span><br><span class="mono">Survsys.E2ETests/ReviewAGeneratedMessageTests.cs</span><br><span class="mono">Survsys.E2ETests/InspectTheExportLogTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~ReviewAGeneratedMessageTests|FullyQualifiedName~InspectTheExportLogTests|FullyQualifiedName~SurvsysHarnessTests|FullyQualifiedName~QueueACaseForNotificationTests</code></td><td>yes</td></tr>
+<tr><td>Send a case to cdc</td><td><p>Write docs/walkthroughs/send-a-case-to-cdc.md, in the house form of the other walkthroughs: create a case, queue it for notification, press Process queue now on the Notification queue, see the processed line and the case gone from the queue, and find its sent row on the Export log. Link it from docs/walkthroughs/README.md and add Survsys.E2ETests/SendACaseToCdcTests.cs performing it step for step.</p></td><td><span class="mono">docs/walkthroughs/send-a-case-to-cdc.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/SendACaseToCdcTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~SendACaseToCdcTests</code></td><td>yes</td></tr>
+<tr><td>Retract a notification</td><td><p>Write docs/walkthroughs/retract-a-notification.md: a case of the walkthrough's own is sent through the queue, its sent export is retracted from the Export log with Retract, the confirmation is read, Process queue now sends the retraction, and the log shows the retraction's row whose generated message carries NOT118 = X. Link it from docs/walkthroughs/README.md and add Survsys.E2ETests/RetractANotificationTests.cs performing it step for step.</p></td><td><span class="mono">docs/walkthroughs/retract-a-notification.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/RetractANotificationTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~RetractANotificationTests</code></td><td>yes</td></tr>
+<tr><td>Configure a notification guide</td><td><p>Write docs/walkthroughs/configure-a-notification-guide.md: open the notification guides screen, open a guide, add a PHIN variable with its default, save, and read the change back on the guide. Link it from docs/walkthroughs/README.md and add Survsys.E2ETests/ConfigureANotificationGuideTests.cs performing it step for step, choosing names that do not disturb what the other walkthroughs send.</p></td><td><span class="mono">docs/walkthroughs/configure-a-notification-guide.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/ConfigureANotificationGuideTests.cs</span><br><span class="mono">Survsys.E2ETests/SurvsysHarness.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~ConfigureANotificationGuideTests</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No application change: Survsys.Api, Survsys.Web and Survsys.Messaging are not modified; a step a walkthrough cannot perform is reported as a defect, not worked around.</li><li>No live transmission: no walkthrough, test or harness setting sends to a real CDC, PHINMS or AIMS endpoint; the harness uses the file transport into a local folder only.</li><li>No other walkthrough or its test changes, and the integration suite's nmi-log.sql fixture stays as it is.</li><li>No NETSS export and no release work.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[13:46:28]</span> <span class="muted">run-started</span> session=092 mode=pull</div>
+<div class="line"><span class="at">[13:46:28]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[13:48:18]</span> <span class="muted">run-resumed</span> session=092 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[13:48:18]</span> <span class="muted">plan-accepted</span> steps=[&quot;export-log-walkthroughs-from-the-worker&quot;,&quot;send-a-case-to-cdc&quot;,&quot;retract-a-notification&quot;,&quot;configure-a-notification-guide&quot;] non_goals=4</div>
+<div class="line"><span class="at">[13:48:18]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[13:48:19]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=export-log-walkthroughs-from-the-worker</div>
+<div class="line"><span class="at">[13:55:12]</span> <span class="muted">run-resumed</span> session=092 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:55:30]</span> <span class="muted">check-passed</span> step=export-log-walkthroughs-from-the-worker argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ReviewAGeneratedMessageTests|FullyQualifiedName~InspectTheExportLogTests|FullyQualifiedName~SurvsysHarnessTests|FullyQualifiedName~QueueACaseForNotificationTests&quot;]</div>
+<div class="line"><span class="at">[13:55:31]</span> <span class="muted">report-accepted</span> seq=2 step=export-log-walkthroughs-from-the-worker files=[&quot;Survsys.E2ETests/SurvsysHarness.cs&quot;,&quot;Survsys.E2ETests/SurvsysHarnessTests.cs&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;Survsys.E2ETests/Fixtures/notification-guide.sql&quot;,&quot;docs/walkthroughs/review-a-generated-message.md&quot;,&quot;docs/walkthroughs/inspect-the-export-log.md&quot;,&quot;Survsys.E2ETests/ReviewAGeneratedMessageTests.cs&quot;,&quot;Survsys.E2ETests/InspectTheExportLogTests.cs&quot;] notes=Harness gives the API tier the CDC file transport into bin cdc-outbox and seeds notification-guide.sql (Lyme disease under Walkthrough guide, since nothing in the app writes condition_detail) in place of nmi-log.sql; both export-log walkthroughs now queue their own case, press Process now and read the worker-made row by record number.</div>
+<div class="line"><span class="at">[13:55:31]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=send-a-case-to-cdc</div>
+<div class="line"><span class="at">[13:57:10]</span> <span class="muted">run-resumed</span> session=092 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:57:24]</span> <span class="muted">check-passed</span> step=send-a-case-to-cdc argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~SendACaseToCdcTests&quot;]</div>
+<div class="line"><span class="at">[13:57:25]</span> <span class="muted">report-accepted</span> seq=3 step=send-a-case-to-cdc files=[&quot;docs/walkthroughs/send-a-case-to-cdc.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/SendACaseToCdcTests.cs&quot;] notes=New walkthrough and test: queue a Lyme case, Process now, case gone from the queue, accepted export row, and the outbox file it names read back; README links it and refreshes the two rewritten export-log entries.</div>
+<div class="line"><span class="at">[13:57:25]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=retract-a-notification</div>
+<div class="line"><span class="at">[13:59:05]</span> <span class="muted">run-resumed</span> session=092 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:59:20]</span> <span class="muted">check-passed</span> step=retract-a-notification argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~RetractANotificationTests&quot;]</div>
+<div class="line"><span class="at">[13:59:21]</span> <span class="muted">report-accepted</span> seq=4 step=retract-a-notification files=[&quot;docs/walkthroughs/retract-a-notification.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/RetractANotificationTests.cs&quot;] notes=New walkthrough and test: send a Lyme case, Retract its accepted export, read the NOT118 = X confirmation, Process now again, and read the retraction row whose OBR-25 is X; README links it.</div>
+<div class="line"><span class="at">[13:59:21]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=configure-a-notification-guide</div>
+<div class="line"><span class="at">[14:02:11]</span> <span class="muted">run-resumed</span> session=092 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[14:02:24]</span> <span class="muted">check-passed</span> step=configure-a-notification-guide argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ConfigureANotificationGuideTests&quot;]</div>
+<div class="line"><span class="at">[14:02:28]</span> <span class="muted">check-passed</span> step=configure-a-notification-guide argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;]</div>
+<div class="line"><span class="at">[14:02:28]</span> <span class="muted">report-accepted</span> seq=5 step=configure-a-notification-guide files=[&quot;docs/walkthroughs/configure-a-notification-guide.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/ConfigureANotificationGuideTests.cs&quot;,&quot;Survsys.E2ETests/SurvsysHarness.cs&quot;] notes=New walkthrough and test: add INV169 to the PHIN variable catalogue, add Configured guide, give it INV169 and its own sending_facility over the default, save, and read both back; the harness now clears phin_var so a second run can add it again. Assigning a condition to a guide has no screen and is named as out of the walkthrough.</div>
+<div class="line"><span class="at">[14:02:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[14:02:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[14:02:28]</span> <span class="muted">job-started</span> name=verification pid=53108 log=.dabbler/runs/s92/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:03:45]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s92/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:03:45]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[14:03:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[14:03:45]</span> <span class="muted">instruction-issued</span> seq=6 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[14:04:19]</span> <span class="muted">run-resumed</span> session=092 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[14:04:19]</span> <span class="muted">dispute-recorded</span> round=1 finding=0</div>
+<div class="line"><span class="at">[14:04:19]</span> <span class="muted">dispute-recorded</span> round=1 finding=2</div>
+<div class="line"><span class="at">[14:04:19]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[1] reject=[0,2] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The harness never clears the header defaults. The table it clears is nmi_guide_variable, which holds a guide's OWN header values (GuideVariableValueConfiguration maps GuideVariableValue to nmi_guide_variable); the migration-seeded defaults live in nmi_guide_variable_default (GuideVariableDefaultConfiguration), which is not in TablesInDeletionOrder and is never deleted. The tests prove it: ConfigureANotificationGuideTests step 8 reads the sending_facility row's Default as CTDPH^2.16.840.1.114222.4.1.3650^ISO, and ReviewAGeneratedMessageTests asserts the MSH built from the five defaults, both passing after the harness has seeded (and after SurvsysHarnessTests re-seeds mid-suite).&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;A walkthrough test performs its document's written steps and nothing else (one document, one test); a refused retraction is not a step of retract-a-notification. The rule it asks for is already proved where it lives: the endpoint refuses a retraction without an accepted notification in NotificationQueueEndpointsTests.ARetractionNeedsAnAcceptedNotificationAndIsQueuedReleased, and the screen renders Retract only when the row's outcome is accepted. Making a failed export here would need a case on a guide-less condition, which other walkthroughs count.&quot;}]</div>
+<div class="line"><span class="at">[14:04:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[14:04:19]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[14:04:37]</span> <span class="muted">run-resumed</span> session=092 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[14:04:56]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ReviewAGeneratedMessageTests|FullyQualifiedName~InspectTheExportLogTests|FullyQualifiedName~SurvsysHarnessTests|FullyQualifiedName~QueueACaseForNotificationTests&quot;] owner=export-log-walkthroughs-from-the-worker</div>
+<div class="line"><span class="at">[14:05:09]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~SendACaseToCdcTests&quot;] owner=send-a-case-to-cdc</div>
+<div class="line"><span class="at">[14:05:22]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~RetractANotificationTests&quot;] owner=retract-a-notification</div>
+<div class="line"><span class="at">[14:05:34]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ConfigureANotificationGuideTests&quot;] owner=configure-a-notification-guide</div>
+<div class="line"><span class="at">[14:05:38]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;] owner=configure-a-notification-guide</div>
+<div class="line"><span class="at">[14:05:39]</span> <span class="muted">report-accepted</span> seq=7 step=fix-round-1 files=[&quot;Survsys.E2ETests/Fixtures/notification-guide.sql&quot;] notes=Fixture comment now states the two-segment MSH and OBR message the walkthrough and its test require, no PID and no OBX.</div>
+<div class="line"><span class="at">[14:05:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[14:05:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[14:05:39]</span> <span class="muted">job-started</span> name=verification pid=43704 log=.dabbler/runs/s92/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:05:50]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s92/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[14:05:50]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[14:05:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[14:05:50]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[14:05:50]</span> <span class="muted">job-started</span> name=run of record: unit pid=22032 log=.dabbler/runs/s92/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[14:05:57]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s92/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[14:05:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[14:06:00]</span> <span class="muted">landed</span> commit=698e108a7fbf70e437f423764c064a21e6a165ad</div>
+<div class="line"><span class="at">[14:06:00]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[14:06:00]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[14:06:00]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[14:06:00]</span> <span class="muted">job-started</span> name=close pid=13532 log=.dabbler/runs/s92/driver/jobs/close.log</div>
+<div class="line"><span class="at">[14:06:05]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s92/driver/jobs/close.log</div>
+<div class="line"><span class="at">[14:06:05]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Harness seeding deletes the migration-provided notification-header defaults without restoring them**</td><td>disputed — The harness never clears the header defaults. The table it clears is nmi_guide_variable, which holds a guide's OWN header values (GuideVariableValueConfiguration maps GuideVariableValue to nmi_guide_variable); the migration-seeded defaults live in nmi_guide_variable_default (GuideVariableDefaultConfiguration), which is not in TablesInDeletionOrder and is never deleted. The tests prove it: ConfigureANotificationGuideTests step 8 reads the sending_facility row's Default as CTDPH^2.16.840.1.114222.4.1.3650^ISO, and ReviewAGeneratedMessageTests asserts the MSH built from the five defaults, both passing after the harness has seeded (and after SurvsysHarnessTests re-seeds mid-suite).</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** `Survsys.E2ETests/Fixtures/notification-guide.sql` says the variable-free guide produces “the header, the patient and the Epidemiologic Information OBR,” implying an `MSH`/`PID`/`OBR` message. `docs/walkthroughs/review-a-generated-message.md` and `ReviewAGeneratedMessageTests.cs` instead require exactly two segments, `MSH` and `OBR`. Resolve the fixture comment or the documented/tested message contract so maintainers do not receive contradictory format guidance.</td><td>fixed — Fixture comment now states the two-segment MSH and OBR message the walkthrough and its test require, no PID and no OBX. — (Survsys.E2ETests/Fixtures/notification-guide.sql)</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** Add a negative retraction-control case to `RetractANotificationTests.cs`: with an export that is queued, failed, or otherwise not accepted, open its export-log row and assert that **Retract** is unavailable or its action is rejected. The current added tests only exercise an accepted row, so they would still pass if the UI erroneously offered retraction for exports CDC has not accepted.</td><td>disputed — A walkthrough test performs its document's written steps and nothing else (one document, one test); a refused retraction is not a step of retract-a-notification. The rule it asks for is already proved where it lives: the endpoint refuses a retraction without an accepted notification in NotificationQueueEndpointsTests.ARetractionNeedsAnAcceptedNotificationAndIsQueuedReleased, and the screen renders Retract only when the row's outcome is accepted. Making a failed export here would need a case on a guide-less condition, which other walkthroughs count.</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Round 1 header-default finding:** WITHDRAWN. The cited mappings establish that the harness deletes `nmi_guide_variable` guide-specific values, not migration-seeded `nmi_guide_variable_default` rows.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Round 1 fixture-comment nit:** RESOLVED. `Survsys.E2ETests/Fixtures/notification-guide.sql` now explicitly describes the two-segment `MSH`/`OBR` output.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Round 1 retraction-control nit:** WITHDRAWN. The cited endpoint test covers rejection without an accepted notification, and `ExportLog.razor` renders Retract only for accepted outcomes; requiring that negative path in a walkthrough-step test would exceed the walkthrough’s stated contract.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>2023</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
