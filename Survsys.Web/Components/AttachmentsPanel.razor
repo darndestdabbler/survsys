@@ -292,7 +292,7 @@
         _ => ((double)bytes / (1024 * 1024)).ToString("0.0", CultureInfo.InvariantCulture) + " MB",
     };
 
-    /// <summary>The day a file was attached, in the report screens' date form.</summary>
-    private static string Attached(DateTimeOffset attached) =>
-        attached.ToString(DateForm, CultureInfo.InvariantCulture);
+    /// <summary>The local day a file was attached, in the report screens' date form.</summary>
+    public static string Attached(DateTimeOffset attached) =>
+        attached.ToLocalTime().ToString(DateForm, CultureInfo.InvariantCulture);
 }

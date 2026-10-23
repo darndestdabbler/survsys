@@ -121,7 +121,12 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 107 | The integration suite before every release, on SQL Server in a container | no | 2026-10-22 |
 | 108 | Release 0.14.0 (release: 0.14.0) | yes | 2026-10-22 |
 | 109 | The parity check and the documentation for 1.0.0 | no | 2026-10-22 |
-| 110 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 110 | Attachment and note dates in local time | no | 2026-10-23 |
+| 111 | Jurisdiction on every list, and read-only sharing | — | not declared |
+| 112 | Address geocoding | — | not declared |
+| 113 | Held eICRs, attachments, and no system settings | — | not declared |
+| 114 | Walkthroughs for the open items | — | not declared |
+| 115 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -963,3 +968,9 @@ Check survsys against the legacy systems for 1.0.0 and bring its documentation t
 
 - 2026-10-22 — step 'walkthrough-regression': its files: The regression found drift in twelve documents and five tests, corrected there; and a product defect (attachment and note dates shown as UTC dates) recorded in gap-analysis.md and planned as session 110 in session-plan.md. (claude-code (anthropic, claude-opus-5-5))
 - 2026-10-23 — step 'guides-1-0-0': its files: Writing the guides from the code found jurisdiction scoping missing on the work queue, task list, saved-view exports and reports, and screens missing for held eICRs, attachment download and system settings; recorded as still open in gap-analysis.md. (claude-code (anthropic, claude-opus-5-5))
+
+### Session 110 — Attachment and note dates in local time
+
+**Releasable: no.**
+
+Show an attachment's and a note's date in local time. AttachmentsPanel.razor's Attached and NotesTab.razor's Written convert the stored DateTimeOffset with ToLocalTime() before writing it as yyyy-MM-dd, as the Administrative tab does, so a file attached or a note written late in the evening is no longer dated the next day. The two helpers become public static so Survsys.UnitTests can reach them, and AttachmentsPanelTests and NotesTabTests prove each for a moment late in the evening local time expressed in UTC. Nothing stored changes and every element id stays the same.

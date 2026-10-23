@@ -322,9 +322,9 @@
     private static string Shown(int? value) =>
         value is { } id ? id.ToString(CultureInfo.InvariantCulture) : "—";
 
-    /// <summary>The day a note was written, in the report screens' date form.</summary>
-    private static string Written(DateTimeOffset written) =>
-        written.ToString(DateForm, CultureInfo.InvariantCulture);
+    /// <summary>The local day a note was written, in the report screens' date form.</summary>
+    public static string Written(DateTimeOffset written) =>
+        written.ToLocalTime().ToString(DateForm, CultureInfo.InvariantCulture);
 
     /// <summary>One note as its boxes hold it.</summary>
     private sealed class NoteForm

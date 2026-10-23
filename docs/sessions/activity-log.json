@@ -1252,6 +1252,13 @@
       "what": "step 'guides-1-0-0': its files",
       "reason": "Writing the guides from the code found jurisdiction scoping missing on the work queue, task list, saved-view exports and reports, and screens missing for held eICRs, attachment download and system settings; recorded as still open in gap-analysis.md.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 110,
+      "dateTime": "2026-10-23T05:41:50.823000-04:00",
+      "task": "Show an attachment's and a note's date in local time. AttachmentsPanel.razor's Attached and NotesTab.razor's Written convert the stored DateTimeOffset with ToLocalTime() before writing it as yyyy-MM-dd, as the Administrative tab does, so a file attached or a note written late in the evening is no longer dated the next day. The two helpers become public static so Survsys.UnitTests can reach them, and AttachmentsPanelTests and NotesTabTests prove each for a moment late in the evening local time expressed in UTC. Nothing stored changes and every element id stays the same.",
+      "releasable": false
     }
   ]
 }
