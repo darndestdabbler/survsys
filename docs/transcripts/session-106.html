@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 106 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 106 transcript</h1>
+<p class="stamp">Rendered 2026-10-22T19:29:00.744Z by dabbler-ai-router 3.23.0 at ae6cbe7855546073c8b213ebe1dbb3e59b26ee1b.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-22T15:06:11.881-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 106: Phase 13 walkthroughs</h3>
+<ol><li>Register.</li><li><code>docs/walkthroughs/</code>: four documents — review an eICR and its reportability response, map a reportable condition, open a case from an eICR, link an eICR to an existing case.</li><li><code>Survsys.E2ETests</code>: the four Playwright tests named after them.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Write the Phase 13 walkthroughs and the Playwright tests that perform them. The E2E intake harness gains the eCR intake: a test-feed drop directory polled every few seconds, this jurisdiction's responsible-agency id, the eCR tables cleared before seeding, and a fixture Fixtures/ecr-intake.sql that maps the walkthroughs' RCTC condition codes to catalogue conditions, puts the patients' zip under an agency, and seeds the person and open case the link walkthrough's eICR names. Small eICR and RR fixture documents derived from the HL7 IG samples are added under Survsys.E2ETests/Fixtures/Cda, one set per walkthrough so each stands alone. The eCR document screen shows what became of an eICR -- the cases it was written to, each with an Open case link, or why it is held for review -- which is what lets a reader see a case opened or linked from it. Four documents are added to docs/walkthroughs/ and linked from its README, each with the one test named after it in Survsys.E2ETests: review an eICR and its reportability response (drop an eICR and its RR, find them on the eCR queue, open the eICR and read its rendering, the RR's conditions with their determinations, agencies and routing, and the validation findings), map a reportable condition (drop an RR whose condition code maps to nothing, find it under Needs review, map the code to a catalogue condition on the eCR condition mapping screen, and read the condition reportable on the document screen), open a case from an eICR (drop an eICR and RR for a patient not on file, open the eICR and follow its Open case link to the new case, reading its patient and disease), and link an eICR to an existing case (note the record number of a person's open case, drop an eICR and RR for that person and condition, and follow the eICR's Open case link to that same record number).</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/0243899752208f8d0831300eadfb99976ef8128c"><code>0243899752208f8d0831300eadfb99976ef8128c</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Ecr document cases</td><td><p>Survsys.Web/Components/Pages/EcrDocumentReview.razor: under the reportability response, a Cases section for an eICR that reads the detail response's CaseStatus, CaseReason and CaseIds -- linked: one 'Open case' link per case id to /event/edit/{id} (identifiers ecr-document-cases and ecr-document-case-{id}); review: the reason it is held (ecr-document-case-review); otherwise a line saying no case has been written from it (ecr-document-no-cases). No client or API change.</p></td><td><span class="mono">Survsys.Web/Components/Pages/EcrDocumentReview.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>Ecr intake harness</td><td><p>Survsys.E2ETests: eICR and RR fixture documents under Fixtures/Cda derived from the HL7 STU3.1.1 eICR and RR samples, trimmed to what the parser and case writer read, each RR responding to its eICR and naming this jurisdiction as responsible agency -- a pair for the review walkthrough, an RR alone whose condition code is unmapped for the mapping walkthrough, a pair for a patient not on file, and a pair for the person on file with an open case. Fixtures/ecr-intake.sql maps the reportable codes to catalogue conditions, maps the patients' zip to an agency, and seeds the link walkthrough's open case on the person persons.sql or the fixture puts on file. IntakeHarness turns the eCR intake on (EcrIntake__TestDirectory to an emptied ecr-drop directory, EcrIntake__PollIntervalSeconds, EcrIntake__ResponsibleAgencyIds__0), seeds ecr-intake.sql after elr-intake.sql, and exposes the drop directory and a Document(name) helper; the eCR tables are added to TablesInDeletionOrder before the tables they reference. The csproj copies the new fixtures; SurvsysHarnessTests is updated where it states the fixtures or tables.</p></td><td></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~SurvsysHarnessTests</code></td><td>yes</td></tr>
+<tr><td>Review an eicr and its reportability response</td><td><p>Write docs/walkthroughs/review-an-eicr-and-its-reportability-response.md: copy the review eICR and RR into the eCR drop directory, open eCR on the application bar, find the eICR's row, open it, and read the heading, the rendered eICR, the RR condition's name, determination, responsible agency, maps-to and routing, and the validation findings. Link it from docs/walkthroughs/README.md (and update the README's walkthrough count and intake paragraph) and add Survsys.E2ETests/ReviewAnEicrAndItsReportabilityResponseTests.cs performing it step for step.</p></td><td><span class="mono">docs/walkthroughs/review-an-eicr-and-its-reportability-response.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/ReviewAnEicrAndItsReportabilityResponseTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~ReviewAnEicrAndItsReportabilityResponseTests</code></td><td>yes</td></tr>
+<tr><td>Map a reportable condition</td><td><p>Write docs/walkthroughs/map-a-reportable-condition.md: copy the mapping RR into the eCR drop directory, open the eCR queue with Needs review ticked, open the RR and read its condition Needs review and mapped to nothing, add the condition's code on the eCR condition mapping screen mapped to a catalogue condition, return to the RR and read it mapped and Reportable. Link it from docs/walkthroughs/README.md and add Survsys.E2ETests/MapAReportableConditionTests.cs performing it step for step.</p></td><td><span class="mono">docs/walkthroughs/map-a-reportable-condition.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/MapAReportableConditionTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~MapAReportableConditionTests</code></td><td>yes</td></tr>
+<tr><td>Open a case from an eicr</td><td><p>Write docs/walkthroughs/open-a-case-from-an-eicr.md: copy the eICR and RR for a patient not on file into the eCR drop directory, open the eICR from the eCR queue, read its Cases section, press Open case, and read the new report's patient name, disease and record number. Link it from docs/walkthroughs/README.md and add Survsys.E2ETests/OpenACaseFromAnEicrTests.cs performing it step for step.</p></td><td><span class="mono">docs/walkthroughs/open-a-case-from-an-eicr.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/OpenACaseFromAnEicrTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~OpenACaseFromAnEicrTests</code></td><td>yes</td></tr>
+<tr><td>Link an eicr to an existing case</td><td><p>Write docs/walkthroughs/link-an-eicr-to-an-existing-case.md: find the person's open case on the Events screen and note its record number, copy the eICR and RR for that person and condition into the eCR drop directory, open the eICR from the eCR queue, press its one Open case link, and read the same record number, patient and disease. Link it from docs/walkthroughs/README.md and add Survsys.E2ETests/LinkAnEicrToAnExistingCaseTests.cs performing it step for step.</p></td><td><span class="mono">docs/walkthroughs/link-an-eicr-to-an-existing-case.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/LinkAnEicrToAnExistingCaseTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~LinkAnEicrToAnExistingCaseTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No reviewer screen for settling an eICR held for review: the person-match search and the POST /api/ecr-documents/{id}/case endpoint stay without a web front end, and the open and link walkthroughs follow the intake's automatic matching.</li><li>No change to the eCR intake, parser, validation, reportability, case writer, senders or quality code in Survsys.Api, Survsys.Messaging or Survsys.Data; the only application change is the eCR document screen showing the case status and case links its detail response already carries.</li><li>No walkthrough for the eCR senders or data quality screens, and no change to any existing walkthrough or its test beyond the README linking the four new documents.</li><li>No release work.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[19:06:11]</span> <span class="muted">run-started</span> session=106 mode=pull</div>
+<div class="line"><span class="at">[19:06:11]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[19:08:44]</span> <span class="muted">run-resumed</span> session=106 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[19:08:44]</span> <span class="muted">plan-accepted</span> steps=[&quot;ecr-document-cases&quot;,&quot;ecr-intake-harness&quot;,&quot;review-an-eicr-and-its-reportability-response&quot;,&quot;map-a-reportable-condition&quot;,&quot;open-a-case-from-an-eicr&quot;,&quot;link-an-eicr-to-an-existing-case&quot;] non_goals=4</div>
+<div class="line"><span class="at">[19:08:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[19:08:45]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=ecr-document-cases</div>
+<div class="line"><span class="at">[19:09:13]</span> <span class="muted">run-resumed</span> session=106 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:09:15]</span> <span class="muted">check-passed</span> step=ecr-document-cases argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[19:09:16]</span> <span class="muted">report-accepted</span> seq=2 step=ecr-document-cases files=[&quot;Survsys.Web/Components/Pages/EcrDocumentReview.razor&quot;] notes=eCR document screen shows a Cases section: Open case links, the review reason, or none written</div>
+<div class="line"><span class="at">[19:09:16]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=ecr-intake-harness</div>
+<div class="line"><span class="at">[19:13:20]</span> <span class="muted">run-resumed</span> session=106 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:13:33]</span> <span class="muted">check-passed</span> step=ecr-intake-harness argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~SurvsysHarnessTests&quot;]</div>
+<div class="line"><span class="at">[19:13:34]</span> <span class="muted">report-accepted</span> seq=3 step=ecr-intake-harness files=[] notes=eCR fixtures (trimmed STU3.1.1 eICRs, small RRs), ecr-intake.sql, intake harness eCR test feed and eCR tables in the deletion order; patients reuse elr-intake.sql's 84101 zip mapping</div>
+<div class="line"><span class="at">[19:13:34]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=review-an-eicr-and-its-reportability-response</div>
+<div class="line"><span class="at">[19:17:52]</span> <span class="muted">run-resumed</span> session=106 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:18:15]</span> <span class="muted">check-passed</span> step=review-an-eicr-and-its-reportability-response argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ReviewAnEicrAndItsReportabilityResponseTests&quot;]</div>
+<div class="line"><span class="at">[19:18:16]</span> <span class="muted">report-accepted</span> seq=4 step=review-an-eicr-and-its-reportability-response files=[&quot;docs/walkthroughs/review-an-eicr-and-its-reportability-response.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/ReviewAnEicrAndItsReportabilityResponseTests.cs&quot;] notes=Review walkthrough and its test; README linked, its count replaced by every walkthrough above, intake paragraph names the eCR walkthroughs</div>
+<div class="line"><span class="at">[19:18:16]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=map-a-reportable-condition</div>
+<div class="line"><span class="at">[19:23:06]</span> <span class="muted">run-resumed</span> session=106 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:23:22]</span> <span class="muted">check-passed</span> step=map-a-reportable-condition argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MapAReportableConditionTests&quot;]</div>
+<div class="line"><span class="at">[19:23:23]</span> <span class="muted">report-accepted</span> seq=5 step=map-a-reportable-condition files=[&quot;docs/walkthroughs/map-a-reportable-condition.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/MapAReportableConditionTests.cs&quot;] notes=Mapping walkthrough and its test; the test opens a 1000px-tall window because at 720px the condition list opens upward under the five-line app bar</div>
+<div class="line"><span class="at">[19:23:23]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=open-a-case-from-an-eicr</div>
+<div class="line"><span class="at">[19:24:52]</span> <span class="muted">run-resumed</span> session=106 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:25:16]</span> <span class="muted">check-passed</span> step=open-a-case-from-an-eicr argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~OpenACaseFromAnEicrTests&quot;]</div>
+<div class="line"><span class="at">[19:25:16]</span> <span class="muted">report-accepted</span> seq=6 step=open-a-case-from-an-eicr files=[&quot;docs/walkthroughs/open-a-case-from-an-eicr.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/OpenACaseFromAnEicrTests.cs&quot;] notes=Open-a-case walkthrough and its test: a new patient's reportable eICR opens a case, followed from the eICR's Open case link</div>
+<div class="line"><span class="at">[19:25:16]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=link-an-eicr-to-an-existing-case</div>
+<div class="line"><span class="at">[19:27:33]</span> <span class="muted">run-resumed</span> session=106 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:27:57]</span> <span class="muted">check-passed</span> step=link-an-eicr-to-an-existing-case argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~LinkAnEicrToAnExistingCaseTests&quot;]</div>
+<div class="line"><span class="at">[19:27:57]</span> <span class="muted">report-accepted</span> seq=7 step=link-an-eicr-to-an-existing-case files=[&quot;docs/walkthroughs/link-an-eicr-to-an-existing-case.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/LinkAnEicrToAnExistingCaseTests.cs&quot;] notes=Link walkthrough and its test: Amara Osei's eICR is linked to her seeded open Giardiasis case 202600902; the whole intake collection passes together (10 tests)</div>
+<div class="line"><span class="at">[19:27:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[19:27:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[19:27:57]</span> <span class="muted">job-started</span> name=verification pid=42104 log=.dabbler/runs/s106/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:28:33]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s106/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:28:33]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[19:28:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[19:28:33]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[19:28:33]</span> <span class="muted">job-started</span> name=run of record: unit pid=49016 log=.dabbler/runs/s106/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[19:28:51]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s106/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[19:28:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[19:28:55]</span> <span class="muted">landed</span> commit=0243899752208f8d0831300eadfb99976ef8128c</div>
+<div class="line"><span class="at">[19:28:55]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[19:28:55]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[19:28:55]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[19:28:55]</span> <span class="muted">job-started</span> name=close pid=10276 log=.dabbler/runs/s106/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:29:00]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s106/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:29:00]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>17s</td><td>2260</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

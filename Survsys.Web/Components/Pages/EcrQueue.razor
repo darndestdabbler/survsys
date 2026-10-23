@@ -1,0 +1,163 @@
+@* The eCR queue: the eICRs and RRs taken in, newest first, as the eCR
+   endpoint returns them, with a feed filter and a "Needs review" filter above
+   them, each RR's count of conditions routed to review, and each row a way
+   into the document on its own. Read-only: what a reviewer does with a
+   document is a later session's.
+
+   Every element a later walkthrough will name carries an identifier of its
+   own — `ecr-queue-heading`, `ecr-queue-filter`, `ecr-queue-review`, `ecr-queue-total`,
+   `ecr-queue-loading`, `ecr-queue-error`, `ecr-queue-none`, the table and one
+   row per document keyed by its id. *@
+@page "/ecr"
+@inject EcrClient Client
+
+<PageTitle>eCR — Survsys</PageTitle>
+
+<MudText id="ecr-queue-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    eCR documents
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    The electronic initial case reports and reportability responses taken in,
+    newest first, with what validation found in each.
+</MudText>
+
+<div class="d-flex align-center gap-4 mb-4">
+    <MudSelect id="ecr-queue-filter" T="string" Label="Feed" Value="feed"
+               ValueChanged="OnFilterChanged" Dense="true" Style="max-width: 20rem;">
+        <MudSelectItem T="string" Value="@AllFeeds">All feeds</MudSelectItem>
+        <MudSelectItem T="string" Value="@("production")">Production</MudSelectItem>
+        <MudSelectItem T="string" Value="@("test")">Test</MudSelectItem>
+    </MudSelect>
+    <MudCheckBox id="ecr-queue-review" T="bool" Label="Needs review" Value="review"
+                 ValueChanged="OnReviewChanged" />
+</div>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="ecr-queue-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result)
+{
+    <MudText id="ecr-queue-total" Typo="Typo.body2" Class="mb-4">
+        @result.TotalCount document(s), showing @result.Items.Count.
+    </MudText>
+
+    @if (result.Items.Count == 0)
+    {
+        <MudText id="ecr-queue-none" Typo="Typo.body2">No eCR documents have been taken in on this feed.</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="ecr-queue-table" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>Kind</th>
+                        <th>Document</th>
+                        <th>Version</th>
+                        <th>Feed</th>
+                        <th>Received</th>
+                        <th>Errors</th>
+                        <th>Warnings</th>
+                        <th>To review</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var document in result.Items)
+                    {
+                        <tr id="@($"ecr-queue-row-{document.Id}")" data-ecr-document="@document.Id">
+                            <td>@document.Kind</td>
+                            <td>
+                                <MudLink Href="@($"/ecr/{document.Id}")">@document.DocumentId</MudLink>
+                            </td>
+                            <td>@(document.VersionNumber?.ToString() ?? "—")</td>
+                            <td>@document.Feed</td>
+                            <td>@document.ReceivedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td data-ecr-errors>@document.ErrorCount</td>
+                            <td data-ecr-warnings>@document.WarningCount</td>
+                            <td data-ecr-review>@document.ReviewCount</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        @if (result.TotalCount > PageSize || page > 1)
+        {
+            <div class="d-flex align-center gap-4 mt-2">
+                <MudButton id="ecr-queue-prev" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page <= 1)" OnClick="PreviousPage">
+                    Previous
+                </MudButton>
+                <MudText id="ecr-queue-page" Typo="Typo.body2">Page @(page) of @LastPage</MudText>
+                <MudButton id="ecr-queue-next" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page >= LastPage)" OnClick="NextPage">
+                    Next
+                </MudButton>
+            </div>
+        }
+    }
+}
+else
+{
+    <MudAlert id="ecr-queue-error" Severity="Severity.Error" Variant="Variant.Filled">@asked.Failure</MudAlert>
+}
+
+@code {
+    /// <summary>The value the filter holds for "every feed".</summary>
+    private const string AllFeeds = "";
+
+    /// <summary>How many documents one page of this screen holds: the API tier's default.</summary>
+    private const int PageSize = 50;
+
+    private string feed = AllFeeds;
+
+    private bool review;
+
+    private int page = 1;
+
+    private Asked<PagedResult<EcrDocumentResponse>>? asked;
+
+    private int LastPage => Math.Max(1, ((asked?.Value?.TotalCount ?? 0) + PageSize - 1) / PageSize);
+
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load()
+    {
+        asked = null;
+        asked = await Client.List(string.IsNullOrEmpty(feed) ? null : feed, review, page, PageSize);
+    }
+
+    private async Task OnFilterChanged(string chosen)
+    {
+        feed = chosen ?? AllFeeds;
+        page = 1;
+        await Load();
+    }
+
+    private async Task OnReviewChanged(bool chosen)
+    {
+        review = chosen;
+        page = 1;
+        await Load();
+    }
+
+    private async Task PreviousPage()
+    {
+        if (page > 1)
+        {
+            page--;
+            await Load();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (page < LastPage)
+        {
+            page++;
+            await Load();
+        }
+    }
+}
