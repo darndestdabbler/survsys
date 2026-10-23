@@ -1877,4 +1877,28 @@ cannot declare a suite only a release runs, so the gate is this step.*
 6. Full test suite, recorded as the run of record.
 7. Close-out.
 
-### Session 110: Release 1.0.0 (release: 1.0.0)
+### Session 110: Attachment and note dates in local time
+
+*Inserted after session 109. Its walkthrough regression, run at 20:55 in
+Connecticut, failed `attach-a-document.md` step 13: the **Attachments** table
+read tomorrow's date. `AttachmentEndpoints` stores `CreatedAt` as
+`DateTimeOffset.UtcNow`, and `AttachmentsPanel.razor`'s `Attached` writes it
+as `yyyy-MM-dd` without converting it, so from 20:00 (19:00 in winter) until
+midnight every attachment is dated the next day. `NotesTab.razor`'s `Written`
+does the same with a note's date. The Administrative tab, the edit lock and
+the print view already convert with `ToLocalTime()`. A walkthrough that fails
+by the clock is a defect of the release, so this comes before it.*
+
+1. Register.
+2. `Survsys.Web`: `AttachmentsPanel.razor`'s `Attached` and `NotesTab.razor`'s
+   `Written` show the moment's date in local time, by `ToLocalTime()` as the
+   Administrative tab does. Nothing stored changes, and every element id
+   stays unchanged.
+3. `Survsys.UnitTests`: the two dates, for a moment late in the evening
+   local time whose UTC date is the next day.
+4. Cross-provider verification.
+5. Full test suite, the end-to-end walkthrough suite included, recorded as
+   the run of record.
+6. Close-out.
+
+### Session 111: Release 1.0.0 (release: 1.0.0)

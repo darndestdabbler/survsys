@@ -91,7 +91,7 @@ public class ReviewAnEicrAndItsReportabilityResponseTests(IntakeHarness harness)
             await Expect(rendered.Locator("h1")).ToContainTextAsync("Initial Public Health Case Report");
 
             var patient = rendered.GetByRole(AriaRole.Row).Filter(new() { HasText = "Gender:" });
-            await Expect(patient).ToContainTextAsync("SOLBERG");
+            await Expect(patient).ToContainTextAsync("Ingrid SOLBERG");
             await Expect(patient).ToContainTextAsync("June 7, 1985");
         });
 

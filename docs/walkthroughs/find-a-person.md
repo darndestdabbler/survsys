@@ -28,9 +28,9 @@ describes what Survsys shows rather than what EpiTrax showed:
 - Survsys shows an **em dash** (`—`) where a person has no date of birth or
   no birth sex on file, so that an absent value reads as absent rather than
   as an empty cell you might take for a rendering fault.
-- **Nothing on a row is there to click.** A person's own screen — their
-  demographic record, and editing it — is a later session's, and until it
-  exists a row offers nothing rather than a link to nowhere.
+- **A person's name opens their own screen.** On each row the name is a
+  link to the person's screen, with their demographic record and their
+  cases. This walkthrough reads the results and follows no link.
 
 The legacy form's free-text *Person name* box, its *Phone*, *Morbidity* and
 *Contact* columns and its *Create Person and CMR* button are not part of this

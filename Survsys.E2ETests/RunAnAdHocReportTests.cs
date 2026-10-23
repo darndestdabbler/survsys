@@ -90,7 +90,7 @@ public class RunAnAdHocReportTests(SurvsysHarness harness) : SurvsysPageTest
             await SaveReport("Abbott, Jane", "Summit County"));
 
         // 6. The saved view that selects both cases.
-        await Step(Document, 6, "save the Animal influenza by agency view", async () =>
+        await Step(Document, 6, "save the Lyme disease by agency view", async () =>
         {
             await Page.Locator("#nav-saved-views").ClickAsync();
             await Expect(Page.Locator("#saved-view-form-heading")).ToHaveTextAsync("New saved view");

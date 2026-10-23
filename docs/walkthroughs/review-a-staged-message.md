@@ -27,11 +27,13 @@ describes what Survsys shows rather than what EMSA showed:
 - **The queue is one screen with a review-state filter, not a queue per
   state.** The legacy moved a message between numbered queues; Survsys has one
   **Staged messages** screen and a **Review state** filter that narrows it to
-  **Queued for review**, **Held for review** or **Exception**, or shows the
-  whole queue on **All**.
-- **Quality assurance is a flag on the message, not a queue of its own.** The
-  legacy had a QA queue; Survsys shows a **QA** column that reads **Flagged**
-  for a message raised for quality-assurance review and a dash for one that is
+  one state — **Queued for review**, **Held for review**, **Exception**,
+  **Quality assurance**, **Graylisted** and the rest of the legacy's states —
+  or shows the whole queue on **All**. A message is moved between states from
+  the same screen.
+- **Quality assurance is also a flag on the message.** Besides the **Quality
+  assurance** state, Survsys shows a **QA** column that reads **Flagged** for
+  a message raised for quality-assurance review and a dash for one that is
   not.
 
 Promoting a message to a case is its own walkthrough, *Promote a message to a
@@ -90,9 +92,12 @@ runs, and writes the recordings to
    application bar is the heading **Staged messages**. Under it a line reads
    **The inbound electronic lab reports waiting for review. Filter by review
    state, or leave it on All to see the whole queue.** Below that are a
-   **Review state** list, set to **All**, and a table whose columns read, left
-   to right, **Source**, **Received**, **Review state**, **QA** and
-   **Exception**.
+   **Review state** list, set to **All**, a count of the messages shown, a
+   row of actions — **Select page**, a **Move to** list, **Move**, **Retry**
+   and **Delete** — and a table whose columns read, left to right,
+   **Source**, **Received**, **Review state**, **QA** and **Exception**. Each
+   **Source** has a tick box beside it, for choosing the messages an action
+   applies to; this walkthrough ticks none and presses none of the actions.
 3. In the table, the row whose **Source** reads **elr-exception-example.hl7**
    reads **Exception** under **Review state**, a dash under **QA**, and **The
    message could not be parsed as HL7 v2.** under **Exception**. The row whose

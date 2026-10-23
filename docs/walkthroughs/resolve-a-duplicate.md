@@ -32,7 +32,7 @@ promoted twice.
 
 ## Before you start
 
-You need all six of these. The fourth is the one people forget.
+You need all five of these. The fourth is the one people forget.
 
 1. **A reachable SQL Server**, holding a Survsys database at this build's
    migration level, brought up by `Survsys.Api` started with

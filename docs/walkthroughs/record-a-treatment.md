@@ -20,17 +20,18 @@ legacy documentation, read-only here and never modified:
 | EpiTrax → **Admin** → **Treatments** | `../../../nedss/docs/functional/epitrax-core-workflows.md`, *Key Admin Screens*, the row *Treatments* (screenshot `17-admin-treatments`) | The treatment reference data. |
 | Condition-specific treatments | `../../../nedss/docs/functional/phase-1.6-feature-matrix.md`, *8. Treatments & Vaccines* | "Treatment list filtered by disease": each treatment listed for the conditions it is given for. |
 
-Two differences from the legacy system are deliberate, and this walkthrough
-describes what Survsys shows rather than what EpiTrax showed:
+One difference from the legacy system is deliberate, and one boundary is worth
+knowing; this walkthrough describes what Survsys shows rather than what
+EpiTrax showed:
 
 - **A treatment's diseases are ticked on the treatment.** The conditions it is
   listed for are a row of tick boxes on its own screen, one per condition, and
   **Save** writes the treatment and its list together.
-- **The case records whether treatment was given, not which.** A case
-  morbidity report's **Clinical** tab carries **Treatment given
-  (Yes/No/Unknown)**; Survsys has no screen yet that records which treatment,
-  at what dates, was given on a case. This walkthrough records the treatment
-  itself, in the list a disease's treatments are drawn from.
+- **This is the catalogue, not a case's treatment.** This walkthrough
+  records the treatment itself, in the list a disease's treatments are drawn
+  from. Which treatment was given on a case, at what dates and dose, is
+  recorded on the case morbidity report's **Treatments** tab, which is its
+  own walkthrough, *Record a case treatment*.
 
 ## Before you start
 

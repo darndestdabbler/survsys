@@ -85,13 +85,14 @@ browser. It records video of every test it runs, and writes the recordings to
 
 ## Steps
 
-1. Copy the files `Survsys.E2ETests/Fixtures/Cda/ecr-review-eicr.xml` and
-   `Survsys.E2ETests/Fixtures/Cda/ecr-review-rr.xml` into the eCR drop
-   directory. The first is an eICR R3.1.1 for **Ingrid Solberg**, the second
-   the RR that responds to it, finding Malaria reportable. Within a few
-   seconds both files are gone from the drop directory: the intake has read,
-   validated and stored them and moved them into the directory's
-   `.processed` folder.
+1. Copy the file `Survsys.E2ETests/Fixtures/Cda/ecr-review-eicr.xml` into
+   the eCR drop directory: an eICR R3.1.1 for **Ingrid Solberg**. Within a
+   few seconds it is gone from the drop directory: the intake has read,
+   validated and stored it and moved it into the directory's `.processed`
+   folder. Then copy `Survsys.E2ETests/Fixtures/Cda/ecr-review-rr.xml`, the
+   RR that responds to it, finding Malaria reportable, and wait the same way
+   until it too is in `.processed`. The eICR goes first so that the RR finds
+   the document it responds to.
 2. Open your browser and go to the application tier's address — on a
    developer machine, <http://localhost:5000>. In the coloured application
    bar across the top of the window, press **eCR**. The screen is headed
@@ -117,7 +118,7 @@ browser. It records video of every test it runs, and writes the recordings to
    condition its code maps to — and **Reportable** under **Routing**.
 7. Under **Validation findings** is a table of what validation found in both
    documents, the eICR's first. At least one row reads
-   **2.16.840.1.113883.9.9.9.9.9^e2e-review-eicr** under **Document**. One of
+   **eICR 2.16.840.1.113883.9.9.9.9.9^e2e-review-eicr** under **Document**. One of
    the RR's rows reads **error** under **Severity**, **schematron** under
    **Source**, **RR 2.16.840.1.113883.9.9.9.9.8^e2e-review-rr** under
    **Document** and **This participantRole SHALL contain at least one [1..*]

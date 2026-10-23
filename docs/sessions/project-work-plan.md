@@ -120,7 +120,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 106 | Phase 13 walkthroughs | no | 2026-10-22 |
 | 107 | The integration suite before every release, on SQL Server in a container | no | 2026-10-22 |
 | 108 | Release 0.14.0 (release: 0.14.0) | yes | 2026-10-22 |
-| 109 | The parity check and the documentation for 1.0.0 | — | not declared |
+| 109 | The parity check and the documentation for 1.0.0 | no | 2026-10-22 |
 | 110 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
@@ -952,3 +952,14 @@ Make the integration suite bring its own SQL Server and gate release 0.14.0. Sur
 **Releasable: yes.**
 
 Release 0.14.0: the framework packs and publishes what is on the trunk.
+
+### Session 109 — The parity check and the documentation for 1.0.0
+
+**Releasable: no.**
+
+Check survsys against the legacy systems for 1.0.0 and bring its documentation to 1.0.0. docs/planning/gap-analysis.md, written at 0.8.0, is brought up to date: each gap row is marked closed with the session that closed it (59 to 106), or left open with the operator's recorded decision (NETSS and the deliberately-not-planned list stay as decided); a new section gives every row of ../nedss/docs/functional/phase-1.6-feature-matrix.md its survsys status (built, simplified, dropped or not planned, with the session or the reason); and session 96's three departures from the legacy classification are recorded: an out-of-state case keeps its agency because there is no Out of State agency, a facility encounter stands in for an influenza hospitalization because there is no hospitalization field, and contacts close at the LHD's acceptance because this workflow has no approved_by_lhd. Then the full walkthrough regression is run: the whole Survsys.E2ETests suite, and every document in docs/walkthroughs read against its own test as session 57 did, any drift corrected in the document or the test, never by skipping a step. Last, docs/README.md, docs/user-guide/README.md and docs/technical/README.md are brought to 1.0.0: the "built but not wired in" statements about graylisting, vocabulary matching, the rules engine and CDC generation and sending, which sessions 74, 75 and 81 to 84 wired in, are rewritten to describe what runs, and every remaining such statement is checked to be still true.
+
+**Amended after acceptance:**
+
+- 2026-10-22 — step 'walkthrough-regression': its files: The regression found drift in twelve documents and five tests, corrected there; and a product defect (attachment and note dates shown as UTC dates) recorded in gap-analysis.md and planned as session 110 in session-plan.md. (claude-code (anthropic, claude-opus-5-5))
+- 2026-10-23 — step 'guides-1-0-0': its files: Writing the guides from the code found jurisdiction scoping missing on the work queue, task list, saved-view exports and reports, and screens missing for held eICRs, attachment download and system settings; recorded as still open in gap-analysis.md. (claude-code (anthropic, claude-opus-5-5))

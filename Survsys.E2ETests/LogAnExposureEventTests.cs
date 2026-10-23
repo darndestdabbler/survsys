@@ -129,6 +129,8 @@ public class LogAnExposureEventTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator("#contacts-exposures tbody tr"))
                 .ToHaveTextAsync(["No exposures recorded yet."]);
 
+            await Expect(Page.Locator("#contacts-import")).ToContainTextAsync("Import contacts");
+
             await Expect(Page.Locator("#contacts-entry")).ToBeVisibleAsync();
             await Expect(Page.Locator("#contacts-entry-place")).ToBeVisibleAsync();
             await Expect(Page.Locator("#contacts-entry-contact-add")).ToHaveTextAsync("Add contact");

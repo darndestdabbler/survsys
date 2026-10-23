@@ -164,8 +164,8 @@ public class ExportADatasetTests(SurvsysHarness harness) : SurvsysPageTest
             var row = Page.Locator($"#saved-views-table [data-saved-view='{ViewName}']");
 
             await Expect(row).ToHaveCountAsync(1);
-            await Expect(row).ToContainTextAsync(Columns);
-            await Expect(row).ToContainTextAsync(Condition);
+            await Expect(row.Locator("td").Nth(1)).ToHaveTextAsync(Columns);
+            await Expect(row.Locator("td").Nth(2)).ToContainTextAsync(Condition);
         });
 
         // 14. Follow the Export CSV link, capturing the download and its name.

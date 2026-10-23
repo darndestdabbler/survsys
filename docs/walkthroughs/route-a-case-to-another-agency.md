@@ -27,8 +27,8 @@ describes what Survsys shows rather than what EpiTrax showed:
 - **The Workflow Options are a panel, not a menu.** Above the report's tabs,
   the **Workflow Options** panel shows the workflow status and one button per
   move the case's state and your privileges allow. Routing takes the agency
-  from the **Route to agency** list beside the buttons, and any move takes the
-  **Note** typed beside them.
+  from the **Route to agency** list above the buttons, and any move takes the
+  **Note** typed above them.
 - **Every move is kept.** The report's **Administrative** tab carries a
   **Workflow history**, newest first, with who made each move, when, what it
   was, the state it moved from and to, and its note.

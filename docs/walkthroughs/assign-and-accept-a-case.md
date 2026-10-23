@@ -42,11 +42,14 @@ describes what Survsys shows rather than what EpiTrax showed:
   list. The **Work queue** shows the cases an agency investigates, and the
   **Agency board** shows its whole queue, including cases shared read-only
   to it.
-- **The workflow has four states**: **Assigned to LHD**, **Accepted**,
-  **Under investigation** and **Closed**, in that order, and each row offers
-  the one move forward it is ready for. The legacy's thirteen states, its
-  *Do Not Investigate*, *Assign to Investigator* and reopening moves, and
-  its *Route to LHD* from a later state are not there.
+- **A queue row offers one move forward.** The workflow runs **Assigned to
+  LHD**, **Accepted**, **Under investigation** and **Closed**, and each row
+  offers the one move forward it is ready for. The other states — **Not
+  investigated**, **Approved by state** and **Rejected by state** — and the
+  other moves — route to another agency, assign an investigator, do not
+  investigate, reopen, approve and reject — are on the report's **Workflow
+  Options** panel, which *Route a case to another agency* walks through.
+  The legacy's thirteen states are seven here.
 - **The Work queue is one agency's cases, not the legacy Events list.** It
   has no saved views and no filters: it lists what the chosen agency
   investigates, fifty to a page, with the record number, disease, workflow

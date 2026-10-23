@@ -50,9 +50,12 @@ You need all four of these.
    migration level. `Survsys.Api` is the only tier permitted to touch the
    database, and it is what brings an empty one up to level: start it with
    `Survsys__ApplyMigrations=true` and it migrates and then serves. The
-   condition this view selects by, **Malaria**, and the agency it selects by,
-   **Davis County**, are among the data a database at migration level already
-   has — Malaria from the conditions seed and Davis County from the migration.
+   agency this view selects by, **Davis County**, comes with the migration.
+   The condition it selects by, **Malaria**, does not:
+   `Survsys.IntegrationTests/Fixtures/conditions.sql` seeds the seven
+   conditions, Malaria among them, so run it against your database. The
+   end-to-end suite seeds it itself; a database you brought up by hand does
+   not have Malaria until you run it.
 2. **The `Survsys.Api` tier running.** On a developer machine:
    `dotnet run --project Survsys.Api --urls http://localhost:5100`.
 3. **The `Survsys.Web` tier running**, pointed at that API tier. On a

@@ -41,7 +41,7 @@ own walkthrough, *Resolve a duplicate*.
 
 ## Before you start
 
-You need all six of these. The fourth is the one people forget.
+You need all five of these. The fourth is the one people forget.
 
 1. **A reachable SQL Server**, holding a Survsys database at this build's
    migration level, brought up by `Survsys.Api` started with
@@ -99,7 +99,10 @@ browser. It records video of every test it runs, and writes the recordings to
 4. The browser tab reads **Staged message — Survsys**, and the heading reads
    **Staged message** followed by the message's id. Below the message's
    summary and its raw text is the heading **Promote to a case** and, under
-   it, a person search.
+   it, a panel proposing the person on file that best matches the message's
+   patient, or saying none does, with its own **Use this person** and
+   **Create new person** buttons; under that panel is a person search. This
+   walkthrough uses the search, so leave the panel's buttons alone.
 5. In the box labelled **Last name**, type `Okafor`, then press **Search**.
    The one row's **Last, First** reads **Okafor, Chidi**. **Note the number**
    in that row's **ID** column.

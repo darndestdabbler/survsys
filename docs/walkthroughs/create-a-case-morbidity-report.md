@@ -27,12 +27,15 @@ describes what Survsys shows rather than what EpiTrax showed:
   identifier**, the number the database gave the report, rather than by its
   record number. The record number is in the header, where the legacy form
   shows it too.
-- **The header carries eight fields and no actions.** Patient name, Record
-  #, Event type, Disease, Investigating agency, Event date, MMWR week and Case
-  status are what it shows. The legacy header's workflow status,
-  investigator, brief note, action buttons and menus are not there: the case
-  status is set in a **Case status** panel under the header, and the case is
-  queued for the CDC from a **CDC notification** panel under that.
+- **The header carries eleven fields and a brief note.** Patient name,
+  Record #, Event type, Disease, Investigating agency, Event date, MMWR week,
+  Case status, Investigator, State case status and LHD case status are what
+  it shows, with a **Brief note** box and its **Save note** button under
+  them. The legacy header's action buttons and menus are not there: the case
+  status is set in a **Case status** panel under the header, the workflow is
+  moved from a **Workflow Options** panel under that, the case is queued for
+  the CDC from a **CDC notification** panel, and sent to IBIS from an
+  **IBIS** panel.
 - **The tab strip carries eleven tabs.** Demographic, Clinical, Laboratory,
   Investigation, Administrative, Forms, Vaccines, Treatments, Encounters,
   Contacts and Notes. The case's supplemental forms, its vaccine records, its
@@ -134,7 +137,7 @@ of every test it runs, and writes the recordings to
 11. The report now exists, and the screen is its own form. The heading reads
     **Case morbidity report**, and the browser tab reads **Case morbidity
     report** followed by the record number and **— Survsys**. Read the
-    header bar under the heading, eight fields left to right:
+    header bar under the heading, eleven fields left to right:
 
     | Field | Reads |
     |---|---|
@@ -146,16 +149,20 @@ of every test it runs, and writes the recordings to
     | Event date | today's date, written as `yyyy-mm-dd` |
     | MMWR week | the MMWR week today falls in, written as **Week** then the week and the year — for example **Week 41, 2026** |
     | Case status | **Unknown** |
+    | Investigator | **Not assigned** |
+    | State case status | nothing |
+    | LHD case status | nothing |
 
-    The event date is the day the report was opened, which is what the
+    Under the fields is an empty **Brief note** box with a **Save note**
+    button. The event date is the day the report was opened, which is what the
     legacy system records at this point too; the date you entered in step 7
     is the date first reported to public health, which the header does not
     show. The MMWR week is the event date's, and the case status reads
     **Unknown** because none has been set.
 12. Above the header bar are the buttons **Edit**, **Delete** and **Print**:
     the report opens read-only, and **Edit** opens it for editing. Under the
-    header bar are two panels, headed **Case status** and **CDC
-    notification**, and under them is the tab strip. It shows eleven tabs,
+    header bar are four panels, headed **Case status**, **Workflow Options**,
+    **CDC notification** and **IBIS**, and under them is the tab strip. It shows eleven tabs,
     left to right: **Demographic**, **Clinical**, **Laboratory**,
     **Investigation**, **Administrative**, **Forms**, **Vaccines**,
     **Treatments**, **Encounters**, **Contacts** and **Notes**.

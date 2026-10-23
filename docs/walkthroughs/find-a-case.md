@@ -112,7 +112,10 @@ It records video of every test it runs, and writes the recordings to
     **Giardiasis** for **Disease**, **Tooele County** for **Agency**,
     **Assigned to LHD** for **Workflow**, **Unknown** for **Status**, the
     case's MMWR week and year as _week_/_year_ for **MMWR week**, and today's
-    date as `yyyy-mm-dd` for **Onset**, the date the case was opened.
+    date as `yyyy-mm-dd` for **Onset**, the date the case was opened. The
+    last two columns, **County** and **Planning region**, name the county and
+    the planning region of his current address, or read **—** where it has
+    none.
 14. Press the record number in that row. The report's own form opens, headed
     **Case morbidity report**, and its header bar reads the record number you
     noted, **Rodriguez, Carlos**, **Giardiasis** and **Tooele County**.

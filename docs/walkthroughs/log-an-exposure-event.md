@@ -24,7 +24,7 @@ inferred from two legacy screens, read-only here and never modified:
 **One tab, not two.** Survsys shows the exposure and what it links on one
 **Contacts** tab, because an exposure and its contacts are written as one
 thing: the API tier records an exposure whole, with its place, its contacts
-and its sources, and has no endpoint for adding to a stored one. The legacy
+and its sources. The legacy
 system split the writing from the reading across two tabs; this walkthrough
 logs the event, and the *Add a contact to a case* walkthrough logs one with a
 contact on it.
@@ -32,11 +32,10 @@ contact on it.
 Four differences from the legacy panel are deliberate, and this walkthrough
 describes what Survsys shows rather than what EpiTrax showed:
 
-- **An exposure is recorded whole, and then not edited.** One **Record
-  exposure** button writes the event, its place, every contact under it and
-  every source under it together. Once recorded, an exposure is listed and
-  not changed: Survsys has no screen to alter or remove a recorded exposure,
-  and none to set a contact's disposition afterwards.
+- **An exposure is recorded whole.** One **Record exposure** button writes
+  the event, its place, every contact under it and every source under it
+  together. Once recorded, its row carries **Add contact**, **Edit** and
+  **Delete**, which this walkthrough does not press.
 - **The coded fields are chosen from lists.** The place type and state, the
   contact's type and disposition, and a source's type are lists over the
   reference code lists an administrator keeps on the **Code lists** screen,
@@ -133,12 +132,13 @@ of every test it runs, and writes the recordings to
    **Treatments**, **Encounters**, **Contacts** and **Notes**. Note
    the address in your browser's address bar: it ends in `/event/edit/` and a
    number, and step 14 comes back to it.
-10. Press **Edit** at the top of the report, which opens it for editing, then press the **Contacts** tab. The tab opens on two panels. The first,
+10. Press **Edit** at the top of the report, which opens it for editing, then press the **Contacts** tab. The tab opens on three panels. The first,
     headed **Exposures**, is a table with the columns **Name**, **From**,
     **To**, **Place**, **Contacts**, **Sources** and **Actions**, and its one
     row reads
-    **No exposures recorded yet.** The second, headed **Record an
-    exposure**, is the entry form: the exposure's own boxes, then a **Place**
+    **No exposures recorded yet.** The second, headed **Import contacts**,
+    takes a CSV file of contacts for an exposure; this walkthrough leaves it
+    alone. The third, headed **Record an exposure**, is the entry form: the exposure's own boxes, then a **Place**
     section, then a **Contacts** section with an **Add contact** button and
     nothing under it, then a **Sources** section with an **Add source**
     button and nothing under it, then a **Record exposure** button.

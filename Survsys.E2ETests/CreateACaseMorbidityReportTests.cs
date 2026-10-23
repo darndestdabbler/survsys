@@ -118,16 +118,23 @@ public class CreateACaseMorbidityReportTests(SurvsysHarness harness) : SurvsysPa
             await Expect(Page.Locator("#report-header-event-date")).ToHaveTextAsync(today);
             await Expect(Page.Locator("#report-header-mmwr")).ToHaveTextAsync(new Regex(@"^Week \d{1,2}, \d{4}$"));
             await Expect(Page.Locator("#report-header-case-status")).ToHaveTextAsync("Unknown");
+            await Expect(Page.Locator("#report-header-investigator")).ToHaveTextAsync("Not assigned");
+            await Expect(Page.Locator("#report-header-state-case-status")).ToHaveTextAsync("");
+            await Expect(Page.Locator("#report-header-lhd-case-status")).ToHaveTextAsync("");
+            await Expect(Page.Locator("#report-header-brief-note")).ToHaveValueAsync("");
+            await Expect(Page.Locator("#report-header-brief-note-save")).ToHaveTextAsync("Save note");
         });
 
-        // 12. The two panels, then the tab strip's eleven tabs.
-        await Step(Document, 12, "read the Edit, Delete and Print buttons, the Case status and CDC notification panels and the tab strip", async () =>
+        // 12. The four panels, then the tab strip's eleven tabs.
+        await Step(Document, 12, "read the Edit, Delete and Print buttons, the Case status, Workflow Options, CDC notification and IBIS panels and the tab strip", async () =>
         {
             await Expect(Page.Locator("#report-edit")).ToHaveTextAsync("Edit");
             await Expect(Page.Locator("#report-delete")).ToHaveTextAsync("Delete");
             await Expect(Page.Locator("#report-print")).ToHaveTextAsync("Print");
             await Expect(Page.Locator("#report-status")).ToContainTextAsync("Case status");
+            await Expect(Page.Locator("#report-workflow")).ToContainTextAsync("Workflow Options");
             await Expect(Page.Locator("#report-notify")).ToContainTextAsync("CDC notification");
+            await Expect(Page.Locator("#report-ibis")).ToContainTextAsync("IBIS");
             await Expect(Page.Locator("[id^='report-tab-']")).ToHaveTextAsync(
                 ["Demographic", "Clinical", "Laboratory", "Investigation", "Administrative", "Forms", "Vaccines", "Treatments", "Encounters", "Contacts", "Notes"]);
         });
