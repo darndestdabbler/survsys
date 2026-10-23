@@ -2258,9 +2258,9 @@
     {
       "number": 109,
       "title": "The parity check and the documentation for 1.0.0",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-22T20:50:54.156000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-23T03:31:43.446000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
