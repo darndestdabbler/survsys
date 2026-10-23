@@ -2280,9 +2280,9 @@
     {
       "number": 110,
       "title": "Attachment and note dates in local time",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-23T05:40:58.129000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-23T05:43:50.282000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
