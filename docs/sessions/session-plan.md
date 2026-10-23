@@ -1901,4 +1901,136 @@ by the clock is a defect of the release, so this comes before it.*
    the run of record.
 6. Close-out.
 
-### Session 111: Release 1.0.0 (release: 1.0.0)
+### Session 111: Jurisdiction on every list, and read-only sharing
+
+*Inserted after session 109, whose gap analysis found that `CaseAccess`
+narrows every case route and the case search but not the work queue and
+agency board (`/api/work-queue`), the task list (`/api/tasks`), saved-view
+exports and counts (`SavedViewQueries.Rows` takes no caller), or the case-count
+report (`/api/reports/case-counts`); and that a case shared read-only
+(`person_condition_shares`) can be changed by the agency it is shared with —
+"read-only in intent and not in enforcement" (`WorkQueueEndpoints.cs`). The
+operator decided on 2026-10-23 that sharing is read-only in fact.*
+
+1. Register.
+2. `Survsys.Api`: the work queue, the agency board, the task list, saved-view
+   exports and counts and the case-count report list only the cases
+   `CaseAccess.Visible` lets the caller see. A work queue asked for an agency
+   that is not the caller's, without `all_jurisdictions`, answers no rows.
+3. `Survsys.Api`: a case the caller sees only through a share is read-only to
+   them: `CaseAccess` refuses every write to it, and to every record under it,
+   with a 403 saying the case is shared with their agency read-only. Reading
+   it is unchanged. `all_jurisdictions` and the investigating agency's users
+   write as before.
+4. `Survsys.Web`: the report opens a shared case without **Edit**, saying it is
+   shared with the user's agency read-only. Every element id stays unchanged.
+5. `Survsys.IntegrationTests`: each list narrowed, a work queue for another
+   agency empty, and a write to a shared case and to a record under it
+   refused. These reach SQL Server.
+6. `docs/`: the user and technical guides' jurisdiction paragraphs, and the
+   gap analysis's open item marked closed.
+7. Cross-provider verification.
+8. Full test suite, the integration and end-to-end suites included, recorded
+   as the run of record.
+9. Close-out.
+
+### Session 112: Address geocoding
+
+*Inserted after session 109. An address keeps no latitude or longitude
+(`PersonAddress` left the legacy geocoding columns out), and nothing geocodes
+one. The operator decided on 2026-10-23 that an address is geocoded by the US
+Census Geocoder, falling back to Google's Geocoding API when the Census
+Geocoder fails or finds no match.*
+
+**Non-goals.** No test, check or shipped configuration calls either real
+service: both are exercised against local stubs, and the shipped
+configuration leaves geocoding off. No map, and no geocoding of exposure
+places, which already carry their own coordinates.
+
+1. Register.
+2. `Survsys.Data`: `person_addresses` gains `latitude`, `longitude` and
+   `geocoded_by` (`census`, `google` or `manual`), with their migration; no
+   existing address changes.
+3. `Survsys.Api`: a geocoder behind one interface — the Census Geocoder's
+   one-line address lookup first, Google's Geocoding API when it fails, times
+   out or finds no match — run where an address is saved with a street and no
+   coordinates: the Demographic tab, ELR promotion and eCR intake. A failure
+   of both leaves the coordinates empty and never stops the save. Settings
+   `Geocoding:Enabled` (off by default), each service's endpoint and timeout,
+   and `Geocoding:GoogleApiKey`, read from the environment only, never a file;
+   with no key, Google is skipped. Coordinates typed by hand are kept, as
+   `manual`, and an address whose street changes is geocoded again.
+4. `Survsys.Web`: **Latitude** and **Longitude** on the Demographic tab's
+   address rows and the person screen, with where they came from. Every
+   existing element id stays unchanged.
+5. `Survsys.UnitTests` and `Survsys.IntegrationTests`: Census found, Census
+   failing over to Google, both failing, no Google key, a hand-typed pair
+   kept, and a changed street geocoded again, against stub services.
+6. `docs/`: the user guide's address paragraph, the technical guide's
+   settings table (with what the services are sent: the street address, and
+   nothing else about the person), and the gap analysis's open item marked
+   closed.
+7. Cross-provider verification.
+8. Full test suite, the integration suite included, recorded as the run of
+   record.
+9. Close-out.
+
+### Session 113: Held eICRs, attachments, and no system settings
+
+*Inserted after session 109, whose gap analysis found three things with an
+API and no use on a screen: an eICR held for review can be settled only by
+`POST /api/ecr-documents/{id}/case`; an attachment cannot be downloaded or
+removed though `AttachmentEndpoints` has both routes; and the System settings
+screen keeps name-value pairs that nothing reads. The operator decided on
+2026-10-23 that the settings screen is removed and every setting stays in
+configuration.*
+
+1. Register.
+2. `Survsys.Web`: on a held eICR's screen, the proposed people from
+   `GET /api/ecr-documents/{id}/person-matches`, each with **Use this
+   person**, beside **Create new person**; choosing one settles the document
+   through `POST /api/ecr-documents/{id}/case` and shows the cases it opened
+   or added to. Gated as the eCR writes are.
+3. `Survsys.Web`: each attachment's file name downloads it, on a case and on
+   an outbreak, and **Delete** removes it after asking first, with
+   `edit_cases`.
+4. `Survsys.Data`, `Survsys.Api` and `Survsys.Web`: the System settings
+   screen, its navigation button, `SystemSettingEndpoints`, its privilege
+   rule and the `system_setting` table removed, with a migration that drops
+   the table.
+5. `Survsys.UnitTests` and `Survsys.IntegrationTests`: a held eICR settled by
+   person and by a new person, an attachment downloaded and deleted, and the
+   settings routes gone.
+6. `docs/`: the user and technical guides, the eCR walkthrough documents that
+   say there is no screen for a held document, and the gap analysis — the
+   held eICR and attachment items marked closed, and the feature matrix's
+   *System configuration* row marked simplified to configuration files.
+7. Cross-provider verification.
+8. Full test suite, the integration suite included, recorded as the run of
+   record.
+9. Close-out.
+
+### Session 114: Walkthroughs for the open items
+
+1. Register.
+2. `docs/walkthroughs/`: three documents — settle a held eICR, remove an
+   attachment, see a case shared read-only — each with its row in the index.
+3. `Survsys.E2ETests`: the three Playwright tests named after them, and the
+   harness clearing what they create.
+4. Cross-provider verification.
+5. Full test suite, the end-to-end walkthrough suite included, recorded as the
+   run of record.
+6. Close-out.
+
+### Session 115: Release 1.0.0 (release: 1.0.0)
+
+*The first release that claims parity: everything session 109's gap analysis
+left open is closed by sessions 110 to 114, except NETSS, which waits on
+CDC's answer.*
+
+1. Before anything is published, the integration suite run whole in a
+   container, with `SURVSYS_SQLSERVER` unset:
+   `dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --blame-hang-timeout 5m`,
+   and the whole end-to-end walkthrough suite. Both must be green. A red run
+   stops the release: the step is reported blocked with the failures, and a
+   repair session is planned before a new release session.
