@@ -511,7 +511,8 @@ public class SurvsysHarness : IDisposable
     /// on its own and listed first, where nothing the suite clears hangs off
     /// it. A saved view is cleared the same way and for the same reason: it
     /// names its user by a reference the schema enforces, but the API tier
-    /// creates the administrator and the suite never clears the users.
+    /// creates the administrator and the suite never clears that user;
+    /// <see cref="AccountsClearedButTheAdministrator"/> clears the others.
     /// </para>
     /// <para>
     /// Phase 7's tables are listed for the reason the laboratory chain is:
@@ -627,6 +628,35 @@ public class SurvsysHarness : IDisposable
     ];
 
     /// <summary>
+    /// The users and roles a walkthrough adds, cleared after
+    /// <see cref="TablesInDeletionOrder"/> and before any insert: every user
+    /// but the administrator and every role but the Administrator role, with
+    /// what names them. They are not emptied, as those tables are, because the
+    /// API tier creates the administrator and the migration its role, and the
+    /// suite signs in as that user.
+    /// </summary>
+    /// <remarks>
+    /// A user's access records name them by a reference the schema refuses to
+    /// cascade, so they go first; the reports, saved views and outbreak rows
+    /// that name a user are already gone with the tables above.
+    /// </remarks>
+    public static readonly string[] AccountsClearedButTheAdministrator =
+    [
+        $"DELETE FROM access_records WHERE user_id IN (SELECT id FROM users WHERE user_name <> N'{AdministratorUserName}')",
+        $"DELETE FROM user_agencies WHERE user_id IN (SELECT id FROM users WHERE user_name <> N'{AdministratorUserName}')",
+        $"DELETE FROM user_roles WHERE role_id <> {AdministratorRoleId} OR user_id IN (SELECT id FROM users WHERE user_name <> N'{AdministratorUserName}')",
+        $"DELETE FROM users WHERE user_name <> N'{AdministratorUserName}'",
+        $"DELETE FROM role_privileges WHERE role_id <> {AdministratorRoleId}",
+        $"DELETE FROM roles WHERE id <> {AdministratorRoleId}",
+    ];
+
+    /// <summary>
+    /// The Administrator role's id, as the migration seeds it; stated here
+    /// because this project may not reference <c>Survsys.Data</c>.
+    /// </summary>
+    public const int AdministratorRoleId = 1;
+
+    /// <summary>
     /// The condition and person rows, into the tables the API tier has just
     /// migrated into existence, after everything those tables and their
     /// dependants held from the last run is deleted. Run once by the
@@ -658,6 +688,13 @@ public class SurvsysHarness : IDisposable
             {
                 using var clear = connection.CreateCommand();
                 clear.CommandText = $"DELETE FROM {table}";
+                clear.ExecuteNonQuery();
+            }
+
+            foreach (var statement in AccountsClearedButTheAdministrator)
+            {
+                using var clear = connection.CreateCommand();
+                clear.CommandText = statement;
                 clear.ExecuteNonQuery();
             }
 

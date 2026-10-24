@@ -125,7 +125,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 111 | Jurisdiction on every list, and read-only sharing | no | 2026-10-24 |
 | 112 | Address geocoding | no | 2026-10-24 |
 | 113 | Held eICRs, attachments, and no system settings | no | 2026-10-24 |
-| 114 | Walkthroughs for the open items | — | not declared |
+| 114 | Walkthroughs for the open items | no | 2026-10-24 |
 | 115 | Release 1.0.0 (release: 1.0.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
@@ -992,3 +992,13 @@ Geocode a person's address. person_addresses gains latitude, longitude and geoco
 **Releasable: no.**
 
 Put the three APIs with no screen to use, and remove the settings nothing reads. On a held eICR's screen (EcrDocumentReview), the proposed people from GET /api/ecr-documents/{id}/person-matches are listed, each with Use this person, beside Create new person; either settles the document through POST /api/ecr-documents/{id}/case and the screen then shows the cases it opened or added to. The buttons are shown to a user holding edit_cases, the privilege PrivilegeRules already requires for that POST, which stays the authority. On a case's and an outbreak's Attachments panel, each file name is a plain link to a new Survsys.Web route, /attachments/{id}/content, that fetches GET /api/attachments/{id}/content under the signed-in user's token and hands the bytes to the browser as a file, as the CSV exports are handed; Delete asks for confirmation and calls DELETE /api/attachments/{id}, shown to a user holding edit_cases. The System settings screen, its navigation button, SystemSettingsClient, SystemSettingEndpoints with its contracts and privilege rule, and the SystemSetting entity and its configuration are removed, with a migration that drops the system_setting table. Unit tests cover the new client methods and the privilege rule without the settings prefix; integration tests settle a held eICR by a person on file and by a new person, download and then delete an attachment, and show the settings route gone and the table dropped. The user and technical guides, the eCR and attachment walkthroughs and the gap analysis are updated.
+
+### Session 114 — Walkthroughs for the open items
+
+**Releasable: no.**
+
+Write the three walkthroughs session 113 and 111 left without one, and perform each in the end-to-end suite. Under docs/walkthroughs/: settle-a-held-eicr.md (an eICR whose patient matches someone on file only partly is held, and the reviewer settles it on the eICR's screen with Use this person, then opens the case it was written to), remove-an-attachment.md (attach a file to a case, see its name as a download link, press Delete, confirm, and see it gone), and see-a-case-shared-read-only.md (as the administrator, add a role and a user working for one agency on the Roles and Users screens, open a case under another agency and share it read-only with the first on the Agency board, then sign in as that user, open the case and read that it is shared with their agency read-only, with no Edit button) -- each written in the existing walkthroughs' form and given its row in README.md's index. In Survsys.E2ETests: SettleAHeldEicrTests.cs, RemoveAnAttachmentTests.cs and SeeACaseSharedReadOnlyTests.cs perform them step by step; the held eICR's documents are two new fixtures under Fixtures/Cda/ with the partly-matching person seeded in Fixtures/ecr-intake.sql; and SurvsysHarness clears what the walkthroughs create that it does not clear yet -- the users other than the administrator and the roles other than the administrator's, with their privileges, roles and agencies -- so a second run starts from the seed.
+
+**Amended after acceptance:**
+
+- 2026-10-24 — step 'walkthrough-tests': its files: Step 7 of see-a-case-shared-read-only.md says Davis County's board has one row, but the assign and route walkthroughs leave Davis County cases in the same run; the document must name the row by its record number, so that one sentence changes with the test (claude-code (anthropic, claude-opus-5-5))

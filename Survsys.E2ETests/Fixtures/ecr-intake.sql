@@ -15,10 +15,14 @@
 --    who is not on file, so a person and a case are opened for him.
 --  * ecr-link-eicr.xml and ecr-link-rr.xml -- Giardiasis for Amara Osei, who
 --    has an open Giardiasis case seeded below. The eICR is linked to it.
+--  * ecr-held-eicr.xml and ecr-held-rr.xml -- Malaria for Henrik Dahl, who is
+--    on file below at the address he lived at before, so the eICR is held
+--    until a reviewer says he is the same person.
 --
 -- The codes are SNOMED CT condition codes, as an RR carries them. Amara Osei's
 -- name, birth date, sex and address are the ones her eICR carries, so the
--- person match scores her exact.
+-- person match scores her exact. Henrik Dahl's agree on all but the address,
+-- so it scores him probable.
 
 INSERT INTO ecr_condition_mapping (code_system, code, display_name, condition_id)
 SELECT N'2.16.840.1.113883.6.96', mapping.code, mapping.display_name, condition.id
@@ -42,6 +46,22 @@ SELECT person.id, N'61 Liberty Avenue', NULL, N'Salt Lake City', N'UT', N'84101'
        NULL, NULL, NULL, NULL
 FROM persons AS person
 WHERE person.last_name = N'Osei' AND person.first_name = N'Amara';
+
+-- Henrik Dahl, at an address ecr-held-eicr.xml does not carry: its patient
+-- agrees with him on name, birth date and sex, and only partly matches him.
+INSERT INTO persons
+    (last_name, first_name, middle_name, birth_date, days_old_no_birthday,
+     birth_gender, current_gender, ethnicity, language, country_of_birth)
+VALUES
+    (N'Dahl', N'Henrik', NULL, '1985-06-30', NULL, N'M', N'M', N'NH', N'en', N'USA');
+
+INSERT INTO person_addresses
+    (person_id, street, unit_number, city, state, postal_code, county,
+     beginning, ending, note, residence_type_id)
+SELECT person.id, N'88 East 100 South', NULL, N'Salt Lake City', N'UT', N'84101', N'SL',
+       NULL, NULL, NULL, NULL
+FROM persons AS person
+WHERE person.last_name = N'Dahl' AND person.first_name = N'Henrik';
 
 -- Amara Osei's open Giardiasis case, which ecr-link-eicr.xml is linked to.
 INSERT INTO person_conditions

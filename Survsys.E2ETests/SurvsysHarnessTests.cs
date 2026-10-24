@@ -152,6 +152,62 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
     }
 
     /// <summary>
+    /// Seeding clears every user but the administrator and every role but the
+    /// Administrator role, with their privileges, roles and agencies — what
+    /// the read-only sharing walkthrough adds — so that walkthrough's role and
+    /// user names are free again on the next run. A stray user and role are
+    /// written here first, so the proof holds whichever walkthroughs ran before.
+    /// </summary>
+    [Fact]
+    public void SeedingLeavesOnlyTheAdministratorAndItsRole()
+    {
+        using (var connection = new SqlConnection(harness.ConnectionString))
+        {
+            connection.Open();
+
+            using var stray = connection.CreateCommand();
+            stray.CommandText =
+                "INSERT INTO roles (name) VALUES (N'Harness stray role'); "
+                + "DECLARE @role int = SCOPE_IDENTITY(); "
+                + "INSERT INTO role_privileges (role_id, privilege) VALUES (@role, N'view_cases'); "
+                + "INSERT INTO users (user_name, display_name, password_hash, active, failed_sign_in_count) "
+                + "VALUES (N'harness.stray', N'Harness Stray', N'not-a-hash', 1, 0); "
+                + "DECLARE @user int = SCOPE_IDENTITY(); "
+                + "INSERT INTO user_roles (user_id, role_id) VALUES (@user, @role); "
+                + "INSERT INTO user_agencies (user_id, agency_id) VALUES (@user, 3);";
+            stray.ExecuteNonQuery();
+        }
+
+        harness.Seed();
+
+        using var read = new SqlConnection(harness.ConnectionString);
+        read.Open();
+
+        Assert.Equal([SurvsysHarness.AdministratorUserName], Strings(read, "SELECT user_name FROM users"));
+        Assert.Equal(["Administrator"], Strings(read, "SELECT name FROM roles"));
+        Assert.Equal(
+            [SurvsysHarness.AdministratorRoleId.ToString(System.Globalization.CultureInfo.InvariantCulture)],
+            Strings(read, "SELECT DISTINCT CAST(role_id AS nvarchar(10)) FROM user_roles"));
+    }
+
+    /// <summary>The first column of every row a query answers, as text.</summary>
+    private static List<string> Strings(SqlConnection connection, string query)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = query;
+
+        using var reader = command.ExecuteReader();
+        var read = new List<string>();
+
+        while (reader.Read())
+        {
+            read.Add(reader.GetString(0));
+        }
+
+        return read;
+    }
+
+    /// <summary>
     /// Seeding clears the staged-message queue and fills it with exactly the
     /// fixture's messages, by their source and in the queue's order, oldest
     /// first. Run here over whatever the walkthroughs before it left — a
