@@ -1,0 +1,120 @@
+@* The access audit: who signed in, opened a case, exported or searched, and
+   when, newest first, as the access-audit endpoint returns it.
+
+   Elements a later walkthrough will name carry identifiers of their own —
+   `access-audit-heading`, `access-audit-loading`, `access-audit-error`,
+   `access-audit-total`, `access-audit-none`, the table, and one row per
+   record keyed by its id. *@
+@page "/access-audit"
+@inject AuditClient Client
+
+<PageTitle>Access audit — Survsys</PageTitle>
+
+<MudText id="access-audit-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Access audit
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    Who signed in, opened a case, exported or searched, newest first.
+</MudText>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="access-audit-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result)
+{
+    <MudText id="access-audit-total" Typo="Typo.body2" Class="mb-4">
+        @result.TotalCount record(s), showing @result.Items.Count.
+    </MudText>
+
+    @if (result.Items.Count == 0)
+    {
+        <MudText id="access-audit-none" Typo="Typo.body2">Nothing has been recorded.</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="access-audit-table" Hover="true" Striped="true" Dense="true">
+                <thead>
+                    <tr>
+                        <th>When (UTC)</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Report</th>
+                        <th>Detail</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var record in result.Items)
+                    {
+                        <tr id="@($"access-audit-row-{record.Id}")" data-access="@record.Id">
+                            <td data-access-when>@record.AccessedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td data-access-user>@record.UserName</td>
+                            <td data-access-action>@record.Action</td>
+                            <td data-access-report>@(record.PersonConditionId?.ToString() ?? "—")</td>
+                            <td data-access-detail>@(record.Detail ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        @if (result.TotalCount > PageSize || page > 1)
+        {
+            <div class="d-flex align-center gap-4 mt-2">
+                <MudButton id="access-audit-prev" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page <= 1)" OnClick="PreviousPage">
+                    Previous
+                </MudButton>
+                <MudText id="access-audit-page" Typo="Typo.body2">Page @(page) of @LastPage</MudText>
+                <MudButton id="access-audit-next" Variant="Variant.Outlined" Size="Size.Small"
+                           Disabled="@(page >= LastPage)" OnClick="NextPage">
+                    Next
+                </MudButton>
+            </div>
+        }
+    }
+}
+else
+{
+    <MudAlert id="access-audit-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    private const int PageSize = 50;
+
+    private int page = 1;
+
+    private Asked<PagedResult<AccessRecordResponse>>? asked;
+
+    private int LastPage => Math.Max(1, ((asked?.Value?.TotalCount ?? 0) + PageSize - 1) / PageSize);
+
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load()
+    {
+        asked = null;
+        asked = await Client.Access(page, PageSize);
+    }
+
+    private async Task PreviousPage()
+    {
+        if (page > 1)
+        {
+            page--;
+            await Load();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (page < LastPage)
+        {
+            page++;
+            await Load();
+        }
+    }
+}

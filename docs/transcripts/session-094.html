@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 094 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 094 transcript</h1>
+<p class="stamp">Rendered 2026-10-21T20:22:57.935Z by dabbler-ai-router 3.23.0 at 0fe8cf17d25ef33ad7438adedc0471e3a9a121cf.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-21T16:09:20.310-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 94: Audit with its user and values, and its screens</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code>: the audit interceptor recording the signed-in user and the values before and after as JSON, with its migration; sign-ins, exports and searches audited, and vocabulary changes among the audited tables.</li><li><code>Survsys.Web</code>: an audit screen of a case's history and of a table's, and an access-audit screen, both privilege-gated.</li><li><code>Survsys.IntegrationTests</code>: an insert, update and delete each recorded with user and values, and a rolled-back save recording nothing.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Extend the existing change audit so each row records who made the change and the values before and after as JSON, and widen the access audit to cover sign-ins, exports and searches. In Survsys.Data, AuditEntry gains a nullable UserId and nullable OldValues/NewValues JSON columns; the context takes an optional IAuditUser (null in tests and tools) that the AuditInterceptor reads, and AccessRecord gains an Action and a Detail with PersonConditionId made nullable, all in one migration. In Survsys.Api the signed-in user feeds IAuditUser, sign-in, saved-view export and case search call the existing AccessAuditQueries.Record, and a privilege-gated GET /api/audit pages the change audit for a table (and optionally a key). In Survsys.Web an audit screen (a case's history by default, or any table's) and an access-audit screen are added behind ManageUsers. Integration tests prove an insert, update and delete each carry user and values, that a rolled-back save records nothing, and that vocabulary tables are audited.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/b4d9a981b6e49f256641d9523ddb6209cf139ba2"><code>b4d9a981b6e49f256641d9523ddb6209cf139ba2</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Audit data</td><td><p>In Survsys.Data: add IAuditUser (int? UserId { get; }) and give SurvsysDbContext an optional second constructor parameter 'IAuditUser? auditUser = null' exposed to the interceptor as an internal/public 'AuditUserId'. Add nullable UserId, OldValues and NewValues (nvarchar(max)) to AuditEntry and its configuration (UserId a plain column with no foreign key, so the audit outlives the user; index nothing extra). The AuditInterceptor captures, while the save begins, the old values (Update/Delete) and new values (Insert/Update) of each changed row as a JSON object of column name to value (System.Text.Json, scalar properties only), and writes them with the user id in the same INSERT. Add Action (string, max 16, default 'View') and Detail (string?, max 256) to AccessRecord and its configuration, and make PersonConditionId nullable. Generate one migration with 'dotnet ef migrations add AuditUserAndValues --project Survsys.Data --startup-project Survsys.Api', then rename its files and the [Migration] id to timestamp 20261021210000 so it sorts after 20261021200000_ExportLogBatchFile. Update AuditInterceptorTests only as far as needed to keep compiling; the new behaviours are tested in a later step. Existing AccessRecord Action values: 'View' (a report opened), 'SignIn', 'Export', 'Search'.</p></td><td></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>Audit api</td><td><p>In Survsys.Api: implement IAuditUser over IHttpContextAccessor reading AccountEndpoints.UserIdOf(HttpContext.User), registered scoped in Program.cs (AddHttpContextAccessor). Extend AccessAuditQueries.Record to take (userId, personConditionId?, action, detail?) and update the existing report-open call to pass 'View'. Record 'SignIn' in the sign-in endpoint on success (user id from the principal), 'Export' in ExportSavedView (detail: the view id), and 'Search' in GetCases (detail: a short rendering of the criteria given) when a user is signed in. Extend AccessRecordResponse with Action and Detail and make PersonConditionId nullable; update ToResponse. Add AuditEndpoints.cs with GET /api/audit?table=&amp;key=&amp;page=&amp;pageSize= returning PagedResult&lt;AuditEntryResponse&gt; (Id, TableName, KeyValues, Operation, OccurredAt, UserId, UserName (null if none), OldValues, NewValues), newest first; table is required (400 otherwise). Add '/api/audit' to PrivilegeRules.Administration so it needs manage_users. Add the AuditEntryResponse contract. Unit tests: update AccessAuditEndpointsTests, add AuditEndpointsTests for the response mapping and the table-required rule, and add '/api/audit' to the manage_users theory in PrivilegeRulesTests.</p></td><td></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>Audit web</td><td><p>In Survsys.Web: add AuditClient (alongside ExportLogClient's pattern, using ApiAsk) with Changes(table, key, page, pageSize) over GET api/audit and Access(page, pageSize) over GET api/access-audit, registered in Program.cs like ExportLogClient. Add Pages/Audit.razor at /audit taking optional ?table= and ?key= (table defaulting to person_conditions, so it shows a case's history) with a table and key field, a Show button, and a paged table of when, user, operation, key, old and new values; add Pages/AccessAudit.razor at /access-audit, a paged table of when, user, action, report and detail. Give elements identifiers in the style of ExportLog.razor. Add 'Audit' and 'Access audit' nav buttons to MainLayout inside the existing Holds(Privileges.ManageUsers) block. Add AuditClientTests in the unit suite for the request paths and failure prefixes.</p></td><td></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>Audit integration tests</td><td><p>In Survsys.IntegrationTests: let SqlServerFixture.NewContext take an optional int? userId (wrapped in a tiny IAuditUser) and extend AuditInterceptorTests so an insert, an update and a delete of a Treatment each record the user id and the right OldValues/NewValues (insert: new only; update: both with the changed column; delete: old only), a save rolled back records nothing, and an audited vocabulary row (a VocabLoinc or similar vocabulary table the model has) is recorded on insert. Add to PrivilegeRulesTests (integration) a check that signing in writes a 'SignIn' access record naming the administrator and that GET /api/audit?table=treatments is refused to a caller without manage_users and answered for the administrator, and that a request without table is 400.</p></td><td></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo -v q</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No new audit tables: sign-ins, exports and searches reuse the access_records table, not a third audit store.</li><li>No audit of bulk ExecuteDelete/ExecuteUpdate statements that bypass the change tracker; only tracked saves are audited.</li><li>No filtering, searching, diffing or export on the audit screens beyond table, key and paging.</li><li>No new privilege: both screens and the endpoint use the existing manage_users privilege.</li><li>No change to the existing audit-in-transaction behaviour of the interceptor, nor to the unwired CDC/ELR/IBIS pipelines.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[20:09:20]</span> <span class="muted">run-started</span> session=094 mode=pull</div>
+<div class="line"><span class="at">[20:09:20]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[20:11:06]</span> <span class="muted">run-resumed</span> session=094 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[20:11:06]</span> <span class="muted">plan-accepted</span> steps=[&quot;audit-data&quot;,&quot;audit-api&quot;,&quot;audit-web&quot;,&quot;audit-integration-tests&quot;] non_goals=5</div>
+<div class="line"><span class="at">[20:11:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[20:11:07]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=audit-data</div>
+<div class="line"><span class="at">[20:13:15]</span> <span class="muted">run-resumed</span> session=094 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:13:17]</span> <span class="muted">check-passed</span> step=audit-data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[20:13:17]</span> <span class="muted">report-accepted</span> seq=2 step=audit-data files=[] notes=IAuditUser, audit user and JSON values, access record action and detail, migration 20261021210000; Data builds</div>
+<div class="line"><span class="at">[20:13:17]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=audit-api</div>
+<div class="line"><span class="at">[20:14:38]</span> <span class="muted">run-resumed</span> session=094 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:14:40]</span> <span class="muted">check-passed</span> step=audit-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[20:14:41]</span> <span class="muted">report-accepted</span> seq=3 step=audit-api files=[] notes=access record action/detail, sign-in/export/search recorded, GET /api/audit under manage_users, HttpAuditUser, unit tests</div>
+<div class="line"><span class="at">[20:14:41]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=audit-web</div>
+<div class="line"><span class="at">[20:16:13]</span> <span class="muted">run-resumed</span> session=094 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:16:15]</span> <span class="muted">check-passed</span> step=audit-web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[20:16:16]</span> <span class="muted">report-accepted</span> seq=4 step=audit-web files=[] notes=AuditClient, Audit and AccessAudit screens, nav under manage_users, client tests</div>
+<div class="line"><span class="at">[20:16:16]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=audit-integration-tests</div>
+<div class="line"><span class="at">[20:17:14]</span> <span class="muted">run-resumed</span> session=094 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[20:17:16]</span> <span class="muted">check-passed</span> step=audit-integration-tests argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[20:17:16]</span> <span class="muted">report-accepted</span> seq=5 step=audit-integration-tests files=[] notes=insert/update/delete with user and values, vocabulary row, sign-in record, /api/audit gating; 20 integration tests pass</div>
+<div class="line"><span class="at">[20:17:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[20:17:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[20:17:16]</span> <span class="muted">job-started</span> name=verification pid=48624 log=.dabbler/runs/s94/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:18:50]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s94/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:18:50]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[20:18:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[20:18:50]</span> <span class="muted">instruction-issued</span> seq=6 kind=rejection reasons=6</div>
+<div class="line"><span class="at">[20:19:07]</span> <span class="muted">run-resumed</span> session=094 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[20:19:07]</span> <span class="muted">dispute-recorded</span> round=1 finding=1</div>
+<div class="line"><span class="at">[20:19:07]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0,2,3,4,5] reject=[1] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;This project gates screens by navigation only and enforces privileges in the API tier, as MainLayout's own comment states; no existing page (Users, Roles, ExportLog) carries a component-level policy, and the audit data is protected by manage_users in PrivilegeRules. Adding a policy only here would be inconsistent and new machinery beyond the session's scope.&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:3,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:4,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:5,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[20:19:07]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[20:19:07]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[20:20:50]</span> <span class="muted">run-resumed</span> session=094 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[20:20:52]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=audit-data</div>
+<div class="line"><span class="at">[20:20:53]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=audit-api</div>
+<div class="line"><span class="at">[20:20:55]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=audit-web</div>
+<div class="line"><span class="at">[20:20:57]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=audit-integration-tests</div>
+<div class="line"><span class="at">[20:20:57]</span> <span class="muted">report-accepted</span> seq=7 step=fix-round-1 files=[] notes=history link on the case report for manage_users; sign-in, export and search each asserted to write a new access record</div>
+<div class="line"><span class="at">[20:20:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[20:20:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[20:20:57]</span> <span class="muted">job-started</span> name=verification pid=55700 log=.dabbler/runs/s94/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:21:30]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s94/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:21:30]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[20:21:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[20:21:30]</span> <span class="muted">instruction-issued</span> seq=8 kind=rejection reasons=1</div>
+<div class="line"><span class="at">[20:21:42]</span> <span class="muted">run-resumed</span> session=094 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[20:21:42]</span> <span class="muted">dispositions-accepted</span> round=2 fix=[0] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[20:21:42]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[20:21:42]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=fix-round-2</div>
+<div class="line"><span class="at">[20:22:11]</span> <span class="muted">run-resumed</span> session=094 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[20:22:13]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=audit-data</div>
+<div class="line"><span class="at">[20:22:14]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=audit-api</div>
+<div class="line"><span class="at">[20:22:16]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=audit-web</div>
+<div class="line"><span class="at">[20:22:18]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;] owner=audit-integration-tests</div>
+<div class="line"><span class="at">[20:22:18]</span> <span class="muted">report-accepted</span> seq=9 step=fix-round-2 files=[] notes=Audit screen no longer defaults to a table; a case's history opens from the case report link</div>
+<div class="line"><span class="at">[20:22:18]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[20:22:18]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[20:22:18]</span> <span class="muted">job-started</span> name=verification pid=46188 log=.dabbler/runs/s94/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:22:38]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s94/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[20:22:38]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[20:22:38]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[20:22:38]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[20:22:38]</span> <span class="muted">job-started</span> name=run of record: unit pid=15528 log=.dabbler/runs/s94/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[20:22:48]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s94/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[20:22:48]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[20:22:52]</span> <span class="muted">landed</span> commit=b4d9a981b6e49f256641d9523ddb6209cf139ba2</div>
+<div class="line"><span class="at">[20:22:52]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[20:22:52]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[20:22:52]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[20:22:52]</span> <span class="muted">job-started</span> name=close pid=44736 log=.dabbler/runs/s94/driver/jobs/close.log</div>
+<div class="line"><span class="at">[20:22:57]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s94/driver/jobs/close.log</div>
+<div class="line"><span class="at">[20:22:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>6 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The default audit screen is not a case’s history**</td><td>fixed — history link on the case report for manage_users; sign-in, export and search each asserted to write a new access record</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The Razor components do not themselves enforce `ManageUsers`. `MainLayout.razor` only hides the navigation buttons; `Audit.razor` and `AccessAudit.razor` expose routable pages without a component-level authorization requirement. The API correctly protects the records, so this does not expose audit data, but a signed-in non-manager can reach the page shell and receive an API-load failure rather than being denied the screen. Add a route/component policy matching `ManageUsers`.</td><td>disputed — This project gates screens by navigation only and enforces privileges in the API tier, as MainLayout's own comment states; no existing page (Users, Roles, ExportLog) carries a component-level policy, and the audit data is protected by manage_users in PrivilegeRules. Adding a policy only here would be inconsistent and new machinery beyond the session's scope.</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** Among the visible tests, access-action recording is thin. `SigningInWritesASignInAccessRecordNamingTheAdministrator` reads an existing access-audit page and selects the first `SignIn` row; it does not drive a known sign-in and assert that it created a new row. No visible changed test drives saved-view export or case search and asserts their `Export`/`Search` records. Useful cases:</td><td>fixed — history link on the case report for manage_users; sign-in, export and search each asserted to write a new access record</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>With a known active user and prior matching-row count, `POST /api/sign-in` with valid credentials should increase the count by one and produce `Action == &quot;SignIn&quot;` for that user.</td><td>fixed — history link on the case report for manage_users; sign-in, export and search each asserted to write a new access record</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>With a signed-in owner and a known saved view, `GET /api/saved-views/{id}/export` should produce one new record with `Action == &quot;Export&quot;` and `Detail == &quot;saved view {id}&quot;`.</td><td>fixed — history link on the case report for manage_users; sign-in, export and search each asserted to write a new access record</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>With a signed-in user, `GET /api/cases?LastName=Lovelace` should produce one new record with `Action == &quot;Search&quot;` and detail naming `LastName=Lovelace`.</td><td>fixed — history link on the case report for manage_users; sign-in, export and search each asserted to write a new access record</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The parameterless Audit screen still defaults to a table-wide `person_conditions` audit, not a case history.</td><td>fixed — Audit screen no longer defaults to a table; a case's history opens from the case report link</td></tr>
+</table></td></tr>
+<tr><td>3</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>9s</td><td>2033</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
