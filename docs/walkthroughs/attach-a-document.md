@@ -28,11 +28,12 @@ describes what Survsys shows rather than what EpiTrax showed:
   button opens an upload dialog over the screen; here the **Add an
   attachment** panel is always on the tab, under the list, as the note entry
   panel is. A dialog would be a mechanism this tab has nowhere else.
-- **There is no download link and no delete.** The list is what the report
-  holds: the filename, the category, the size, the content type and the day
-  it arrived. The bytes are the API tier's to serve, and this tier cannot
-  hand them on without either giving your browser that tier's address or
-  proxying the file; an attachment is stored once and not removed.
+- **The filename downloads the file, and Delete removes it.** The list is
+  what the report holds: the filename, the category, the size, the content
+  type and the day it arrived. Pressing the filename downloads the file as it
+  was attached, handed on by the application tier so your browser never needs
+  the API tier's address. With `edit_cases`, **Delete** removes the
+  attachment and its file after asking first.
 - **The newest attachment is listed first.** What you just attached is the
   top row of the table, so it is the row you read.
 - **The category is one of five, under the legacy's own labels.**

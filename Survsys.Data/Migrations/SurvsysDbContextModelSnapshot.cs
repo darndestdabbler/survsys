@@ -15398,28 +15398,6 @@ namespace Survsys.Data.Migrations
                     b.ToTable("system_message_results", (string)null);
                 });
 
-            modelBuilder.Entity("Survsys.Data.SystemSetting", b =>
-                {
-                    b.Property<string>("Name")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("value");
-
-                    b.HasKey("Name");
-
-                    b.ToTable("system_setting", (string)null);
-                });
-
             modelBuilder.Entity("Survsys.Data.Treatment", b =>
                 {
                     b.Property<int>("Id")

@@ -108,7 +108,6 @@ builder.Services.AddHttpClient<CasesClient>(http => http.BaseAddress = api).AddH
 builder.Services.AddHttpClient<UsersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<RolesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<SavedViewsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
-builder.Services.AddHttpClient<SystemSettingsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<MessageQueueClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<EcrClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<EcrConditionMappingsClient>(http => http.BaseAddress = api)
@@ -292,6 +291,14 @@ app.MapGet("/ecr/condition-mappings/export", async (EcrConditionMappingsClient m
     await mappings.Export(cancellationToken) is var exported && exported.Value is { } csv
         ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "ecr-condition-mappings.csv")
         : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// An attachment's file, handed over the same way from the Attachments panel's
+// file name. The API tier decides, under the signed-in person's token, whether
+// they may read it.
+app.MapGet("/attachments/{id:int}/content", async (int id, AttachmentsClient attachments, CancellationToken cancellationToken) =>
+    await attachments.Content(id, cancellationToken) is var asked && asked.Value is { } file
+        ? Results.File(file.Content, file.ContentType, file.Filename ?? $"attachment-{id}")
+        : Results.Problem(detail: asked.Failure, statusCode: StatusCodes.Status502BadGateway));
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 

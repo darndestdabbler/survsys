@@ -25,8 +25,9 @@ Two things this walkthrough describes as Survsys does them:
 - **Survsys links the eICR, not the investigator.** The eICR's patient is an
   exact match for one person on file, who has an open case on the RR's
   reportable condition, so the eICR is written to that case. Where the match
-  is not confident the eICR is held for a reviewer instead, and Survsys has
-  no screen yet for settling one; this walkthrough's patient is not that case.
+  is not confident the eICR is held for a reviewer instead, who settles it on
+  the eICR's screen with **Use this person** or **Create new person**; this
+  walkthrough's patient is not that case.
 - **The eICR's screen links to the case.** Under **Cases** it shows an
   **Open case** link for each case it was written to, and here that is the
   case already on file.

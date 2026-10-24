@@ -24,6 +24,22 @@ public class SurvsysDbContextTests(SqlServerFixture server)
     }
 
     /// <summary>
+    /// Session 113 removed the system settings, which nothing read, and its
+    /// migration drops their table.
+    /// </summary>
+    [Fact]
+    public async Task TheSystemSettingTableIsDropped()
+    {
+        await using var context = server.NewContext();
+
+        var tables = await context.Database
+            .SqlQuery<int>($"SELECT COUNT(*) AS Value FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'system_setting'")
+            .SingleAsync();
+
+        Assert.Equal(0, tables);
+    }
+
+    /// <summary>
     /// The table the migration creates is the table the entity is mapped to,
     /// under the column names it was mapped with — a round trip through real
     /// SQL Server, not through the model EF built the migration from.

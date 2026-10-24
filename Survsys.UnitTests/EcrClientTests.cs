@@ -209,6 +209,65 @@ public class EcrClientTests
     }
 
     [Fact]
+    public async Task PersonMatchesAreReadForTheHeldEicr()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new EcrClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(
+                HttpStatusCode.OK,
+                """
+                { "patient": null,
+                  "candidates": [{ "person": { "id": 9, "lastName": "Doe", "firstName": "Jane" },
+                                   "score": 92, "verdict": "Probable", "reasons": ["Same birth date"] }] }
+                """);
+        }));
+
+        var matches = await client.PersonMatches(4);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal("http://api.example.test/api/ecr-documents/4/person-matches", sent?.RequestUri?.ToString());
+        var candidate = Assert.Single(matches.Value!.Candidates);
+        Assert.Equal(9, candidate.Person.Id);
+        Assert.Equal("Probable", candidate.Verdict);
+    }
+
+    [Theory]
+    [InlineData(9, """{"personId":9,"personConditionId":null}""")]
+    [InlineData(null, """{"personId":null,"personConditionId":null}""")]
+    public async Task SettlePostsThePersonChosenOrNoneForANewPerson(int? personId, string expectedBody)
+    {
+        HttpRequestMessage? sent = null;
+        string? body = null;
+        var client = new EcrClient(Transport(request =>
+        {
+            sent = request;
+            body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Answer(HttpStatusCode.OK, OneDocument);
+        }));
+
+        var settled = await client.Settle(4, personId);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/ecr-documents/4/case", sent?.RequestUri?.ToString());
+        Assert.Equal(expectedBody, body);
+        Assert.Equal(4, settled.Value!.Document.Id);
+    }
+
+    [Fact]
+    public async Task AMatchFailureAndASettleFailureSayWhichFailed()
+    {
+        var client = new EcrClient(Transport(_ => Answer(HttpStatusCode.Conflict, "{}")));
+
+        var matches = await client.PersonMatches(4);
+        var settled = await client.Settle(4, null);
+
+        Assert.StartsWith(EcrClient.MatchFailurePrefix, matches.Failure);
+        Assert.StartsWith(EcrClient.SettleFailurePrefix, settled.Failure);
+    }
+
+    [Fact]
     public async Task AQueueFailureAndADocumentFailureSayWhichFailed()
     {
         var client = new EcrClient(Transport(_ =>

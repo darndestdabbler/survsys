@@ -262,6 +262,55 @@ public class AttachmentsClientTests
             AttachmentsClient.UploadFailurePrefix);
     }
 
+    [Fact]
+    public async Task ContentAsksForTheAttachmentsFile()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new AttachmentsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(HttpStatusCode.OK, "a,b", "text/csv");
+        }));
+
+        var file = await client.Content(7);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal("http://api.example.test/api/attachments/7/content", sent?.RequestUri?.ToString());
+        Assert.Equal("a,b"u8.ToArray(), file.Value!.Content);
+        Assert.Equal("text/csv", file.Value.ContentType);
+    }
+
+    [Fact]
+    public async Task DeleteDeletesTheAttachment()
+    {
+        HttpRequestMessage? sent = null;
+
+        var client = new AttachmentsClient(Transport(request =>
+        {
+            sent = request;
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }));
+
+        var failure = await client.Delete(7);
+
+        Assert.Equal(HttpMethod.Delete, sent?.Method);
+        Assert.Equal("http://api.example.test/api/attachments/7", sent?.RequestUri?.ToString());
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public async Task ADownloadAndADeleteFailInTheirOwnWords()
+    {
+        var client = new AttachmentsClient(Transport(_ => Answer(HttpStatusCode.NotFound, "{}")));
+
+        var file = await client.Content(7);
+        var deleted = await client.Delete(7);
+
+        Assert.StartsWith(AttachmentsClient.ContentFailurePrefix, file.Failure);
+        Assert.StartsWith(AttachmentsClient.DeleteFailurePrefix, deleted);
+    }
+
     /// <summary>
     /// One page of bare attachments with the given ids, as the API tier writes
     /// it, carrying the page number and the total the client reads to decide

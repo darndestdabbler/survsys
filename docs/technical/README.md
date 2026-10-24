@@ -236,14 +236,14 @@ Sign-in is not configurable: the API tier issues an opaque bearer token on
 `POST /api/sign-in`, valid for eight hours, carrying the user's privileges and
 agencies, and the application tier keeps it in its own sign-in cookie, also
 eight hours and not sliding. Five failed sign-ins in a row lock an account for
-fifteen minutes. The **System settings** screen keeps name-value settings in
-the `system_setting` table, but nothing in 1.0.0 reads them: every setting
-above is configuration. Neither tier redirects to HTTPS or reads forwarded
+fifteen minutes. Every setting is configuration: Survsys keeps none in its
+database, and session 113 dropped the `system_setting` table and its screen,
+which nothing read. Neither tier redirects to HTTPS or reads forwarded
 headers; terminate TLS at IIS.
 
 ## The data model
 
-The schema is `Survsys.Data`'s, built by 55 migrations, in order:
+The schema is `Survsys.Data`'s, built by 57 migrations, in order:
 `InitialCreate`, `Persons`, `PersonConditions`, `ClinicalAndLaboratory`,
 `CaseClassification`, `Workflow`, `InvestigationAndAdministrative`,
 `ContactsAndExposures`, `NotesAndTasks`, `Attachments`,
@@ -260,8 +260,8 @@ The schema is `Survsys.Data`'s, built by 55 migrations, in order:
 `VaccineActive`, `ExportLogDetail`, `NotificationReview`,
 `NotificationAdministration`, `ExportLogBatchFile`, `AuditUserAndValues`,
 `JurisdictionAccessAndLockout`, `ConditionIntakeFlags`, `SystemSettings`,
-`EcrDocuments`, `EcrValidationFindings`, `EcrReportability`, `EcrCases` and
-`EcrSenders`.
+`EcrDocuments`, `EcrValidationFindings`, `EcrReportability`, `EcrCases`,
+`EcrSenders`, `AddressGeocoding` and `DropSystemSettings`.
 
 | Area | Tables |
 |---|---|
@@ -335,8 +335,8 @@ on every call it makes.
 
 **Privileges.** One authorization policy, `PrivilegeRules`, decides every
 request by its method and path, against ten privileges
-(`Survsys.Contracts/Privileges.cs`): users, roles, privileges, the audit, the
-access audit and system settings need `manage_users`; reference data —
+(`Survsys.Contracts/Privileges.cs`): users, roles, privileges, the audit and the
+access audit need `manage_users`; reference data —
 conditions, agencies, facilities, core elements, codes, vocabulary, towns and
 zip codes, vaccines, the notification set-up, forms, treatments and the eCR
 mappings and senders — is readable by anyone signed in and needs

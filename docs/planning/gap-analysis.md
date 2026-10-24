@@ -252,7 +252,7 @@ where it was built and, after a semicolon, where it was finished.
 | Condition configuration | Port | Built, session 30; 84, 98 |
 | Facility management | Port | Built, session 30; 84 |
 | Core element configuration | Port | Built, session 31 |
-| System configuration | Port | Built, session 98 |
+| System configuration | Port | Simplified to configuration files, session 113 |
 
 ### 12. Reporting and export
 
@@ -300,9 +300,12 @@ Each is the operator's to decide or to plan.
   walkthrough regression: the Attachments table and the notes list show the
   date of a moment stored in UTC without converting it, so in the evening
   they read tomorrow's date. Planned as session 110, before the release.
-- **No screen settles a held eICR, downloads or removes an attachment, or
-  reads a system setting.** Each has its API (or, for system settings, its
-  store) and no use on a screen. Not planned; the operator's to decide.
+- ~~**No screen settles a held eICR, downloads or removes an attachment, or
+  reads a system setting**~~: closed in session 113. A held eICR is settled
+  on its screen with Use this person or Create new person; an attachment's
+  name downloads it and Delete removes it; and the system settings, which
+  nothing read, were removed with their table, every setting staying in
+  configuration.
 
 ## Deliberately not planned
 

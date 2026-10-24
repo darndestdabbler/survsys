@@ -40,6 +40,12 @@ public sealed record Asked<T>(T? Value, string? Failure)
     internal static Asked<T> Failed(string failure) => new(null, failure);
 }
 
+/// <summary>A file the API tier answered with, as <see cref="ApiAsk.GetFile"/> reads it.</summary>
+/// <param name="Content">The file's bytes.</param>
+/// <param name="ContentType">Its media type.</param>
+/// <param name="Filename">The name the API tier gave it, or null where it gave none.</param>
+public sealed record AskedFile(byte[] Content, string ContentType, string? Filename);
+
 /// <summary>
 /// How this tier asks the API tier for something, and what it says when the
 /// asking fails.
@@ -123,6 +129,46 @@ public sealed record ApiAsk(string FailurePrefix, string Expected)
         catch (Exception failed) when (Caught(failed, cancellationToken) is { } failure)
         {
             return Asked<string>.Failed(failure);
+        }
+    }
+
+    /// <summary>
+    /// Asks the API tier for a file — an attachment's bytes — and answers with
+    /// them, their type and the name the API gave them, or with why there is
+    /// none.
+    /// </summary>
+    /// <remarks>
+    /// A type the API did not state is answered as
+    /// <c>application/octet-stream</c>, and a name it did not give as null,
+    /// for the caller to name the file itself.
+    /// </remarks>
+    public async Task<Asked<AskedFile>> GetFile(
+        HttpClient http,
+        string url,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(http);
+
+        try
+        {
+            using var response = await http.GetAsync(url, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return Asked<AskedFile>.Failed(Refused(response));
+            }
+
+            var headers = response.Content.Headers;
+            var name = headers.ContentDisposition?.FileNameStar ?? headers.ContentDisposition?.FileName;
+
+            return Asked<AskedFile>.Of(new AskedFile(
+                await response.Content.ReadAsByteArrayAsync(cancellationToken),
+                headers.ContentType?.MediaType ?? "application/octet-stream",
+                name?.Trim('"')));
+        }
+        catch (Exception failed) when (Caught(failed, cancellationToken) is { } failure)
+        {
+            return Asked<AskedFile>.Failed(failure);
         }
     }
 

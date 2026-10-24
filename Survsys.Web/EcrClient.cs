@@ -8,6 +8,10 @@ namespace Survsys.Web;
 /// <c>GET /api/ecr-documents/{id}</c>, one document with its pair, the eICR
 /// rendered beside the RR's conditions and the validation findings; and
 /// <c>GET /api/ecr-quality</c>, the data quality figures by sender and condition.
+/// Beside the reads, the settling of an eICR held for review:
+/// <c>GET /api/ecr-documents/{id}/person-matches</c>, the people its patient
+/// may be, and <c>POST /api/ecr-documents/{id}/case</c>, which writes it to
+/// the cases of the person a reviewer chose or of a new person.
 /// </summary>
 /// <remarks>
 /// The failure handling is <see cref="ApiAsk"/>'s, as every client's is. The
@@ -30,6 +34,16 @@ public sealed class EcrClient(HttpClient http)
     private static readonly ApiAsk Reading = new(DocumentFailurePrefix, "the eCR document");
 
     private static readonly ApiAsk Measuring = new(QualityFailurePrefix, "the eCR data quality figures");
+
+    /// <summary>How a failure to load a held eICR's person matches starts.</summary>
+    public const string MatchFailurePrefix = "The eICR's person matches could not be loaded";
+
+    private static readonly ApiAsk Matching = new(MatchFailurePrefix, "the eICR's person matches");
+
+    /// <summary>How a failure to settle a held eICR starts.</summary>
+    public const string SettleFailurePrefix = "The eICR could not be written to a case";
+
+    private static readonly ApiAsk Settling = new(SettleFailurePrefix, "the eCR document as it was settled");
 
     /// <summary>
     /// One page of the eCR queue, narrowed to one feed where one is given and
@@ -84,4 +98,27 @@ public sealed class EcrClient(HttpClient http)
         int id,
         CancellationToken cancellationToken = default) =>
         Reading.Get<EcrDocumentDetailResponse>(http, $"api/ecr-documents/{id}", cancellationToken);
+
+    /// <summary>
+    /// A held eICR's patient and the people on file who may be them, best
+    /// first, or why they could not be read.
+    /// </summary>
+    public Task<Asked<StagedMessagePersonMatchResponse>> PersonMatches(
+        int id,
+        CancellationToken cancellationToken = default) =>
+        Matching.Get<StagedMessagePersonMatchResponse>(
+            http, $"api/ecr-documents/{id}/person-matches", cancellationToken);
+
+    /// <summary>
+    /// Settles a held eICR: writes it to the cases of the person on file
+    /// <paramref name="personId"/> names, or of a new person made from its
+    /// patient where it is null, and answers with the document as it now
+    /// stands, or with why nothing was written.
+    /// </summary>
+    public Task<Asked<EcrDocumentDetailResponse>> Settle(
+        int id,
+        int? personId,
+        CancellationToken cancellationToken = default) =>
+        Settling.Post<LinkEcrCaseRequest, EcrDocumentDetailResponse>(
+            http, $"api/ecr-documents/{id}/case", new LinkEcrCaseRequest(personId), cancellationToken);
 }

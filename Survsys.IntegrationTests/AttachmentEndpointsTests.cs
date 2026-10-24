@@ -164,6 +164,40 @@ public class AttachmentEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     /// <summary>
+    /// What the Attachments panel's file name and Delete ask for: the file as
+    /// it was attached, under its type and name, and then gone.
+    /// </summary>
+    [Fact]
+    public async Task AnAttachmentIsDownloadedAsItWasAttachedAndThenDeleted()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            var stored = await Upload(client, reportId, "letter", "exposure-letter.txt", "text/plain", [72, 105, 10]);
+
+            using (var content = await client.GetAsync($"/api/attachments/{stored.Id}/content"))
+            {
+                Assert.Equal(HttpStatusCode.OK, content.StatusCode);
+                Assert.Equal(new byte[] { 72, 105, 10 }, await content.Content.ReadAsByteArrayAsync());
+                Assert.Equal("text/plain", content.Content.Headers.ContentType?.MediaType);
+                Assert.Equal("exposure-letter.txt", content.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+            }
+
+            using var delete = await client.DeleteAsync($"/api/attachments/{stored.Id}");
+            Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+
+            using var gone = await client.GetAsync($"/api/attachments/{stored.Id}/content");
+            Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
+        }
+        finally
+        {
+            await ClearAttachmentsOf(reportId);
+        }
+    }
+
+    /// <summary>
     /// A file attached to an outbreak is listed under it and under no report,
     /// downloads as stored, and goes with its file when the outbreak is
     /// deleted; an outbreak nobody has is a 404 to both routes.

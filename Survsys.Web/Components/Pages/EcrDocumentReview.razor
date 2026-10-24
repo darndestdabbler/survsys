@@ -11,7 +11,14 @@
    Every element a later walkthrough will name carries an identifier of its
    own — `ecr-document-heading`, `-back`, `-loading`, `-error`, `-eicr`,
    `-no-eicr`, `-conditions`, `-no-conditions`, `-cases`, `-case-{id}`,
-   `-case-review`, `-no-cases`, `-findings` and `-no-findings`. *@
+   `-case-review`, `-no-cases`, `-findings` and `-no-findings`.
+
+   An eICR held for review is settled here by a user holding edit_cases: each
+   person its patient may be is listed (`ecr-document-match-{n}`, with
+   `-name` and `-use`) with Use this person, beside Create new person
+   (`ecr-document-create-person`); either writes the eICR to that person's
+   cases and the list of cases replaces the hold, or the failure is shown
+   (`ecr-document-settle-error`). *@
 @page "/ecr/{Id:int}"
 @inject EcrClient Client
 
@@ -122,6 +129,51 @@ else if (asked.Value is { } detail)
                 <MudAlert id="ecr-document-case-review" Severity="Severity.Warning" Dense="true">
                     Held for review: @detail.CaseReason
                 </MudAlert>
+
+                @if (settleFailure is { } whyNotSettled)
+                {
+                    <MudAlert id="ecr-document-settle-error" Severity="Severity.Error" Class="mt-2">
+                        @whyNotSettled
+                    </MudAlert>
+                }
+
+                @if (mayEditCases)
+                {
+                    <div class="d-flex flex-column gap-2 mt-2">
+                        @if (matches?.Value is { } proposal)
+                        {
+                            var proposed = proposal.Candidates
+                                .Where(candidate => candidate.Verdict != PersonMatchCandidateResponse.None)
+                                .ToList();
+                            for (var m = 0; m < proposed.Count; m++)
+                            {
+                                var candidate = proposed[m];
+                                <div id="@($"ecr-document-match-{m}")" class="d-flex align-center gap-2">
+                                    <MudText id="@($"ecr-document-match-{m}-name")" Typo="Typo.body2">
+                                        <strong>@Named(candidate.Person)</strong> (person @candidate.Person.Id),
+                                        born @(candidate.Person.BirthDate?.ToString("yyyy-MM-dd") ?? "—")
+                                        — @candidate.Verdict match
+                                    </MudText>
+                                    <MudButton id="@($"ecr-document-match-{m}-use")" Variant="Variant.Filled"
+                                               Color="Color.Primary" Size="Size.Small" Disabled="@settling"
+                                               OnClick="@(() => Settle(candidate.Person.Id))">
+                                        Use this person
+                                    </MudButton>
+                                </div>
+                            }
+                        }
+                        else if (matches?.Failure is { } whyNoMatches)
+                        {
+                            <MudText Typo="Typo.body2">@whyNoMatches</MudText>
+                        }
+                        <div>
+                            <MudButton id="ecr-document-create-person" Variant="Variant.Outlined" Color="Color.Primary"
+                                       Size="Size.Small" Disabled="@settling" OnClick="@(() => Settle(null))">
+                                Create new person
+                            </MudButton>
+                        </div>
+                    </div>
+                }
             }
             else
             {
@@ -175,13 +227,70 @@ else
     [Parameter]
     public int Id { get; set; }
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
     private Asked<EcrDocumentDetailResponse>? asked;
+
+    private Asked<StagedMessagePersonMatchResponse>? matches;
+
+    private bool mayEditCases;
+
+    private bool settling;
+
+    private string? settleFailure;
 
     protected override async Task OnParametersSetAsync()
     {
         asked = null;
+        matches = null;
+        settleFailure = null;
+
+        // Settling writes cases, so it is offered to the holders of the
+        // privilege the API tier asks of that write; the API tier still decides.
+        var user = AuthenticationState is { } state ? (await state).User : null;
+        mayEditCases = user?.HasClaim(AccountClient.PrivilegeClaim, Privileges.EditCases) == true;
+
         asked = await Client.Get(Id);
+
+        if (mayEditCases && asked.Value?.CaseStatus == "review")
+        {
+            matches = await Client.PersonMatches(Id);
+        }
     }
+
+    /// <summary>
+    /// Writes the held eICR to the cases of the person chosen, or of a new
+    /// person where none is, and shows the document as it then stands.
+    /// </summary>
+    private async Task Settle(int? personId)
+    {
+        settling = true;
+        settleFailure = null;
+
+        try
+        {
+            var settled = await Client.Settle(Id, personId);
+
+            if (settled.Value is not null)
+            {
+                asked = settled;
+            }
+            else
+            {
+                settleFailure = settled.Failure;
+            }
+        }
+        finally
+        {
+            settling = false;
+        }
+    }
+
+    private static string Named(PersonResponse person) =>
+        string.IsNullOrWhiteSpace(person.FirstName)
+            ? person.LastName
+            : $"{person.LastName}, {person.FirstName}";
 
     /// <summary>A coded value as its name, with its code where both are given.</summary>
     private static string Shown(string? name, string? code) =>

@@ -29,8 +29,9 @@ Two things this walkthrough describes as Survsys does them:
   is mapped. Its patient matches no one on file, so a person is added for
   them and a case opened on the mapped condition, under the agency their zip
   code belongs to. Where the match is not confident the eICR is held for a
-  reviewer instead, and Survsys has no screen yet for settling one; this
-  walkthrough's patient is not that case.
+  reviewer instead, who settles it on the eICR's screen with **Use this
+  person** or **Create new person**; this walkthrough's patient is not that
+  case.
 - **The eICR's screen links to the case.** Under **Cases** it shows what
   became of it: an **Open case** link for each case it was written to.
 

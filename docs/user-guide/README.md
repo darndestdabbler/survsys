@@ -23,7 +23,7 @@ read; each section here links the ones that perform its screens.
 | [Electronic case reports](#electronic-case-reports) | 13 |
 | [CDC notification](#cdc-notification) | 6, 11 |
 | [Outbreaks, forms, treatments and vaccines](#outbreaks-forms-treatments-and-vaccines) | 7, 8 |
-| [Audit and system settings](#audit-and-system-settings) | 12 |
+| [Audit](#audit) | 12 |
 
 **Three things hold on every screen.** A coded field — a gender, a race, a
 place type, a test type, a disposition — is a list, showing each code by its
@@ -55,7 +55,7 @@ privileges:
 | `view_cases` | Read people, cases and everything filed under them; the queues, outbreaks, staged messages, eCR documents, notifications, the export log, tasks and saved views. |
 | `edit_cases` | Create and change cases and what is filed under them, and outbreaks; send a case to IBIS. |
 | `manage_reference_data` | Change the conditions, agencies, facilities, field visibility, code lists, vocabulary, towns and zip codes, vaccines, treatments, forms, the notification set-up and the eCR mappings and senders. Reading them needs only to be signed in. |
-| `manage_users` | Add and change users and roles; read the audit and access audit; keep the system settings. |
+| `manage_users` | Add and change users and roles; read the audit and access audit. |
 | `run_reports` | Run the reports. |
 | `route_cases` | Route a case to another agency. |
 | `assign_investigators` | Name a case's investigator. |
@@ -84,7 +84,7 @@ persons**, **Agencies**, **Facilities**, **Field visibility**, **Forms**,
 **Treatments**, **Code lists**, **Vocabulary**, **eCR conditions**, **eCR
 senders**, **Towns and zip codes**, **Vaccines**, **Notification guides**,
 **PHIN variables**, **Value sets**, **Hepatitis lab setup**, **Users**,
-**Roles**, **Audit**, **Access audit** and **System settings**. It wraps onto
+**Roles**, **Audit** and **Access audit**. It wraps onto
 more lines rather than run off the window. The API tier checks the privilege
 on every request, so a screen opened by its address without the privilege
 shows what it was refused rather than the data.
@@ -362,7 +362,8 @@ come from, and the people exposed alongside the patient.
 - **Attachments**: choose a **Category** and a file — PDF, text, CSV, Word,
   PNG, JPEG, GIF or TIFF, up to 30 MB — and press **Attach file**.
   Attachments are listed with their category, size, type and the day they
-  were attached. The screen does not download or remove an attachment.
+  were attached. Press a file's name to download it. With `edit_cases`,
+  **Delete** removes an attachment and its file, after asking first.
 - **Notes**: a note type (clinical or administrative), its text, optionally
   who wrote it and the exposure it is about, and **Private**; **Add note**. A
   private note is seen only by the user who wrote it. Tick a note's
@@ -543,8 +544,11 @@ matches — and opens a case on each reportable condition, or adds to the
 person's open case on it, writing their demographics, address, encounter,
 problems, onset date, pregnancy, occupation, medications and travel. A later
 version of the eICR updates what an earlier one wrote, unless someone has
-changed it since. A document whose patient is in doubt is held for review;
-Survsys has no screen for settling a held document.
+changed it since. A document whose patient is in doubt is held for review,
+and is settled on its own screen by someone with `edit_cases`: the people its
+patient may be are listed, each with **Use this person**, beside **Create new
+person**. Either writes the eICR to that person's cases, which the screen then
+lists.
 
 - **eCR** (`/ecr`): the documents, newest first, by **Feed**, with **Needs
   review** to show only those waiting. Each row reads its kind, document id,
@@ -660,7 +664,7 @@ already recorded.
 [Record a treatment](../walkthroughs/record-a-treatment.md),
 [Record a case treatment](../walkthroughs/record-a-case-treatment.md).
 
-## Audit and system settings
+## Audit
 
 These screens need `manage_users`.
 
@@ -670,10 +674,9 @@ These screens need `manage_users`.
   **History of changes** opens it at that case.
 - **Access audit** (`/access-audit`): who signed in, opened a case, searched
   for cases or exported a saved view, newest first.
-- **System settings** (`/system-settings`): named settings kept in the
-  database, each with its value and a description, added, changed and
-  deleted here. Survsys 1.0.0 reads none of them itself; its own settings are
-  in its configuration, which the technical guide describes.
+
+Survsys keeps no settings in its database; every setting is in its
+configuration, which the technical guide describes.
 
 **Walk through it:**
 [Review a case's audit history](../walkthroughs/review-a-cases-audit-history.md).

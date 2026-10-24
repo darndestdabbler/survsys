@@ -473,6 +473,53 @@ public class ApiAskTests
         Assert.Contains("did not answer", unanswered.Failure);
     }
 
+    [Fact]
+    public async Task GetFileAnswersTheBytesTypeAndName()
+    {
+        HttpRequestMessage? sent = null;
+        byte[] bytes = [0x25, 0x50, 0x44, 0x46];
+
+        var asked = await Ask.GetFile(
+            Transport(request =>
+            {
+                sent = request;
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(bytes)
+                    {
+                        Headers =
+                        {
+                            ContentType = new MediaTypeHeaderValue("application/pdf"),
+                            ContentDisposition = new ContentDispositionHeaderValue("attachment") { FileName = "\"report.pdf\"" },
+                        },
+                    },
+                };
+            }),
+            "api/attachments/3/content",
+            CancellationToken.None);
+
+        Assert.Equal(HttpMethod.Get, sent?.Method);
+        Assert.Equal("http://api.example.test/api/attachments/3/content", sent?.RequestUri?.ToString());
+        Assert.Equal(bytes, asked.Value!.Content);
+        Assert.Equal("application/pdf", asked.Value.ContentType);
+        Assert.Equal("report.pdf", asked.Value.Filename);
+    }
+
+    [Fact]
+    public async Task GetFileThatFailedBecomesAMessageLikeAnAskThatFailed()
+    {
+        var refused = await Ask.GetFile(
+            Transport(_ => Answer(HttpStatusCode.NotFound, "no such file")), "api/attachments/3/content", CancellationToken.None);
+        var unanswered = await Ask.GetFile(
+            Transport(_ => throw new HttpRequestException("connection refused")), "api/attachments/3/content", CancellationToken.None);
+
+        Assert.StartsWith(Prefix, refused.Failure);
+        Assert.Contains("404", refused.Failure);
+        Assert.DoesNotContain("no such file", refused.Failure, StringComparison.Ordinal);
+        Assert.StartsWith(Prefix, unanswered.Failure);
+        Assert.Contains("did not answer", unanswered.Failure);
+    }
+
     private static Task<Asked<PagedResult<ConditionResponse>>> Get(
         HttpStatusCode status,
         string body,

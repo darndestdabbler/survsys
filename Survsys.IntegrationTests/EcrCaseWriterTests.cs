@@ -315,6 +315,28 @@ public class EcrCaseWriterTests(SqlServerFixture server) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AHeldEicrSettledWithNoPersonOpensItsCaseUnderANewPerson()
+    {
+        var personId = await SeedPerson("Someone");
+
+        var eicr = await Take(Eicr(1), Settings());
+        await Take(Rr(1), Settings());
+
+        var client = api.CreateClient();
+        using var settled = await client.PostAsJsonAsync(
+            $"/api/ecr-documents/{eicr.Id}/case", new LinkEcrCaseRequest(null), Json);
+        Assert.Equal(HttpStatusCode.OK, settled.StatusCode);
+        var detail = await settled.Content.ReadFromJsonAsync<EcrDocumentDetailResponse>(Json);
+        Assert.Equal(EcrDocument.LinkedCaseStatus, detail!.CaseStatus);
+        var caseId = Assert.Single(detail.CaseIds!);
+
+        await using var context = server.NewContext();
+        var report = await context.PersonConditions.SingleAsync(found => found.Id == caseId);
+        Assert.NotEqual(personId, report.PersonId);
+        Assert.Equal(malaria, report.ConditionId);
+    }
+
+    [Fact]
     public async Task ASecondVersionUpdatesWhatTheFirstWroteAndNothingAUserEdited()
     {
         var first = await Take(Eicr(1), Settings());

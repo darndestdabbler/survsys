@@ -6,7 +6,9 @@ namespace Survsys.Web;
 /// <summary>
 /// The application tier's reader and writer of a report's attachments:
 /// <c>GET /api/person-conditions/{id}/attachments</c>, and the multipart
-/// <c>POST</c> beside it that attaches one file.
+/// <c>POST</c> beside it that attaches one file; and of one attachment,
+/// <c>GET /api/attachments/{id}/content</c>, its file, and
+/// <c>DELETE /api/attachments/{id}</c>.
 /// </summary>
 /// <remarks>
 /// It is the only thing in this tier that speaks HTTP about attachments, and
@@ -18,12 +20,11 @@ namespace Survsys.Web;
 /// attachment as it was stored, so the panel puts that at the top of what it
 /// holds rather than asking for the list again.
 ///
-/// <strong>Nothing here downloads a file.</strong> The bytes are
-/// <c>GET /api/attachments/{id}/content</c>'s, and this tier does not hand
-/// them on: a screen that offered the download would have to either give the
-/// browser the API tier's address, which the production split does not allow,
-/// or stream the file through this tier, and neither is the upload and listing
-/// this session's section asks for.
+/// A file is downloaded through this tier: the browser follows a plain link
+/// to this tier's <c>/attachments/{id}/content</c>, which asks
+/// <see cref="Content"/> under the signed-in person's token and hands the
+/// bytes on as a file, because the production split does not give the browser
+/// the API tier's address.
 /// </remarks>
 public sealed class AttachmentsClient(HttpClient http)
 {
@@ -32,6 +33,12 @@ public sealed class AttachmentsClient(HttpClient http)
 
     /// <summary>How a failure to attach a file starts.</summary>
     public const string UploadFailurePrefix = "The file could not be attached";
+
+    /// <summary>How a failure to download an attachment's file starts.</summary>
+    public const string ContentFailurePrefix = "The attached file could not be downloaded";
+
+    /// <summary>How a failure to delete an attachment starts.</summary>
+    public const string DeleteFailurePrefix = "The attachment could not be deleted";
 
     /// <summary>
     /// The page size <see cref="All"/> walks a report's attachments at: the
@@ -71,6 +78,21 @@ public sealed class AttachmentsClient(HttpClient http)
 
     private static readonly ApiAsk Uploading =
         new(UploadFailurePrefix, "the attachment as it was stored");
+
+    private static readonly ApiAsk Downloading = new(ContentFailurePrefix, "the attached file");
+
+    private static readonly ApiAsk Deleting = new(DeleteFailurePrefix, "nothing");
+
+    /// <summary>An attachment's file, with its type and name, or why there is none.</summary>
+    public Task<Asked<AskedFile>> Content(int id, CancellationToken cancellationToken = default) =>
+        Downloading.GetFile(http, $"api/attachments/{id}/content", cancellationToken);
+
+    /// <summary>
+    /// Deletes an attachment and its file, answering null where it was done
+    /// or why it was not.
+    /// </summary>
+    public Task<string?> Delete(int id, CancellationToken cancellationToken = default) =>
+        Deleting.Delete(http, $"api/attachments/{id}", cancellationToken);
 
     /// <summary>
     /// One page of a report's attachments, newest first, or why there is none.

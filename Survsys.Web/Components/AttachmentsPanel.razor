@@ -19,9 +19,11 @@
    names. The accept list and the size ceiling are this tier's convenience:
    what may be attached is the API tier's to say, and it says so by refusing.
 
-   There is no download link and no delete. The bytes are the API tier's to
-   serve and this tier cannot hand them on without either giving the browser
-   that tier's address or proxying the file, and an attachment is stored once.
+   A file's name downloads it: a plain link to this tier's
+   /attachments/{id}/content, which asks the API tier for the bytes under the
+   signed-in person's token and hands them to the browser as a file. A user
+   holding edit_cases, the privilege the API tier asks of the delete, gets a
+   Delete button on each row, which asks first.
 
    A row in a list carries its position in its identifier, so a walkthrough
    can name it: attachments-file-0, attachments-file-0-filename and so on.
@@ -31,6 +33,14 @@
 @using System.Globalization
 @using Microsoft.AspNetCore.Components.Forms
 @inject AttachmentsClient Api
+@inject IDialogService Dialogs
+
+@if (deleteFailure is { } whyNotDeleted)
+{
+    <MudAlert id="attachments-delete-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNotDeleted
+    </MudAlert>
+}
 
 @if (listFailure is { } whyNoList)
 {
@@ -76,6 +86,10 @@
                     <th>Size</th>
                     <th>Type</th>
                     <th>Attached</th>
+                    @if (mayEditCases)
+                    {
+                        <th></th>
+                    }
                 </tr>
             </thead>
             <tbody>
@@ -83,11 +97,22 @@
                 {
                     var attachment = attachments[a];
                     <tr id="@($"attachments-file-{a}")" @key="attachment.Id">
-                        <td id="@($"attachments-file-{a}-filename")">@attachment.Filename</td>
+                        <td id="@($"attachments-file-{a}-filename")">
+                            <MudLink Href="@($"/attachments/{attachment.Id}/content")">@attachment.Filename</MudLink>
+                        </td>
                         <td id="@($"attachments-file-{a}-category")">@Labelled(attachment.Category)</td>
                         <td id="@($"attachments-file-{a}-size")">@Sized(attachment.Size)</td>
                         <td id="@($"attachments-file-{a}-content-type")">@attachment.ContentType</td>
                         <td id="@($"attachments-file-{a}-created-at")">@Attached(attachment.CreatedAt)</td>
+                        @if (mayEditCases)
+                        {
+                            <td>
+                                <MudButton id="@($"attachments-file-{a}-delete")" Variant="Variant.Text"
+                                           Color="Color.Error" Size="Size.Small" OnClick="@(() => Delete(attachment))">
+                                    Delete
+                                </MudButton>
+                            </td>
+                        }
                     </tr>
                 }
             </tbody>
@@ -182,8 +207,18 @@
 
     private string? complaint;
 
+    private string? deleteFailure;
+
+    private bool mayEditCases;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        var user = AuthenticationState is { } state ? (await state).User : null;
+        mayEditCases = user?.HasClaim(AccountClient.PrivilegeClaim, Privileges.EditCases) == true;
+
         // Every attachment of the report, however many pages the API tier
         // lists them over: the client walks the pages, so none is left off the
         // end of the list. Metadata only -- no file is read to show this.
@@ -266,6 +301,28 @@
         finally
         {
             uploading = false;
+        }
+    }
+
+    /// <summary>Deletes an attachment and its file once the user has said yes.</summary>
+    private async Task Delete(AttachmentResponse attachment)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync(
+            "Delete this attachment?",
+            $"{attachment.Filename} and its file are removed, and cannot be restored.",
+            yesText: "Delete",
+            cancelText: "Cancel") == true;
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        deleteFailure = await Api.Delete(attachment.Id);
+
+        if (deleteFailure is null)
+        {
+            attachments.Remove(attachment);
         }
     }
 

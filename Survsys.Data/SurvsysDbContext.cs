@@ -139,8 +139,6 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options, IAudit
 
     public DbSet<ReconciliationCutoffSetting> ReconciliationCutoffs => Set<ReconciliationCutoffSetting>();
 
-    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
-
     public DbSet<EcrDocument> EcrDocuments => Set<EcrDocument>();
 
     public DbSet<EcrValidationFinding> EcrValidationFindings => Set<EcrValidationFinding>();

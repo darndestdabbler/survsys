@@ -57,6 +57,18 @@ public class PrivilegeRulesTests(SqlServerFixture server) : IDisposable
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    /// <summary>
+    /// The system settings were removed in session 113: there is no such
+    /// route, even for the administrator who once kept them.
+    /// </summary>
+    [Fact]
+    public async Task TheSystemSettingsRouteIsGone()
+    {
+        using var response = await api.CreateClient().GetAsync("/api/system-settings");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     [Fact]
     public async Task AWrongPasswordIsRefused()
     {
