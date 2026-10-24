@@ -1295,6 +1295,13 @@
       "what": "step 'walkthrough-tests': its files",
       "reason": "Step 7 of see-a-case-shared-read-only.md says Davis County's board has one row, but the assign and route walkthroughs leave Davis County cases in the same run; the document must name the row by its record number, so that one sentence changes with the test",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 115,
+      "dateTime": "2026-10-24T06:31:52.031000-04:00",
+      "task": "Release 1.0.0: the framework packs and publishes what is on the trunk.",
+      "releasable": true
     }
   ]
 }

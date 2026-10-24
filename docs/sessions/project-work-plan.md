@@ -126,7 +126,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 112 | Address geocoding | no | 2026-10-24 |
 | 113 | Held eICRs, attachments, and no system settings | no | 2026-10-24 |
 | 114 | Walkthroughs for the open items | no | 2026-10-24 |
-| 115 | Release 1.0.0 (release: 1.0.0) | — | not declared |
+| 115 | Release 1.0.0 (release: 1.0.0) | yes | 2026-10-24 |
 
 ### Session 1 — Author or import the solution plan
 
@@ -1002,3 +1002,9 @@ Write the three walkthroughs session 113 and 111 left without one, and perform e
 **Amended after acceptance:**
 
 - 2026-10-24 — step 'walkthrough-tests': its files: Step 7 of see-a-case-shared-read-only.md says Davis County's board has one row, but the assign and route walkthroughs leave Davis County cases in the same run; the document must name the row by its record number, so that one sentence changes with the test (claude-code (anthropic, claude-opus-5-5))
+
+### Session 115 — Release 1.0.0 (release: 1.0.0)
+
+**Releasable: yes.**
+
+Release 1.0.0: the framework packs and publishes what is on the trunk.
