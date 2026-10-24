@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Survsys.Api;
 using Survsys.Contracts;
 using Survsys.Data;
 using Xunit;
@@ -1459,6 +1462,164 @@ public class PersonEndpointsTests(SqlServerFixture server) : IDisposable
     /// A person this suite puts on file to save over, by the endpoint that
     /// creates one; the caller forgets them.
     /// </summary>
+    /// <summary>
+    /// The API tier with geocoding on and both services pointed at
+    /// <paramref name="stub"/>, Google with a key.
+    /// </summary>
+    private Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program> Geocoding(GeocodingStub stub) =>
+        api.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.PostConfigure<GeocodingOptions>(options =>
+            {
+                var stubbed = stub.Options();
+                options.Enabled = stubbed.Enabled;
+                options.CensusEndpoint = stubbed.CensusEndpoint;
+                options.GoogleEndpoint = stubbed.GoogleEndpoint;
+                options.GoogleApiKey = stubbed.GoogleApiKey;
+            })));
+
+    [Fact]
+    public async Task ASaveGeocodesAnAddressWithAStreetAndNoCoordinates()
+    {
+        await using var stub = await GeocodingStub.Start();
+        using var host = Geocoding(stub);
+        var id = await Created("Geocoded");
+
+        try
+        {
+            var saved = await Put(host.CreateClient(), id, new UpdatePersonRequest("Geocoded")
+            {
+                Addresses = [new PersonAddressRequest(Street: "1 Main Street", City: "Hartford", State: "CT")],
+            });
+
+            var address = Assert.Single(saved.Addresses);
+            Assert.Equal((41.7637m, -72.6851m, "census"), (address.Latitude, address.Longitude, address.GeocodedBy));
+            Assert.Equal("1 Main Street, Hartford, CT", Assert.Single(stub.CensusAsked));
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    [Fact]
+    public async Task ASaveKeepsAHandTypedPairAsManualAndAsksNoService()
+    {
+        await using var stub = await GeocodingStub.Start();
+        using var host = Geocoding(stub);
+        var id = await Created("Handtyped");
+
+        try
+        {
+            var saved = await Put(host.CreateClient(), id, new UpdatePersonRequest("Handtyped")
+            {
+                Addresses = [new PersonAddressRequest(Street: "1 Main Street", Latitude: 41.5m, Longitude: -72.5m)],
+            });
+
+            var address = Assert.Single(saved.Addresses);
+            Assert.Equal((41.5m, -72.5m, "manual"), (address.Latitude, address.Longitude, address.GeocodedBy));
+            Assert.Empty(stub.CensusAsked);
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    [Fact]
+    public async Task ASaveGeocodesAChangedStreetAgain()
+    {
+        await using var stub = await GeocodingStub.Start();
+        using var host = Geocoding(stub);
+        var client = host.CreateClient();
+        var id = await Created("Moved");
+
+        try
+        {
+            var first = Assert.Single((await Put(client, id, new UpdatePersonRequest("Moved")
+            {
+                Addresses = [new PersonAddressRequest(Street: "1 Main Street")],
+            })).Addresses);
+
+            var moved = Assert.Single((await Put(client, id, new UpdatePersonRequest("Moved")
+            {
+                Addresses =
+                [
+                    new PersonAddressRequest(
+                        Street: "9 Elm Court", Latitude: first.Latitude, Longitude: first.Longitude),
+                ],
+            })).Addresses);
+
+            Assert.Equal((41.7737m, -72.6851m, "census"), (moved.Latitude, moved.Longitude, moved.GeocodedBy));
+            Assert.Equal(2, stub.CensusAsked.Count);
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    [Fact]
+    public async Task ASaveWhoseGeocodingFailsLeavesTheCoordinatesEmpty()
+    {
+        await using var stub = await GeocodingStub.Start();
+        stub.Census = GeocodingStub.Answer.Fail;
+        stub.Google = GeocodingStub.Answer.Fail;
+        using var host = Geocoding(stub);
+        var id = await Created("Ungeocoded");
+
+        try
+        {
+            var saved = await Put(host.CreateClient(), id, new UpdatePersonRequest("Ungeocoded")
+            {
+                Addresses = [new PersonAddressRequest(Street: "1 Main Street")],
+            });
+
+            var address = Assert.Single(saved.Addresses);
+            Assert.Equal("1 Main Street", address.Street);
+            Assert.Null(address.Latitude);
+            Assert.Null(address.Longitude);
+            Assert.Null(address.GeocodedBy);
+            Assert.Single(stub.GoogleAsked);
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
+    [Fact]
+    public async Task ASaveDoesNotGeocodeAnUnchangedStreetAgain()
+    {
+        await using var stub = await GeocodingStub.Start();
+        stub.Census = GeocodingStub.Answer.NoMatch;
+        stub.Google = GeocodingStub.Answer.NoMatch;
+        using var host = Geocoding(stub);
+        var client = host.CreateClient();
+        var id = await Created("Unmatched");
+
+        try
+        {
+            await Put(client, id, new UpdatePersonRequest("Unmatched")
+            {
+                Addresses = [new PersonAddressRequest(Street: "1 Main Street")],
+            });
+
+            stub.Census = GeocodingStub.Answer.Found;
+            var again = Assert.Single((await Put(client, id, new UpdatePersonRequest("Unmatched", "Changed")
+            {
+                Addresses = [new PersonAddressRequest(Street: "1 Main Street")],
+            })).Addresses);
+
+            Assert.Null(again.Latitude);
+            Assert.Single(stub.CensusAsked);
+            Assert.Single(stub.GoogleAsked);
+        }
+        finally
+        {
+            await Forget(id);
+        }
+    }
+
     private async Task<int> Created(string lastName)
     {
         using var created = await api.CreateClient()

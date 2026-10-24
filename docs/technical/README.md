@@ -217,6 +217,9 @@ becomes `__`.
 | `NotificationQueue:ExportLogRetentionDays` | How long export log rows are kept. Empty keeps them all. | empty |
 | `CdcTransmission:Transport` | `Http` posts each notification to the endpoint; `File` writes it into the outbox for a PHINMS or AIMS sender. | `Http` |
 | `CdcTransmission:Endpoint`, `:OutboxDirectory`, `:UserName`, `:Password`, `:TimeoutSeconds` | Where the transport sends, its Basic credentials (the password from the environment only), and the timeout. Transmission is off while the endpoint or outbox it needs is empty. | empty, `30` |
+| `Geocoding:Enabled` | Geocodes an address saved with a street and no coordinates (the Demographic tab, ELR promotion and eCR intake): the US Census Geocoder's one-line lookup, then Google's Geocoding API where Census fails, times out or finds no match. Each service is sent the street address — street, city, state and zip — and nothing else about the person. A failure of both leaves the coordinates empty and never stops the save. | `false` |
+| `Geocoding:CensusEndpoint`, `:CensusTimeoutSeconds`, `:GoogleEndpoint`, `:GoogleTimeoutSeconds` | Each service's endpoint and timeout. | the public services, `10`, `10` |
+| `Geocoding:GoogleApiKey` | Google's API key, read from the environment only (`Geocoding__GoogleApiKey`), never a file. Without one Google is skipped. | unset |
 | `IbisTransmission:Endpoint`, `IbisTransmission:TimeoutSeconds` | Where a case is posted to IBIS as JSON, and the timeout. Empty turns IBIS off. Not in `appsettings.json`; set it where the tier runs. | unset, `30` |
 
 Every background service — the ELR file drop and MLLP listener, automatic

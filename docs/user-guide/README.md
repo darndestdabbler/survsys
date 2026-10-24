@@ -172,6 +172,15 @@ from its town, and a blank county from its zip. A Connecticut address carries
 both its historical county and its planning region (labelled **Planning
 region**, or as configured).
 
+Where geocoding is turned on, an address saved with a street and no
+**Latitude** or **Longitude** is geocoded — by the US Census Geocoder, or by
+Google where Census finds no match — on the Demographic tab and when a lab
+message or eCR adds it. Each address row and the person screen say where its
+coordinates came from: **Census Geocoder**, **Google** or **Typed by hand**.
+Coordinates you type are kept as typed by hand; change the street and the
+address is geocoded again. If neither service finds it, the address saves
+with no coordinates.
+
 **Duplicate persons** (`/persons/duplicates`, with `merge_persons`) lists
 pairs of people who may be one person, best first, each with its score,
 verdict and reasons. Pressing a pair opens **Merge persons**: the two records

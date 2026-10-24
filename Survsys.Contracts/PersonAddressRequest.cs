@@ -25,6 +25,11 @@ namespace Survsys.Contracts;
 /// The county equivalent, as a county code of that kind: a Connecticut
 /// address's planning region, beside its historical county.
 /// </param>
+/// <param name="Latitude">
+/// The latitude, as shown or typed; a pair the address was not stored with is
+/// kept as typed by hand.
+/// </param>
+/// <param name="Longitude">The longitude, as shown or typed.</param>
 public record PersonAddressRequest(
     string? Street = null,
     string? UnitNumber = null,
@@ -36,4 +41,6 @@ public record PersonAddressRequest(
     DateOnly? Ending = null,
     string? Note = null,
     int? ResidenceTypeId = null,
-    string? CountyEquivalent = null);
+    string? CountyEquivalent = null,
+    decimal? Latitude = null,
+    decimal? Longitude = null);

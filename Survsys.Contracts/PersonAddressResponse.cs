@@ -27,6 +27,9 @@ namespace Survsys.Contracts;
 /// The county equivalent, as a county code of that kind: a Connecticut
 /// address's planning region, beside its historical county.
 /// </param>
+/// <param name="Latitude">The latitude, in decimal degrees, and null where none is known.</param>
+/// <param name="Longitude">The longitude, in decimal degrees, and null where none is known.</param>
+/// <param name="GeocodedBy">Where the coordinates came from: census, google or manual.</param>
 public record PersonAddressResponse(
     int Id,
     string? Street,
@@ -39,4 +42,7 @@ public record PersonAddressResponse(
     DateOnly? Ending,
     string? Note,
     int? ResidenceTypeId,
-    string? CountyEquivalent = null);
+    string? CountyEquivalent = null,
+    decimal? Latitude = null,
+    decimal? Longitude = null,
+    string? GeocodedBy = null);

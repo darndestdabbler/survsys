@@ -321,7 +321,10 @@ public sealed class EcrIntakeService(
                             parser,
                             database,
                             thresholds,
-                            new EcrCaseSettings(counties.Value, await LabSenders(database, stoppingToken)),
+                            new EcrCaseSettings(
+                                counties.Value,
+                                await LabSenders(database, stoppingToken),
+                                scope.ServiceProvider.GetService<IGeocoder>()),
                             stored,
                             DateTimeOffset.Now,
                             stoppingToken);

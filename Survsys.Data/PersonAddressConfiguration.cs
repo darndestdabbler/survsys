@@ -50,6 +50,15 @@ internal sealed class PersonAddressConfiguration : IEntityTypeConfiguration<Pers
         builder.Property(address => address.Ending).HasColumnName("ending");
         builder.Property(address => address.Note).HasColumnName("note");
         builder.Property(address => address.ResidenceTypeId).HasColumnName("residence_type_id");
+        builder.Property(address => address.Latitude)
+            .HasColumnName("latitude")
+            .HasPrecision(9, 6);
+        builder.Property(address => address.Longitude)
+            .HasColumnName("longitude")
+            .HasPrecision(9, 6);
+        builder.Property(address => address.GeocodedBy)
+            .HasColumnName("geocoded_by")
+            .HasMaxLength(10);
 
         // One current address a person: the one with no ending. Both indexes
         // are named, so the unique filtered one does not stand in for the

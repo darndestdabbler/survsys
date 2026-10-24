@@ -61,7 +61,8 @@ public static class MessageCaseWriter
         CreatePersonConditionRequest creation,
         DateTimeOffset now,
         CancellationToken cancellationToken,
-        CountyPrograms? counties = null)
+        CountyPrograms? counties = null,
+        IGeocoder? geocoder = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(creation);
@@ -73,7 +74,7 @@ public static class MessageCaseWriter
             return null;
         }
 
-        var created = await OpenClaimed(database, staged, creation, now, counties ?? new(), cancellationToken);
+        var created = await OpenClaimed(database, staged, creation, now, counties ?? new(), geocoder, cancellationToken);
         await Commit(owned, cancellationToken);
 
         return created;
@@ -110,7 +111,8 @@ public static class MessageCaseWriter
         int? personConditionId,
         DateTimeOffset now,
         CancellationToken cancellationToken,
-        CountyPrograms? counties = null)
+        CountyPrograms? counties = null,
+        IGeocoder? geocoder = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(options);
@@ -124,7 +126,7 @@ public static class MessageCaseWriter
 
         var outcome = await UpdateClaimed(
             database, parser, thresholds, options, staged, personId, personConditionId, now, counties ?? new(),
-            cancellationToken);
+            geocoder, cancellationToken);
         await Commit(owned, cancellationToken);
 
         return outcome;
@@ -205,6 +207,7 @@ public static class MessageCaseWriter
         int? personConditionId,
         DateTimeOffset now,
         CountyPrograms counties,
+        IGeocoder? geocoder,
         CancellationToken cancellationToken)
     {
         if (staged.AllowUpdateCase != true)
@@ -275,6 +278,7 @@ public static class MessageCaseWriter
                     personId, conditionId.Value, staged.AgencyId, DateOnly.FromDateTime(staged.ReceivedAt)),
                 now,
                 counties,
+                geocoder,
                 cancellationToken);
 
             return new CaseUpdate(MessageReviewStatusRules.AssignedCode, created.Id, null);
@@ -313,7 +317,7 @@ public static class MessageCaseWriter
             }
         }
 
-        await AddAddress(database, personId, staged, now, counties, cancellationToken);
+        await AddAddress(database, personId, staged, now, counties, geocoder, cancellationToken);
         await Assign(database, staged, target, cancellationToken);
 
         return new CaseUpdate(MessageReviewStatusRules.AssignedCode, target, null);
@@ -325,6 +329,7 @@ public static class MessageCaseWriter
         CreatePersonConditionRequest creation,
         DateTimeOffset now,
         CountyPrograms counties,
+        IGeocoder? geocoder,
         CancellationToken cancellationToken)
     {
         var created = await new PersonConditionQueries(database, new CaseNotificationQueue(database))
@@ -335,7 +340,7 @@ public static class MessageCaseWriter
             await new LabQueries(database).Add(created.Id, lab, cancellationToken);
         }
 
-        await AddAddress(database, created.PersonId, staged, now, counties, cancellationToken);
+        await AddAddress(database, created.PersonId, staged, now, counties, geocoder, cancellationToken);
         await Assign(database, staged, created.Id, cancellationToken);
 
         return created;
@@ -571,6 +576,7 @@ public static class MessageCaseWriter
     /// The message's address begins the day of <paramref name="now"/> and
     /// becomes the person's current address: the address current before it is
     /// closed as a save closes it, by <see cref="AddressRules.CloseHistoric"/>.
+    /// An address with a street is geocoded by <paramref name="geocoder"/>.
     /// </remarks>
     private static async Task AddAddress(
         SurvsysDbContext database,
@@ -578,6 +584,7 @@ public static class MessageCaseWriter
         StagedMessage message,
         DateTimeOffset now,
         CountyPrograms counties,
+        IGeocoder? geocoder,
         CancellationToken cancellationToken)
     {
         var street = message.PatientStreet?.Trim();
@@ -637,6 +644,7 @@ public static class MessageCaseWriter
             ? await database.CtTowns.Where(town => town.Town == city).ToListAsync(cancellationToken)
             : null;
         AddressRules.FillConnecticutCounties(address, towns, countiesByZip);
+        await Geocoder.Fill(geocoder, address, cancellationToken);
 
         // The closing is saved before the insert, so the one-current-address
         // index never sees two addresses with no ending.

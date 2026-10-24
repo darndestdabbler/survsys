@@ -251,6 +251,21 @@
                               Label="Moved" Variant="Variant.Outlined" Margin="Margin.Dense"
                               InputType="InputType.Date" />
             </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="address.Latitude" id="@($"demographics-address-{at}-latitude")"
+                              Label="Latitude" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Number" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudTextField @bind-Value="address.Longitude" id="@($"demographics-address-{at}-longitude")"
+                              Label="Longitude" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Number" />
+            </MudItem>
+            <MudItem xs="12" sm="4" Class="d-flex align-center">
+                <MudText id="@($"demographics-address-{at}-geocoded-by")" Typo="Typo.body2">
+                    @(AddressLabels.GeocodedBy(address.GeocodedBy) is { } source ? $"Coordinates: {source}" : "No coordinates")
+                </MudText>
+            </MudItem>
             <MudItem xs="12" sm="10">
                 <MudTextField @bind-Value="address.Note" id="@($"demographics-address-{at}-note")"
                               Label="Note" Variant="Variant.Outlined" Margin="Margin.Dense" />
@@ -492,6 +507,9 @@
             Beginning = Written(address.Beginning),
             Ending = Written(address.Ending),
             Note = address.Note,
+            Latitude = address.Latitude,
+            Longitude = address.Longitude,
+            GeocodedBy = address.GeocodedBy,
         }).ToList();
         telephones = person.Telephones.Select(telephone => new TelephoneFields
         {
@@ -628,7 +646,9 @@
                 Ending: ending,
                 Note: address.Note,
                 ResidenceTypeId: address.ResidenceType,
-                CountyEquivalent: address.CountyEquivalent));
+                CountyEquivalent: address.CountyEquivalent,
+                Latitude: address.Latitude,
+                Longitude: address.Longitude));
         }
 
         for (var n = 0; n < telephones.Count; n++)
@@ -756,6 +776,9 @@
         public string? Beginning { get; set; }
         public string? Ending { get; set; }
         public string? Note { get; set; }
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
+        public string? GeocodedBy { get; set; }
     }
 
     /// <summary>One telephone as its boxes hold it.</summary>

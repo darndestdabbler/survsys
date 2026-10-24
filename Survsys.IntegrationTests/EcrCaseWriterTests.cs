@@ -148,6 +148,33 @@ public class EcrCaseWriterTests(SqlServerFixture server) : IAsyncLifetime
             && value.Written == "Yes");
     }
 
+    /// <summary>
+    /// A new patient's address geocoded by the Census Geocoder, here a local
+    /// stub, sent the one-line street address.
+    /// </summary>
+    [Fact]
+    public async Task ANewPatientsAddressIsGeocoded()
+    {
+        await using var stub = await GeocodingStub.Start();
+        var geocoder = new Geocoder(
+            new HttpClient(),
+            Microsoft.Extensions.Options.Options.Create(stub.Options()),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Geocoder>.Instance);
+        var settings = new EcrCaseSettings(new CountyPrograms(), [], geocoder);
+
+        var eicr = await Take(Eicr(1), settings);
+        await Take(Rr(1), settings);
+
+        await using var context = server.NewContext();
+        var link = await context.EcrCaseLinks.SingleAsync(found => found.EcrDocumentId == eicr.Id);
+        var report = await context.PersonConditions.SingleAsync(found => found.Id == link.PersonConditionId);
+        var address = await context.PersonAddresses.SingleAsync(found => found.PersonId == report.PersonId);
+        Assert.Equal(
+            (41.7637m, -72.6851m, PersonAddress.Census),
+            (address.Latitude, address.Longitude, address.GeocodedBy));
+        Assert.Equal($"{Street}, Hartford, CT, 06103", Assert.Single(stub.CensusAsked));
+    }
+
     [Fact]
     public async Task AnRrArrivingFirstWaitsForItsEicrAndAnUnlistedSendersResultsAreNotWritten()
     {

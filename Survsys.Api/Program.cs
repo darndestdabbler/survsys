@@ -192,6 +192,13 @@ builder.Services.Configure<IbisTransmissionOptions>(
     builder.Configuration.GetSection(IbisTransmissionOptions.SectionName));
 builder.Services.AddHttpClient<IbisTransmitter>();
 
+// Geocoding of a saved address: the Census Geocoder, then Google. Off unless
+// enabled, and Google's key from the environment only, never a file.
+builder.Services.Configure<GeocodingOptions>(builder.Configuration.GetSection(GeocodingOptions.SectionName));
+builder.Services.PostConfigure<GeocodingOptions>(geocoding =>
+    geocoding.GoogleApiKey = Environment.GetEnvironmentVariable(GeocodingOptions.GoogleApiKeyVariable));
+builder.Services.AddHttpClient<IGeocoder, Geocoder>();
+
 var app = builder.Build();
 
 // Before the first request, not during it: a database behind this assembly's

@@ -47,4 +47,15 @@ public class AddressLabelsTests
     {
         Assert.Equal(expected, AddressLabels.CountyName(Counties, code));
     }
+
+    [Theory]
+    [InlineData("census", "Census Geocoder")]
+    [InlineData("google", "Google")]
+    [InlineData("manual", "Typed by hand")]
+    [InlineData("other", "other")]
+    [InlineData(null, null)]
+    public void GeocodedByNamesWhereTheCoordinatesCameFrom(string? source, string? expected)
+    {
+        Assert.Equal(expected, AddressLabels.GeocodedBy(source));
+    }
 }

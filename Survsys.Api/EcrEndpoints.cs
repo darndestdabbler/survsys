@@ -250,7 +250,8 @@ internal sealed class EcrQueries(
     CdaStylesheet stylesheet,
     PersonMatchQueries matches,
     IOptions<EcrIntakeOptions> options,
-    IOptions<CountyPrograms> counties)
+    IOptions<CountyPrograms> counties,
+    IGeocoder? geocoder = null)
 {
     /// <summary>
     /// An eICR's patient and their candidates, or null where no eICR has that
@@ -283,7 +284,8 @@ internal sealed class EcrQueries(
         await EcrCaseWriter.Link(
             database,
             parser,
-            new EcrCaseSettings(counties.Value, await EcrIntakeService.LabSenders(database, cancellationToken)),
+            new EcrCaseSettings(
+                counties.Value, await EcrIntakeService.LabSenders(database, cancellationToken), geocoder),
             id,
             request.PersonId,
             request.PersonConditionId,

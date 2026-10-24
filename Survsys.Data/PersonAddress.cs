@@ -21,13 +21,22 @@ namespace Survsys.Data;
 /// lives in — so it is its own column rather than something read back out of
 /// the city.
 ///
-/// The geocoding columns (<c>latitude</c>, <c>longitude</c>), the verification
-/// timestamp (<c>last_verified</c>) and <c>homelessness</c> are not here: none
-/// of them is a field the Demographic tab shows, and this session's schema is
-/// what that tab saves.
+/// <see cref="Latitude"/> and <see cref="Longitude"/> are the legacy geocoding
+/// columns, with <see cref="GeocodedBy"/> saying where the pair came from. The
+/// verification timestamp (<c>last_verified</c>) and <c>homelessness</c> are
+/// not here: neither is a field the Demographic tab shows.
 /// </remarks>
 public class PersonAddress
 {
+    /// <summary>A <see cref="GeocodedBy"/> of the US Census Geocoder.</summary>
+    public const string Census = "census";
+
+    /// <summary>A <see cref="GeocodedBy"/> of Google's Geocoding API.</summary>
+    public const string Google = "google";
+
+    /// <summary>A <see cref="GeocodedBy"/> of a pair typed by hand.</summary>
+    public const string Manual = "manual";
+
     public int Id { get; set; }
 
     /// <summary>The person whose address this is.</summary>
@@ -80,4 +89,16 @@ public class PersonAddress
     /// navigation, until that table exists.
     /// </summary>
     public int? ResidenceTypeId { get; set; }
+
+    /// <summary>The latitude, in decimal degrees, and null where none is known.</summary>
+    public decimal? Latitude { get; set; }
+
+    /// <summary>The longitude, in decimal degrees, and null where none is known.</summary>
+    public decimal? Longitude { get; set; }
+
+    /// <summary>
+    /// Where the coordinates came from: <see cref="Census"/>,
+    /// <see cref="Google"/> or <see cref="Manual"/>, and null with none.
+    /// </summary>
+    public string? GeocodedBy { get; set; }
 }

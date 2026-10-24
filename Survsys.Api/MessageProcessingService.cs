@@ -225,7 +225,8 @@ public sealed class MessageProcessingService(
         MessageProcessingOptions options,
         DateTimeOffset now,
         CancellationToken cancellationToken,
-        CountyPrograms? counties = null)
+        CountyPrograms? counties = null,
+        IGeocoder? geocoder = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(options);
@@ -240,7 +241,8 @@ public sealed class MessageProcessingService(
         {
             try
             {
-                await AssignOne(database, parser, thresholds, options, id, now, counties ?? new(), cancellationToken);
+                await AssignOne(
+                    database, parser, thresholds, options, id, now, counties ?? new(), geocoder, cancellationToken);
             }
             catch (Exception failure) when (failure is not OperationCanceledException)
             {
@@ -291,6 +293,7 @@ public sealed class MessageProcessingService(
         int id,
         DateTimeOffset now,
         CountyPrograms counties,
+        IGeocoder? geocoder,
         CancellationToken cancellationToken)
     {
         var message = await database.StagedMessages
@@ -338,7 +341,7 @@ public sealed class MessageProcessingService(
         {
             await MessageCaseWriter.Update(
                 database, parser, thresholds, options, message.Id, decision.PersonId!.Value, null, now, cancellationToken,
-                counties);
+                counties, geocoder);
             return;
         }
 
@@ -358,7 +361,8 @@ public sealed class MessageProcessingService(
                     DateOnly.FromDateTime(message.ReceivedAt)),
                 now,
                 cancellationToken,
-                counties);
+                counties,
+                geocoder);
 
             if (created is not null)
             {
@@ -573,7 +577,7 @@ public sealed class MessageProcessingService(
 
                 if (options.Value.PollIntervalSeconds is not null)
                 {
-                    await AssignReleaseAndPrune(database, stoppingToken);
+                    await AssignReleaseAndPrune(database, scope.ServiceProvider.GetService<IGeocoder>(), stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -596,10 +600,12 @@ public sealed class MessageProcessingService(
         }
     }
 
-    private async Task AssignReleaseAndPrune(SurvsysDbContext database, CancellationToken stoppingToken)
+    private async Task AssignReleaseAndPrune(
+        SurvsysDbContext database, IGeocoder? geocoder, CancellationToken stoppingToken)
     {
         var assigned = await Assign(
-            database, parser, thresholds, options.Value, DateTimeOffset.Now, stoppingToken, countyPrograms.Value);
+            database, parser, thresholds, options.Value, DateTimeOffset.Now, stoppingToken, countyPrograms.Value,
+            geocoder);
         var released = await Release(database, parser, thresholds, stoppingToken);
         var pruned = await Prune(database, options.Value, DateTimeOffset.UtcNow, stoppingToken);
 

@@ -119,7 +119,10 @@ public static class PersonEndpoints
                     address.Ending,
                     address.Note,
                     address.ResidenceTypeId,
-                    address.CountyEquivalent))
+                    address.CountyEquivalent,
+                    address.Latitude,
+                    address.Longitude,
+                    address.GeocodedBy))
                 .ToList(),
             person.Telephones
                 .OrderBy(telephone => telephone.Id)
@@ -291,6 +294,32 @@ public static class PersonEndpoints
     }
 
     /// <summary>
+    /// <paramref name="address"/>'s coordinates from what was
+    /// <paramref name="requested"/>, as <see cref="Apply"/> describes.
+    /// </summary>
+    private static void Coordinates(
+        PersonAddress address,
+        PersonAddressRequest requested,
+        IReadOnlyCollection<PersonAddress> stored)
+    {
+        if (requested.Latitude is not { } latitude || requested.Longitude is not { } longitude)
+        {
+            return;
+        }
+
+        var held = stored.FirstOrDefault(found => found.Latitude == latitude && found.Longitude == longitude);
+        if (held is not null
+            && !string.Equals(held.Street, address.Street, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        address.Latitude = latitude;
+        address.Longitude = longitude;
+        address.GeocodedBy = held?.GeocodedBy ?? PersonAddress.Manual;
+    }
+
+    /// <summary>
     /// Makes a stored person into the record a save request describes.
     /// </summary>
     /// <remarks>
@@ -332,6 +361,11 @@ public static class PersonEndpoints
     /// county still blank from its zip by <paramref name="countiesByZip"/> —
     /// the rows of <c>zip_codes</c> the caller read — and of the addresses with
     /// no ending, <see cref="AddressRules.CloseHistoric"/> leaves one current.
+    ///
+    /// A sent latitude and longitude are kept: with the source of the stored
+    /// address that had that pair on the same street, and as typed by hand where
+    /// none had it. A pair carried over onto a changed street is dropped, so the
+    /// save geocodes the address again.
     ///
     /// <see cref="UpdatePersonRequest.LastName"/> is read with a
     /// null-forgiving <c>!</c> because <see cref="WhyNotAPerson(UpdatePersonRequest)"/>
@@ -378,6 +412,7 @@ public static class PersonEndpoints
         person.Language = Said(request.Language);
         person.CountryOfBirth = Said(request.CountryOfBirth);
 
+        var storedAddresses = person.Addresses.ToList();
         person.Addresses.Clear();
         foreach (var requested in request.Addresses)
         {
@@ -398,6 +433,7 @@ public static class PersonEndpoints
 
             AddressRules.Normalize(address);
             AddressRules.FillConnecticutCounties(address, towns, countiesByZip);
+            Coordinates(address, requested, storedAddresses);
 
             person.Addresses.Add(address);
         }
@@ -645,7 +681,7 @@ public static class PersonEndpoints
 /// or SQL Server exception surfaces unwrapped and the exception handler turns
 /// it into a 500 with Problem Details and a correlation id.
 /// </remarks>
-internal sealed class PersonQueries(SurvsysDbContext database)
+internal sealed class PersonQueries(SurvsysDbContext database, IGeocoder? geocoder = null)
 {
     /// <summary>
     /// One page of the people matching the criteria, ordered by last name,
@@ -784,8 +820,21 @@ internal sealed class PersonQueries(SurvsysDbContext database)
             ? []
             : await database.CtTowns.Where(town => cities.Contains(town.Town)).ToListAsync(cancellationToken);
 
+        // Only a new or changed street is geocoded: one already stored is not
+        // sent again, whether or not it was ever found.
+        var storedStreets = stored.Addresses
+            .Select(address => address.Street)
+            .OfType<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         PersonEndpoints.Apply(
             stored, request, DateOnly.FromDateTime(DateTimeOffset.Now.Date), countiesByZip, towns);
+
+        foreach (var address in stored.Addresses.Where(address => address.Street is not { } street
+            || !storedStreets.Contains(street)))
+        {
+            await Geocoder.Fill(geocoder, address, cancellationToken);
+        }
 
         // Demographics are notified on every case of the person, so each of
         // them is queued with the save, as its print criteria allow.

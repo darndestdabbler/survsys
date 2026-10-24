@@ -43,7 +43,7 @@ inserted; the numbers below are the sessions that did the work.
 
 | Gap at 0.8.0 | Then | Status at 1.0.0 |
 |---|---|---|
-| No person identifiers (MRN with assigning authority, CLIA or OID), no name history, no current-versus-historic address rule, no address normalisation; aliases are not searched | `Person`, `PersonAddress` (county only, no geocode) | Closed, session 69, except geocoding: see [Still open](#still-open) |
+| No person identifiers (MRN with assigning authority, CLIA or OID), no name history, no current-versus-historic address rule, no address normalisation; aliases are not searched | `Person`, `PersonAddress` (county only, no geocode) | Closed, session 69; geocoding in session 112 |
 | `PersonMatchRules` is never called; person search shows no match score; the ELR reviewer picks every person by hand | `Survsys.Messaging/PersonMatchRules.cs` | Closed, session 70 |
 | No duplicate-person finder and no person merge | `PersonSearch.cs` says dedup is "later" | Closed, session 71 |
 
@@ -293,9 +293,9 @@ Each is the operator's to decide or to plan.
 
 - **NETSS fixed-width export**: waits on CDC's answer, recorded in
   [`netss-export-question.md`](netss-export-question.md).
-- **Address geocoding**: an address keeps no latitude or longitude
-  (`PersonAddress` leaves the legacy geocoding columns out), and nothing
-  geocodes one. No session plans it; the operator has not decided it.
+- ~~**Address geocoding**~~: closed in session 112. An address keeps its
+  latitude, longitude and where they came from, geocoded by the US Census
+  Geocoder with Google as the fallback, while `Geocoding:Enabled` is on.
 - **Attachment and note dates are UTC dates.** Found by session 109's
   walkthrough regression: the Attachments table and the notes list show the
   date of a moment stored in UTC without converting it, so in the evening

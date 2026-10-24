@@ -44,4 +44,18 @@ public static class AddressLabels
             ? null
             : counties.FirstOrDefault(county => county.Code == code)?.Description ?? code;
     }
+
+    /// <summary>
+    /// Where an address's coordinates came from, by name: the Census Geocoder,
+    /// Google, or typed by hand; the stored value itself where it is none of
+    /// those, and null where there is none.
+    /// </summary>
+    public static string? GeocodedBy(string? source) => source switch
+    {
+        null => null,
+        "census" => "Census Geocoder",
+        "google" => "Google",
+        "manual" => "Typed by hand",
+        _ => source,
+    };
 }

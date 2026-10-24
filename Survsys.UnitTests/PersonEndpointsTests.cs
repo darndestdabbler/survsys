@@ -693,6 +693,74 @@ public class PersonEndpointsTests
         Assert.Equal("09190", last.CountyEquivalent);
     }
 
+    /// <summary>The seeded person with their address geocoded by Census.</summary>
+    private static Person Geocoded()
+    {
+        var person = Seeded();
+        var address = person.Addresses.Single();
+        address.Latitude = 40.760779m;
+        address.Longitude = -111.891047m;
+        address.GeocodedBy = PersonAddress.Census;
+        return person;
+    }
+
+    [Fact]
+    public void ApplyKeepsAHandTypedPairAsManual()
+    {
+        var person = Geocoded();
+
+        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez")
+        {
+            Addresses =
+            [
+                new PersonAddressRequest(Street: "1234 Main Street", Latitude: 40.7m, Longitude: -111.9m),
+            ],
+        }, Today);
+
+        var address = person.Addresses.Single();
+        Assert.Equal((40.7m, -111.9m, PersonAddress.Manual), (address.Latitude, address.Longitude, address.GeocodedBy));
+    }
+
+    [Fact]
+    public void ApplyKeepsAStoredPairOnTheSameStreetWithItsSource()
+    {
+        var person = Geocoded();
+
+        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez")
+        {
+            Addresses =
+            [
+                new PersonAddressRequest(
+                    Street: "1234 main street", Latitude: 40.760779m, Longitude: -111.891047m),
+            ],
+        }, Today);
+
+        var address = person.Addresses.Single();
+        Assert.Equal(
+            (40.760779m, -111.891047m, PersonAddress.Census),
+            (address.Latitude, address.Longitude, address.GeocodedBy));
+    }
+
+    [Fact]
+    public void ApplyDropsAStoredPairCarriedOntoAChangedStreet()
+    {
+        var person = Geocoded();
+
+        PersonEndpoints.Apply(person, new UpdatePersonRequest("Rodriguez")
+        {
+            Addresses =
+            [
+                new PersonAddressRequest(
+                    Street: "9 Elm Court", Latitude: 40.760779m, Longitude: -111.891047m),
+            ],
+        }, Today);
+
+        var address = person.Addresses.Single();
+        Assert.Null(address.Latitude);
+        Assert.Null(address.Longitude);
+        Assert.Null(address.GeocodedBy);
+    }
+
     [Fact]
     public void ApplyLeavesOneAddressCurrent()
     {

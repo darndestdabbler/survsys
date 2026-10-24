@@ -139,6 +139,9 @@ else if (person is { } shown)
                         <th>Zip code</th>
                         <th>County</th>
                         <th>@AddressLabels.CountyEquivalent(Configuration)</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Coordinates from</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -152,6 +155,9 @@ else if (person is { } shown)
                             <td>@Shown(address.PostalCode)</td>
                             <td>@Shown(AddressLabels.CountyName(counties, address.County))</td>
                             <td>@Shown(AddressLabels.CountyName(counties, address.CountyEquivalent))</td>
+                            <td>@Shown(address.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture))</td>
+                            <td>@Shown(address.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture))</td>
+                            <td>@Shown(AddressLabels.GeocodedBy(address.GeocodedBy))</td>
                         </tr>
                     }
                 </tbody>

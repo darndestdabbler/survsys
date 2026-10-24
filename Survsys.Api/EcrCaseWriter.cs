@@ -25,9 +25,13 @@ public sealed record EcrLinkOutcome(IReadOnlyList<int> CaseIds, string? Refusal)
 /// <summary>
 /// What writing an eICR to a case reads from configuration: which county
 /// value its address is stored as, and the senders (custodian ids) whose
-/// results are written as labs.
+/// results are written as labs; and the geocoder a new address with a street
+/// is geocoded by, where there is one.
 /// </summary>
-public sealed record EcrCaseSettings(CountyPrograms Counties, IReadOnlyCollection<string> LabSenders);
+public sealed record EcrCaseSettings(
+    CountyPrograms Counties,
+    IReadOnlyCollection<string> LabSenders,
+    IGeocoder? Geocoder = null);
 
 /// <summary>
 /// Turns a reportable eICR into cases: finds whom its patient is, links the
@@ -497,7 +501,7 @@ public static class EcrCaseWriter
             var patient = document.Patient;
 
             await Person(report.PersonId, patient.Person, newPerson);
-            await Address(report.PersonId, patient, settings.Counties, now);
+            await Address(report.PersonId, patient, settings.Counties, settings.Geocoder, now);
             CaseValues(report, document);
             await Encounter(caseId, document.Encounter, now);
             await Problems(caseId, document.Problems, now);
@@ -550,7 +554,8 @@ public static class EcrCaseWriter
         /// street and zip, its county stored in the field the <c>ecr</c> setting
         /// names and the other filled from the town, as ELR stores one.
         /// </summary>
-        private async Task Address(int personId, ParsedPatient patient, CountyPrograms counties, DateTimeOffset now)
+        private async Task Address(
+            int personId, ParsedPatient patient, CountyPrograms counties, IGeocoder? geocoder, DateTimeOffset now)
         {
             var street = patient.Street?.Trim();
             var zip = patient.Zip?.Trim();
@@ -578,6 +583,7 @@ public static class EcrCaseWriter
                 var today = DateOnly.FromDateTime(now.Date);
                 address = new PersonAddress { PersonId = personId, Street = street, PostalCode = zip, Beginning = today };
                 await Fill(address, patient, counties);
+                await Geocoder.Fill(geocoder, address, cancellationToken);
 
                 // The closing is saved before the insert, so the one-current-address
                 // index never sees two addresses with no ending.

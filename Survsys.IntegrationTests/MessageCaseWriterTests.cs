@@ -320,6 +320,40 @@ public class MessageCaseWriterTests(SqlServerFixture server) : IAsyncLifetime
         Assert.Equal("12 Oak Ave", addresses.Single(address => address.Ending is null).Street);
     }
 
+    /// <summary>
+    /// A promoted message's new address geocoded by the Census Geocoder, here
+    /// a local stub, sent the one-line street address.
+    /// </summary>
+    [Fact]
+    public async Task AMessagesNewAddressIsGeocoded()
+    {
+        await using var stub = await GeocodingStub.Start();
+        var geocoder = new Geocoder(
+            new HttpClient(),
+            Microsoft.Extensions.Options.Options.Create(stub.Options()),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Geocoder>.Instance);
+        var seeded = await Seed();
+        var message = await Stage(seeded.LastName, "ACC-7", Result("625-4", "Positive", "F"));
+
+        await using (var context = server.NewContext())
+        {
+            var staged = await context.StagedMessages.SingleAsync(row => row.Id == message);
+            staged.PatientStreet = "1 Main Street";
+            staged.PatientCity = "Salt Lake City";
+            staged.PatientState = "UT";
+            await context.SaveChangesAsync();
+
+            Assert.NotNull(await MessageCaseWriter.Open(
+                context, message, Creation(seeded), DateTimeOffset.Now, CancellationToken.None, geocoder: geocoder));
+        }
+
+        await using var check = server.NewContext();
+        var added = await check.PersonAddresses.SingleAsync(
+            address => address.PersonId == seeded.PersonId && address.Street == "1 Main Street");
+        Assert.Equal((41.7637m, -72.6851m, PersonAddress.Census), (added.Latitude, added.Longitude, added.GeocodedBy));
+        Assert.Equal($"1 Main Street, Salt Lake City, UT, {Zip}", Assert.Single(stub.CensusAsked));
+    }
+
     [Fact]
     public async Task AResultOf2000CharactersIsPromotedWhole()
     {
