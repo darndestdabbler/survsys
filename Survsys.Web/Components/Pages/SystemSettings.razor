@@ -1,0 +1,173 @@
+@* System configuration: every setting kept in the database, each a value
+   under a name, listed by name with Edit and Delete, and one form that saves
+   a setting under its name — adding it where there is none, saving over it
+   where there is. Reached only by holders of manage_users, which the API tier
+   enforces whatever the navigation shows.
+
+   Every element a walkthrough will name carries an identifier of its own:
+   `system-settings-heading`, `system-setting-name`, `system-setting-value`,
+   `system-setting-description`, `system-setting-save`, `system-setting-clear`,
+   `system-settings-error`, `system-settings-none`, `system-settings-table`,
+   and per row `system-setting-edit-{name}` and `system-setting-delete-{name}`. *@
+@page "/system-settings"
+@inject SystemSettingsClient Client
+
+<PageTitle>System settings — Survsys</PageTitle>
+
+<MudText id="system-settings-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    System settings
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    Settings kept in the database and changed here, without a redeployment.
+    Saving under a name already listed saves over that setting.
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="system-settings-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="name" id="system-setting-name" Label="Name"
+                          Variant="Variant.Outlined" Required="true" MaxLength="100" />
+        </MudItem>
+        <MudItem xs="12" sm="8">
+            <MudTextField @bind-Value="value" id="system-setting-value" Label="Value"
+                          Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12">
+            <MudTextField @bind-Value="description" id="system-setting-description" Label="Description"
+                          Variant="Variant.Outlined" MaxLength="500" />
+        </MudItem>
+    </MudGrid>
+
+    <div class="d-flex gap-2 mt-4">
+        <MudButton id="system-setting-save" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@busy" OnClick="@Save">
+            Save
+        </MudButton>
+        <MudButton id="system-setting-clear" Variant="Variant.Outlined" Disabled="@busy" OnClick="@Clear">
+            Clear
+        </MudButton>
+    </div>
+</MudPaper>
+
+@if (settings.Count == 0)
+{
+    <MudText id="system-settings-none" Typo="Typo.body2">No system settings are kept yet.</MudText>
+}
+else
+{
+    <MudPaper Elevation="1">
+        <MudSimpleTable id="system-settings-table" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Value</th>
+                    <th>Description</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var setting in settings)
+                {
+                    <tr>
+                        <td data-system-setting-name>@setting.Name</td>
+                        <td data-system-setting-value>@setting.Value</td>
+                        <td data-system-setting-description>@(setting.Description ?? "—")</td>
+                        <td>
+                            <MudButton id="@($"system-setting-edit-{setting.Name}")" Size="Size.Small"
+                                       Variant="Variant.Text" OnClick="@(() => Edit(setting))">
+                                Edit
+                            </MudButton>
+                            <MudButton id="@($"system-setting-delete-{setting.Name}")" Size="Size.Small"
+                                       Variant="Variant.Text" Color="Color.Error" Disabled="@busy"
+                                       OnClick="@(() => Delete(setting.Name))">
+                                Delete
+                            </MudButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+@code {
+    private IReadOnlyList<SystemSettingResponse> settings = [];
+
+    private string? name;
+
+    private string? value;
+
+    private string? description;
+
+    private bool busy;
+
+    private string? failure;
+
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load()
+    {
+        var listed = await Client.All();
+        settings = listed.Value ?? settings;
+        failure = listed.Failure;
+    }
+
+    private void Edit(SystemSettingResponse setting)
+    {
+        name = setting.Name;
+        value = setting.Value;
+        description = setting.Description;
+        failure = null;
+    }
+
+    private void Clear()
+    {
+        name = null;
+        value = null;
+        description = null;
+        failure = null;
+    }
+
+    private async Task Save()
+    {
+        busy = true;
+
+        var saved = await Client.Save(name ?? "", new SaveSystemSettingRequest(value ?? "", description));
+
+        busy = false;
+
+        if (saved.Failure is { } why)
+        {
+            failure = why;
+            return;
+        }
+
+        Clear();
+        await Load();
+    }
+
+    private async Task Delete(string settingName)
+    {
+        busy = true;
+
+        var why = await Client.Delete(settingName);
+
+        busy = false;
+
+        if (why is not null)
+        {
+            failure = why;
+            return;
+        }
+
+        await Load();
+    }
+}

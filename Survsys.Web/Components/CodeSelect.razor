@@ -1,0 +1,117 @@
+@* A select over one reference code list, in place of a free-text code box.
+   Bound either to the code itself (@bind-Value), for a field that stores the
+   code, or to the code's id (@bind-CodeId), for a field that stores an id. Each
+   entry shows the code's description, or the code where it has none. A value
+   on file that is not on the list (stored before the lists existed, or
+   retired since) is still offered, as itself, so opening and saving a record
+   never loses it. Fixed answers (Yes/No/Unknown) take Fixed and read no list;
+   Only narrows a list to the codes a field accepts, and Kind the county list
+   to its counties or its county equivalents.
+   Any other attribute, such as id, is passed to the select. *@
+@inject CodesClient Client
+
+<MudSelect T="string" Label="@Label" Variant="Variant.Outlined" Margin="@Margin" Clearable="true"
+           Value="@selected" ValueChanged="@Choose" @attributes="Attributes">
+    @foreach (var option in options)
+    {
+        <MudSelectItem T="string" Value="@option.Value">@option.Text</MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    /// <summary>The Yes/No/Unknown answers, for the fields that hold one.</summary>
+    public static readonly IReadOnlyList<string> YesNoUnknown = ["Yes", "No", "Unknown"];
+
+    /// <summary>The list the codes come from, one of <see cref="CodeLists.All"/>.</summary>
+    [Parameter]
+    public string? List { get; set; }
+
+    /// <summary>Fixed codes to offer in place of a list, each its own label.</summary>
+    [Parameter]
+    public IReadOnlyList<string>? Fixed { get; set; }
+
+    /// <summary>Where given, only the list's codes among these are offered.</summary>
+    [Parameter]
+    public IReadOnlyCollection<string>? Only { get; set; }
+
+    /// <summary>Where given, only the list's codes of this kind are offered, as <c>county</c> or <c>county-equivalent</c>.</summary>
+    [Parameter]
+    public string? Kind { get; set; }
+
+    /// <summary>For the test types, the condition whose test types are offered.</summary>
+    [Parameter]
+    public int? ConditionId { get; set; }
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public Margin Margin { get; set; } = Margin.None;
+
+    /// <summary>The code chosen, for a field that stores the code.</summary>
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>The id of the code chosen, for a field that stores the id.</summary>
+    [Parameter]
+    public int? CodeId { get; set; }
+
+    [Parameter]
+    public EventCallback<int?> CodeIdChanged { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? Attributes { get; set; }
+
+    private IReadOnlyList<CodeResponse> codes = [];
+
+    private List<(string Value, string Text)> options = [];
+
+    private (string? List, int? ConditionId)? loaded;
+
+    private string? selected;
+
+    private bool ById => CodeIdChanged.HasDelegate;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Fixed is null && List is not null && loaded != (List, ConditionId))
+        {
+            loaded = (List, ConditionId);
+            codes = (await Client.List(List, ConditionId)).Value ?? [];
+        }
+
+        selected = ById ? CodeId?.ToString(System.Globalization.CultureInfo.InvariantCulture) : Value;
+
+        options = Fixed is not null
+            ? Fixed.Select(answer => (answer, answer)).ToList()
+            : codes
+                .Where(code => (Only is null || Only.Contains(code.Code)) && (Kind is null || code.Kind == Kind))
+                .Select(code => (ById ? IdOf(code) : code.Code, code.Description ?? code.Code))
+                .ToList();
+
+        if (!string.IsNullOrEmpty(selected) && options.All(option => option.Value != selected))
+        {
+            options.Add((selected, selected));
+        }
+    }
+
+    private static string IdOf(CodeResponse code) =>
+        code.Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private async Task Choose(string? value)
+    {
+        selected = value;
+
+        if (ById)
+        {
+            await CodeIdChanged.InvokeAsync(int.TryParse(value, out var id) ? id : null);
+        }
+        else
+        {
+            await ValueChanged.InvokeAsync(string.IsNullOrEmpty(value) ? null : value);
+        }
+    }
+}
