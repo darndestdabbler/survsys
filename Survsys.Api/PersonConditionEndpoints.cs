@@ -69,7 +69,8 @@ public static class PersonConditionEndpoints
             report.BriefNote,
             report.LhdCaseStatusId,
             report.StateCaseStatusId,
-            report.DeletedAt);
+            report.DeletedAt,
+            false);
 
     /// <summary>
     /// <see cref="ToResponse"/> compiled, for the one caller that has a report
@@ -389,7 +390,9 @@ public static class PersonConditionEndpoints
     /// <remarks>
     /// Serving a report is what the access audit records: who it was served
     /// to, and when. A report that is not there was not opened, so a 404
-    /// records nothing.
+    /// records nothing. A report served that is not of one of the caller's
+    /// agencies is one <see cref="CaseAccess"/> let through on a share, and is
+    /// answered as shared read-only.
     /// </remarks>
     private static async Task<Results<Ok<PersonConditionResponse>, ProblemHttpResult>> GetPersonCondition(
         PersonConditionQueries reports,
@@ -411,7 +414,7 @@ public static class PersonConditionEndpoints
             await audit.Record(userId, id, "View", null, cancellationToken);
         }
 
-        return TypedResults.Ok(report);
+        return TypedResults.Ok(report with { SharedReadOnly = !CaseAccess.IsCallersAgency(user, report.AgencyId) });
     }
 
     /// <remarks>

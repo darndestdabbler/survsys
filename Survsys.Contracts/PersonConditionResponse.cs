@@ -71,6 +71,11 @@ namespace Survsys.Contracts;
 /// <param name="LhdCaseStatusId">The local health department's case status, as stored, or null.</param>
 /// <param name="StateCaseStatusId">The state's case status, as stored, or null.</param>
 /// <param name="DeletedAt">When the report was deleted, or null while it stands.</param>
+/// <param name="SharedReadOnly">
+/// Whether the caller reading the report sees it only because it is shared
+/// with their agency, and so may read it and change nothing on it; false
+/// wherever the report is not read for a caller.
+/// </param>
 public record PersonConditionResponse(
     int Id,
     int PersonId,
@@ -89,4 +94,5 @@ public record PersonConditionResponse(
     string? BriefNote = null,
     int? LhdCaseStatusId = null,
     int? StateCaseStatusId = null,
-    DateTimeOffset? DeletedAt = null);
+    DateTimeOffset? DeletedAt = null,
+    bool SharedReadOnly = false);

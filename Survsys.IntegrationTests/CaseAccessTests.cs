@@ -16,8 +16,9 @@ namespace Survsys.IntegrationTests;
 
 /// <summary>
 /// A user's reach over cases against the real database: a case of another
-/// agency refused on every case route and missing from the case search, and a
-/// case of the user's own agency and one shared with it served.
+/// agency refused on every case route and missing from the case search and
+/// every list, a case of the user's own agency and one shared with it served,
+/// and the shared one refused every write.
 /// </summary>
 /// <remarks>
 /// The routes are not listed here but read from the running host's endpoints,
@@ -33,6 +34,8 @@ public partial class CaseAccessTests(SqlServerFixture server) : IDisposable
     private const string UserPassword = "jurisdiction-user-password";
 
     private const string RefusedTitle = "No such case morbidity report.";
+
+    private const string ReadOnlyTitle = "The case is shared with your agency read-only.";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -142,6 +145,152 @@ public partial class CaseAccessTests(SqlServerFixture server) : IDisposable
         }
     }
 
+    /// <summary>
+    /// The work queue, the task list, a saved view's export and counts and
+    /// the case-count report list a case of the user's agency and not one of
+    /// another agency; the work queue of another agency lists nothing.
+    /// </summary>
+    [Fact]
+    public async Task EveryListHoldsACaseOfTheUsersAgencyAndNotOneOfAnother()
+    {
+        var admin = api.CreateClient();
+        var (theirs, mine) = await TwoAgencies(admin);
+        using var user = await SignedIn(admin, mine);
+        var own = await Open(admin, mine);
+        var other = await Open(admin, theirs);
+        var agencies = (await admin.GetFromJsonAsync<PagedResult<AgencyResponse>>("/api/agencies?pageSize=200", Json))!;
+        int? viewId = null;
+
+        try
+        {
+            // Due first of all tasks, so both sit on the first page.
+            await using (var context = server.NewContext())
+            {
+                context.Tasks.AddRange(
+                    new CaseTask { PersonConditionId = own.Id, Name = "Own task", CreatedAt = DateTimeOffset.UtcNow, DueDate = new DateOnly(1900, 1, 1) },
+                    new CaseTask { PersonConditionId = other.Id, Name = "Other task", CreatedAt = DateTimeOffset.UtcNow, DueDate = new DateOnly(1900, 1, 1) });
+                await context.SaveChangesAsync();
+            }
+
+            var queue = (await user.GetFromJsonAsync<PagedResult<WorkQueueItemResponse>>(
+                $"/api/work-queue?agencyId={mine}&pageSize=200", Json))!;
+            Assert.Contains(queue.Items, item => item.Id == own.Id);
+            Assert.DoesNotContain(queue.Items, item => item.Id == other.Id);
+
+            var theirQueue = (await user.GetFromJsonAsync<PagedResult<WorkQueueItemResponse>>(
+                $"/api/work-queue?agencyId={theirs}", Json))!;
+            Assert.Empty(theirQueue.Items);
+            Assert.Equal(0, theirQueue.TotalCount);
+
+            var tasks = (await user.GetFromJsonAsync<PagedResult<TaskResponse>>("/api/tasks?pageSize=200", Json))!;
+            Assert.Contains(tasks.Items, task => task.PersonConditionId == own.Id);
+            Assert.DoesNotContain(tasks.Items, task => task.PersonConditionId == other.Id);
+
+            var view = await Created<SavedViewResponse>(user, "/api/saved-views",
+                new SaveSavedViewRequest($"Access view {Guid.NewGuid():N}", [ExportColumns.RecordNumber], ConditionId: own.ConditionId));
+            viewId = view.Id;
+
+            var csv = await user.GetStringAsync($"/api/saved-views/{view.Id}/export");
+            Assert.Contains(own.RecordNumber, csv, StringComparison.Ordinal);
+            Assert.DoesNotContain(other.RecordNumber, csv, StringComparison.Ordinal);
+
+            var viewCounts = (await user.GetFromJsonAsync<IReadOnlyList<CaseCountResponse>>(
+                $"/api/reports/saved-views/{view.Id}/counts?groupBy={ExportColumns.RecordNumber}", Json))!;
+            Assert.Contains(viewCounts, row => row.Group == own.RecordNumber);
+            Assert.DoesNotContain(viewCounts, row => row.Group == other.RecordNumber);
+
+            var counts = (await user.GetFromJsonAsync<IReadOnlyList<CaseCountResponse>>(
+                $"/api/reports/case-counts?groupBy={ReportGroupings.Agency}", Json))!;
+            Assert.Contains(counts, row => row.Group == agencies.Items.Single(agency => agency.Id == mine).Name);
+            Assert.DoesNotContain(counts, row => row.Group == agencies.Items.Single(agency => agency.Id == theirs).Name);
+        }
+        finally
+        {
+            await using var context = server.NewContext();
+            await context.SavedViews.Where(row => row.Id == viewId).ExecuteDeleteAsync();
+            await context.Tasks.Where(row => row.PersonConditionId == own.Id || row.PersonConditionId == other.Id).ExecuteDeleteAsync();
+            await context.PersonConditions.Where(row => row.Id == own.Id || row.Id == other.Id).ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>
+    /// Every write on every case route, about a case shared with the user's
+    /// agency or a record on one, is refused as read-only; reading the case is
+    /// served, and says it is shared read-only where the user's own case does not.
+    /// </summary>
+    [Fact]
+    public async Task ACaseSharedWithTheUsersAgencyIsReadOnlyToThem()
+    {
+        var admin = api.CreateClient();
+        var (theirs, mine) = await TwoAgencies(admin);
+        using var user = await SignedIn(admin, mine);
+        var own = await Open(admin, mine);
+        var shared = await Open(admin, theirs);
+        var seeded = await Seed(shared);
+
+        try
+        {
+            await using (var context = server.NewContext())
+            {
+                context.PersonConditionShares.Add(new PersonConditionShare { PersonConditionId = shared.Id, AgencyId = mine });
+                await context.SaveChangesAsync();
+            }
+
+            var writes = api.Services.GetRequiredService<EndpointDataSource>().Endpoints
+                .OfType<RouteEndpoint>()
+                .Where(endpoint => endpoint.RoutePattern.RawText is { } pattern && CaseAccess.CaseRouteOf(pattern) is not null)
+                .SelectMany(endpoint => (endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods ?? ["GET"])
+                    .Where(method => method is not "GET" and not "HEAD")
+                    .Select(method => (
+                        Method: method,
+                        Pattern: endpoint.RoutePattern.RawText!,
+                        Multipart: endpoint.Metadata.GetMetadata<IAcceptsMetadata>()?.ContentTypes
+                            .Contains("multipart/form-data") == true)))
+                .ToList();
+
+            Assert.Contains(writes, write => write is { Method: "PUT", Pattern: "/api/person-conditions/{id:int}/status" });
+            Assert.Contains(writes, write => write.Pattern.StartsWith("/api/notes/{id:int}", StringComparison.Ordinal));
+
+            foreach (var (method, pattern, multipart) in writes)
+            {
+                var url = UrlFor(pattern, seeded);
+                using var request = new HttpRequestMessage(new HttpMethod(method), url);
+
+                if (multipart)
+                {
+                    request.Content = new MultipartFormDataContent { { new StringContent("x"), "file", "x.txt" } };
+                }
+                else if (method is "POST" or "PUT" or "PATCH")
+                {
+                    request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+                }
+
+                using var response = await user.SendAsync(request);
+                var body = await response.Content.ReadAsStringAsync();
+
+                Assert.True(
+                    response.StatusCode == HttpStatusCode.Forbidden && body.Contains(ReadOnlyTitle, StringComparison.Ordinal),
+                    $"{method} {url} answered {(int)response.StatusCode}: {body}");
+            }
+
+            var read = (await user.GetFromJsonAsync<PersonConditionResponse>($"/api/person-conditions/{shared.Id}", Json))!;
+            Assert.True(read.SharedReadOnly);
+
+            var ownRead = (await user.GetFromJsonAsync<PersonConditionResponse>($"/api/person-conditions/{own.Id}", Json))!;
+            Assert.False(ownRead.SharedReadOnly);
+        }
+        finally
+        {
+            await using (var context = server.NewContext())
+            {
+                await context.PersonConditionShares.Where(row => row.PersonConditionId == shared.Id).ExecuteDeleteAsync();
+                await context.PersonConditions.Where(row => row.Id == own.Id).ExecuteDeleteAsync();
+            }
+
+            await Remove(seeded);
+        }
+    }
+
     /// <summary>The ids each case route prefix names, for the case and every record seeded on it.</summary>
     private sealed record Seeded(PersonConditionResponse Report, Dictionary<string, int> Ids, int FormId, int TreatmentId, int VaccineId, int AttachmentFileId, int ExposurePlaceId);
 
@@ -181,9 +330,14 @@ public partial class CaseAccessTests(SqlServerFixture server) : IDisposable
     private async Task<HttpClient> SignedIn(HttpClient admin, int agencyId)
     {
         var roles = (await admin.GetFromJsonAsync<PagedResult<RoleResponse>>("/api/roles", Json))!;
-        var role = roles.Items.SingleOrDefault(role => role.Name == "Jurisdiction editor")
-            ?? await Created<RoleResponse>(admin, "/api/roles",
-                new SaveRoleRequest("Jurisdiction editor", [Privileges.ViewCases, Privileges.EditCases]));
+        var saveRole = new SaveRoleRequest("Jurisdiction editor", [Privileges.ViewCases, Privileges.EditCases, Privileges.RunReports]);
+        var role = roles.Items.SingleOrDefault(role => role.Name == saveRole.Name)
+            ?? await Created<RoleResponse>(admin, "/api/roles", saveRole);
+
+        using (var savedRole = await admin.PutAsJsonAsync($"/api/roles/{role.Id}", saveRole, Json))
+        {
+            Assert.Equal(HttpStatusCode.OK, savedRole.StatusCode);
+        }
 
         var users = (await admin.GetFromJsonAsync<PagedResult<UserResponse>>("/api/users", Json))!;
         var request = new SaveUserRequest(UserName, "Jurisdiction User", true, [role.Id], UserPassword, [agencyId]);

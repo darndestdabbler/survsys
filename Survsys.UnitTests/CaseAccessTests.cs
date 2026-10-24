@@ -1,4 +1,6 @@
 using Survsys.Api;
+using Survsys.Contracts;
+using Survsys.Data;
 using Xunit;
 
 namespace Survsys.UnitTests;
@@ -41,4 +43,28 @@ public class CaseAccessTests
     {
         Assert.Null(CaseAccess.CaseRouteOf(pattern));
     }
+
+    [Theory]
+    [InlineData(3, true)]
+    [InlineData(4, true)]
+    [InlineData(5, false)]
+    [InlineData(null, false)]
+    public void IsCallersAgencyIsTrueForAnAgencyTheCallerWorksFor(int? agencyId, bool expected)
+    {
+        var caller = AccountEndpoints.ClaimsFor(User, [Privileges.ViewCases], [3, 4]);
+
+        Assert.Equal(expected, CaseAccess.IsCallersAgency(caller, agencyId));
+    }
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(null)]
+    public void IsCallersAgencyIsTrueForEveryAgencyToACallerWithAllJurisdictions(int? agencyId)
+    {
+        var caller = AccountEndpoints.ClaimsFor(User, [Privileges.AllJurisdictions]);
+
+        Assert.True(CaseAccess.IsCallersAgency(caller, agencyId));
+    }
+
+    private static readonly User User = new() { Id = 1, UserName = "user", DisplayName = "A User" };
 }

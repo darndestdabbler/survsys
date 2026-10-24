@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -19,11 +20,11 @@ namespace Survsys.Api;
 /// not the <c>DbContext</c>, because the architecture test lets no
 /// <c>Survsys.Data</c> type into an endpoint signature at all.
 ///
-/// Sharing here is read-only in intent and not in enforcement: this tier has no
-/// authentication and checks no calling agency, so nothing stops a write
-/// against a shared report. The queue surface honours the intent by offering no
-/// actions on a shared-in row, and enforced per-agency authorization is a later
-/// session's.
+/// Sharing is read-only in fact: <see cref="CaseAccess"/> refuses, as a 403,
+/// every write by a user of the agency shared with to the report and to every
+/// record under it, and the queue surface offers no actions on a shared-in row.
+/// The queue itself is the caller's agencies' only: another agency's answers
+/// no rows.
 /// </remarks>
 public static class WorkQueueEndpoints
 {
@@ -138,6 +139,7 @@ public static class WorkQueueEndpoints
     private static async Task<Results<Ok<PagedResult<WorkQueueItemResponse>>, ProblemHttpResult>> GetWorkQueue(
         WorkQueueQueries reports,
         AgencyQueries agencies,
+        ClaimsPrincipal caller,
         int agencyId = 0,
         int page = Paging.DefaultPage,
         int pageSize = Paging.DefaultPageSize,
@@ -164,7 +166,13 @@ public static class WorkQueueEndpoints
                 title: "The page asked for is not one this endpoint can return.");
         }
 
-        return TypedResults.Ok(await reports.Queue(agencyId, page, pageSize, cancellationToken));
+        // Another agency's queue is not the caller's to read: it answers no rows.
+        if (!CaseAccess.IsCallersAgency(caller, agencyId))
+        {
+            return TypedResults.Ok(new PagedResult<WorkQueueItemResponse>([], page, pageSize, 0));
+        }
+
+        return TypedResults.Ok(await reports.Queue(agencyId, caller, page, pageSize, cancellationToken));
     }
 
     /// <remarks>
@@ -279,16 +287,18 @@ internal sealed class WorkQueueQueries(SurvsysDbContext database)
     /// The agency is validated before this is called. A report is in the queue
     /// when the agency investigates it or a share ties it to the agency; the
     /// <see cref="WorkQueueItemResponse.Shared"/> flag the projection sets tells
-    /// the two apart. Ordered by record number descending and then by id, so a
-    /// report sits on one page and the order is total.
+    /// the two apart. Only the reports <see cref="CaseAccess.Visible"/> lets the
+    /// caller see are listed. Ordered by record number descending and then by
+    /// id, so a report sits on one page and the order is total.
     /// </remarks>
     public async Task<PagedResult<WorkQueueItemResponse>> Queue(
         int agencyId,
+        ClaimsPrincipal caller,
         int page,
         int pageSize,
         CancellationToken cancellationToken)
     {
-        var inQueue = database.PersonConditions
+        var inQueue = CaseAccess.Visible(database, database.PersonConditions, caller)
             .Where(report => report.AgencyId == agencyId
                 || database.PersonConditionShares.Any(
                     share => share.PersonConditionId == report.Id && share.AgencyId == agencyId));

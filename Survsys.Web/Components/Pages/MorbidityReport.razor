@@ -58,7 +58,8 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
     @* The report opens read-only. Edit takes the case's edit lock and enables
        everything below the header; Done releases it, as leaving the page
        does. Somebody else's live lock is named, and refuses Edit. A deleted
-       case offers Restore in place of Edit, and stays read-only. *@
+       case offers Restore in place of Edit, and stays read-only. A case shared
+       with the user's agency says so and offers none of the three. *@
     <MudPaper id="report-actions" Elevation="1" Class="pa-4 mb-4">
         @if (canSeeHistory)
         {
@@ -71,6 +72,13 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         {
             <MudAlert id="report-deleted" Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-2">
                 This case has been deleted. Restore it to work on it again.
+            </MudAlert>
+        }
+
+        @if (shown.SharedReadOnly)
+        {
+            <MudAlert id="report-shared-read-only" Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-2">
+                This case is shared with your agency read-only: you may read it, and change nothing on it.
             </MudAlert>
         }
 
@@ -89,7 +97,12 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
         }
 
         <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
-            @if (shown.DeletedAt is not null)
+            @if (shown.SharedReadOnly)
+            {
+                @* A shared case is read here and changed nowhere: no Edit,
+                   Delete or Restore, each of which the API would refuse. *@
+            }
+            else if (shown.DeletedAt is not null)
             {
                 <MudButton id="report-restore" Variant="Variant.Filled" Color="Color.Primary"
                            Disabled="@acting" OnClick="@Restore">
@@ -111,7 +124,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 </MudButton>
             }
 
-            @if (shown.DeletedAt is null)
+            @if (shown.DeletedAt is null && !shown.SharedReadOnly)
             {
                 <MudButton id="report-delete" Variant="Variant.Outlined" Color="Color.Error"
                            Disabled="@acting" OnClick="@Delete">

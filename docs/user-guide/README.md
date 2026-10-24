@@ -69,8 +69,11 @@ yours, when it is shared with one of yours, or when you hold
 `all_jurisdictions`; any other case answers as though it were not there, on
 its own screen, in the case search and on everything filed under it. A
 change to your agencies or roles takes effect when you next sign in. The work
-queue, the agency board, the task list, saved-view exports and the reports
-are not narrowed this way.
+queue, the agency board, the task list, saved-view exports and counts and the
+case-count report list only the cases you see, and the queue of an agency
+that is not yours is empty. A case shared with your agency is read-only to
+you: it opens saying so, without **Edit** or **Delete**, and nothing on it
+or filed under it can be changed.
 
 The application bar shows only the buttons your privileges open, in this
 order: **Conditions**, **People**, **Events**, **New CMR**, **Work queue**,

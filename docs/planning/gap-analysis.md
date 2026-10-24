@@ -78,7 +78,7 @@ asked.
 | Gap at 0.8.0 | Then | Status at 1.0.0 |
 |---|---|---|
 | The audit records neither the user nor the values before and after; no audit screen; no access-audit screen; logins, exports and searches are not audited; no vocabulary change audit | `AuditInterceptor` | Closed, session 94 |
-| No jurisdiction scoping of case access (privileges are method and path only); no account lockout; data protection keys not persisted, so sign-in breaks on an app-pool recycle or a second server; the Forms and Treatments buttons need `manage_reference_data` while their API writes need only `edit_cases` | `PrivilegeRules.cs`, both `Program.cs` | Closed, session 95 |
+| No jurisdiction scoping of case access (privileges are method and path only); no account lockout; data protection keys not persisted, so sign-in breaks on an app-pool recycle or a second server; the Forms and Treatments buttons need `manage_reference_data` while their API writes need only `edit_cases` | `PrivilegeRules.cs`, both `Program.cs` | Closed, session 95; the work queue, agency board, task list, saved-view exports and counts and the case-count report narrowed, and a shared case made read-only in fact, in session 111 |
 | No classification on save: no disease-specific rules (chlamydia, gonorrhea, hepatitis C, influenza, syphilis, measles, COVID), no automatic out-of-state status, no automatic close of CT, GC and syphilis contacts, no jurisdiction from the patient's address | `CaseStatusRules.cs` | Closed, sessions 96 and 97, with the three departures below |
 | IBIS has no screen; ad-hoc reporting is one case-count report; no system configuration table or screen; condition configuration lacks guide, print criteria and EMSA flags | `IbisEndpoints.cs`, `/api/reports/case-counts` | Closed, session 98 |
 
@@ -300,12 +300,6 @@ Each is the operator's to decide or to plan.
   walkthrough regression: the Attachments table and the notes list show the
   date of a moment stored in UTC without converting it, so in the evening
   they read tomorrow's date. Planned as session 110, before the release.
-- **Jurisdiction scoping stops short of some lists.** Found writing the 1.0.0
-  guides: `CaseAccess` narrows every case route and the case search, but not
-  the work queue and agency board (`/api/work-queue`), the task list
-  (`/api/tasks`), saved-view exports or the reports, and a case shared
-  read-only is read-only in name only. Not planned; the operator's to
-  decide.
 - **No screen settles a held eICR, downloads or removes an attachment, or
   reads a system setting.** Each has its API (or, for system settings, its
   store) and no use on a screen. Not planned; the operator's to decide.

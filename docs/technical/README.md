@@ -349,8 +349,13 @@ case a request is about — from the route, or from the case a lab, exposure,
 note, attachment, task or other child record belongs to — and answers 404
 unless the caller holds `all_jurisdictions`, the case's agency is one of the
 caller's (`user_agencies`), or the case is shared with one of them. The case
-search is narrowed the same way. The work queue, the task list, saved-view
-exports and the reports are not.
+search, the work queue, the task list, saved-view exports and counts and the
+case-count report are narrowed the same way, by `CaseAccess.Visible`; a work
+queue asked for an agency not the caller's answers no rows. A case the caller
+sees only through a share is read-only: every method but GET and HEAD on its
+routes, and on those of the records under it, is a 403 saying so, and
+`GET /api/person-conditions/{id}` answers `SharedReadOnly` for the report
+screen to offer no **Edit**.
 
 **Paging.** A list answers `PagedResult<T>` — `Items`, `Page`, `PageSize`,
 `TotalCount` — for `?page=` (from 1) and `?pageSize=` (default 50, at most

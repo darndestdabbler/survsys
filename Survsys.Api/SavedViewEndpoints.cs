@@ -203,7 +203,7 @@ public static class SavedViewEndpoints
     {
         var caller = Caller(user);
 
-        if (await views.Export(caller, id, cancellationToken) is not { } csv)
+        if (await views.Export(caller, user, id, cancellationToken) is not { } csv)
         {
             return NotFound(id);
         }
@@ -283,10 +283,11 @@ internal sealed class SavedViewQueries(SurvsysDbContext database)
             .ExecuteDeleteAsync(cancellationToken) > 0;
 
     /// <summary>
-    /// The CSV of the reports the user's view selects, in record-number order,
-    /// or null where the user has no view with that id.
+    /// The CSV of the reports the user's view selects, of those the user may
+    /// see, in record-number order, or null where the user has no view with
+    /// that id.
     /// </summary>
-    public async Task<string?> Export(int userId, int id, CancellationToken cancellationToken)
+    public async Task<string?> Export(int userId, ClaimsPrincipal user, int id, CancellationToken cancellationToken)
     {
         if (await Find(userId, id, cancellationToken) is not { } view)
         {
@@ -294,7 +295,7 @@ internal sealed class SavedViewQueries(SurvsysDbContext database)
         }
 
         var columns = SavedViewEndpoints.ColumnsOf(view);
-        var rows = await Rows(view, cancellationToken);
+        var rows = await Rows(view, user, cancellationToken);
 
         return CaseExport.Csv(columns, rows.Select(row => CaseExport.Values(row, columns)));
     }
@@ -304,7 +305,8 @@ internal sealed class SavedViewQueries(SurvsysDbContext database)
         await Find(userId, id, cancellationToken) is { } view ? SavedViewEndpoints.ColumnsOf(view) : null;
 
     /// <summary>
-    /// The count of the reports the user's view selects for each value of
+    /// The count of the reports the user's view selects, of those the user may
+    /// see, for each value of
     /// <paramref name="groupBy"/>, as the view's export writes the value, most
     /// first and then by value; null where the user has no view with that id.
     /// </summary>
@@ -314,7 +316,7 @@ internal sealed class SavedViewQueries(SurvsysDbContext database)
     /// workflow state as the initial state.
     /// </remarks>
     public async Task<IReadOnlyList<CaseCountResponse>?> Counts(
-        int userId, int id, string groupBy, CancellationToken cancellationToken)
+        int userId, ClaimsPrincipal user, int id, string groupBy, CancellationToken cancellationToken)
     {
         if (await Find(userId, id, cancellationToken) is not { } view)
         {
@@ -323,7 +325,7 @@ internal sealed class SavedViewQueries(SurvsysDbContext database)
 
         string[] column = [groupBy];
 
-        return (await Rows(view, cancellationToken))
+        return (await Rows(view, user, cancellationToken))
             .GroupBy(row => CaseExport.Values(row, column)[0])
             .Select(group => new CaseCountResponse(group.Key, group.Count()))
             .OrderByDescending(row => row.Count)
@@ -331,10 +333,10 @@ internal sealed class SavedViewQueries(SurvsysDbContext database)
             .ToList();
     }
 
-    /// <summary>The reports a view selects, in record-number order.</summary>
-    private async Task<List<CaseExportRow>> Rows(SavedView view, CancellationToken cancellationToken)
+    /// <summary>The reports a view selects, of those the user may see, in record-number order.</summary>
+    private async Task<List<CaseExportRow>> Rows(SavedView view, ClaimsPrincipal user, CancellationToken cancellationToken)
     {
-        var reports = database.PersonConditions.AsQueryable();
+        var reports = CaseAccess.Visible(database, database.PersonConditions, user);
 
         if (view.ConditionId is { } conditionId)
         {

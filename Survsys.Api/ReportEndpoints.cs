@@ -73,6 +73,7 @@ public static class ReportEndpoints
 
     private static async Task<Results<Ok<IReadOnlyList<CaseCountResponse>>, ProblemHttpResult>> GetCaseCounts(
         ReportQueries reports,
+        ClaimsPrincipal user,
         string? groupBy,
         DateOnly? from,
         DateOnly? to,
@@ -86,7 +87,7 @@ public static class ReportEndpoints
                 title: "The report asked for is not one this endpoint can run.");
         }
 
-        return TypedResults.Ok(await reports.CaseCounts(groupBy!, from, to, cancellationToken));
+        return TypedResults.Ok(await reports.CaseCounts(groupBy!, from, to, user, cancellationToken));
     }
 
     private static async Task<Results<Ok<IReadOnlyList<CaseCountResponse>>, ProblemHttpResult>> GetSavedViewCounts(
@@ -103,7 +104,7 @@ public static class ReportEndpoints
             return refused;
         }
 
-        return TypedResults.Ok((await views.Counts(caller, id, groupBy!, cancellationToken))!);
+        return TypedResults.Ok((await views.Counts(caller, user, id, groupBy!, cancellationToken))!);
     }
 
     private static async Task<Results<ContentHttpResult, ProblemHttpResult>> ExportSavedViewCounts(
@@ -121,7 +122,7 @@ public static class ReportEndpoints
             return refused;
         }
 
-        var counts = (await views.Counts(caller, id, groupBy!, cancellationToken))!;
+        var counts = (await views.Counts(caller, user, id, groupBy!, cancellationToken))!;
 
         await audit.Record(caller, null, "Export", $"saved view {id} counts by {groupBy}", cancellationToken);
 
@@ -170,15 +171,17 @@ internal sealed class ReportQueries(SurvsysDbContext database)
 {
     /// <summary>
     /// The count of reports for each value of <paramref name="groupBy"/>, most
-    /// first and then by value, over the event onset range given.
+    /// first and then by value, over the event onset range given and the
+    /// reports the caller may see.
     /// </summary>
     public async Task<IReadOnlyList<CaseCountResponse>> CaseCounts(
         string groupBy,
         DateOnly? from,
         DateOnly? to,
+        ClaimsPrincipal caller,
         CancellationToken cancellationToken)
     {
-        var reports = database.PersonConditions.AsQueryable();
+        var reports = CaseAccess.Visible(database, database.PersonConditions, caller);
 
         if (from is { } start)
         {

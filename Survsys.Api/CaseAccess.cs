@@ -17,10 +17,14 @@ namespace Survsys.Api;
 /// a request is about from its route pattern -- the case itself, or the case
 /// that owns the lab, exposure, note or other record the route names -- and
 /// answers 404 for a case the caller may not reach, as though it were not
-/// there, so a refusal does not say which cases exist. A record that belongs
+/// there, so a refusal does not say which cases exist. A case the caller sees
+/// only through a share is read-only to them: every method but GET and HEAD on
+/// its routes, and on those of the records under it, is a 403 saying so,
+/// unless they hold <see cref="Privileges.AllJurisdictions"/>. A record that belongs
 /// to no case (an outbreak's attachment, a task of nobody's case) is not a
-/// case route and passes. The case search narrows by <see cref="Visible"/>,
-/// the same rule as a query.
+/// case route and passes. The case search, the work queue, the task list,
+/// saved-view exports and counts and the case-count report narrow by
+/// <see cref="Visible"/>, the same rule as a query.
 ///
 /// The caller's agencies travel on their token, as their privileges do, so
 /// a change to them is felt at their next sign-in.
@@ -94,6 +98,18 @@ public static class CaseAccess
     }
 
     /// <summary>
+    /// Whether the agency is one the caller works for, or the caller holds
+    /// <see cref="Privileges.AllJurisdictions"/>; false for no agency.
+    /// </summary>
+    public static bool IsCallersAgency(ClaimsPrincipal caller, int? agencyId)
+    {
+        ArgumentNullException.ThrowIfNull(caller);
+
+        return caller.HasClaim(PrivilegeRules.PrivilegeClaim, Privileges.AllJurisdictions)
+            || (agencyId is { } id && AccountEndpoints.AgencyIdsOf(caller).Contains(id));
+    }
+
+    /// <summary>
     /// The reports a caller may reach, of those given.
     /// </summary>
     public static IQueryable<PersonCondition> Visible(
@@ -120,7 +136,8 @@ public static class CaseAccess
 
     /// <summary>
     /// Refuses, as 404 Problem Details, every request on a case route about a
-    /// case the caller may not reach. Registered after authorisation, so the
+    /// case the caller may not reach, and as 403 every write to a case shared
+    /// with their agency read-only. Registered after authorisation, so the
     /// caller is known.
     /// </summary>
     public static IApplicationBuilder UseCaseAccess(this IApplicationBuilder app) =>
@@ -138,16 +155,35 @@ public static class CaseAccess
                 // A case nobody has is left to the endpoint, whose own 404 says so.
                 var report = database.PersonConditions.Where(row => row.Id == caseId);
 
-                if (await report.AnyAsync(context.RequestAborted)
-                    && !await Visible(database, report, context.User).AnyAsync(context.RequestAborted))
+                if (await report.AnyAsync(context.RequestAborted))
                 {
-                    await Results.Problem(
-                            detail: "There is no case morbidity report here that you may see.",
-                            statusCode: StatusCodes.Status404NotFound,
-                            title: "No such case morbidity report.")
-                        .ExecuteAsync(context);
+                    if (!await Visible(database, report, context.User).AnyAsync(context.RequestAborted))
+                    {
+                        await Results.Problem(
+                                detail: "There is no case morbidity report here that you may see.",
+                                statusCode: StatusCodes.Status404NotFound,
+                                title: "No such case morbidity report.")
+                            .ExecuteAsync(context);
 
-                    return;
+                        return;
+                    }
+
+                    // Seen but not of one of the caller's agencies: seen through a share.
+                    if (!HttpMethods.IsGet(context.Request.Method)
+                        && !HttpMethods.IsHead(context.Request.Method)
+                        && !IsCallersAgency(
+                            context.User,
+                            await report.Select(row => row.AgencyId).FirstAsync(context.RequestAborted)))
+                    {
+                        await Results.Problem(
+                                detail: "This case morbidity report is shared with your agency read-only, "
+                                    + "so neither it nor anything filed under it may be changed by you.",
+                                statusCode: StatusCodes.Status403Forbidden,
+                                title: "The case is shared with your agency read-only.")
+                            .ExecuteAsync(context);
+
+                        return;
+                    }
                 }
             }
 

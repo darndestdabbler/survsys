@@ -122,7 +122,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 108 | Release 0.14.0 (release: 0.14.0) | yes | 2026-10-22 |
 | 109 | The parity check and the documentation for 1.0.0 | no | 2026-10-22 |
 | 110 | Attachment and note dates in local time | no | 2026-10-23 |
-| 111 | Jurisdiction on every list, and read-only sharing | — | not declared |
+| 111 | Jurisdiction on every list, and read-only sharing | no | 2026-10-24 |
 | 112 | Address geocoding | — | not declared |
 | 113 | Held eICRs, attachments, and no system settings | — | not declared |
 | 114 | Walkthroughs for the open items | — | not declared |
@@ -974,3 +974,9 @@ Check survsys against the legacy systems for 1.0.0 and bring its documentation t
 **Releasable: no.**
 
 Show an attachment's and a note's date in local time. AttachmentsPanel.razor's Attached and NotesTab.razor's Written convert the stored DateTimeOffset with ToLocalTime() before writing it as yyyy-MM-dd, as the Administrative tab does, so a file attached or a note written late in the evening is no longer dated the next day. The two helpers become public static so Survsys.UnitTests can reach them, and AttachmentsPanelTests and NotesTabTests prove each for a moment late in the evening local time expressed in UTC. Nothing stored changes and every element id stays the same.
+
+### Session 111 — Jurisdiction on every list, and read-only sharing
+
+**Releasable: no.**
+
+Hold every case list to the caller's jurisdiction, and make a shared case read-only in fact. CaseAccess gains IsCallersAgency (the caller holds all_jurisdictions or works for the agency). The work queue (and so the agency board) answers an empty page for an agency that is not the caller's and narrows its rows by CaseAccess.Visible; the task list keeps tasks of no case and only those of cases Visible lets the caller see; a saved view's export and counts and the case-count report count only visible cases, each query taking the caller. UseCaseAccess, for every method but GET and HEAD on a case route, refuses with a 403 Problem Details saying the case is shared with the caller's agency read-only where the caller sees the case but it is not of one of their agencies and they lack all_jurisdictions; reading is unchanged. PersonConditionResponse gains SharedReadOnly, set on GET /api/person-conditions/{id}, and the report screen then shows no Edit or Delete and says the case is shared with the user's agency read-only, every existing element id unchanged. Integration tests against SQL Server prove each list narrowed, another agency's work queue empty, and a write to a shared case and to a record under it refused. The user and technical guides' jurisdiction paragraphs are updated and the gap analysis's open item is marked closed.

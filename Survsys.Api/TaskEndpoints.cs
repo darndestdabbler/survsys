@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -159,7 +160,7 @@ public static class TaskEndpoints
 
         routes.MapGet("/api/tasks", GetTasks)
             .WithName("GetTasks")
-            .WithSummary("Tasks across every report, by due date and paged, optionally of one status.");
+            .WithSummary("Tasks across every report the caller may see, by due date and paged, optionally of one status.");
 
         routes.MapPut("/api/tasks/{id:int}/status", SetStatus)
             .WithName("SetTaskStatus")
@@ -209,11 +210,12 @@ public static class TaskEndpoints
             return NoSuchReport(id);
         }
 
-        return TypedResults.Ok(await tasks.Page(id, null, page, pageSize, cancellationToken));
+        return TypedResults.Ok(await tasks.Page(id, null, null, page, pageSize, cancellationToken));
     }
 
     private static async Task<Results<Ok<PagedResult<TaskResponse>>, ProblemHttpResult>> GetTasks(
         TaskQueries tasks,
+        ClaimsPrincipal caller,
         string? status = null,
         int page = Paging.DefaultPage,
         int pageSize = Paging.DefaultPageSize,
@@ -232,7 +234,7 @@ public static class TaskEndpoints
                 title: "The tasks asked for are not ones this endpoint can list.");
         }
 
-        return TypedResults.Ok(await tasks.Page(null, status, page, pageSize, cancellationToken));
+        return TypedResults.Ok(await tasks.Page(null, status, caller, page, pageSize, cancellationToken));
     }
 
     private static async Task<Results<Ok<TaskResponse>, ProblemHttpResult>> SetStatus(
@@ -351,7 +353,9 @@ internal sealed class TaskQueries(SurvsysDbContext database)
     /// <summary>
     /// One page of tasks — of one report where a report is named, and of every
     /// report where none is, which is what the task list screen reads — of one
-    /// status where one is named.
+    /// status where one is named. Given a caller, only tasks of no case and of
+    /// the cases <see cref="CaseAccess.Visible"/> lets them see; the one
+    /// report's list, a case route, has already been held to the caller.
     /// </summary>
     /// <remarks>
     /// By due date, with the undated last, which is the order a list of work
@@ -363,6 +367,7 @@ internal sealed class TaskQueries(SurvsysDbContext database)
     public async Task<PagedResult<TaskResponse>> Page(
         int? reportId,
         string? status,
+        ClaimsPrincipal? caller,
         int page,
         int pageSize,
         CancellationToken cancellationToken)
@@ -377,6 +382,13 @@ internal sealed class TaskQueries(SurvsysDbContext database)
         if (status is not null)
         {
             tasks = tasks.Where(task => task.Status == status);
+        }
+
+        if (caller is not null)
+        {
+            var visible = CaseAccess.Visible(database, database.PersonConditions, caller);
+            tasks = tasks.Where(task => task.PersonConditionId == null
+                || visible.Any(report => report.Id == task.PersonConditionId));
         }
 
         var total = await tasks.CountAsync(cancellationToken);
