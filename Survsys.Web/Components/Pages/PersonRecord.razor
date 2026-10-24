@@ -1,0 +1,444 @@
+@* One person's own screen: the demographic record as the API tier holds it,
+   read-only, and the case morbidity reports about them. This is the other
+   half of what the legacy People screen is for — "find/view/edit people
+   independent of CMR context", as
+   ../nedss/docs/functional/epitrax-core-workflows.md puts it — the finding
+   being the People screen's and the viewing being this one's. Editing stays
+   where it is: a person's record is changed on a case's Demographics tab,
+   and nothing here saves.
+
+   Reached from the name on a People results row, and the way back from a
+   person to any of their cases: each row of the Cases table opens the case at
+   the address the creation flow opens it at. The cases come from the same
+   search the Events screen runs, narrowed to this person, so there is one
+   query behind both screens.
+
+   Every value a walkthrough will name carries an identifier of its own,
+   prefixed person-, and one row per case keyed by the case's identifier with
+   its record cell named, so session 66's walkthrough selects by those and not
+   by a cell's position. The labels the cases table shows for the workflow and
+   status codes are the ones the work queue and the Events screen show; the
+   codes are the legacy codes the wire carries, and this tier reads
+   Survsys.Contracts and not Survsys.Data, so the mapping is a handful of
+   literals here as it is there. *@
+@page "/people/{PersonId:int}"
+@inject PersonsClient Persons
+@inject CodesClient Codes
+@inject CasesClient Cases
+@inject IConfiguration Configuration
+
+<PageTitle>@Title</PageTitle>
+
+<MudText id="person-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    @(person is { } who ? Named(who) : "Person")
+</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="person-busy" Color="Color.Primary" Indeterminate="true" />
+}
+else if (notFound)
+{
+    @* A 404 is the one failure a user can read something into: the address
+       names a person nobody has, as a stale link or a mistyped number does.
+       The ask's message names the status it was answered with, and that is
+       what tells this state from the others. *@
+    <MudAlert id="person-not-found" Severity="Severity.Warning" Class="mb-4">
+        There is no person with id @PersonId.
+    </MudAlert>
+}
+else if (failure is { } whyNot)
+{
+    <MudAlert id="person-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+else if (person is { } shown)
+{
+    @* A label and a value per field, each value with the identifier a
+       walkthrough names it by, and a dash for what nobody has said. *@
+    <MudPaper id="person-demographics" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Demographics</MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Name</MudText>
+                <MudText id="person-name" Typo="Typo.body1">@Named(shown)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Middle name</MudText>
+                <MudText id="person-middle-name" Typo="Typo.body1">@Shown(shown.MiddleName)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Date of birth</MudText>
+                <MudText id="person-birth-date" Typo="Typo.body1">@Shown(shown.BirthDate)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Birth sex</MudText>
+                <MudText id="person-birth-sex" Typo="Typo.body1">@Shown(shown.BirthGender)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Current gender</MudText>
+                <MudText id="person-current-gender" Typo="Typo.body1">@Shown(shown.CurrentGender)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Ethnicity</MudText>
+                <MudText id="person-ethnicity" Typo="Typo.body1">@Shown(shown.Ethnicity)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Primary language</MudText>
+                <MudText id="person-language" Typo="Typo.body1">@Shown(shown.Language)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Country of birth</MudText>
+                <MudText id="person-country-of-birth" Typo="Typo.body1">@Shown(shown.CountryOfBirth)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Race</MudText>
+                <MudText id="person-races" Typo="Typo.body1">@Listed(shown.Races)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Aliases</MudText>
+                <MudText id="person-aliases" Typo="Typo.body1">@Listed(shown.Aliases)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Parents or guardians</MudText>
+                <MudText id="person-guardians" Typo="Typo.body1">@Listed(shown.ParentGuardians)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Former names</MudText>
+                <MudText id="person-former-names" Typo="Typo.body1">
+                    @Listed(shown.FormerNames
+                        .Select(former => $"{Named(former.LastName, former.FirstName)} (until {Shown(former.ChangedOn)})")
+                        .ToList())
+                </MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.caption">Identifiers</MudText>
+                <MudText id="person-identifiers" Typo="Typo.body1">
+                    @Listed(shown.Identifiers.Select(Identified).ToList())
+                </MudText>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper id="person-addresses" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Addresses</MudText>
+        @if (shown.Addresses.Count == 0)
+        {
+            <MudText id="person-addresses-none" Typo="Typo.body2">No address on file.</MudText>
+        }
+        else
+        {
+            <MudSimpleTable id="person-addresses-table" Dense="true">
+                <thead>
+                    <tr>
+                        <th>Street</th>
+                        <th>Unit</th>
+                        <th>City</th>
+                        <th>State</th>
+                        <th>Zip code</th>
+                        <th>County</th>
+                        <th>@AddressLabels.CountyEquivalent(Configuration)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var address in shown.Addresses)
+                    {
+                        <tr id="@($"person-address-{address.Id}")">
+                            <td>@Shown(address.Street)</td>
+                            <td>@Shown(address.UnitNumber)</td>
+                            <td>@Shown(address.City)</td>
+                            <td>@Shown(address.State)</td>
+                            <td>@Shown(address.PostalCode)</td>
+                            <td>@Shown(AddressLabels.CountyName(counties, address.County))</td>
+                            <td>@Shown(AddressLabels.CountyName(counties, address.CountyEquivalent))</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </MudPaper>
+
+    <MudPaper id="person-telephones" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Telephones</MudText>
+        @if (shown.Telephones.Count == 0)
+        {
+            <MudText id="person-telephones-none" Typo="Typo.body2">No telephone on file.</MudText>
+        }
+        else
+        {
+            <MudSimpleTable id="person-telephones-table" Dense="true">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Number</th>
+                        <th>Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var telephone in shown.Telephones)
+                    {
+                        <tr id="@($"person-telephone-{telephone.Id}")">
+                            <td>@Shown(telephone.TelephoneType)</td>
+                            <td>@Number(telephone)</td>
+                            <td>@Shown(telephone.Note)</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </MudPaper>
+
+    <MudPaper id="person-emails" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Emails</MudText>
+        @if (shown.Emails.Count == 0)
+        {
+            <MudText id="person-emails-none" Typo="Typo.body2">No email on file.</MudText>
+        }
+        else
+        {
+            <MudSimpleTable id="person-emails-table" Dense="true">
+                <thead>
+                    <tr>
+                        <th>Email address</th>
+                        <th>Current</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var email in shown.Emails)
+                    {
+                        <tr id="@($"person-email-{email.Id}")">
+                            <td>@Shown(email.EmailAddress)</td>
+                            <td>@(email.CurrentEmail switch { true => "Yes", false => "No", null => "—" })</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </MudPaper>
+
+    <MudPaper id="person-cases" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Cases</MudText>
+
+        @if (cases?.Failure is { } casesFailure)
+        {
+            <MudAlert id="person-cases-error" Severity="Severity.Error" Variant="Variant.Filled">
+                @casesFailure
+            </MudAlert>
+        }
+        else if (cases?.Value is { } listed)
+        {
+            @if (listed.Items.Count == 0)
+            {
+                <MudText id="person-cases-none" Typo="Typo.body2">This person has no cases.</MudText>
+            }
+            else
+            {
+                <MudSimpleTable id="person-cases-table" Hover="true" Dense="true">
+                    <thead>
+                        <tr>
+                            <th>Record #</th>
+                            <th>Disease</th>
+                            <th>Agency</th>
+                            <th>Workflow</th>
+                            <th>Status</th>
+                            <th>MMWR week</th>
+                            <th>Onset</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in listed.Items)
+                        {
+                            <tr id="@($"person-case-row-{row.Id}")">
+                                <td id="@($"person-case-row-{row.Id}-record")">
+                                    <a href="@($"/event/edit/{row.Id}")">@row.RecordNumber</a>
+                                </td>
+                                <td id="@($"person-case-row-{row.Id}-disease")">@row.ConditionName</td>
+                                <td id="@($"person-case-row-{row.Id}-agency")">@Shown(row.AgencyName)</td>
+                                <td id="@($"person-case-row-{row.Id}-workflow")">@WorkflowLabel(row.WorkflowState)</td>
+                                <td id="@($"person-case-row-{row.Id}-status")">@StatusLabel(row.CaseStatus)</td>
+                                <td id="@($"person-case-row-{row.Id}-mmwr")">@MmwrWeek(row)</td>
+                                <td id="@($"person-case-row-{row.Id}-onset")">@Shown(row.EventOnsetDate)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+
+                @if (listed.TotalCount > listed.Items.Count)
+                {
+                    <MudText id="person-cases-more" Typo="Typo.body2" Class="mt-2">
+                        Showing @listed.Items.Count of @listed.TotalCount cases; the Events screen lists them all.
+                    </MudText>
+                }
+            }
+        }
+    </MudPaper>
+}
+
+@code {
+    [Parameter]
+    public int PersonId { get; set; }
+
+    private PersonDetailResponse? person;
+
+    /// <summary>The county list, retired codes included, that the addresses' counties are named from.</summary>
+    private IReadOnlyList<CodeResponse> counties = [];
+
+    private Asked<PagedResult<CaseSearchItemResponse>>? cases;
+
+    private bool loading = true;
+
+    private bool notFound;
+
+    private string? failure;
+
+    private int loadedPerson = -1;
+
+    /// <summary>
+    /// How many of a person's cases this screen asks for: the most one page
+    /// may hold, which is more cases than a person has. The line under the
+    /// table says so if ever one does.
+    /// </summary>
+    private const int AllOfThem = 200;
+
+    /// <summary>What the browser tab says: the person's name, once there is one.</summary>
+    private string Title => person is { } who ? $"{Named(who)} — Survsys" : "Person — Survsys";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (PersonId == loadedPerson)
+        {
+            return;
+        }
+
+        loadedPerson = PersonId;
+        loading = true;
+        notFound = false;
+        failure = null;
+        person = null;
+        cases = null;
+
+        if (counties.Count == 0)
+        {
+            counties = (await Codes.List(CodeLists.County, inactive: true)).Value ?? [];
+        }
+
+        var found = await Persons.Find(PersonId);
+
+        if (found.Value is not { } who)
+        {
+            // The ask names the status the API tier answered with; a 404 is
+            // the one worth its own words on the screen.
+            notFound = found.Failure?.Contains("answered 404", StringComparison.Ordinal) == true;
+            failure = found.Failure;
+            loading = false;
+
+            return;
+        }
+
+        person = who;
+        cases = await Cases.Page(new CaseSearchCriteria(PersonId: PersonId), 1, AllOfThem);
+
+        loading = false;
+    }
+
+    /// <summary>
+    /// The person's name as the People results write it: last name first,
+    /// and the last name alone where there is no first name.
+    /// </summary>
+    private static string Named(PersonDetailResponse who) => Named(who.LastName, who.FirstName);
+
+    private static string Named(string lastName, string? firstName) =>
+        string.IsNullOrWhiteSpace(firstName) ? lastName : $"{lastName}, {firstName}";
+
+    /// <summary>
+    /// An identifier as one string: its type, its value, and the authority
+    /// that assigned it with what that authority is named by.
+    /// </summary>
+    private static string Identified(PersonIdentifierResponse identifier)
+    {
+        var typed = string.IsNullOrWhiteSpace(identifier.IdentifierType)
+            ? identifier.Value
+            : $"{identifier.IdentifierType} {identifier.Value}";
+
+        if (string.IsNullOrWhiteSpace(identifier.AssigningAuthority))
+        {
+            return typed;
+        }
+
+        return string.IsNullOrWhiteSpace(identifier.AssigningAuthorityType)
+            ? $"{typed} ({identifier.AssigningAuthority})"
+            : $"{typed} ({identifier.AssigningAuthorityType} {identifier.AssigningAuthority})";
+    }
+
+    private static string Shown(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "—" : value;
+
+    private static string Shown(DateOnly? date) =>
+        date?.ToString("yyyy-MM-dd") ?? "—";
+
+    private static string Listed(IReadOnlyList<string> values) =>
+        values.Count == 0 ? "—" : string.Join(", ", values);
+
+    /// <summary>
+    /// A telephone as one string from the parts it is stored in, with the
+    /// country code and extension only where there are any.
+    /// </summary>
+    private static string Number(PersonTelephoneResponse telephone)
+    {
+        var parts = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(telephone.CountryCode))
+        {
+            parts.Add($"+{telephone.CountryCode}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(telephone.AreaCode))
+        {
+            parts.Add($"({telephone.AreaCode})");
+        }
+
+        if (!string.IsNullOrWhiteSpace(telephone.PhoneNumber))
+        {
+            parts.Add(telephone.PhoneNumber);
+        }
+
+        if (!string.IsNullOrWhiteSpace(telephone.Extension))
+        {
+            parts.Add($"ext. {telephone.Extension}");
+        }
+
+        return parts.Count == 0 ? "—" : string.Join(' ', parts);
+    }
+
+    private static string MmwrWeek(CaseSearchItemResponse row) =>
+        row.MmwrWeek is { } week && row.MmwrYear is { } year ? $"{week}/{year}" : "—";
+
+    /// <summary>
+    /// A workflow code read as its label, as the work queue reads it. The
+    /// codes are the legacy codes the wire carries; this is display only.
+    /// </summary>
+    private static string WorkflowLabel(string workflowState) => workflowState switch
+    {
+        "assigned_to_lhd" => "Assigned to LHD",
+        "accepted" => "Accepted",
+        "under_investigation" => "Under investigation",
+        "closed" => "Closed",
+        _ => workflowState,
+    };
+
+    /// <summary>
+    /// A case status code read as its label; an unclassified case reads as
+    /// Unknown, as the work queue shows it.
+    /// </summary>
+    private static string StatusLabel(string? caseStatus) => caseStatus switch
+    {
+        "C" => "Confirmed",
+        "P" => "Probable",
+        "S" => "Suspected",
+        "NC" => "Not a case",
+        "OS" => "Out of state",
+        null => "Unknown",
+        _ => caseStatus,
+    };
+}

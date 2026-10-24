@@ -1,0 +1,150 @@
+@* One CDC export whole: its log summary and the message that was generated
+   for it, read through the detail endpoint. A reviewer reads the generated
+   message to see what was, or would be, sent to CDC.
+
+   Every element a later walkthrough will name carries an identifier of its
+   own — `generated-message-review-heading`, `-back`, `-loading`, `-error`,
+   `-record`, `-guide`, `-queued`, `-sent`, `-outcome`, `-detail`,
+   `-processing`, `-queue`, `-messages` (the build's messages with their
+   severities), `-message` and `-none`. A test selects by those and not by a MudBlazor class or a cell's
+   position. *@
+@page "/export-log/{Id:int}"
+@inject ExportLogClient Client
+
+<PageTitle>Generated message — Survsys</PageTitle>
+
+<MudText id="generated-message-review-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Export @Id
+</MudText>
+
+<MudButton id="generated-message-review-back" Variant="Variant.Text" Href="/export-log" Class="mb-4">
+    Back to the export log
+</MudButton>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="generated-message-review-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } detail)
+{
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        <MudSimpleTable Dense="true" Bordered="false" Striped="false">
+            <tbody>
+                <tr>
+                    <th scope="row">Record number</th>
+                    <td id="generated-message-review-record">@detail.Entry.RecordNumber</td>
+                </tr>
+                <tr>
+                    <th scope="row">Guide</th>
+                    <td id="generated-message-review-guide">
+                        @(detail.Entry.GuideId is { } guide ? guide.ToString() : "—")
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Queued</th>
+                    <td id="generated-message-review-queued">@detail.Entry.QueuedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                </tr>
+                <tr>
+                    <th scope="row">Sent</th>
+                    <td id="generated-message-review-sent">
+                        @(detail.Entry.SentAt is { } sent ? sent.ToString("yyyy-MM-dd HH:mm") : "—")
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Outcome</th>
+                    <td id="generated-message-review-outcome">
+                        @(string.IsNullOrWhiteSpace(detail.Entry.Outcome) ? "—" : detail.Entry.Outcome)
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Detail</th>
+                    <td id="generated-message-review-detail">
+                        @(string.IsNullOrWhiteSpace(detail.Entry.Detail) ? "—" : detail.Entry.Detail)
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Processing</th>
+                    <td id="generated-message-review-processing">
+                        @(string.IsNullOrWhiteSpace(detail.Entry.ProcessingId) ? "—" : detail.Entry.ProcessingId)
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Queue</th>
+                    <td id="generated-message-review-queue">
+                        @(string.IsNullOrWhiteSpace(detail.Entry.Queue) ? "—" : detail.Entry.Queue)
+                    </td>
+                </tr>
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+
+    @if (detail.Messages.Count > 0)
+    {
+        <MudText Typo="Typo.h6" GutterBottom="true">Messages</MudText>
+        <MudPaper Elevation="1" Class="mb-4">
+            <MudSimpleTable id="generated-message-review-messages" Dense="true">
+                <thead>
+                    <tr>
+                        <th>Severity</th>
+                        <th>PHIN variable</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var message in detail.Messages)
+                    {
+                        <tr data-export-message>
+                            <td data-export-message-severity>@message.Severity</td>
+                            <td data-export-message-variable>@(message.PhinVar ?? "—")</td>
+                            <td data-export-message-text>@message.Message</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
+
+    <MudText Typo="Typo.h6" GutterBottom="true">Generated message</MudText>
+    @if (string.IsNullOrEmpty(detail.GeneratedMessage))
+    {
+        @* An export logged before a message was generated for it: the row is
+           real and the message is not there yet, which is a line to read rather
+           than an empty block. *@
+        <MudText id="generated-message-review-none" Typo="Typo.body2">
+            No message has been generated for this export yet.
+        </MudText>
+    }
+    else
+    {
+        <MudText Typo="Typo.body2" Class="mb-2">
+            The message that was, or would be, sent to CDC for this export.
+        </MudText>
+        <MudPaper Elevation="1" Class="pa-4">
+            <pre id="generated-message-review-message" style="white-space: pre-wrap; word-break: break-word; margin: 0;">@detail.GeneratedMessage</pre>
+        </MudPaper>
+    }
+}
+else
+{
+    @* The tier's contract: an API failure is a message on the screen, never
+       an unhandled exception in a circuit. ExportLogClient hands over the
+       message; this is where it is shown — an export that is not there reads
+       as the client's not-found sentence. *@
+    <MudAlert id="generated-message-review-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @asked.Failure
+    </MudAlert>
+}
+
+@code {
+    /// <summary>The export this screen reads, by its log identifier.</summary>
+    [Parameter]
+    public int Id { get; set; }
+
+    private Asked<CdcExportLogDetailResponse>? asked;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        asked = null;
+        asked = await Client.Find(Id);
+    }
+}
