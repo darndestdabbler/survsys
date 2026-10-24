@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 099 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 099 transcript</h1>
+<p class="stamp">Rendered 2026-10-22T10:31:51.146Z by dabbler-ai-router 3.23.0 at df1461af7380b26631e289d681e1e7b484495df3.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-22T06:16:08.927-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 99: Phase 12 walkthroughs</h3>
+<ol><li>Register.</li><li><code>docs/walkthroughs/</code>: four documents — review a case's audit history, run an ad-hoc report, send a case to IBIS, see a case classified on save.</li><li><code>Survsys.E2ETests</code>: the four Playwright tests named after them.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Write the Phase 12 walkthroughs and the Playwright tests that perform them. Four documents are added to docs/walkthroughs/ and linked from its README, each in the house form of the others and each with the one test named after it in Survsys.E2ETests: review a case's audit history (change a case, open its audit history and read the change with the user and the values before and after), run an ad-hoc report (save a view, pick it and one of its columns on the Reports screen, read the counts and export them), send a case to IBIS (press Send to IBIS on a case's report and read the date IBIS accepted it), and see a case classified on save (the document for the test session 97 already wrote, which now names that document instead of the session). For the IBIS walkthrough the E2E harness starts a loopback stand-in for IBIS that accepts every case and points the API tier's IbisTransmission endpoint at it, so nothing leaves the machine.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/18b115c394301e8a7abcf5d92198cb84c0d02b29"><code>18b115c394301e8a7abcf5d92198cb84c0d02b29</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Review a cases audit history</td><td><p>Write docs/walkthroughs/review-a-cases-audit-history.md: open a case, change and save one of its fields, open the case's audit history and find the update row with the signed-in user and the field's value before and after. Link it from docs/walkthroughs/README.md and add Survsys.E2ETests/ReviewACasesAuditHistoryTests.cs performing it step for step.</p></td><td><span class="mono">docs/walkthroughs/review-a-cases-audit-history.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/ReviewACasesAuditHistoryTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~ReviewACasesAuditHistoryTests</code></td><td>yes</td></tr>
+<tr><td>Run an ad hoc report</td><td><p>Write docs/walkthroughs/run-an-ad-hoc-report.md: save a view of the case search, open the Reports screen, pick that saved view and one of its columns, read the counts grouped by that column, and export them as CSV. Link it from docs/walkthroughs/README.md and add Survsys.E2ETests/RunAnAdHocReportTests.cs performing it step for step, reading the downloaded CSV.</p></td><td><span class="mono">docs/walkthroughs/run-an-ad-hoc-report.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/RunAnAdHocReportTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~RunAnAdHocReportTests</code></td><td>yes</td></tr>
+<tr><td>Send a case to ibis</td><td><p>In the E2E harness, start a loopback stand-in for IBIS on an OS-assigned port that answers every POST as accepted, and give the API tier IbisTransmission__Endpoint pointing at it. Write docs/walkthroughs/send-a-case-to-ibis.md: create a case, press Send to IBIS on its report, and read the date IBIS accepted it. Link it from docs/walkthroughs/README.md and add Survsys.E2ETests/SendACaseToIbisTests.cs performing it step for step.</p></td><td><span class="mono">Survsys.E2ETests/SurvsysHarness.cs</span><br><span class="mono">docs/walkthroughs/send-a-case-to-ibis.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/SendACaseToIbisTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~SendACaseToIbisTests|FullyQualifiedName~SurvsysHarnessTests</code></td><td>yes</td></tr>
+<tr><td>See a case classified on save</td><td><p>Write docs/walkthroughs/see-a-case-classified-on-save.md describing what Survsys.E2ETests/SeeACaseClassifiedOnSaveTests.cs already performs: a chlamydia case with no status gets a positive culture on the Laboratory tab, and without a reload the header shows Confirmed and that save's findings are shown beside the save. Link it from docs/walkthroughs/README.md, and change the test so its Document names the walkthrough file rather than session 97, its steps matching the document's.</p></td><td><span class="mono">docs/walkthroughs/see-a-case-classified-on-save.md</span><br><span class="mono">docs/walkthroughs/README.md</span><br><span class="mono">Survsys.E2ETests/SeeACaseClassifiedOnSaveTests.cs</span></td><td><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~SeeACaseClassifiedOnSaveTests</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No application change: Survsys.Api, Survsys.Web, Survsys.Data and Survsys.Messaging are not modified; a step a walkthrough cannot perform is reported as a defect, not worked around.</li><li>No live transmission: nothing is sent to a real IBIS endpoint; the harness's loopback stand-in is the only IBIS the walkthrough reaches, and it does not model IBIS's rejections or timeouts.</li><li>No other walkthrough or its test changes, beyond the README linking the four new documents.</li><li>No release work.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[10:16:08]</span> <span class="muted">run-started</span> session=099 mode=pull</div>
+<div class="line"><span class="at">[10:16:08]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[10:17:11]</span> <span class="muted">run-resumed</span> session=099 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[10:17:11]</span> <span class="muted">plan-accepted</span> steps=[&quot;review-a-cases-audit-history&quot;,&quot;run-an-ad-hoc-report&quot;,&quot;send-a-case-to-ibis&quot;,&quot;see-a-case-classified-on-save&quot;] non_goals=4</div>
+<div class="line"><span class="at">[10:17:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[10:17:12]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=review-a-cases-audit-history</div>
+<div class="line"><span class="at">[10:20:07]</span> <span class="muted">run-resumed</span> session=099 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:20:22]</span> <span class="muted">check-passed</span> step=review-a-cases-audit-history argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ReviewACasesAuditHistoryTests&quot;]</div>
+<div class="line"><span class="at">[10:20:22]</span> <span class="muted">report-accepted</span> seq=2 step=review-a-cases-audit-history files=[&quot;docs/walkthroughs/review-a-cases-audit-history.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/ReviewACasesAuditHistoryTests.cs&quot;] notes=Audit history walkthrough and its test; README links it and its count of walkthroughs is corrected to forty</div>
+<div class="line"><span class="at">[10:20:22]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=run-an-ad-hoc-report</div>
+<div class="line"><span class="at">[10:24:32]</span> <span class="muted">run-resumed</span> session=099 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:24:49]</span> <span class="muted">check-passed</span> step=run-an-ad-hoc-report argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~RunAnAdHocReportTests&quot;]</div>
+<div class="line"><span class="at">[10:24:50]</span> <span class="muted">report-accepted</span> seq=3 step=run-an-ad-hoc-report files=[&quot;docs/walkthroughs/run-an-ad-hoc-report.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/RunAnAdHocReportTests.cs&quot;] notes=Ad-hoc report walkthrough over a saved view of two Lyme disease cases counted by agency and exported; the test reseeds before and after so the counts are its own</div>
+<div class="line"><span class="at">[10:24:50]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=send-a-case-to-ibis</div>
+<div class="line"><span class="at">[10:28:17]</span> <span class="muted">run-resumed</span> session=099 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:28:34]</span> <span class="muted">check-passed</span> step=send-a-case-to-ibis argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~SendACaseToIbisTests|FullyQualifiedName~SurvsysHarnessTests&quot;]</div>
+<div class="line"><span class="at">[10:28:35]</span> <span class="muted">report-accepted</span> seq=4 step=send-a-case-to-ibis files=[&quot;Survsys.E2ETests/SurvsysHarness.cs&quot;,&quot;docs/walkthroughs/send-a-case-to-ibis.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/SendACaseToIbisTests.cs&quot;] notes=Harness runs a loopback IBIS stand-in answering 200 and points IbisTransmission__Endpoint at it; Send to IBIS walkthrough and its test</div>
+<div class="line"><span class="at">[10:28:35]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=see-a-case-classified-on-save</div>
+<div class="line"><span class="at">[10:30:33]</span> <span class="muted">run-resumed</span> session=099 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[10:30:49]</span> <span class="muted">check-passed</span> step=see-a-case-classified-on-save argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~SeeACaseClassifiedOnSaveTests&quot;]</div>
+<div class="line"><span class="at">[10:30:54]</span> <span class="muted">check-passed</span> step=see-a-case-classified-on-save argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;]</div>
+<div class="line"><span class="at">[10:30:54]</span> <span class="muted">report-accepted</span> seq=5 step=see-a-case-classified-on-save files=[&quot;docs/walkthroughs/see-a-case-classified-on-save.md&quot;,&quot;docs/walkthroughs/README.md&quot;,&quot;Survsys.E2ETests/SeeACaseClassifiedOnSaveTests.cs&quot;] notes=Classified-on-save walkthrough; the session 97 test now names it and performs its six steps in order; README links all four</div>
+<div class="line"><span class="at">[10:30:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[10:30:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[10:30:54]</span> <span class="muted">job-started</span> name=verification pid=47596 log=.dabbler/runs/s99/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:31:35]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s99/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[10:31:35]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[10:31:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[10:31:35]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[10:31:35]</span> <span class="muted">job-started</span> name=run of record: unit pid=31816 log=.dabbler/runs/s99/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[10:31:42]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s99/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[10:31:42]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[10:31:46]</span> <span class="muted">landed</span> commit=18b115c394301e8a7abcf5d92198cb84c0d02b29</div>
+<div class="line"><span class="at">[10:31:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[10:31:46]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[10:31:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[10:31:46]</span> <span class="muted">job-started</span> name=close pid=42712 log=.dabbler/runs/s99/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:31:51]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s99/driver/jobs/close.log</div>
+<div class="line"><span class="at">[10:31:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>The suite total changed from 36 to 43 after adding exactly four walkthroughs.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>7s</td><td>2143</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

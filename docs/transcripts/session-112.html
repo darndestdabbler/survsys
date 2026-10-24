@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 112 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 112 transcript</h1>
+<p class="stamp">Rendered 2026-10-24T08:29:37.122Z by dabbler-ai-router 3.23.0 at 287a1b79cb231cea7c994f4ab02d2fa5de6d5086.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-24T04:02:21.943-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 112: Address geocoding</h3>
+<p>*Inserted after session 109. An address keeps no latitude or longitude (<code>PersonAddress</code> left the legacy geocoding columns out), and nothing geocodes one. The operator decided on 2026-10-23 that an address is geocoded by the US Census Geocoder, falling back to Google's Geocoding API when the Census Geocoder fails or finds no match.*</p>
+<p><strong>Non-goals.</strong> No test, check or shipped configuration calls either real service: both are exercised against local stubs, and the shipped configuration leaves geocoding off. No map, and no geocoding of exposure places, which already carry their own coordinates.</p>
+<ol><li>Register.</li><li><code>Survsys.Data</code>: <code>person_addresses</code> gains <code>latitude</code>, <code>longitude</code> and <code>geocoded_by</code> (<code>census</code>, <code>google</code> or <code>manual</code>), with their migration; no existing address changes.</li><li><code>Survsys.Api</code>: a geocoder behind one interface — the Census Geocoder's one-line address lookup first, Google's Geocoding API when it fails, times out or finds no match — run where an address is saved with a street and no coordinates: the Demographic tab, ELR promotion and eCR intake. A failure of both leaves the coordinates empty and never stops the save. Settings <code>Geocoding:Enabled</code> (off by default), each service's endpoint and timeout, and <code>Geocoding:GoogleApiKey</code>, read from the environment only, never a file; with no key, Google is skipped. Coordinates typed by hand are kept, as <code>manual</code>, and an address whose street changes is geocoded again.</li><li><code>Survsys.Web</code>: <strong>Latitude</strong> and <strong>Longitude</strong> on the Demographic tab's address rows and the person screen, with where they came from. Every existing element id stays unchanged.</li><li><code>Survsys.UnitTests</code> and <code>Survsys.IntegrationTests</code>: Census found, Census failing over to Google, both failing, no Google key, a hand-typed pair kept, and a changed street geocoded again, against stub services.</li><li><code>docs/</code>: the user guide's address paragraph, the technical guide's settings table (with what the services are sent: the street address, and nothing else about the person), and the gap analysis's open item marked closed.</li><li>Cross-provider verification.</li><li>Full test suite, the integration suite included, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Geocode a person's address. person_addresses gains latitude, longitude and geocoded_by (census, google or manual) with a migration that leaves every existing row as it is. Survsys.Api gains one IGeocoder interface and its one implementation, Geocoder: the US Census Geocoder's one-line address lookup first, and Google's Geocoding API when Census fails, times out or finds no match, sending only the one-line street address (street, city, state, zip); Google is skipped when Geocoding:GoogleApiKey is empty, and everything is off unless Geocoding:Enabled is true. A failure of both returns nothing and never stops a save. It runs where an address is saved with a street and no coordinates: the Demographic tab's save (PersonQueries.Update), ELR promotion (MessageCaseWriter's address write, from the queue promotion and the automatic processing) and eCR intake (EcrCaseWriter's address write, the geocoder carried on EcrCaseSettings). On the Demographic tab's save, a pair sent that matches a stored address's pair on the same street keeps that address's source, a pair that matches none is kept as manual, and a pair carried over onto a changed street is dropped so the address is geocoded again. PersonAddressRequest gains Latitude and Longitude and PersonAddressResponse gains Latitude, Longitude and GeocodedBy. The Demographic tab's address rows and the person screen's address table show Latitude, Longitude and where they came from, every existing element id unchanged. Unit and integration tests prove Census found, Census failing over to Google, both failing, no Google key, a hand-typed pair kept and a changed street geocoded again, against stub services only. The user guide's address paragraph, the technical guide's settings table (with what the services are sent) and the gap analysis's open item are updated.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/bc8afe351ee0c3954dc0fd9aa0a6c15e00833193"><code>bc8afe351ee0c3954dc0fd9aa0a6c15e00833193</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Data geocode columns</td><td><p>Add Latitude (decimal?), Longitude (decimal?) and GeocodedBy (string?, census, google or manual) to PersonAddress, with their constants, mapped in PersonAddressConfiguration to latitude and longitude as decimal(9,6) and geocoded_by as a bounded string; add the migration AddressGeocoding (three nullable columns, nothing else) with its designer, and update the model snapshot. Update the PersonAddress remarks that say the geocoding columns are left out.</p></td><td></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Api geocoder</td><td><p>Add Survsys.Api/Geocoder.cs: GeocodingOptions (section Geocoding: Enabled false, CensusEndpoint and GoogleEndpoint defaulting to the public URLs, CensusTimeoutSeconds and GoogleTimeoutSeconds, GoogleApiKey read from the environment only), the IGeocoder interface (Geocode(PersonAddress, CancellationToken) returning the coordinates and source or null), and Geocoder over a typed HttpClient: off returns null; Census one-line lookup first; Google when Census errors, times out or has no match and a key is set; both failing logs and returns null, never throwing except the caller's own cancellation. Add a static helper that fills an address with a street and no coordinates. Register it in Program.cs with AddHttpClient and add a Geocoding section to appsettings.json with Enabled false and no key. Unit tests in Survsys.UnitTests/GeocoderTests.cs against a stub HttpMessageHandler: options binding, off, Census found, failover to Google, both failing, no Google key.</p></td><td></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~GeocoderTests</code></td><td>yes</td></tr>
+<tr><td>Api geocode on save</td><td><p>Add Latitude and Longitude to PersonAddressRequest and Latitude, Longitude and GeocodedBy to PersonAddressResponse, as optional trailing members. PersonEndpoints.Apply carries a sent pair: kept with the stored address's source where a stored address had that pair on the same street, kept as manual where none had it, dropped where it was carried onto a changed street; the detail projection maps the new fields; PersonQueries takes an optional IGeocoder and Update geocodes each address with a street and no coordinates before saving. MessageCaseWriter.Open and Update take an optional IGeocoder that its address write uses, passed from MessageQueueEndpoints and MessageProcessingService; EcrCaseSettings gains an optional IGeocoder that EcrCaseWriter's address write uses, passed from EcrIntakeService and EcrEndpoints. Unit tests in Survsys.UnitTests/PersonEndpointsTests.cs: a hand-typed pair kept as manual, a geocoded pair on the same street kept with its source, a changed street's pair dropped.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~PersonEndpointsTests|FullyQualifiedName~MessageCaseWriterTests|FullyQualifiedName~EcrCaseWriterTests</code></td><td>yes</td></tr>
+<tr><td>Web coordinates</td><td><p>On the Demographic tab's address rows add Latitude and Longitude fields (new ids demographics-address-{at}-latitude and -longitude) and the source as text, sent with the save; on the person screen's address table add Latitude, Longitude and Source columns. AddressLabels gains GeocodedBy naming the source (Census Geocoder, Google, Typed by hand), tested in Survsys.UnitTests/AddressLabelsTests.cs. Every existing element id stays unchanged.</p></td><td></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~AddressLabelsTests</code></td><td>yes</td></tr>
+<tr><td>Integration tests</td><td><p>In Survsys.IntegrationTests/GeocoderTests.cs, Geocoder against loopback stub Census and Google hosts: Census found, Census failing (error, timeout, no match) over to Google, both failing, no Google key; nothing reaches a real service. In Survsys.IntegrationTests/PersonEndpointsTests.cs, against SQL Server with the API host's geocoder replaced by a stub: a save with a street and no coordinates is geocoded, a hand-typed pair is kept as manual, a changed street is geocoded again, and a failure of both leaves the coordinates empty and the save succeeding.</p></td><td></td><td><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --filter FullyQualifiedName~GeocoderTests|FullyQualifiedName~PersonEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>User guide: the address paragraph says an address with a street is geocoded on save when geocoding is on, typed coordinates are kept, and a changed street is geocoded again. Technical guide: the settings table gains Geocoding:Enabled, the endpoints and timeouts, and Geocoding:GoogleApiKey (environment only), and says the services are sent the street address and nothing else about the person. Gap analysis: the address-geocoding open item and the person row's exception are marked closed by session 112.</p></td><td></td><td><code>pwsh -NoProfile -NonInteractive -Command $t = (Get-Content docs/user-guide/README.md -Raw) + (Get-Content docs/technical/README.md -Raw) + (Get-Content docs/planning/gap-analysis.md -Raw); foreach ($p in 'Geocoding:Enabled', 'Geocoding:GoogleApiKey', 'session 112') { if ($t -notmatch [regex]::Escape($p)) { Write-Error &quot;missing: $p&quot;; exit 1 } }; if ($t -match 'No session plans it; the operator has not decided it') { Write-Error 'gap item not closed'; exit 1 }</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No test, check or shipped configuration calls the real Census or Google service: both are exercised against local stubs, and appsettings ships Geocoding:Enabled false with no Google key in any file.</li><li>No map, and no geocoding of exposure places, which carry their own coordinates.</li><li>No backfill of existing addresses, no geocoding of contact-import or person-merge addresses, and no re-geocoding of an address whose street is unchanged.</li><li>No change to any existing element id, to county filling, or to the current-versus-historic address rule.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[08:02:21]</span> <span class="muted">run-started</span> session=112 mode=pull</div>
+<div class="line"><span class="at">[08:02:21]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[08:04:52]</span> <span class="muted">run-resumed</span> session=112 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[08:04:52]</span> <span class="muted">plan-accepted</span> steps=[&quot;data-geocode-columns&quot;,&quot;api-geocoder&quot;,&quot;api-geocode-on-save&quot;,&quot;web-coordinates&quot;,&quot;integration-tests&quot;,&quot;docs&quot;] non_goals=4</div>
+<div class="line"><span class="at">[08:04:52]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[08:04:52]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=data-geocode-columns</div>
+<div class="line"><span class="at">[08:05:58]</span> <span class="muted">run-resumed</span> session=112 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:06:01]</span> <span class="muted">check-passed</span> step=data-geocode-columns argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[08:06:01]</span> <span class="muted">report-accepted</span> seq=2 step=data-geocode-columns files=[] notes=PersonAddress gains Latitude, Longitude, GeocodedBy with census/google/manual constants; migration AddressGeocoding adds three nullable columns</div>
+<div class="line"><span class="at">[08:06:01]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=api-geocoder</div>
+<div class="line"><span class="at">[08:07:39]</span> <span class="muted">run-resumed</span> session=112 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:07:42]</span> <span class="muted">check-passed</span> step=api-geocoder argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;]</div>
+<div class="line"><span class="at">[08:07:45]</span> <span class="muted">check-passed</span> step=api-geocoder argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~GeocoderTests&quot;]</div>
+<div class="line"><span class="at">[08:07:46]</span> <span class="muted">report-accepted</span> seq=3 step=api-geocoder files=[] notes=IGeocoder and Geocoder (Census then Google) with GeocodingOptions; Google key set from the environment only in Program.cs; Geocoding section off in appsettings</div>
+<div class="line"><span class="at">[08:07:46]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=api-geocode-on-save</div>
+<div class="line"><span class="at">[08:10:58]</span> <span class="muted">run-resumed</span> session=112 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:11:01]</span> <span class="muted">check-passed</span> step=api-geocode-on-save argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[08:11:05]</span> <span class="muted">check-passed</span> step=api-geocode-on-save argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~PersonEndpointsTests|FullyQualifiedName~MessageCaseWriterTests|FullyQualifiedName~EcrCaseWriterTests&quot;]</div>
+<div class="line"><span class="at">[08:11:05]</span> <span class="muted">report-accepted</span> seq=4 step=api-geocode-on-save files=[] notes=Contracts carry coordinates; Apply keeps a sent pair (stored source on same street, manual otherwise, dropped on changed street); Update, ELR address write and eCR new address geocode via Geocoder.Fill</div>
+<div class="line"><span class="at">[08:11:05]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=web-coordinates</div>
+<div class="line"><span class="at">[08:12:23]</span> <span class="muted">run-resumed</span> session=112 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:12:26]</span> <span class="muted">check-passed</span> step=web-coordinates argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[08:12:29]</span> <span class="muted">check-passed</span> step=web-coordinates argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~AddressLabelsTests&quot;]</div>
+<div class="line"><span class="at">[08:12:30]</span> <span class="muted">report-accepted</span> seq=5 step=web-coordinates files=[] notes=Demographic tab address rows gain Latitude, Longitude and their source; person screen address table gains three columns; AddressLabels.GeocodedBy names the source; existing ids unchanged</div>
+<div class="line"><span class="at">[08:12:30]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=integration-tests</div>
+<div class="line"><span class="at">[08:17:53]</span> <span class="muted">run-resumed</span> session=112 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:19:54]</span> <span class="muted">check-passed</span> step=integration-tests argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~GeocoderTests|FullyQualifiedName~PersonEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[08:19:54]</span> <span class="muted">report-accepted</span> seq=6 step=integration-tests files=[] notes=Geocoder against a loopback Census/Google stub (found, fail/no-match/timeout failover, both failing, no key); person saves through the API with the stub (geocoded, manual kept, changed street re-geocoded, both failing saves empty); affected ELR/eCR integration classes also pass (35)</div>
+<div class="line"><span class="at">[08:19:54]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=docs</div>
+<div class="line"><span class="at">[08:20:30]</span> <span class="muted">run-resumed</span> session=112 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:20:32]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;pwsh&quot;,&quot;-NoProfile&quot;,&quot;-NonInteractive&quot;,&quot;-Command&quot;,&quot;$t = (Get-Content docs/user-guide/README.md -Raw) + (Get-Content docs/technical/README.md -Raw) + (Get-Content docs/planning/gap-analysis.md -Raw); foreach ($p in 'Geocoding:Enabled', 'Geocoding:GoogleApiKey', 'session 112') { if ($t -notmatch [regex]::Escape($p)) { Write-Error \&quot;missing: $p\&quot;; exit 1 } }; if ($t -match 'No session plans it; the operator has not decided it') { Write-Error 'gap item not closed'; exit 1 }&quot;]</div>
+<div class="line"><span class="at">[08:20:32]</span> <span class="muted">report-accepted</span> seq=7 step=docs files=[] notes=User guide address paragraph, technical guide Geocoding settings rows with what the services are sent, gap analysis item closed by session 112</div>
+<div class="line"><span class="at">[08:20:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[08:20:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[08:20:33]</span> <span class="muted">job-started</span> name=verification pid=7344 log=.dabbler/runs/s112/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:22:01]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s112/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:22:01]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[08:22:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[08:22:01]</span> <span class="muted">instruction-issued</span> seq=8 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[08:22:23]</span> <span class="muted">run-resumed</span> session=112 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[08:22:23]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0,1,2] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[08:22:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[08:22:23]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[08:26:16]</span> <span class="muted">run-resumed</span> session=112 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[08:26:18]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;] owner=data-geocode-columns</div>
+<div class="line"><span class="at">[08:26:20]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;] owner=api-geocoder</div>
+<div class="line"><span class="at">[08:26:24]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~GeocoderTests&quot;] owner=api-geocoder</div>
+<div class="line"><span class="at">[08:26:26]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=api-geocode-on-save</div>
+<div class="line"><span class="at">[08:26:29]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~PersonEndpointsTests|FullyQualifiedName~MessageCaseWriterTests|FullyQualifiedName~EcrCaseWriterTests&quot;] owner=api-geocode-on-save</div>
+<div class="line"><span class="at">[08:26:31]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;] owner=web-coordinates</div>
+<div class="line"><span class="at">[08:26:35]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~AddressLabelsTests&quot;] owner=web-coordinates</div>
+<div class="line"><span class="at">[08:28:38]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~GeocoderTests|FullyQualifiedName~PersonEndpointsTests&quot;] owner=integration-tests</div>
+<div class="line"><span class="at">[08:28:38]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;pwsh&quot;,&quot;-NoProfile&quot;,&quot;-NonInteractive&quot;,&quot;-Command&quot;,&quot;$t = (Get-Content docs/user-guide/README.md -Raw) + (Get-Content docs/technical/README.md -Raw) + (Get-Content docs/planning/gap-analysis.md -Raw); foreach ($p in 'Geocoding:Enabled', 'Geocoding:GoogleApiKey', 'session 112') { if ($t -notmatch [regex]::Escape($p)) { Write-Error \&quot;missing: $p\&quot;; exit 1 } }; if ($t -match 'No session plans it; the operator has not decided it') { Write-Error 'gap item not closed'; exit 1 }&quot;] owner=docs</div>
+<div class="line"><span class="at">[08:28:39]</span> <span class="muted">report-accepted</span> seq=9 step=fix-round-1 files=[] notes=Update geocodes only a new or changed street (an unchanged stored street is never sent again); timeouts clamped to at least one second; ELR promotion and eCR intake geocoding integration tests against the stub; unchanged-street regression test</div>
+<div class="line"><span class="at">[08:28:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[08:28:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[08:28:39]</span> <span class="muted">job-started</span> name=verification pid=10288 log=.dabbler/runs/s112/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:29:10]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s112/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:29:10]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[08:29:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[08:29:10]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[08:29:10]</span> <span class="muted">job-started</span> name=run of record: unit pid=56276 log=.dabbler/runs/s112/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:29:28]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s112/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:29:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[08:29:31]</span> <span class="muted">landed</span> commit=bc8afe351ee0c3954dc0fd9aa0a6c15e00833193</div>
+<div class="line"><span class="at">[08:29:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[08:29:31]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[08:29:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[08:29:31]</span> <span class="muted">job-started</span> name=close pid=39652 log=.dabbler/runs/s112/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:29:37]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s112/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:29:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>An unchanged address that previously failed geocoding is geocoded again on every later demographic save**</td><td>fixed — Update geocodes only a new or changed street (an unchanged stored street is never sent again); timeouts clamped to at least one second; ELR promotion and eCR intake geocoding integration tests against the stub; unchanged-street regression test</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** Invalid timeout configuration can stop an address save despite the requirement that provider failure never stops one.</td><td>fixed — Update geocodes only a new or changed street (an unchanged stored street is never sent again); timeouts clamped to at least one second; ELR promotion and eCR intake geocoding integration tests against the stub; unchanged-street regression test</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** The visible integration coverage proves only the Demographic-tab path. A regression test should exercise each promised intake path with a local stub: promote an ELR containing a new street address, and intake/link an eCR containing a new street address; each should persist Census coordinates and show the expected one-line address request.</td><td>fixed — Update geocodes only a new or changed street (an unchanged stored street is never sent again); timeouts clamped to at least one second; ELR promotion and eCR intake geocoding integration tests against the stub; unchanged-street regression test</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** A street changed back to a value used by any stored historic address will not be geocoded. With a person whose historic address is `1 Main Street` and current address is `2 Oak Avenue`, update the current address to `1 Main Street` while the Census stub returns coordinates; it should make a Census request and persist the result because the current address’s street changed. `PersonEndpoints.cs` instead puts all pre-save streets, including historic ones, in `storedStreets`, so the post-save `1 Main Street` is skipped. This is an uncommon move-back scenario, so it is non-blocking.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>17s</td><td>2288</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 030 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 030 transcript</h1>
+<p class="stamp">Rendered 2026-10-16T18:33:16.408Z by dabbler-ai-router 3.21.0 at 3ca0456eabae5aef55a365850bd70ddd8acd1042.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-16T14:17:42.610-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 30: Agencies, jurisdictions, facilities and conditions</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code> and <code>Survsys.Api</code>: agencies and jurisdictions with zip-to-agency mapping, facilities, and the conditions table filled out, with their migration and endpoints.</li><li><code>Survsys.Web</code>: the agency, facility and condition administration screens.</li><li><code>Survsys.UnitTests</code>: the zip-to-agency resolution rules, named after the rule class, including an unmapped zip.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Replace the static sixteen-agency stand-in with real reference data and give agencies, facilities and conditions administration screens. Survsys.Data gains an agencies table (legacy agency: id, name, short_name) seeded by the migration with the sixteen agencies under their current identifiers so every stored agency_id still resolves; a zip_code_agencies table (legacy zip_code_agency: zip_code, agency_id) that is an agency's jurisdiction, since the legacy has no jurisdiction table and serves its jurisdictions from the agency codeset; a facilities table (legacy facility name, short_name, agency_id, with its one address and phone inline); and ZipAgencyRules, the pure rule that normalises a zip (trimmed, ZIP+4 cut to five digits, anything else not a zip) and resolves it against the mapping to one agency, unmapped, or ambiguous where several agencies claim it. One migration carries the three tables. Survsys.Api makes GET /api/agencies read the table, adds an agency's detail with its zip codes, create and update (the zip codes saved with the agency), and GET /api/agencies/by-zip/{zip}; the person-condition and work-queue endpoints check an agency's existence against the table instead of the static list; facilities get list, detail, create and update; conditions get detail, create and update over every column but the group, so the lead-in prose is on the wire for the first time. Survsys.Web gains the matching client calls and the agency, facility and condition administration screens, and the unit suite proves ZipAgencyRules including an unmapped zip, plus the new validators and client calls.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/252695529519b79b3602456469d050639b95b932"><code>252695529519b79b3602456469d050639b95b932</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Data</td><td><p>Survsys.Data: the Agency, ZipCodeAgency and Facility entities with their configurations (agencies seeded with the sixteen current agencies under their current ids via HasData), their DbSets, and the pure ZipAgencyRules class (Normalize and Resolve), with ZipAgencyRulesTests covering a mapped zip, ZIP+4, whitespace, a non-zip, an unmapped zip and an ambiguous zip.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ZipAgencyRulesTests</code></td><td>yes</td></tr>
+<tr><td>Migration</td><td><p>Generate the AgenciesAndFacilities migration with dotnet ef, named with the migration id 20261016190000_AgenciesAndFacilities, and the updated model snapshot.</p></td><td><span class="mono">Survsys.Data/Migrations/20261016190000_AgenciesAndFacilities.cs</span><br><span class="mono">Survsys.Data/Migrations/20261016190000_AgenciesAndFacilities.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Api agencies</td><td><p>Survsys.Contracts and Survsys.Api: AgencyEndpoints reads the agencies table (list, detail with zip codes, create, update with zip codes, by-zip resolution through ZipAgencyRules) with a WhyNotAnAgency validator; the static list goes; PersonConditionEndpoints and WorkQueueEndpoints check agency existence through the database; Program.cs registers the agency queries. Update the three endpoint test files to match.</p></td><td><span class="mono">Survsys.Contracts/AgencyDetailResponse.cs</span><br><span class="mono">Survsys.Contracts/SaveAgencyRequest.cs</span><br><span class="mono">Survsys.Api/AgencyEndpoints.cs</span><br><span class="mono">Survsys.Api/PersonConditionEndpoints.cs</span><br><span class="mono">Survsys.Api/WorkQueueEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.UnitTests/AgencyEndpointsTests.cs</span><br><span class="mono">Survsys.UnitTests/PersonConditionEndpointsTests.cs</span><br><span class="mono">Survsys.UnitTests/WorkQueueEndpointsTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~AgencyEndpointsTests|FullyQualifiedName~PersonConditionEndpointsTests|FullyQualifiedName~WorkQueueEndpointsTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Api facilities</td><td><p>Survsys.Contracts and Survsys.Api: FacilityEndpoints with list (paged), detail, create and update, a WhyNotAFacility validator and the ToResponse projection, registered in Program.cs, with FacilityEndpointsTests.</p></td><td><span class="mono">Survsys.Contracts/FacilityResponse.cs</span><br><span class="mono">Survsys.Contracts/SaveFacilityRequest.cs</span><br><span class="mono">Survsys.Api/FacilityEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.UnitTests/FacilityEndpointsTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~FacilityEndpointsTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Api conditions</td><td><p>Survsys.Contracts and Survsys.Api: ConditionEndpoints gains detail, create and update over every condition column but the group, with a WhyNotACondition validator and the detail projection, with ConditionEndpointsTests updated.</p></td><td><span class="mono">Survsys.Contracts/ConditionDetailResponse.cs</span><br><span class="mono">Survsys.Contracts/SaveConditionRequest.cs</span><br><span class="mono">Survsys.Api/ConditionEndpoints.cs</span><br><span class="mono">Survsys.UnitTests/ConditionEndpointsTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ConditionEndpointsTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Web clients</td><td><p>Survsys.Web: AgenciesClient and ConditionsClient gain find, create and update; a new FacilitiesClient with page, find, create and update, registered in Program.cs; their client tests.</p></td><td><span class="mono">Survsys.Web/AgenciesClient.cs</span><br><span class="mono">Survsys.Web/ConditionsClient.cs</span><br><span class="mono">Survsys.Web/FacilitiesClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.UnitTests/AgenciesClientTests.cs</span><br><span class="mono">Survsys.UnitTests/ConditionsClientTests.cs</span><br><span class="mono">Survsys.UnitTests/FacilitiesClientTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~AgenciesClientTests|FullyQualifiedName~ConditionsClientTests|FullyQualifiedName~FacilitiesClientTests</code></td><td>yes</td></tr>
+<tr><td>Web screens</td><td><p>Survsys.Web: the agency list and agency edit screens (name, short name, zip codes), the facility list and facility edit screens, a condition edit screen linked from the existing conditions screen without changing its walkthrough identifiers, and navigation entries for agencies and facilities.</p></td><td><span class="mono">Survsys.Web/Components/Pages/Agencies.razor</span><br><span class="mono">Survsys.Web/Components/Pages/AgencyEdit.razor</span><br><span class="mono">Survsys.Web/Components/Pages/Facilities.razor</span><br><span class="mono">Survsys.Web/Components/Pages/FacilityEdit.razor</span><br><span class="mono">Survsys.Web/Components/Pages/ConditionEdit.razor</span><br><span class="mono">Survsys.Web/Components/Pages/Conditions.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No deletion of agencies, facilities or conditions: create and update only.</li><li>No condition_group table, facility_type table, facility licensing and accreditation columns, or zip_code/county table: the legacy columns this session names are the whole schema it adds.</li><li>No foreign keys or navigations from the existing agency_id columns (person_conditions, exposures, shares) to the new agencies table.</li><li>No loading of the 186 legacy conditions into the migration; the conditions fixtures stay as they are.</li><li>No core element configuration, users, roles or privileges, and no walkthroughs: those are sessions 31, 32 and 34.</li><li>No change to the Investigating Agency dropdowns or work-queue screens beyond reading the same endpoint.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[18:17:42]</span> <span class="muted">run-started</span> session=030 mode=pull</div>
+<div class="line"><span class="at">[18:17:42]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[18:20:34]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[18:20:34]</span> <span class="muted">plan-accepted</span> steps=[&quot;data&quot;,&quot;migration&quot;,&quot;api-agencies&quot;,&quot;api-facilities&quot;,&quot;api-conditions&quot;,&quot;web-clients&quot;,&quot;web-screens&quot;] non_goals=6</div>
+<div class="line"><span class="at">[18:20:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[18:20:34]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=data</div>
+<div class="line"><span class="at">[18:21:59]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:22:02]</span> <span class="muted">check-passed</span> step=data argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ZipAgencyRulesTests&quot;]</div>
+<div class="line"><span class="at">[18:22:03]</span> <span class="muted">report-accepted</span> seq=2 step=data files=[] notes=Agency, ZipCodeAgency and Facility entities with configurations (agencies seeded with the 16 current ids), DbSets, and pure ZipAgencyRules with tests</div>
+<div class="line"><span class="at">[18:22:03]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=migration</div>
+<div class="line"><span class="at">[18:22:28]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:22:29]</span> <span class="muted">check-passed</span> step=migration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[18:22:29]</span> <span class="muted">report-accepted</span> seq=3 step=migration files=[&quot;Survsys.Data/Migrations/20261016190000_AgenciesAndFacilities.cs&quot;,&quot;Survsys.Data/Migrations/20261016190000_AgenciesAndFacilities.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=AgenciesAndFacilities migration generated by dotnet ef (agencies seeded, facilities, zip_code_agencies), renamed to the planned id</div>
+<div class="line"><span class="at">[18:22:29]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=api-agencies</div>
+<div class="line"><span class="at">[18:26:20]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:26:23]</span> <span class="muted">check-passed</span> step=api-agencies argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~AgencyEndpointsTests|FullyQualifiedName~PersonConditionEndpointsTests|FullyQualifiedName~WorkQueueEndpointsTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[18:26:24]</span> <span class="muted">report-accepted</span> seq=4 step=api-agencies files=[&quot;Survsys.Contracts/AgencyDetailResponse.cs&quot;,&quot;Survsys.Contracts/SaveAgencyRequest.cs&quot;,&quot;Survsys.Api/AgencyEndpoints.cs&quot;,&quot;Survsys.Api/PersonConditionEndpoints.cs&quot;,&quot;Survsys.Api/WorkQueueEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.UnitTests/AgencyEndpointsTests.cs&quot;,&quot;Survsys.UnitTests/PersonConditionEndpointsTests.cs&quot;,&quot;Survsys.UnitTests/WorkQueueEndpointsTests.cs&quot;] notes=Agencies read from the table with detail, create, update (zip codes) and by-zip resolution; report and work-queue endpoints check agency existence via AgencyQueries</div>
+<div class="line"><span class="at">[18:26:24]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=api-facilities</div>
+<div class="line"><span class="at">[18:27:33]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:27:36]</span> <span class="muted">check-passed</span> step=api-facilities argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~FacilityEndpointsTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[18:27:37]</span> <span class="muted">report-accepted</span> seq=5 step=api-facilities files=[&quot;Survsys.Contracts/FacilityResponse.cs&quot;,&quot;Survsys.Contracts/SaveFacilityRequest.cs&quot;,&quot;Survsys.Api/FacilityEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.UnitTests/FacilityEndpointsTests.cs&quot;] notes=Facility list, detail, create and update with WhyNotAFacility and agency existence checked via AgencyQueries</div>
+<div class="line"><span class="at">[18:27:37]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=api-conditions</div>
+<div class="line"><span class="at">[18:28:35]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:28:38]</span> <span class="muted">check-passed</span> step=api-conditions argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ConditionEndpointsTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[18:28:39]</span> <span class="muted">report-accepted</span> seq=6 step=api-conditions files=[&quot;Survsys.Contracts/ConditionDetailResponse.cs&quot;,&quot;Survsys.Contracts/SaveConditionRequest.cs&quot;,&quot;Survsys.Api/ConditionEndpoints.cs&quot;,&quot;Survsys.UnitTests/ConditionEndpointsTests.cs&quot;] notes=Condition detail, create and update over every column but the group, with WhyNotACondition and the ToDetail projection</div>
+<div class="line"><span class="at">[18:28:39]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=web-clients</div>
+<div class="line"><span class="at">[18:29:56]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:29:59]</span> <span class="muted">check-passed</span> step=web-clients argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~AgenciesClientTests|FullyQualifiedName~ConditionsClientTests|FullyQualifiedName~FacilitiesClientTests&quot;]</div>
+<div class="line"><span class="at">[18:29:59]</span> <span class="muted">report-accepted</span> seq=7 step=web-clients files=[&quot;Survsys.Web/AgenciesClient.cs&quot;,&quot;Survsys.Web/ConditionsClient.cs&quot;,&quot;Survsys.Web/FacilitiesClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.UnitTests/AgenciesClientTests.cs&quot;,&quot;Survsys.UnitTests/ConditionsClientTests.cs&quot;,&quot;Survsys.UnitTests/FacilitiesClientTests.cs&quot;] notes=Agencies and conditions clients gain find, create and update; new FacilitiesClient registered; client tests</div>
+<div class="line"><span class="at">[18:29:59]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=web-screens</div>
+<div class="line"><span class="at">[18:31:28]</span> <span class="muted">run-resumed</span> session=030 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:31:30]</span> <span class="muted">check-passed</span> step=web-screens argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[18:31:30]</span> <span class="muted">report-accepted</span> seq=8 step=web-screens files=[&quot;Survsys.Web/Components/Pages/Agencies.razor&quot;,&quot;Survsys.Web/Components/Pages/AgencyEdit.razor&quot;,&quot;Survsys.Web/Components/Pages/Facilities.razor&quot;,&quot;Survsys.Web/Components/Pages/FacilityEdit.razor&quot;,&quot;Survsys.Web/Components/Pages/ConditionEdit.razor&quot;,&quot;Survsys.Web/Components/Pages/Conditions.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;] notes=Agency, facility and condition administration screens; conditions list links each name to its edit screen keeping its three headings; nav entries</div>
+<div class="line"><span class="at">[18:31:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[18:31:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[18:31:32]</span> <span class="muted">job-started</span> name=verification pid=47768 log=.dabbler/runs/s30/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[18:32:55]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s30/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[18:32:55]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[18:32:55]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[18:32:55]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[18:32:57]</span> <span class="muted">job-started</span> name=run of record: unit pid=49588 log=.dabbler/runs/s30/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[18:33:04]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s30/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[18:33:04]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[18:33:08]</span> <span class="muted">landed</span> commit=252695529519b79b3602456469d050639b95b932</div>
+<div class="line"><span class="at">[18:33:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[18:33:08]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[18:33:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[18:33:09]</span> <span class="muted">job-started</span> name=close pid=47136 log=.dabbler/runs/s30/driver/jobs/close.log</div>
+<div class="line"><span class="at">[18:33:16]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s30/driver/jobs/close.log</div>
+<div class="line"><span class="at">[18:33:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>8 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.UnitTests/FacilityEndpointsTests.cs`, `WhyNotAFacilityRefusesAValueLongerThanItsColumn` only exercises the `city` length bound (100) and does not pin the max-length checks on `name` (200), `shortName` (50), `street` (200), or `phone` (30) in `FacilityEndpoints.WhyNotAFacility`.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Precondition:** `Valid()` `SaveFacilityRequest` fixture in `FacilityEndpointsTests`.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Input:** `Valid() with { Name = new string('a', 201) }`, `Valid() with { ShortName = new string('a', 51) }`, `Valid() with { Street = new string('a', 201) }`, and `Valid() with { Phone = new string('1', 31) }` passed to `FacilityEndpoints.WhyNotAFacility`.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Expectation:** Each call returns a non-null error string naming the respective field and limit (`&quot;name is longer than 200&quot;`, `&quot;shortName is longer than 50&quot;`, `&quot;street is longer than 200&quot;`, `&quot;phone is longer than 30&quot;`); today's code implements these checks, and a `[Theory]` over those four cases would pin each field's constant against accidental regression.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.UnitTests/AgenciesClientTests.cs` (`ASaveThatFailedCarriesTheSavePrefix`) and `Survsys.UnitTests/ConditionsClientTests.cs` (`ASaveThatFailedCarriesTheSavePrefix`), only one of the two write methods (`Create` in `AgenciesClientTests`, `Update` in `ConditionsClientTests`) is tested for `SaveFailurePrefix` on a non-success response.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Precondition:** A `StubTransport` returning `HttpStatusCode.BadRequest` with body `&quot;{}&quot;`.</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Input:** `await client.Update(5, new SaveAgencyRequest(&quot;&quot;))` on `AgenciesClient` and `await client.Create(new SaveConditionRequest(&quot;&quot;, true))` on `ConditionsClient`.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Expectation:** Both return `asked.Succeeded == false` with `asked.Failure` starting with `SaveFailurePrefix`, matching the symmetric coverage in `FacilitiesClientTests.EachFailureCarriesItsOwnPrefix`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>651</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

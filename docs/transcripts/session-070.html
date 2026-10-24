@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 070 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 070 transcript</h1>
+<p class="stamp">Rendered 2026-10-19T15:55:14.228Z by dabbler-ai-router 3.21.0 at 73d6899ca8f7c3e1483d1389b209454935db6195.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-19T11:39:52.506-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 70: Person matching in the running application</h3>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: a person-match endpoint that scores candidates with <code>PersonMatchRules</code> from name, birth date, sex, identifiers and address, the thresholds for an exact match, a probable match and no match set in configuration.</li><li><code>Survsys.Web</code>: person search showing each candidate's score and why, and the staged-message review proposing its best match, with &quot;create new person&quot; beside it.</li><li><code>Survsys.IntegrationTests</code>: the endpoint's verdict on the legacy match cases in <code>EMSA_PERSON_MATCHING.md</code>.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Wire person matching into the running application. Survsys.Messaging's PersonMatchRules gains a Score that compares an incoming person with a candidate (both a plain PersonMatchSubject: last and first name, birth date, birth gender, identifier values, and street-and-zip address keys) and returns a 0-100 score with the reasons behind it (last name 30, first name 20, birth date 30, sex 5, a shared street-and-zip address 15; a shared identifier is a reason and, as today's medical-record-number rule, promotes a probable match to exact), and Classify takes a PersonMatchThresholds (exact and probable scores, defaulting to today's 95 and 70). Survsys.Api adds PersonMatchEndpoints: POST /api/persons/match takes a PersonMatchRequest, gathers candidates sharing the last name, birth date or an identifier (or exactly the person ids the request names), scores and classifies each and returns them best first as PersonMatchCandidateResponse (the person, score, verdict Exact/Probable/None, reasons); GET /api/staged-messages/{id}/person-matches parses the message's patient with OruR01Parser and returns that patient with its candidates. The thresholds are read from a PersonMatching configuration section in appsettings.json. Survsys.Web's person search panel shows each row's score and why, scored by the match endpoint for the page's person ids, and the staged-message review proposes the best candidate with &quot;Use this person&quot; and, beside it, &quot;Create new person&quot; from the message's patient. Unit tests cover the scoring, thresholds and clients; integration tests give the endpoint's verdict on the legacy match cases in EMSA_PERSON_MATCHING.md (score at or above the exact threshold, below the no-match threshold, a probable match, a shared identifier promoting a probable match to exact, a missing birth date demoting one to no match).</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/912fc0ac9cc8297c8f0f0dada5f46915634220ea"><code>912fc0ac9cc8297c8f0f0dada5f46915634220ea</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Match rules</td><td><p>In Survsys.Messaging/PersonMatchRules.cs add PersonMatchSubject, PersonMatchScore (score and reasons) and PersonMatchThresholds (Exact 95, Probable 70 by default); add PersonMatchRules.Score comparing an incoming subject with a candidate case-insensitively on trimmed values (last name 30, first name 20, birth date 30, birth gender 5, a shared street_zip address key 15, a shared identifier listed as a reason), and AddressKey building the lower-cased street and five-digit zip key or null; Classify takes an optional PersonMatchThresholds in place of the constants. PersonMatchRulesTests covers Score, AddressKey and Classify with non-default thresholds.</p></td><td><span class="mono">Survsys.Messaging/PersonMatchRules.cs</span><br><span class="mono">Survsys.UnitTests/PersonMatchRulesTests.cs</span></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Api</td><td><p>Add contracts PersonMatchRequest, PersonMatchCandidateResponse and StagedMessagePersonMatchResponse. Add Survsys.Api/PersonMatchEndpoints.cs mapping POST /api/persons/match and GET /api/staged-messages/{id}/person-matches under the same authorization as person search, with a PersonMatchQueries that loads candidates (sharing last name, birth date or identifier value, capped, or the named person ids) with their identifiers and current address, projects them to PersonMatchSubject, scores and classifies them with the configured PersonMatchThresholds, and sorts best first with the name as tiebreak; an unparseable staged message answers with no patient and no candidates; an unknown one is 404. Register it in Program.cs, bind the thresholds from a PersonMatching section added to appsettings.json, and update the not-wired-in note in docs/technical/README.md. PersonMatchEndpointsTests covers the request validation and projection.</p></td><td><span class="mono">Survsys.Contracts/PersonMatchRequest.cs</span><br><span class="mono">Survsys.Contracts/PersonMatchCandidateResponse.cs</span><br><span class="mono">Survsys.Contracts/StagedMessagePersonMatchResponse.cs</span><br><span class="mono">Survsys.Api/PersonMatchEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.Api/appsettings.json</span><br><span class="mono">Survsys.UnitTests/PersonMatchEndpointsTests.cs</span><br><span class="mono">docs/technical/README.md</span></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Web</td><td><p>PersonsClient gains Match(PersonMatchRequest) and MessageQueueClient gains PersonMatches(id). PersonSearchPanel, when criteria were given, scores the loaded page through Match with the page's person ids and shows a Score column and a Why column (the reasons) per row. StagedMessageReview loads the message's person matches and shows the best candidate with its score, verdict and reasons, a &quot;Use this person&quot; button selecting it as the existing row action does, and beside it a &quot;Create new person&quot; button that creates the person from the message's patient and selects them. Existing element ids are left as they are. PersonsClientTests and MessageQueueClientTests cover the new calls.</p></td><td><span class="mono">Survsys.Web/PersonsClient.cs</span><br><span class="mono">Survsys.Web/MessageQueueClient.cs</span><br><span class="mono">Survsys.Web/Components/PersonSearchPanel.razor</span><br><span class="mono">Survsys.Web/Components/Pages/StagedMessageReview.razor</span><br><span class="mono">Survsys.UnitTests/PersonsClientTests.cs</span><br><span class="mono">Survsys.UnitTests/MessageQueueClientTests.cs</span></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Integration tests</td><td><p>Add Survsys.IntegrationTests/PersonMatchEndpointsTests.cs: against the real database, the match endpoint's verdict on the legacy cases in EMSA_PERSON_MATCHING.md (every field agreeing is Exact; a probable score is Probable; a probable score with a shared identifier is Exact; a probable score with no birth date on the candidate is None; only a shared last name is None), thresholds read from configuration, and the staged-message route proposing the stored person for a message whose patient matches them.</p></td><td><span class="mono">Survsys.IntegrationTests/PersonMatchEndpointsTests.cs</span></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No phone or email contact-info promotion (EMSA steps 4b-4c) and no last-name-change detection for chronic diseases</li><li>No change to OruR01Parser: a staged message's patient is matched on the name, birth date and sex it already parses, with no identifiers or address from PID-3/PID-11</li><li>No automatic assignment of a staged message to a person during intake: the review proposes, a person decides</li><li>No duplicate-person detection or merging (session 71), no fuzzy or phonetic name comparison, no geocoding</li><li>No change to GET /api/persons search semantics, no new E2E tests or walkthroughs, and no change to existing element ids</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[15:39:52]</span> <span class="muted">run-started</span> session=070 mode=pull</div>
+<div class="line"><span class="at">[15:39:52]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[15:42:13]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[15:42:13]</span> <span class="muted">plan-accepted</span> steps=[&quot;match-rules&quot;,&quot;api&quot;,&quot;web&quot;,&quot;integration-tests&quot;] non_goals=5</div>
+<div class="line"><span class="at">[15:42:13]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[15:42:14]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=match-rules</div>
+<div class="line"><span class="at">[15:44:02]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:44:05]</span> <span class="muted">check-passed</span> step=match-rules argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[15:44:06]</span> <span class="muted">report-accepted</span> seq=2 step=match-rules files=[&quot;Survsys.Messaging/PersonMatchRules.cs&quot;,&quot;Survsys.UnitTests/PersonMatchRulesTests.cs&quot;] notes=PersonMatchRules gains Score, AddressKey, PersonMatchSubject/Score/Thresholds; Classify takes optional thresholds</div>
+<div class="line"><span class="at">[15:44:06]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=api</div>
+<div class="line"><span class="at">[15:46:22]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:46:25]</span> <span class="muted">check-passed</span> step=api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[15:46:26]</span> <span class="muted">report-accepted</span> seq=3 step=api files=[&quot;Survsys.Contracts/PersonMatchRequest.cs&quot;,&quot;Survsys.Contracts/PersonMatchCandidateResponse.cs&quot;,&quot;Survsys.Contracts/StagedMessagePersonMatchResponse.cs&quot;,&quot;Survsys.Api/PersonMatchEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.Api/appsettings.json&quot;,&quot;Survsys.UnitTests/PersonMatchEndpointsTests.cs&quot;,&quot;docs/technical/README.md&quot;] notes=POST /api/persons/match and GET /api/staged-messages/{id}/person-matches; thresholds bound from PersonMatching config</div>
+<div class="line"><span class="at">[15:46:26]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=web</div>
+<div class="line"><span class="at">[15:48:05]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:48:09]</span> <span class="muted">check-passed</span> step=web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[15:48:09]</span> <span class="muted">report-accepted</span> seq=4 step=web files=[&quot;Survsys.Web/PersonsClient.cs&quot;,&quot;Survsys.Web/MessageQueueClient.cs&quot;,&quot;Survsys.Web/Components/PersonSearchPanel.razor&quot;,&quot;Survsys.Web/Components/Pages/StagedMessageReview.razor&quot;,&quot;Survsys.UnitTests/PersonsClientTests.cs&quot;,&quot;Survsys.UnitTests/MessageQueueClientTests.cs&quot;] notes=Search panel shows score and why per row; staged review proposes best match with Use this person and Create new person</div>
+<div class="line"><span class="at">[15:48:09]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=integration-tests</div>
+<div class="line"><span class="at">[15:49:41]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[15:49:44]</span> <span class="muted">check-passed</span> step=integration-tests argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[15:49:45]</span> <span class="muted">report-accepted</span> seq=5 step=integration-tests files=[&quot;Survsys.IntegrationTests/PersonMatchEndpointsTests.cs&quot;] notes=Legacy match cases, thresholds from configuration, refused empty request, staged-message patient matched</div>
+<div class="line"><span class="at">[15:49:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[15:49:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[15:49:46]</span> <span class="muted">job-started</span> name=verification pid=60808 log=.dabbler/runs/s70/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:51:09]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s70/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:51:09]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[15:51:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[15:51:09]</span> <span class="muted">instruction-issued</span> seq=6 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[15:51:30]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[15:51:30]</span> <span class="muted">dispute-recorded</span> round=1 finding=0</div>
+<div class="line"><span class="at">[15:51:30]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[1,2] reject=[0] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The only provider this application runs on is SQL Server (UseSqlServer in Program.cs and in the integration fixture), whose default collation is case-insensitive, so the last-name and identifier comparisons in the candidate query are case-insensitive there. The integration test proves it: the staged message's patient arrives as DOE and the query finds the person stored as Doe.&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[15:51:30]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[15:51:30]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[15:52:15]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[15:52:18]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=match-rules</div>
+<div class="line"><span class="at">[15:52:20]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=api</div>
+<div class="line"><span class="at">[15:52:22]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=web</div>
+<div class="line"><span class="at">[15:52:24]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;] owner=integration-tests</div>
+<div class="line"><span class="at">[15:52:25]</span> <span class="muted">report-accepted</span> seq=7 step=fix-round-1 files=[&quot;Survsys.Api/PersonMatchEndpoints.cs&quot;,&quot;Survsys.Messaging/PersonMatchRules.cs&quot;,&quot;Survsys.UnitTests/PersonMatchRulesTests.cs&quot;] notes=Candidates ordered by criteria shared before the cap; Score names a differing address and no shared identifier</div>
+<div class="line"><span class="at">[15:52:25]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[15:52:25]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[15:52:26]</span> <span class="muted">job-started</span> name=verification pid=48092 log=.dabbler/runs/s70/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:53:34]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s70/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:53:34]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[15:53:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[15:53:34]</span> <span class="muted">instruction-issued</span> seq=8 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[15:53:48]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[15:53:48]</span> <span class="muted">dispositions-accepted</span> round=2 fix=[0] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[15:53:48]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[15:53:48]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=fix-round-2</div>
+<div class="line"><span class="at">[15:54:23]</span> <span class="muted">run-resumed</span> session=070 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[15:54:26]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=match-rules</div>
+<div class="line"><span class="at">[15:54:27]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=api</div>
+<div class="line"><span class="at">[15:54:29]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=web</div>
+<div class="line"><span class="at">[15:54:31]</span> <span class="muted">check-passed</span> step=fix-round-2 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;] owner=integration-tests</div>
+<div class="line"><span class="at">[15:54:32]</span> <span class="muted">report-accepted</span> seq=9 step=fix-round-2 files=[&quot;Survsys.Api/PersonMatchEndpoints.cs&quot;] notes=Candidate cap removed: every person sharing last name, birth date or identifier is scored</div>
+<div class="line"><span class="at">[15:54:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[15:54:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[15:54:33]</span> <span class="muted">job-started</span> name=verification pid=56868 log=.dabbler/runs/s70/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:54:48]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s70/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[15:54:48]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[15:54:48]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[15:54:48]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[15:54:50]</span> <span class="muted">job-started</span> name=run of record: unit pid=39872 log=.dabbler/runs/s70/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[15:54:58]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s70/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[15:54:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[15:55:03]</span> <span class="muted">landed</span> commit=912fc0ac9cc8297c8f0f0dada5f46915634220ea</div>
+<div class="line"><span class="at">[15:55:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[15:55:03]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[15:55:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[15:55:04]</span> <span class="muted">job-started</span> name=close pid=57064 log=.dabbler/runs/s70/driver/jobs/close.log</div>
+<div class="line"><span class="at">[15:55:14]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s70/driver/jobs/close.log</div>
+<div class="line"><span class="at">[15:55:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Candidate discovery is case-sensitive on case-sensitive providers, contradicting the matching rules and omitting valid staged-message and identifier matches.**</td><td>disputed — The only provider this application runs on is SQL Server (UseSqlServer in Program.cs and in the integration fixture), whose default collation is case-insensitive, so the last-name and identifier comparisons in the candidate query are case-insensitive there. The integration test proves it: the staged message's patient arrives as DOE and the query finds the person stored as Doe.</td></tr>
+<tr><td>1</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The endpoint silently drops candidates after the first 200 IDs before ranking, so it does not return the actual best matches.**</td><td>fixed — Candidates ordered by criteria shared before the cap; Score names a differing address and no shared identifier — (Survsys.Api/PersonMatchEndpoints.cs, Survsys.Messaging/PersonMatchRules.cs, Survsys.UnitTests/PersonMatchRulesTests.cs)</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** `PersonMatchScore` documents `Reasons` as “Each field that agreed or differed,” but `Score` emits no reason when populated address collections do not share an address, nor when populated identifier collections share none. A useful unit case would set both subjects to matching names/date/sex but distinct address keys and identifiers, call `Score`, and assert reasons such as `Address differs` and an identifier non-match reason; today the result contains only the scalar-field matches.</td><td>fixed — Candidates ordered by criteria shared before the cap; Score names a differing address and no shared identifier — (Survsys.Api/PersonMatchEndpoints.cs, Survsys.Messaging/PersonMatchRules.cs, Survsys.UnitTests/PersonMatchRulesTests.cs)</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Round 1’s candidate-cap finding remains: ordering by the count of discovery keys is not ordering by the actual score, so the 200-row cap can still exclude the best candidate.</td><td>fixed — Candidate cap removed: every person sharing last name, birth date or identifier is scored — (Survsys.Api/PersonMatchEndpoints.cs)</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** Round 1’s disputed case-sensitivity finding is upheld as a non-blocking configuration defect. The rebuttal establishes that the tested SQL Server fixture uses a case-insensitive default collation, not that all supported SQL Server databases do. `PersonMatchRules.Score` explicitly compares scalar values case-insensitively, while `PersonMatchQueries.Match` uses collation-dependent `person.LastName == lastName` and `identifiers.Contains(identifier.Value)`. On a SQL Server database configured with a case-sensitive collation, staged `DOE` or submitted `mrn-77` will not discover `Doe` or `MRN-77` candidates for scoring. A regression case would use a case-sensitive SQL Server collation, store `Doe`/`MRN-77`, submit `DOE`/`mrn-77`, and assert that the candidate is returned; today it would not be.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** Round 1’s missing-reason finding is resolved. `PersonMatchRules.Score` now emits `Address differs` when both subjects have addresses but share none, and `Shares no identifier` when both have identifiers but share none; the added unit test asserts both behaviors.</td><td>not answered</td></tr>
+</table></td></tr>
+<tr><td>3</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The unresolved case-sensitivity configuration defect remains. `PersonMatchQueries.Match` uses collation-dependent equality for `person.LastName == lastName` and identifier membership, whereas scoring is case-insensitive. On a case-sensitive database collation, `DOE` will not discover `Doe`, and `mrn-77` will not discover `MRN-77`, so those candidates cannot be scored. This remains non-blocking because it requires a non-default case-sensitive provider configuration.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>1464</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
