@@ -2368,9 +2368,9 @@
     {
       "number": 114,
       "title": "Walkthroughs for the open items",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-24T06:14:19.626000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-24T06:31:22.427000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
