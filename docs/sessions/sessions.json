@@ -2346,9 +2346,9 @@
     {
       "number": 113,
       "title": "Held eICRs, attachments, and no system settings",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-24T05:29:18.704000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-24T05:42:18.291000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
