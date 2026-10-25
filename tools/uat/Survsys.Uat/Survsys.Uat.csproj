@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The kit for performing the walkthroughs by hand: `reset` and `start`
+       over a database of its own. It also holds the clearing and seeding the
+       end-to-end harness calls, so the two cannot describe different data.
+       It launches Survsys.Api and Survsys.Web as processes and references
+       neither, for the reason Survsys.E2ETests gives. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Recreating and seeding the database, which is raw SQL and not
+         persistence, as in Survsys.E2ETests. -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
+    <!-- Lifts the vulnerable 9.0.x that Microsoft.Data.SqlClient brings in
+         transitively, as Survsys.E2ETests does for the same reason. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The fixtures both harnesses seed, linked from where they live rather
+         than copied, so the kit's database is the harness's. -->
+    <Content Include="..\..\..\Survsys.IntegrationTests\Fixtures\conditions.sql"
+             Link="Fixtures\conditions.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\Survsys.IntegrationTests\Fixtures\persons.sql"
+             Link="Fixtures\persons.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\Survsys.IntegrationTests\Fixtures\staged-messages.sql"
+             Link="Fixtures\staged-messages.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\Survsys.E2ETests\Fixtures\notification-guide.sql"
+             Link="Fixtures\notification-guide.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\Survsys.E2ETests\Fixtures\elr-intake.sql"
+             Link="Fixtures\elr-intake.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\Survsys.E2ETests\Fixtures\ecr-intake.sql"
+             Link="Fixtures\ecr-intake.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- The two tiers the kit launches, built when this project builds: a
+       build-order dependency, not a <ProjectReference>, as in
+       Survsys.E2ETests.csproj. -->
+  <Target Name="BuildTiersTheKitLaunches" BeforeTargets="Build">
+    <MSBuild Projects="..\..\..\Survsys.Api\Survsys.Api.csproj;..\..\..\Survsys.Web\Survsys.Web.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)" />
+  </Target>
+
+</Project>

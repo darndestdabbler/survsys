@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 091 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 091 transcript</h1>
+<p class="stamp">Rendered 2026-10-21T13:43:03.523Z by dabbler-ai-router 3.21.0 at 81f6b7ba0580f50c0c6ab11b1f3eaa9cd5023399.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-21T09:33:52.214-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 91: Transport to CDC</h3>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: a transport chosen in configuration — the HTTP post that exists, or files written to a folder that a PHINMS or AIMS sender picks up — and batch-file tracking of what each file carried.</li><li><code>Survsys.Api</code>: retention of the export log by a configured age, and the transport's credentials read from configuration, never stored.</li><li><code>Survsys.IntegrationTests</code>: the file transport's output and its batch record.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<p><strong>Non-goals.</strong> No live transmission to CDC: nothing in this session — code, test or configuration — sends to a real CDC, PHINMS or AIMS endpoint. The HTTP transport is exercised only against a local stub, the file transport writes only to a test folder, and the shipped configuration leaves the endpoint empty so transmission stays off.</p>
+<h2>Work Plan</h2>
+<p>Give the CDC export a transport chosen in configuration, batch-file tracking, export-log retention and credentials read from configuration. Survsys.Data: CdcExportLogEntry gains a nullable BatchFile (the legacy cdc_batch_file) in one migration (20261021200000_ExportLogBatchFile) with its designer and the snapshot. Survsys.Api: CdcTransmissionOptions gains Transport (Http, the default, or File), OutboxDirectory, UserName and Password; CdcTransmitter either POSTs as today, now with HTTP Basic credentials when a user name is configured (the password supplied by the deployment's environment or secret store, never appsettings), or writes the message as one .hl7 file into the outbox folder that a PHINMS or AIMS sender picks up, its result carrying the file name; NotificationQueueService records that file name on the log row as its BatchFile, so each file is traced to the export it carried, and GET /api/export-log/{id} returns it. NotificationQueueOptions gains ExportLogRetentionDays (null keeps everything), and each worker pass first deletes log rows (and, by cascade, their details) queued longer ago than that, through a public static PruneExportLog. The shipped appsettings leave the endpoint and the outbox empty, so transmission stays off. Tests: option binding in unit tests; the file transport's output, the credential header against a local stub, the batch file on the log row and the pruning in integration tests.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/b494eb4e8f63eb396483c0f496efb098adeba455"><code>b494eb4e8f63eb396483c0f496efb098adeba455</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Batch file column</td><td><p>Add a nullable BatchFile (cdc_batch_file, bounded) to CdcExportLogEntry and its configuration, with one migration, its designer and the snapshot.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>git grep --untracked -q -F cdc_batch_file -- Survsys.Data/Migrations/20261021200000_ExportLogBatchFile.cs</code></td><td>yes</td></tr>
+<tr><td>Transport and batch tracking</td><td><p>CdcTransmissionOptions: Transport (Http or File), OutboxDirectory, UserName, Password. CdcTransmitter writes the message to a uniquely named .hl7 file in the outbox under the File transport (Faulted when no outbox is configured or the write fails) and returns the file name on its result; under Http it adds Basic credentials when a user name is configured. NotificationQueueService records the file name as the log row's BatchFile; the export log detail response carries it. appsettings documents the new keys, outbox empty, no password. Option binding unit tests; integration tests for the file output, the credential header against the stub and the batch file on the log row.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CdcTransmitterTests</code></td><td>yes</td></tr>
+<tr><td>Export log retention</td><td><p>NotificationQueueOptions.ExportLogRetentionDays (null keeps everything); a public static NotificationQueueService.PruneExportLog deleting log rows queued before now minus the retention, run at the start of each worker pass; appsettings documents it as null. Binding unit test; integration test that old rows and their details go and recent ones stay.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~NotificationQueueServiceTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No live transmission: nothing sends to a real CDC, PHINMS or AIMS endpoint; the HTTP transport is exercised only against a loopback stub, the file transport writes only to a test folder, and the shipped configuration leaves the endpoint and outbox empty.</li><li>No multi-message batch files, PHINMS/AIMS acknowledgement handling or route-not-read polling: one message per file, and a file written is the end of this tier's part.</li><li>No credential stored in a file or the database, and no transport other than HTTP and the outbox folder (no SFTP, MLLP or certificate auth).</li><li>No web screen changes and no new Playwright tests or walkthroughs; no NETSS export.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[13:33:52]</span> <span class="muted">run-started</span> session=091 mode=pull</div>
+<div class="line"><span class="at">[13:33:52]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[13:35:21]</span> <span class="muted">run-resumed</span> session=091 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[13:35:21]</span> <span class="muted">plan-accepted</span> steps=[&quot;batch-file-column&quot;,&quot;transport-and-batch-tracking&quot;,&quot;export-log-retention&quot;] non_goals=4</div>
+<div class="line"><span class="at">[13:35:21]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[13:35:22]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=batch-file-column</div>
+<div class="line"><span class="at">[13:36:21]</span> <span class="muted">run-resumed</span> session=091 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:36:24]</span> <span class="muted">check-passed</span> step=batch-file-column argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[13:36:25]</span> <span class="muted">check-passed</span> step=batch-file-column argv=[&quot;git&quot;,&quot;grep&quot;,&quot;--untracked&quot;,&quot;-q&quot;,&quot;-F&quot;,&quot;cdc_batch_file&quot;,&quot;--&quot;,&quot;Survsys.Data/Migrations/20261021200000_ExportLogBatchFile.cs&quot;]</div>
+<div class="line"><span class="at">[13:36:25]</span> <span class="muted">report-accepted</span> seq=2 step=batch-file-column files=[] notes=nmi_log.cdc_batch_file (nvarchar 260, nullable) as CdcExportLogEntry.BatchFile; migration 20261021200000_ExportLogBatchFile generated by dotnet ef and renamed to its planned id</div>
+<div class="line"><span class="at">[13:36:25]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=transport-and-batch-tracking</div>
+<div class="line"><span class="at">[13:38:51]</span> <span class="muted">run-resumed</span> session=091 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:38:54]</span> <span class="muted">check-passed</span> step=transport-and-batch-tracking argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[13:38:58]</span> <span class="muted">check-passed</span> step=transport-and-batch-tracking argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CdcTransmitterTests&quot;]</div>
+<div class="line"><span class="at">[13:38:59]</span> <span class="muted">report-accepted</span> seq=3 step=transport-and-batch-tracking files=[] notes=CdcTransport Http or File; File writes one .hl7 per message (tmp then rename) into OutboxDirectory and returns the name as BatchFile, logged on nmi_log.cdc_batch_file and returned by GET /api/export-log/{id}; Http signs in with Basic when UserName is set, password from configuration only</div>
+<div class="line"><span class="at">[13:38:59]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=export-log-retention</div>
+<div class="line"><span class="at">[13:40:09]</span> <span class="muted">run-resumed</span> session=091 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[13:40:11]</span> <span class="muted">check-passed</span> step=export-log-retention argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[13:40:15]</span> <span class="muted">check-passed</span> step=export-log-retention argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~NotificationQueueServiceTests&quot;]</div>
+<div class="line"><span class="at">[13:40:16]</span> <span class="muted">report-accepted</span> seq=4 step=export-log-retention files=[] notes=NotificationQueueOptions.ExportLogRetentionDays (null keeps all); NotificationQueueService.PruneExportLog deletes nmi_log rows queued before the cutoff (details by cascade), run at the start of each worker pass</div>
+<div class="line"><span class="at">[13:40:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[13:40:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[13:40:16]</span> <span class="muted">job-started</span> name=verification pid=12376 log=.dabbler/runs/s91/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[13:41:03]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s91/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[13:41:03]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[13:41:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[13:41:03]</span> <span class="muted">instruction-issued</span> seq=5 kind=rejection reasons=1</div>
+<div class="line"><span class="at">[13:41:10]</span> <span class="muted">run-resumed</span> session=091 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[13:41:10]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[13:41:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[13:41:11]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[13:42:18]</span> <span class="muted">run-resumed</span> session=091 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[13:42:21]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=batch-file-column</div>
+<div class="line"><span class="at">[13:42:21]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;git&quot;,&quot;grep&quot;,&quot;--untracked&quot;,&quot;-q&quot;,&quot;-F&quot;,&quot;cdc_batch_file&quot;,&quot;--&quot;,&quot;Survsys.Data/Migrations/20261021200000_ExportLogBatchFile.cs&quot;] owner=batch-file-column</div>
+<div class="line"><span class="at">[13:42:23]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=transport-and-batch-tracking</div>
+<div class="line"><span class="at">[13:42:27]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CdcTransmitterTests&quot;] owner=transport-and-batch-tracking</div>
+<div class="line"><span class="at">[13:42:29]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=export-log-retention</div>
+<div class="line"><span class="at">[13:42:33]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~NotificationQueueServiceTests&quot;] owner=export-log-retention</div>
+<div class="line"><span class="at">[13:42:34]</span> <span class="muted">report-accepted</span> seq=6 step=fix-round-1 files=[] notes=Pruning moved into NotificationQueueService.Process, so the timed worker and process-queue-now both prune to ExportLogRetentionDays; integration test APassPrunesTheExportLogToTheRetention</div>
+<div class="line"><span class="at">[13:42:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[13:42:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[13:42:34]</span> <span class="muted">job-started</span> name=verification pid=53296 log=.dabbler/runs/s91/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[13:42:45]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s91/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[13:42:45]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[13:42:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[13:42:45]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[13:42:45]</span> <span class="muted">job-started</span> name=run of record: unit pid=24116 log=.dabbler/runs/s91/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[13:42:53]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s91/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[13:42:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[13:42:57]</span> <span class="muted">landed</span> commit=b494eb4e8f63eb396483c0f496efb098adeba455</div>
+<div class="line"><span class="at">[13:42:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[13:42:57]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[13:42:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[13:42:57]</span> <span class="muted">job-started</span> name=close pid=44912 log=.dabbler/runs/s91/driver/jobs/close.log</div>
+<div class="line"><span class="at">[13:43:03]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s91/driver/jobs/close.log</div>
+<div class="line"><span class="at">[13:43:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>On-demand queue processing bypasses configured export-log retention.</td><td>fixed — Pruning moved into NotificationQueueService.Process, so the timed worker and process-queue-now both prune to ExportLogRetentionDays; integration test APassPrunesTheExportLogToTheRetention</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>7s</td><td>2023</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
