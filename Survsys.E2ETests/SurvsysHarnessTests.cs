@@ -1,5 +1,6 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Playwright;
+using Survsys.Uat;
 using Xunit;
 
 namespace Survsys.E2ETests;
@@ -126,7 +127,7 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
         // people, so the tables a walkthrough fills are the ones before the
         // people's details.
         const string FirstFixtureTable = "parent_guardians";
-        var filledByWalkthroughs = SurvsysHarness.TablesInDeletionOrder
+        var filledByWalkthroughs = WalkthroughDatabase.TablesInDeletionOrder
             .TakeWhile(table => table != FirstFixtureTable);
         var leftOver = new List<string>();
 
@@ -186,7 +187,7 @@ public class SurvsysHarnessTests(SurvsysHarness harness) : SurvsysPageTest
         Assert.Equal([SurvsysHarness.AdministratorUserName], Strings(read, "SELECT user_name FROM users"));
         Assert.Equal(["Administrator"], Strings(read, "SELECT name FROM roles"));
         Assert.Equal(
-            [SurvsysHarness.AdministratorRoleId.ToString(System.Globalization.CultureInfo.InvariantCulture)],
+            [WalkthroughDatabase.AdministratorRoleId.ToString(System.Globalization.CultureInfo.InvariantCulture)],
             Strings(read, "SELECT DISTINCT CAST(role_id AS nvarchar(10)) FROM user_roles"));
     }
 

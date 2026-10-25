@@ -24,8 +24,14 @@ public class WalkthroughContractTests
     /// <summary>The walkthroughs, relative to the repository root.</summary>
     private const string Walkthroughs = "docs/walkthroughs";
 
-    /// <summary>The one file in that folder that is not a walkthrough.</summary>
+    /// <summary>The index, one of the two files in that folder that are not walkthroughs.</summary>
     private const string Index = "README.md";
+
+    /// <summary>
+    /// The guide to performing every walkthrough by hand, the other file in
+    /// that folder that is not a walkthrough.
+    /// </summary>
+    private const string Guide = "testing-by-hand.md";
 
     /// <summary>The suite a walkthrough's test lives in.</summary>
     private const string Suite = "Survsys.E2ETests";
@@ -62,6 +68,22 @@ public class WalkthroughContractTests
             + "walkthrough it does not link is one nobody will perform.");
     }
 
+    [Fact]
+    public void TheTestingByHandGuideLinksEveryWalkthrough()
+    {
+        var guide = File.ReadAllText(Path.Combine(Root(), Walkthroughs, Guide));
+
+        var unlisted = Documents()
+            .Where(document => !guide.Contains($"({document})", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(
+            unlisted.Count == 0,
+            $"{Walkthroughs}/{Guide} does not place {string.Join(", ", unlisted)}. The guide is "
+            + "the order a person performs every walkthrough in by hand, so a walkthrough it "
+            + "leaves out is one a round of testing by hand never reaches.");
+    }
+
     /// <summary>
     /// The walkthrough documents, by file name. Asserted non-empty, because
     /// every check here would otherwise pass on a folder this test failed to
@@ -75,7 +97,7 @@ public class WalkthroughContractTests
             .EnumerateFiles(folder, "*.md", SearchOption.TopDirectoryOnly)
             .Select(Path.GetFileName)
             .OfType<string>()
-            .Where(name => name != Index)
+            .Where(name => name != Index && name != Guide)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 

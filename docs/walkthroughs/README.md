@@ -5,6 +5,7 @@ running Survsys. Perform them in any order; each one stands alone.
 
 | Walkthrough | The user story | Performed by |
 |---|---|---|
+| [Testing by hand](testing-by-hand.md) | A person performs every walkthrough below by hand, in an order that works, over a database and tiers the kit resets and starts. This is a guide, not a walkthrough. | You, with `tools/uat/Survsys.Uat` |
 | [Review the conditions catalogue](review-the-conditions-catalogue.md) | A surveillance administrator opens the conditions catalogue to see which conditions may be reported, and which of them carry a CDC code. | `Survsys.E2ETests/ReviewTheConditionsCatalogueTests.cs` |
 | [Find a person](find-a-person.md) | An investigator looks up whether a person is already on file before doing any case work on them. | `Survsys.E2ETests/FindAPersonTests.cs` |
 | [Create a case morbidity report](create-a-case-morbidity-report.md) | An investigator opens a case morbidity report on a person already on file, in the legacy two steps, and ends on the report's own form. | `Survsys.E2ETests/CreateACaseMorbidityReportTests.cs` |
@@ -96,5 +97,9 @@ the first one's name with `_intake` on the end, with both intakes and the
 assignment pass turned on. The whole run is the full walkthrough regression a
 release runs: it performs every walkthrough above, with nothing selected
 out. It needs a reachable SQL
-Server; each walkthrough's own **Before you start** says what it needs to be
-performed by hand instead.
+Server.
+
+To perform them by hand instead, use the kit in `tools/uat/`. Its `reset` and
+`start` set up everything each walkthrough's own **Before you start** asks
+for, in a database of its own. [Testing by hand](testing-by-hand.md) gives the
+commands and an order to perform the walkthroughs in.

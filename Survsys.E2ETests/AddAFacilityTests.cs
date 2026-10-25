@@ -17,7 +17,7 @@ namespace Survsys.E2ETests;
 ///
 /// The facility it adds is a row left behind, so the harness clears the
 /// facilities table before it seeds (see
-/// <see cref="SurvsysHarness.TablesInDeletionOrder"/>). That is what lets this
+/// <see cref="Survsys.Uat.WalkthroughDatabase.TablesInDeletionOrder"/>). That is what lets this
 /// test assert the list holds exactly one facility — the one it just added —
 /// rather than however many a run before it left.
 /// </remarks>

@@ -127,6 +127,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 113 | Held eICRs, attachments, and no system settings | no | 2026-10-24 |
 | 114 | Walkthroughs for the open items | no | 2026-10-24 |
 | 115 | Release 1.0.0 (release: 1.0.0) | yes | 2026-10-24 |
+| 116 | A kit for testing by hand | no | 2026-10-25 |
 
 ### Session 1 — Author or import the solution plan
 
@@ -1008,3 +1009,13 @@ Write the three walkthroughs session 113 and 111 left without one, and perform e
 **Releasable: yes.**
 
 Release 1.0.0: the framework packs and publishes what is on the trunk.
+
+### Session 116 — A kit for testing by hand
+
+**Releasable: no.**
+
+Give a person a kit for performing the walkthroughs by hand against a running Survsys. A new console project, tools/uat/Survsys.Uat (in Survsys.sln), takes over the end-to-end harness's clearing and seeding: the tables it clears in deletion order, the accounts it clears but the administrator, and its two fixture lists in order (the main harness's and the intake harness's). These live in one public WalkthroughDatabase class that SurvsysHarness now calls through a project reference, so the harness and the kit cannot drift. The kit has two verbs. `reset` drops and recreates a database of its own (survsys_uat by default, or SURVSYS_UAT_SQLSERVER; it refuses the harness's survsys_e2e and survsys_e2e_intake), starts Survsys.Api once with migrations on to bring it to this build's level and create the administrator from Survsys__Administrator__UserName and Survsys__Administrator__Password, then seeds it. `start` creates the drop directories and the CDC outbox, starts Survsys.Api and Survsys.Web over that database on the ports the walkthroughs name (5100 and 5000), and prints the address to open and the directories. As the operator chose on 2026-10-25, both verbs take --intake: without it, the database and the settings are the main harness's (staged messages and notification guide seeded, CDC file transport, intakes off); with it, they are the intake harness's (ELR and eCR intake fixtures seeded, both intakes' test directories and poll intervals, the assignment pass and the responsible agency on). Each seed matches a harness exactly, because one database seeded with both would let the assignment pass take the seeded Entry messages and would add the intake fixtures' people and cases to the main walkthroughs. A guide, docs/walkthroughs/testing-by-hand.md, gives the commands and every walkthrough grouped by area in an order a person can perform them, each marked with whether it can be performed again over the same database, with a reset due before the intake group. The guide gets its row in the README index, the README's pointer to each walkthrough's Before you start names the kit, and the walkthrough contract test treats the guide as not a walkthrough and asserts that it names every walkthrough. The harness tests use the moved members, and new tests in Survsys.E2ETests prove that a reset leaves the database each harness seeds.
+
+**Amended after acceptance:**
+
+- 2026-10-25 — step 'shared-seeding-and-reset': its files: Two walkthrough tests cite SurvsysHarness.TablesInDeletionOrder in their doc comments; the cref moves to WalkthroughDatabase with the list. (claude-code (anthropic, claude-opus-5-5))

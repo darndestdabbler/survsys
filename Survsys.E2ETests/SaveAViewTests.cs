@@ -19,7 +19,7 @@ namespace Survsys.E2ETests;
 ///
 /// A saved view is a row left behind, so the harness clears the saved views
 /// table before it seeds (see
-/// <see cref="SurvsysHarness.TablesInDeletionOrder"/>). This test shares the
+/// <see cref="Survsys.Uat.WalkthroughDatabase.TablesInDeletionOrder"/>). This test shares the
 /// signed-in administrator and the one seeded database with every other test
 /// in the collection, and more than one of them saves a view, so it never
 /// asserts how many views the list holds — only that its own view is there,

@@ -75,6 +75,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Survsys.Contracts\Survsys.Contracts.csproj" />
+    <!-- The clearing and seeding, which the kit for performing the
+         walkthroughs by hand runs too: one copy, so the database a person
+         walks through is the one these tests walk through. -->
+    <ProjectReference Include="..\tools\uat\Survsys.Uat\Survsys.Uat.csproj" />
   </ItemGroup>
 
   <!-- The two tiers the harness launches, built when this project builds.
