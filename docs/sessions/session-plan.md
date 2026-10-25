@@ -2034,3 +2034,39 @@ CDC's answer.*
    and the whole end-to-end walkthrough suite. Both must be green. A red run
    stops the release: the step is reported blocked with the failures, and a
    repair session is planned before a new release session.
+
+### Session 116: A kit for testing by hand
+
+*Inserted after the 1.0.0 release, at the operator's request on 2026-10-24,
+so that a person can perform the walkthroughs against a running Survsys
+without assembling it from each document's "Before you start". Today the
+clearing a walkthrough needs lives only in the end-to-end harness, the
+fixtures sit in two test projects and must run in order, and the tiers need
+a handful of settings to start with the intakes turned on. Nothing here
+changes the application, so no release follows it.*
+
+1. Register.
+2. `Survsys.E2ETests` and a new `tools/uat/`: the harness's clearing and
+   seeding — the tables it clears, the accounts it clears but the
+   administrator, and its fixtures in order — moved into one place that both
+   the harness and the kit call, so the two cannot drift. A reset command that
+   drops and recreates a database of its own (`survsys_uat` by default, never
+   `survsys_e2e`), brings it to this build's migration level and seeds it with
+   everything the walkthroughs read, the intake fixtures included.
+3. `tools/uat/`: a start command that creates the ELR and eCR drop
+   directories and starts `Survsys.Api` and `Survsys.Web` over that database
+   with every setting the walkthroughs name — migrations, the administrator
+   from environment variables, both intakes' test directories and poll
+   intervals, and the responsible agency — and prints the address to open
+   and the drop directories.
+4. `docs/walkthroughs/`: a testing-by-hand guide — the reset and start
+   commands, and every walkthrough in an order a person can perform them in,
+   grouped by area, each marked with whether it can be performed again over
+   the same database and where a reset is due — and its row in the index.
+   The README's "Before you start" pointer names the kit.
+5. `Survsys.E2ETests`: the harness tests updated for the moved seeding, and
+   a test that the reset leaves the same database the harness seeds.
+6. Cross-provider verification.
+7. Full test suite, the end-to-end walkthrough suite included, recorded as
+   the run of record.
+8. Close-out.
