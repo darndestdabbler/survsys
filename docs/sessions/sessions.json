@@ -2404,9 +2404,9 @@
     {
       "number": 116,
       "title": "A kit for testing by hand",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-25T05:37:50.529000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-25T06:15:57.538000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
