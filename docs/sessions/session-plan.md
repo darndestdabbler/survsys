@@ -2152,3 +2152,175 @@ performed against by hand carries the styled menu.*
    and the whole end-to-end walkthrough suite. Both must be green. A red run
    stops the release: the step is reported blocked with the failures, and a
    repair session is planned before a new release session.
+
+### Session 121: Choosing related records on a case, not typing their ids
+
+*Inserted at the operator's request on 2026-10-28, while performing the Add
+a contact to a case walkthrough by hand. Its step 3 sends the investigator to
+the People screen to note a database id for step 14 to type, and users will
+not accept that. A sweep of every screen found the same on the case's tabs:
+the Contacts entry form's Person and Report boxes, the Notes tab's Creator
+and Exposure, the task entry's Assigned to and the Agency board's Report id,
+and no screen at all that assigns a supplemental form to a case. The
+search-then-create flow the operator asked for already exists, as the Add
+contact panel on a recorded exposure's row; the entry form reuses it. Tables
+that show a code or an id where the person chose a name show the name.*
+
+1. Register.
+2. `Survsys.Web/Components/ContactsTab.razor`: the entry form's contact
+   **Person** and source **Person** become the person search the Add contact
+   panel already uses (`PersonSearchPanel`), opened from the row, whose
+   result rows choose the person and whose empty result creates one from the
+   criteria; the row then shows the chosen person's name. The source's
+   **Report** becomes a list of that person's reports, by disease and date.
+   The Exposures table's contacts and sources show the person's name, the
+   contact type's and the disposition's descriptions, and the source report's
+   disease, rather than ids and codes. The tab's opening comment loses its
+   stale lines on coded fields being plain boxes.
+3. `Survsys.Web/Components/NotesTab.razor`: **Creator** goes; the API tier
+   records the signed-in user as the note's author, as the attachment panel
+   already does. **Exposure** becomes a list of this case's exposures by
+   name and date.
+4. A read-only user directory for assignment: an endpoint the task entry may
+   read with `view_cases` that answers each active user's id and display
+   name, and nothing else (`/api/users` stays `manage_users`).
+   `Survsys.Web/Components/TasksPanel.razor`: **Assigned to** becomes a list
+   over it, defaulting to the signed-in user.
+5. `Survsys.Web/Components/Pages/AgencyQueue.razor`: the **Report id** boxes
+   go; each row of the board carries **Assign** and **Share** actions that
+   open the agency choice for that report.
+6. A case's **Forms**: an **Assign form** list of the active forms for the
+   case's condition not already assigned, calling the existing
+   `POST /api/cases/{id}/forms/{formId}`, which no screen calls today.
+7. `docs/walkthroughs/`: *Add a contact to a case* rewritten around the
+   search — no step reads an id off the People screen, and the contact is
+   found by name — and every other walkthrough that typed one of these ids
+   (among them *Promote a contact to a case*, *Assign and accept a case*,
+   *Work a task list*, *Close an investigation*, *See a case shared
+   read-only*, *Route a case to another agency*) updated to choose instead;
+   *Complete a supplemental form* gains assigning a form by hand. Their
+   end-to-end tests follow them.
+8. Cross-provider verification.
+9. Full test suite, the end-to-end walkthrough suite included, recorded as
+   the run of record.
+10. Close-out.
+
+**Non-goals:** the Laboratory tab and the reference-data screens (session
+122); providers (sessions 123 and 124); no change to how a contact is stored
+or to the API tier's rules for it.
+
+### Session 122: Choosing related records on the Laboratory tab and the reference screens
+
+*Inserted with session 121, from the same sweep. The Laboratory tab takes its
+lab, diagnostic and reporting facilities as typed ids and its test's LOINC as
+a typed code; the outbreak editor takes its authors as typed user ids; a
+notification guide's PHIN variables and a rule set's value set and its
+conditions' fields are typed by name. Each is chosen from what the
+application already holds.*
+
+1. Register.
+2. `Survsys.Web/Components/LaboratoryTab.razor`: **Lab facility**,
+   **Diagnostic facility** and **Reporting facility** become searchable
+   lists over the facilities, reusing the facility list the Vocabulary
+   screen's lab codes already use (moved to a shared component if both need
+   it). A test's **LOINC code** becomes a searchable picker over the master
+   LOINC vocabulary, showing code and concept name, that still accepts a
+   code the vocabulary does not hold. The specimens table shows the
+   facilities' names and the specimen source's description. The stale
+   comments in `Survsys.Data/Lab.cs` saying the facility table does not exist
+   are corrected.
+3. `Survsys.Web/Components/Pages/OutbreakEdit.razor`: both **Author (user
+   id)** boxes go; the API tier records the signed-in user, as session 121
+   does for notes.
+4. `Survsys.Web/Components/Pages/GuideEdit.razor`: **PHIN variable** becomes
+   a searchable list over the PHIN variables not already on the guide.
+   `Survsys.Web/Components/Pages/RuleSetEdit.razor`: **Value set** becomes a
+   list over the value sets, and each condition's **Field** a list over the
+   fields the rule set names.
+5. `docs/walkthroughs/`: *Enter a laboratory result*, *Open an outbreak and
+   link cases*, *Configure a notification guide* and any other walkthrough
+   that typed one of these updated to choose instead, with their end-to-end
+   tests.
+6. Cross-provider verification.
+7. Full test suite, the end-to-end walkthrough suite included, recorded as
+   the run of record.
+8. Close-out.
+
+**Non-goals:** the **Provider** box, which has no table to choose from
+(sessions 123 and 124); an agency's jurisdiction zip codes and a
+parent/guardian's name stay free text.
+
+### Session 123: The provider registry
+
+*Inserted at the operator's request on 2026-10-28. A lab's ordering clinician
+is a bare `provider_id` into a `provider` table Survsys does not have, so the
+Laboratory tab can only offer a number box. The legacy application keeps a
+**Providers** registry on its admin menu
+(`../nedss/docs/functional/epitrax-core-workflows.md`, screen
+`24-admin-providers`): last name, first name, phone, email and provider type,
+over the legacy `provider` and `provider_type` tables. Survsys gets that
+registry as reference data an administrator maintains, like the facilities.*
+
+1. Register.
+2. `Survsys.Data`: a `provider` table with the legacy columns (provider type,
+   first, middle and last name, phone, email) and an active flag, by
+   migration; the provider types as a `provider_type` code list on the
+   existing Code lists mechanism rather than a table of their own, seeded
+   with the legacy types the documents name.
+3. `Survsys.Api` and `Survsys.Contracts`: list (paged, searched by last name,
+   readable with `view_cases`), read, create and update under
+   `manage_reference_data`, and CSV export and import previewed before
+   saving, as the facilities have.
+4. `Survsys.Web`: a **Providers** screen under **Reference data** in the side
+   menu — the searchable table, an editor, and the CSV import and export —
+   following the Facilities screen.
+5. `docs/walkthroughs/`: a *Maintain a provider* walkthrough with its
+   end-to-end test, and its row in the README index and the testing-by-hand
+   guide.
+6. Cross-provider verification.
+7. Full test suite, the end-to-end walkthrough suite included, recorded as
+   the run of record.
+8. Close-out.
+
+**Non-goals:** the Laboratory tab is unchanged (session 124); no provider is
+matched from an ELR message.
+
+### Session 124: The ordering clinician chosen from the registry
+
+*Inserted with session 123. With providers on file, a lab's **Provider** box
+becomes the legacy Add Lab form's **Ordering Clinician** autocomplete
+(`../nedss/docs/functional/epitrax-cmr-deep-editing.md`), with a way to add
+a clinician who is not yet on file without leaving the case.*
+
+1. Register.
+2. The API tier refuses a lab whose `provider_id` names no provider, as it
+   refuses an unknown person on a contact; existing labs whose id names no
+   provider are reported by the migration's check rather than changed.
+3. `Survsys.Web/Components/LaboratoryTab.razor`: **Provider** becomes
+   **Ordering clinician**, a search over the registry by name as you type,
+   with **New clinician** when nothing matches, which records the provider
+   (by the session 123 endpoint, for a user holding the privilege it needs)
+   and chooses them. The specimens table shows the clinician's name.
+4. `docs/walkthroughs/enter-a-laboratory-result.md` and any other walkthrough
+   naming the provider updated, with their end-to-end tests.
+5. Cross-provider verification.
+6. Full test suite, the end-to-end walkthrough suite included, recorded as
+   the run of record.
+7. Close-out.
+
+**Non-goals:** the ELR intake's ordering provider (ORC-12, OBR-16) is not
+matched to the registry; a case's Facility / Clinician panel is not added.
+
+### Session 125: Release 1.1.0 (release: 1.1.0)
+
+*A minor release: sessions 121 to 124 change how records are chosen across
+the case's tabs and the reference screens, add the provider registry and its
+screen, and add the ordering clinician's choice. New screens and new
+endpoints, nothing removed, so the minor version.*
+
+1. Before anything is published, the integration suite run whole in a
+   container, with `SURVSYS_SQLSERVER` unset:
+   `dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --blame-hang-timeout 5m`,
+   and the whole end-to-end walkthrough suite. Both must be green. A red run
+   stops the release: the step is reported blocked with the failures, and a
+   repair session is planned before a new release session.
