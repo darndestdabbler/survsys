@@ -2070,3 +2070,51 @@ changes the application, so no release follows it.*
 7. Full test suite, the end-to-end walkthrough suite included, recorded as
    the run of record.
 8. Close-out.
+
+### Session 117: A grouped navigation menu
+
+*Inserted at the operator's request on 2026-10-28, before the walkthroughs
+are performed by hand. Since session 73 the app bar has wrapped its buttons
+onto further lines; with 38 screens an administrator now sees three rows of
+undifferentiated links above every page. The links move into a side drawer
+grouped by area, and the app bar keeps only the application's name, the
+drawer's toggle, the signed-in person and Sign out.*
+
+1. Register.
+2. `Survsys.Web/Components/Layout/MainLayout.razor`: a `MudDrawer`, open by
+   default and toggled from the app bar, holding a `MudNavMenu` whose
+   `MudNavGroup`s are expanded by default — **Cases** (People, Events, New
+   CMR, Work queue, Agency board, Outbreaks, Tasks, Saved views, Reports,
+   Duplicate persons), **Intake** (Staged messages, Intake statistics, eCR,
+   eCR quality), **Notifications** (Notifications, Export log,
+   Reconciliation), **Reference data** (Conditions and the fifteen
+   reference screens) and **Administration** (Users, Roles, Audit, Access
+   audit). Each link keeps its `nav-…` identifier, its address and the
+   privilege that shows it; a group none of whose links a person may see is
+   not shown. The app bar returns to one line, and the layout comment says
+   why. The privilege gating is unchanged; the API tier still enforces it.
+3. `Survsys.E2ETests`: the tests that click a `#nav-…` link pass against the
+   drawer unchanged where they can; any that cannot are given one harness
+   helper rather than edited one by one. A test that the app bar holds no
+   screen link, that each group shows only to a person holding a privilege
+   one of its links needs, and that the drawer's toggle hides and shows it.
+4. `docs/walkthroughs/` and `docs/user-guide/`: "In the application bar,
+   press **X**" becomes "In the side menu, under **Group**, choose **X**",
+   and the user guide describes the menu and its groups.
+5. Cross-provider verification.
+6. Full test suite, the end-to-end walkthrough suite included, recorded as
+   the run of record.
+7. Close-out.
+
+### Session 118: Release 1.0.1 (release: 1.0.1)
+
+*A patch release: session 117 changes the navigation and nothing the
+application does, so the build the walkthroughs are performed against by hand
+carries the new menu.*
+
+1. Before anything is published, the integration suite run whole in a
+   container, with `SURVSYS_SQLSERVER` unset:
+   `dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --blame-hang-timeout 5m`,
+   and the whole end-to-end walkthrough suite. Both must be green. A red run
+   stops the release: the step is reported blocked with the failures, and a
+   repair session is planned before a new release session.
