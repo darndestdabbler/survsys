@@ -13,7 +13,8 @@ namespace Survsys.E2ETests;
 /// link opens its screen. What they cannot prove is the shape of the frame:
 /// that the bar no longer carries the links, that a group is offered only to
 /// someone who may open one of its screens, and that the menu's button hides
-/// and shows it. Those are this file's.
+/// and shows it, and that a group's heading wears the bar's colour. Those
+/// are this file's.
 ///
 /// The role and the user the group test adds are cleared by
 /// <see cref="SurvsysHarness.Seed"/> on the next run, with everything else a
@@ -117,6 +118,23 @@ public class MainLayoutTests(SurvsysHarness harness) : SurvsysPageTest
         await Page.Locator("#nav-people").ClickAsync();
         await Expect(Page.Locator("#people-heading")).ToHaveTextAsync("People");
     }
+
+    [Fact]
+    public async Task AGroupHeadingTakesTheApplicationBarsColour()
+    {
+        await Open(harness.WebBaseAddress);
+
+        var bar = await Background(Page.Locator(".mud-appbar"));
+        var heading = await Background(Page.Locator("#nav-group-cases > .mud-nav-link"));
+        var link = await Background(Page.Locator("#nav-people"));
+
+        Assert.Equal(bar, heading);
+        Assert.NotEqual(bar, link);
+    }
+
+    /// <summary>The computed background colour of <paramref name="element"/>.</summary>
+    private static Task<string> Background(ILocator element) =>
+        element.EvaluateAsync<string>("element => getComputedStyle(element).backgroundColor");
 
     /// <summary>The checkbox labelled <paramref name="label"/>, by the words on it.</summary>
     private ILocator Box(string label) =>

@@ -36,8 +36,30 @@
    bar's start hides and shows it. A group none of whose links a person may
    see is not shown at all, and the bar is back to one line: the
    application's name, the drawer's button, the signed-in person and Sign
-   out. *@
+   out.
+
+   Since session 119 each group's heading takes the bar's primary colour,
+   through the theme's own variables so it follows the bar, because in the
+   drawer's plain text it read as one more link; a small gap keeps the first
+   heading off the bar and the groups off each other. *@
 @inherits LayoutComponentBase
+
+<style>
+    #nav-drawer .mud-nav-group {
+        margin-top: 8px;
+    }
+
+    #nav-drawer .mud-nav-group > .mud-nav-link,
+    #nav-drawer .mud-nav-group > .mud-nav-link:hover {
+        background-color: var(--mud-palette-primary);
+        color: var(--mud-palette-primary-text);
+    }
+
+    #nav-drawer .mud-nav-group > .mud-nav-link .mud-nav-link-expand-icon {
+        color: var(--mud-palette-primary-text);
+        fill: var(--mud-palette-primary-text);
+    }
+</style>
 
 <MudThemeProvider />
 <MudPopoverProvider />
