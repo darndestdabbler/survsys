@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 109 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 109 transcript</h1>
+<p class="stamp">Rendered 2026-10-23T07:31:46.279Z by dabbler-ai-router 3.23.0 at b85edb88d38e08a447fcec292e6d2caae4b28899.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-22T20:51:02.276-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 109: The parity check and the documentation for 1.0.0</h3>
+<ol><li>Register.</li><li><code>docs/planning/gap-analysis.md</code>: every gap marked closed with the session that closed it, or left open with the operator's decision; every row of <code>phase-1.6-feature-matrix.md</code> given its survsys status. Among them are session 96's three departures from the legacy classification: an out-of-state case keeps its agency, since there is no &quot;Out of State&quot; agency; a facility encounter stands in for an influenza hospitalization, since there is no hospitalization field; and contacts close at the LHD's acceptance, since this workflow has no <code>approved_by_lhd</code>.</li><li><code>Survsys.E2ETests</code>: the full walkthrough regression, every document read against its own test as session 57 did.</li><li><code>docs/</code>: the user and technical guides brought to 1.0.0, with every &quot;built but not wired in&quot; statement gone or still true.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Check survsys against the legacy systems for 1.0.0 and bring its documentation to 1.0.0. docs/planning/gap-analysis.md, written at 0.8.0, is brought up to date: each gap row is marked closed with the session that closed it (59 to 106), or left open with the operator's recorded decision (NETSS and the deliberately-not-planned list stay as decided); a new section gives every row of ../nedss/docs/functional/phase-1.6-feature-matrix.md its survsys status (built, simplified, dropped or not planned, with the session or the reason); and session 96's three departures from the legacy classification are recorded: an out-of-state case keeps its agency because there is no Out of State agency, a facility encounter stands in for an influenza hospitalization because there is no hospitalization field, and contacts close at the LHD's acceptance because this workflow has no approved_by_lhd. Then the full walkthrough regression is run: the whole Survsys.E2ETests suite, and every document in docs/walkthroughs read against its own test as session 57 did, any drift corrected in the document or the test, never by skipping a step. Last, docs/README.md, docs/user-guide/README.md and docs/technical/README.md are brought to 1.0.0: the &quot;built but not wired in&quot; statements about graylisting, vocabulary matching, the rules engine and CDC generation and sending, which sessions 74, 75 and 81 to 84 wired in, are rewritten to describe what runs, and every remaining such statement is checked to be still true.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/69c19c76ed35421b9ee2d784bb1ad3b15ab1bdc4"><code>69c19c76ed35421b9ee2d784bb1ad3b15ab1bdc4</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Gap analysis</td><td><p>Rewrite docs/planning/gap-analysis.md for 1.0.0: keep its tables, and give each gap row a status (closed by session N, checked against the code, or open with the operator's decision); update the headline and intro so they no longer describe 0.8.0 as the present; add a section giving every row of ../nedss/docs/functional/phase-1.6-feature-matrix.md its survsys status (built, simplified, dropped or not planned) with the session or reason; and record session 96's three departures from the legacy classification (out-of-state case keeps its agency, no Out of State agency; facility encounter stands in for influenza hospitalization, no hospitalization field; contacts close at the LHD's acceptance, no approved_by_lhd).</p></td><td><span class="mono">docs/planning/gap-analysis.md</span></td><td><code>pwsh -NoProfile -NonInteractive -Command $t = Get-Content docs/planning/gap-analysis.md -Raw; foreach ($p in 'phase-1\.6-feature-matrix', 'Out of State', 'hospitali[sz]ation', 'approved_by_lhd', 'Person merge', 'Work queues') { if ($t -notmatch $p) { Write-Error &quot;missing $p&quot;; exit 1 } }</code></td><td>yes</td></tr>
+<tr><td>Walkthrough regression</td><td><p>Run the whole Survsys.E2ETests suite and the walkthrough contract tests, then read every document in docs/walkthroughs against its own test, so each still reads exactly as its test performs it; correct any drift in the document or the test, never by skipping a step. If drift is corrected, the step's files are amended to name the documents and tests changed.</p></td><td><span class="mono">docs/walkthroughs/find-a-case.md</span><br><span class="mono">docs/walkthroughs/resolve-a-duplicate.md</span><br><span class="mono">docs/walkthroughs/promote-a-message-to-a-case.md</span><br><span class="mono">docs/walkthroughs/review-an-eicr-and-its-reportability-response.md</span><br><span class="mono">docs/walkthroughs/create-a-case-morbidity-report.md</span><br><span class="mono">docs/walkthroughs/review-a-staged-message.md</span><br><span class="mono">docs/walkthroughs/record-a-treatment.md</span><br><span class="mono">docs/walkthroughs/save-a-view.md</span><br><span class="mono">docs/walkthroughs/assign-and-accept-a-case.md</span><br><span class="mono">docs/walkthroughs/find-a-person.md</span><br><span class="mono">docs/walkthroughs/log-an-exposure-event.md</span><br><span class="mono">docs/walkthroughs/route-a-case-to-another-agency.md</span><br><span class="mono">Survsys.E2ETests/ExportADatasetTests.cs</span><br><span class="mono">Survsys.E2ETests/RunAnAdHocReportTests.cs</span><br><span class="mono">Survsys.E2ETests/ReviewAnEicrAndItsReportabilityResponseTests.cs</span><br><span class="mono">Survsys.E2ETests/CreateACaseMorbidityReportTests.cs</span><br><span class="mono">Survsys.E2ETests/LogAnExposureEventTests.cs</span><br><span class="mono">docs/planning/gap-analysis.md</span><br><span class="mono">docs/sessions/session-plan.md</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests</code><br><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj</code></td><td>yes</td></tr>
+<tr><td>Guides 1 0 0</td><td><p>Bring docs/README.md, docs/user-guide/README.md and docs/technical/README.md to 1.0.0: rewrite the technical guide's 'Built but not wired in' paragraph on GraylistRules, VocabularyMatcher and ExpressionEvaluator and its 'Generation and sending are built but not wired in' paragraph (and the CdcTransmission configuration row) to describe what now runs, and the user guide's statement that 1.0.0 does not generate notifications; check every other 'not wired', 'not yet' and 'not built' statement in the three files against the code, keeping it only where still true; keep docs/README.md's description of the guides accurate.</p></td><td><span class="mono">docs/README.md</span><br><span class="mono">docs/user-guide/README.md</span><br><span class="mono">docs/technical/README.md</span><br><span class="mono">docs/planning/gap-analysis.md</span></td><td><code>pwsh -NoProfile -NonInteractive -Command $t = (Get-Content docs/technical/README.md -Raw) + (Get-Content docs/user-guide/README.md -Raw); foreach ($p in 'Built but not wired in\. Graylist', 'Generation and sending are built but not wired in', 'nothing takes a case off the queue', 'Nothing in 1\.0\.0 posts one', 'does not yet generate') { if ($t -match $p) { Write-Error &quot;stale: $p&quot;; exit 1 } }</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No product code changes: a gap or defect the parity check or the regression finds that is not a document-versus-test drift is recorded in gap-analysis.md and planned as a session, not fixed here.</li><li>No new walkthroughs and no new features; NETSS and the deliberately-not-planned items stay unbuilt.</li><li>No release: packaging and publishing 1.0.0 is session 110's.</li><li>The legacy feature matrix in ../nedss is read, not edited.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[00:51:02]</span> <span class="muted">run-started</span> session=109 mode=pull</div>
+<div class="line"><span class="at">[00:51:02]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[00:53:19]</span> <span class="muted">run-resumed</span> session=109 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[00:53:19]</span> <span class="muted">plan-accepted</span> steps=[&quot;gap-analysis&quot;,&quot;walkthrough-regression&quot;,&quot;guides-1-0-0&quot;] non_goals=4</div>
+<div class="line"><span class="at">[00:53:19]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[00:53:20]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=gap-analysis</div>
+<div class="line"><span class="at">[00:56:02]</span> <span class="muted">run-resumed</span> session=109 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[00:56:04]</span> <span class="muted">check-passed</span> step=gap-analysis argv=[&quot;pwsh&quot;,&quot;-NoProfile&quot;,&quot;-NonInteractive&quot;,&quot;-Command&quot;,&quot;$t = Get-Content docs/planning/gap-analysis.md -Raw; foreach ($p in 'phase-1\\.6-feature-matrix', 'Out of State', 'hospitali[sz]ation', 'approved_by_lhd', 'Person merge', 'Work queues') { if ($t -notmatch $p) { Write-Error \&quot;missing $p\&quot;; exit 1 } }&quot;]</div>
+<div class="line"><span class="at">[00:56:04]</span> <span class="muted">report-accepted</span> seq=2 step=gap-analysis files=[&quot;docs/planning/gap-analysis.md&quot;] notes=Every 0.8.0 gap marked closed with its actual session; the 92 feature-matrix rows given survsys status (85 built, 4 simplified, 2 dropped, 1 open: NETSS); session 96's three departures recorded; address geocoding listed as still open for the operator's decision.</div>
+<div class="line"><span class="at">[00:56:04]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=walkthrough-regression</div>
+<div class="line"><span class="at">[07:16:55]</span> <span class="muted">run-resumed</span> session=109 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[07:17:00]</span> <span class="muted">check-passed</span> step=walkthrough-regression argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;]</div>
+<div class="line"><span class="at">[07:18:15]</span> <span class="muted">check-passed</span> step=walkthrough-regression argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[07:18:16]</span> <span class="muted">report-accepted</span> seq=3 step=walkthrough-regression files=[&quot;docs/walkthroughs/find-a-case.md&quot;,&quot;docs/walkthroughs/resolve-a-duplicate.md&quot;,&quot;docs/walkthroughs/promote-a-message-to-a-case.md&quot;,&quot;docs/walkthroughs/review-an-eicr-and-its-reportability-response.md&quot;,&quot;docs/walkthroughs/create-a-case-morbidity-report.md&quot;,&quot;docs/walkthroughs/review-a-staged-message.md&quot;,&quot;docs/walkthroughs/record-a-treatment.md&quot;,&quot;docs/walkthroughs/save-a-view.md&quot;,&quot;docs/walkthroughs/assign-and-accept-a-case.md&quot;,&quot;docs/walkthroughs/find-a-person.md&quot;,&quot;docs/walkthroughs/log-an-exposure-event.md&quot;,&quot;docs/walkthroughs/route-a-case-to-another-agency.md&quot;,&quot;Survsys.E2ETests/ExportADatasetTests.cs&quot;,&quot;Survsys.E2ETests/RunAnAdHocReportTests.cs&quot;,&quot;Survsys.E2ETests/ReviewAnEicrAndItsReportabilityResponseTests.cs&quot;,&quot;Survsys.E2ETests/CreateACaseMorbidityReportTests.cs&quot;,&quot;Survsys.E2ETests/LogAnExposureEventTests.cs&quot;,&quot;docs/planning/gap-analysis.md&quot;,&quot;docs/sessions/session-plan.md&quot;] notes=All 47 walkthroughs read against their tests: twelve documents corrected where later sessions changed the screens, five tests tightened to assert what their documents say. The first run at 20:57 EDT failed attach-a-document step 13 because attachment and note dates are shown as UTC dates; recorded in gap-analysis.md and planned as session 110 before the release, now 111. Rerun after midnight: 59 of 59 pass.</div>
+<div class="line"><span class="at">[07:18:16]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=guides-1-0-0</div>
+<div class="line"><span class="at">[07:30:34]</span> <span class="muted">run-resumed</span> session=109 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[07:30:35]</span> <span class="muted">check-passed</span> step=guides-1-0-0 argv=[&quot;pwsh&quot;,&quot;-NoProfile&quot;,&quot;-NonInteractive&quot;,&quot;-Command&quot;,&quot;$t = (Get-Content docs/technical/README.md -Raw) + (Get-Content docs/user-guide/README.md -Raw); foreach ($p in 'Built but not wired in\\. Graylist', 'Generation and sending are built but not wired in', 'nothing takes a case off the queue', 'Nothing in 1\\.0\\.0 posts one', 'does not yet generate') { if ($t -match $p) { Write-Error \&quot;stale: $p\&quot;; exit 1 } }&quot;]</div>
+<div class="line"><span class="at">[07:30:35]</span> <span class="muted">report-accepted</span> seq=4 step=guides-1-0-0 files=[&quot;docs/README.md&quot;,&quot;docs/user-guide/README.md&quot;,&quot;docs/technical/README.md&quot;,&quot;docs/planning/gap-analysis.md&quot;] notes=User guide rewritten for 1.0.0 from the code (case search, person screen and merge, seven-state workflow, event types, new tabs, classification, ELR queue, eCR, CDC sending, audit screens, ten privileges); technical guide's configuration, data model (55 migrations), API, privileges and jurisdiction, ELR, new eCR and CDC sections rewritten, every not-wired statement gone; access-scope and missing-screen gaps recorded as still open in gap-analysis.md.</div>
+<div class="line"><span class="at">[07:30:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[07:30:35]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[07:30:36]</span> <span class="muted">job-started</span> name=verification pid=26148 log=.dabbler/runs/s109/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:31:17]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s109/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:31:17]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[07:31:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[07:31:17]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[07:31:17]</span> <span class="muted">job-started</span> name=run of record: unit pid=17536 log=.dabbler/runs/s109/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[07:31:37]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s109/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[07:31:37]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[07:31:41]</span> <span class="muted">landed</span> commit=69c19c76ed35421b9ee2d784bb1ad3b15ab1bdc4</div>
+<div class="line"><span class="at">[07:31:41]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[07:31:41]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[07:31:41]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[07:31:41]</span> <span class="muted">job-started</span> name=close pid=32776 log=.dabbler/runs/s109/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:31:46]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s109/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:31:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>20 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** Several walkthroughs still describe pre-1.0 behavior that the updated guides explicitly say is now implemented.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>`docs/walkthroughs/promote-a-message-to-a-case.md` says “Survsys has no outbound notification transport yet,” while `docs/technical/README.md` documents `NotificationQueueService` and HTTP/file CDC transmission, and `docs/user-guide/README.md` says configured workers send queued notifications.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>`docs/walkthroughs/resolve-a-duplicate.md` says there is no graylist, message-discard action, or update-existing-case behavior, while the technical and user guides document graylist states, bulk deletion, and whitelist/lab-knitting update behavior.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>This contradicts the required 1.0 documentation refresh and undermines a reader’s understanding of actual behavior, but the evidence is entirely documentation prose and therefore is non-blocking.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** `docs/walkthroughs/assign-and-accept-a-case.md` internally contradicts itself. Its unchanged “Accepting” bullet says “The report form carries no workflow status and no workflow buttons yet; the queue screens are where the workflow is read and moved,” but the immediately following updated workflow bullet says routing, assigning, approval, reopening, and other workflow moves are on the report’s **Workflow Options** panel. The updated user guide and CMR walkthrough also document that panel.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Nit:** `docs/planning/gap-analysis.md` claims the feature matrix has 92 rows and summarizes `85 built + 4 simplified + 2 dropped + 1 open = 92`, but its enumerated tables contain 91 rows:</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>Case management: 11</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>Demographics: 8</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>Laboratory: 7</td><td>not answered</td></tr>
+<tr><td>9</td><td><strong>minor</strong></td><td>Contacts: 6</td><td>not answered</td></tr>
+<tr><td>10</td><td><strong>minor</strong></td><td>Outbreaks: 4</td><td>not answered</td></tr>
+<tr><td>11</td><td><strong>minor</strong></td><td>Tasks/notes: 4</td><td>not answered</td></tr>
+<tr><td>12</td><td><strong>minor</strong></td><td>Forms: 4</td><td>not answered</td></tr>
+<tr><td>13</td><td><strong>minor</strong></td><td>Treatments/vaccines: 3</td><td>not answered</td></tr>
+<tr><td>14</td><td><strong>minor</strong></td><td>Inbound ELR: 12</td><td>not answered</td></tr>
+<tr><td>15</td><td><strong>minor</strong></td><td>Outbound CDC: 13</td><td>not answered</td></tr>
+<tr><td>16</td><td><strong>minor</strong></td><td>Administration: 7</td><td>not answered</td></tr>
+<tr><td>17</td><td><strong>minor</strong></td><td>Reporting/export: 6</td><td>not answered</td></tr>
+<tr><td>18</td><td><strong>minor</strong></td><td>Attachments: 2</td><td>not answered</td></tr>
+<tr><td>19</td><td><strong>minor</strong></td><td>Audit/logging: 4</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>19s</td><td>2260</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

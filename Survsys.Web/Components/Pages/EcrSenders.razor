@@ -1,0 +1,195 @@
+@* The eCR senders and their maintenance: every organisation whose eICRs reach
+   this jurisdiction, known by the custodian id its eICRs name, with its
+   onboarding stage — test, validation, production — and whether its eICR
+   results are written to a case as labs; a form that adds one or edits one,
+   and a delete. The stage records onboarding and gates nothing. *@
+@page "/ecr/senders"
+@inject EcrSendersClient Client
+
+<PageTitle>eCR senders — Survsys</PageTitle>
+
+<MudText id="ecr-senders-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    eCR senders
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    The healthcare organisations sending eICRs, by the custodian id their
+    documents name, with where each is in onboarding.
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="ecr-senders-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (loading)
+{
+    <MudProgressCircular id="ecr-senders-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudPaper id="ecr-sender-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">@(editingId is null ? "New sender" : "Edit sender")</MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="senderId" id="ecr-sender-id" Label="Custodian id (root^extension)"
+                              Variant="Variant.Outlined" Required="true" MaxLength="300" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="name" id="ecr-sender-name" Label="Name" Variant="Variant.Outlined"
+                              Required="true" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudSelect @bind-Value="stage" id="ecr-sender-stage" Label="Stage" Variant="Variant.Outlined">
+                    <MudSelectItem T="string" Value="@EcrStages.Test">Test</MudSelectItem>
+                    <MudSelectItem T="string" Value="@EcrStages.Validation">Validation</MudSelectItem>
+                    <MudSelectItem T="string" Value="@EcrStages.Production">Production</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudCheckBox @bind-Value="takesLabResults" id="ecr-sender-labs" Label="Results as labs" />
+            </MudItem>
+        </MudGrid>
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="ecr-sender-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                Save
+            </MudButton>
+            <MudButton id="ecr-sender-new" Variant="Variant.Outlined" Disabled="@saving" OnClick="@Clear">
+                New sender
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    <MudSimpleTable id="ecr-senders-table" Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Custodian id</th>
+                <th>Stage</th>
+                <th>Results as labs</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in senders)
+            {
+                <tr id="@($"ecr-sender-row-{row.Id}")">
+                    <td>@row.Name</td>
+                    <td>@row.SenderId</td>
+                    <td>@row.Stage</td>
+                    <td>@(row.TakesLabResults ? "Yes" : "No")</td>
+                    <td>
+                        <MudButton id="@($"ecr-sender-edit-{row.Id}")" Size="Size.Small"
+                                   Variant="Variant.Text" OnClick="@(() => Edit(row))">
+                            Edit
+                        </MudButton>
+                        <MudButton id="@($"ecr-sender-delete-{row.Id}")" Size="Size.Small" Color="Color.Error"
+                                   Variant="Variant.Text" Disabled="@saving" OnClick="@(() => Delete(row))">
+                            Delete
+                        </MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+@code {
+    /// <summary>The onboarding stages, as the API tier spells them.</summary>
+    private static class EcrStages
+    {
+        public const string Test = "test";
+        public const string Validation = "validation";
+        public const string Production = "production";
+    }
+
+    private IReadOnlyList<EcrSenderResponse> senders = [];
+
+    private int? editingId;
+
+    private string? senderId;
+
+    private string? name;
+
+    private string stage = EcrStages.Test;
+
+    private bool takesLabResults;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+        loading = false;
+    }
+
+    private async Task Load()
+    {
+        var loaded = await Client.List();
+        senders = loaded.Value ?? [];
+        failure ??= loaded.Failure;
+    }
+
+    private void Edit(EcrSenderResponse row)
+    {
+        editingId = row.Id;
+        senderId = row.SenderId;
+        name = row.Name;
+        stage = row.Stage;
+        takesLabResults = row.TakesLabResults;
+        failure = null;
+    }
+
+    private void Clear()
+    {
+        editingId = null;
+        senderId = name = null;
+        stage = EcrStages.Test;
+        takesLabResults = false;
+        failure = null;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        failure = null;
+
+        var request = new SaveEcrSenderRequest(senderId ?? "", name ?? "", stage, takesLabResults);
+        var saved = editingId is { } id
+            ? await Client.Save(id, request)
+            : await Client.Add(request);
+
+        saving = false;
+        failure = saved.Failure;
+
+        if (saved.Succeeded)
+        {
+            Clear();
+            await Load();
+        }
+    }
+
+    private async Task Delete(EcrSenderResponse row)
+    {
+        saving = true;
+        failure = await Client.Delete(row.Id);
+        saving = false;
+
+        if (failure is null)
+        {
+            if (editingId == row.Id)
+            {
+                Clear();
+            }
+
+            await Load();
+        }
+    }
+}

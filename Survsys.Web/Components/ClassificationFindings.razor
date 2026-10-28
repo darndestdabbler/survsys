@@ -1,0 +1,24 @@
+@* What classifying the case on the save just made found, shown beside that
+   save: the last classification this circuit was answered with, where it is
+   this case's and found something. *@
+@inject CaseClassifications Classifications
+
+@if (Classifications.Last is { } last && last.ReportId == ReportId && last.Findings.Count > 0)
+{
+    <MudAlert id="@Id" Severity="Severity.Info" Class="mb-4">
+        @foreach (var finding in last.Findings)
+        {
+            <div>@finding</div>
+        }
+    </MudAlert>
+}
+
+@code {
+    /// <summary>The case whose findings are shown.</summary>
+    [Parameter, EditorRequired]
+    public int ReportId { get; set; }
+
+    /// <summary>The shown findings' element id, one per tab.</summary>
+    [Parameter, EditorRequired]
+    public string Id { get; set; } = "";
+}
