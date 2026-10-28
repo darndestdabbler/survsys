@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 097 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 097 transcript</h1>
+<p class="stamp">Rendered 2026-10-22T06:39:23.935Z by dabbler-ai-router 3.23.0 at 7ea3d8f0ba95a50964aaa05ff7cdc682c4672960.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-22T02:21:22.829-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 97: Classification shown on save, and on encounter saves</h3>
+<p>*Inserted after session 96. Session 96 left two things owed. Its step 3 asked for each rule's outcome to be shown to the user on save. The outcome is written as an administrative note, which the user finds only by opening the Notes tab. The Clinical, Laboratory, Investigation and Administrative tabs tell the report page nothing when they save, so the case status in its header stays as it was until the page is reloaded. And an encounter's save does not run the rules, though the influenza rule reads a facility encounter as the case's recorded hospitalization, so its finding stays stale until something else saves the case. Both come before the Phase 12 walkthroughs because &quot;see a case classified on save&quot; crosses them.*</p>
+<p>*Non-goals: no hospitalization field and no &quot;Out of State&quot; agency. Both are decisions for session 108's gap analysis.*</p>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: every route that classifies a case answers with the classifier's outcome — the case status after it and that save's findings. The encounter add, edit and delete routes run the classifier too.</li><li><code>Survsys.Api</code>: when a case is classified again, a classification note whose finding no longer holds is struck, so a case does not gather findings that are no longer true. The note for a finding that still holds is still written once.</li><li><code>Survsys.Web</code>: each tab that saves a case tells the report page. The page re-reads the case's status and shows that save's findings beside the save. Every element id stays unchanged.</li><li><code>Survsys.UnitTests</code> and <code>Survsys.IntegrationTests</code>: the outcome each classifying route answers with, an encounter's save reclassifying an influenza case, and a stale classification note struck. These reach SQL Server.</li><li><code>Survsys.E2ETests</code>: a Playwright test that adds a positive lab to a case with no status and, without a reload, sees the header show Confirmed and the findings shown beside the save.</li><li>Cross-provider verification.</li><li>Full test suite, the integration suite included, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Show the user each save's classification without a reload, and run the classifier on encounter saves. In Survsys.Api the CaseClassifier keeps the outcome of the case it classified (the report id, the case status after it and that save's findings) on the request's SurvsysDbContext, and one small middleware answers every route with a Case-Classification response header carrying it as JSON (a CaseClassificationResponse contract), which reaches the 204 deletes as well as the bodies, so every classifying route answers with its outcome without changing any response shape. The encounter add, edit and delete routes call the classifier, so an influenza hospitalization case's finding follows its facility encounters. The classifier writes one administrative note per finding, marked by a fixed prefix, and strikes any unstruck classification note on the case whose finding no longer holds; a finding that still holds keeps its one note. In Survsys.Web a delegating handler on the Clinical, Investigation, Administrative, Labs and Encounters clients reads the header into a circuit-scoped CaseClassifications service; the report page listens to it and re-reads the case so the header's case status is current, and a small ClassificationFindings component beside each of those tabs' save shows that save's findings. No existing element id changes. Unit tests cover the header middleware, the handler and the service; integration tests cover the header each classifying route answers with, an encounter save reclassifying an influenza case, and a stale note struck; a Playwright test adds a positive lab to a case with no status and sees Confirmed in the header and the findings beside the save without a reload.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/2c32be9afdf4378c7d22e653c0ab69bfc16bda1d"><code>2c32be9afdf4378c7d22e653c0ab69bfc16bda1d</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Classification answer</td><td><p>Survsys.Api: CaseClassifier records the outcome it applied (report id, case status after it, findings) on SurvsysDbContext; a CaseClassificationHeader middleware, registered in Program.cs, writes it as a Case-Classification response header (JSON of a new Survsys.Contracts CaseClassificationResponse) on any response whose request classified a case; EncounterQueries' Add, Update and Delete run the classifier over the encounter's case after saving. Unit tests for the header's value in Survsys.UnitTests/CaseClassificationHeaderTests.cs.</p></td><td><span class="mono">Survsys.Data/SurvsysDbContext.cs</span><br><span class="mono">Survsys.Contracts/CaseClassificationResponse.cs</span><br><span class="mono">Survsys.Api/CaseClassifier.cs</span><br><span class="mono">Survsys.Api/CaseClassificationHeader.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.Api/EncounterEndpoints.cs</span><br><span class="mono">Survsys.UnitTests/CaseClassificationHeaderTests.cs</span></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~CaseClassificationHeaderTests|FullyQualifiedName~EncounterEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Stale notes struck</td><td><p>Survsys.Api/CaseClassifier.cs: write one administrative note per finding, its text prefixed with a public constant that marks it as the classifier's; on each classification strike every unstruck classification note on the case whose finding is not among this save's findings, and add a note only for a finding no unstruck classification note already records.</p></td><td><span class="mono">Survsys.Api/CaseClassifier.cs</span></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>Web shows classification</td><td><p>Survsys.Web: a circuit-scoped CaseClassifications service holding the last classification per report and raising an event when one arrives; a CaseClassificationHandler delegating handler that reads the Case-Classification header into it through CircuitServicesAccessor, added in Program.cs to the Clinical, Investigation, Administrative, Labs and Encounters clients; a ClassificationFindings component that shows a report's last findings, placed beside the save of the Clinical, Laboratory, Investigation, Administrative and Encounters tabs with an id of its own per tab; MorbidityReport re-reads the case when its report is classified so the header's case status is current. Every existing element id stays unchanged. Unit tests in Survsys.UnitTests/CaseClassificationsTests.cs and Survsys.UnitTests/CaseClassificationHandlerTests.cs.</p></td><td><span class="mono">Survsys.Web/CaseClassifications.cs</span><br><span class="mono">Survsys.Web/CaseClassificationHandler.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.Web/Components/ClassificationFindings.razor</span><br><span class="mono">Survsys.Web/Components/ClinicalTab.razor</span><br><span class="mono">Survsys.Web/Components/LaboratoryTab.razor</span><br><span class="mono">Survsys.Web/Components/InvestigationTab.razor</span><br><span class="mono">Survsys.Web/Components/AdministrativeTab.razor</span><br><span class="mono">Survsys.Web/Components/EncountersTab.razor</span><br><span class="mono">Survsys.Web/Components/Pages/MorbidityReport.razor</span><br><span class="mono">Survsys.UnitTests/CaseClassificationsTests.cs</span><br><span class="mono">Survsys.UnitTests/CaseClassificationHandlerTests.cs</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~CaseClassificationsTests|FullyQualifiedName~CaseClassificationHandlerTests</code></td><td>yes</td></tr>
+<tr><td>Integration tests</td><td><p>Survsys.IntegrationTests against SQL Server: CaseClassifierTests updated for one note per finding and a new test that a classification note whose finding no longer holds is struck while one that still holds is kept once; CaseClassificationHeaderTests proving the Case-Classification header each kind of classifying route answers with (case create, clinical, investigation, administrative, workflow, lab create and delete, encounter add, edit and delete); EncounterEndpointsTests gains a test that adding and removing a facility encounter reclassifies an influenza-associated hospitalization case's finding.</p></td><td><span class="mono">Survsys.IntegrationTests/CaseClassifierTests.cs</span><br><span class="mono">Survsys.IntegrationTests/CaseClassificationHeaderTests.cs</span><br><span class="mono">Survsys.IntegrationTests/EncounterEndpointsTests.cs</span></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>E2e classified on save</td><td><p>Survsys.E2ETests: a Playwright test that opens a chlamydia case with no status, adds a positive Chlamydia trachomatis lab on an approved test type on the Laboratory tab and, without a reload, sees the header's case status read C (Confirmed) and the findings shown beside the save.</p></td><td><span class="mono">Survsys.E2ETests/SeeACaseClassifiedOnSaveTests.cs</span><br><span class="mono">Survsys.Api/CaseClassifier.cs</span><br><span class="mono">Survsys.IntegrationTests/CaseClassifierTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj --nologo -v q</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No hospitalization field and no &quot;Out of State&quot; agency: both are session 108's gap analysis.</li><li>No change to the classification rules themselves (ClassificationRules) or to what any rule finds.</li><li>No change to any route's response body shape or status code; the outcome travels in a header.</li><li>No classification on routes that do not save a case today other than the three encounter routes (no vaccines, treatments, forms or notes).</li><li>No change to the Contacts or Notes tabs, and no existing element id renamed or removed.</li><li>No migration and no new note type: classification notes stay administrative notes.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[06:21:22]</span> <span class="muted">run-started</span> session=097 mode=pull</div>
+<div class="line"><span class="at">[06:21:22]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[06:24:16]</span> <span class="muted">run-resumed</span> session=097 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[06:24:16]</span> <span class="muted">plan-accepted</span> steps=[&quot;classification-answer&quot;,&quot;stale-notes-struck&quot;,&quot;web-shows-classification&quot;,&quot;integration-tests&quot;,&quot;e2e-classified-on-save&quot;] non_goals=6</div>
+<div class="line"><span class="at">[06:24:16]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[06:24:17]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=classification-answer</div>
+<div class="line"><span class="at">[06:26:06]</span> <span class="muted">run-resumed</span> session=097 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:26:09]</span> <span class="muted">check-passed</span> step=classification-answer argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[06:26:13]</span> <span class="muted">check-passed</span> step=classification-answer argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseClassificationHeaderTests|FullyQualifiedName~EncounterEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[06:26:13]</span> <span class="muted">report-accepted</span> seq=2 step=classification-answer files=[&quot;Survsys.Data/SurvsysDbContext.cs&quot;,&quot;Survsys.Contracts/CaseClassificationResponse.cs&quot;,&quot;Survsys.Api/CaseClassifier.cs&quot;,&quot;Survsys.Api/CaseClassificationHeader.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.Api/EncounterEndpoints.cs&quot;,&quot;Survsys.UnitTests/CaseClassificationHeaderTests.cs&quot;] notes=Classifier leaves its outcome on SurvsysDbContext.Classified; middleware writes it as a Case-Classification JSON header; encounter add, edit and delete classify the case</div>
+<div class="line"><span class="at">[06:26:13]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=stale-notes-struck</div>
+<div class="line"><span class="at">[06:26:51]</span> <span class="muted">run-resumed</span> session=097 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:26:53]</span> <span class="muted">check-passed</span> step=stale-notes-struck argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[06:26:53]</span> <span class="muted">report-accepted</span> seq=3 step=stale-notes-struck files=[&quot;Survsys.Api/CaseClassifier.cs&quot;] notes=One administrative note per finding prefixed CaseClassifier.NotePrefix; unstruck classification notes whose finding no longer holds are struck; a finding still held is noted once</div>
+<div class="line"><span class="at">[06:26:53]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=web-shows-classification</div>
+<div class="line"><span class="at">[06:28:48]</span> <span class="muted">run-resumed</span> session=097 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:28:50]</span> <span class="muted">check-passed</span> step=web-shows-classification argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[06:28:54]</span> <span class="muted">check-passed</span> step=web-shows-classification argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseClassificationsTests|FullyQualifiedName~CaseClassificationHandlerTests&quot;]</div>
+<div class="line"><span class="at">[06:28:54]</span> <span class="muted">report-accepted</span> seq=4 step=web-shows-classification files=[&quot;Survsys.Web/CaseClassifications.cs&quot;,&quot;Survsys.Web/CaseClassificationHandler.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.Web/Components/ClassificationFindings.razor&quot;,&quot;Survsys.Web/Components/ClinicalTab.razor&quot;,&quot;Survsys.Web/Components/LaboratoryTab.razor&quot;,&quot;Survsys.Web/Components/InvestigationTab.razor&quot;,&quot;Survsys.Web/Components/AdministrativeTab.razor&quot;,&quot;Survsys.Web/Components/EncountersTab.razor&quot;,&quot;Survsys.Web/Components/Pages/MorbidityReport.razor&quot;,&quot;Survsys.UnitTests/CaseClassificationsTests.cs&quot;,&quot;Survsys.UnitTests/CaseClassificationHandlerTests.cs&quot;] notes=Handler on five clients records the Case-Classification header in circuit-scoped CaseClassifications; report page re-reads the case on its classification; ClassificationFindings shown beside each tab's saved alert with its own id</div>
+<div class="line"><span class="at">[06:28:54]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=integration-tests</div>
+<div class="line"><span class="at">[06:33:18]</span> <span class="muted">run-resumed</span> session=097 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:33:20]</span> <span class="muted">check-passed</span> step=integration-tests argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[06:33:21]</span> <span class="muted">report-accepted</span> seq=5 step=integration-tests files=[&quot;Survsys.IntegrationTests/CaseClassifierTests.cs&quot;,&quot;Survsys.IntegrationTests/CaseClassificationHeaderTests.cs&quot;,&quot;Survsys.IntegrationTests/EncounterEndpointsTests.cs&quot;] notes=Header proven on create, clinical, investigation, administrative, workflow, lab create and delete, encounter add, edit and delete; stale classification note struck; facility encounter add and remove flips the influenza finding</div>
+<div class="line"><span class="at">[06:33:21]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=e2e-classified-on-save</div>
+<div class="line"><span class="at">[06:36:52]</span> <span class="muted">run-resumed</span> session=097 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:36:55]</span> <span class="muted">check-passed</span> step=e2e-classified-on-save argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[06:36:55]</span> <span class="muted">report-accepted</span> seq=6 step=e2e-classified-on-save files=[&quot;Survsys.E2ETests/SeeACaseClassifiedOnSaveTests.cs&quot;,&quot;Survsys.Api/CaseClassifier.cs&quot;,&quot;Survsys.IntegrationTests/CaseClassifierTests.cs&quot;] notes=Playwright test sees C and the finding beside Record specimen without a reload; classifier falls back to the organism code list for a hand-entered result (plan amended), proven in CaseClassifierTests</div>
+<div class="line"><span class="at">[06:36:55]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[06:36:55]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[06:36:55]</span> <span class="muted">job-started</span> name=verification pid=37340 log=.dabbler/runs/s97/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[06:38:20]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s97/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[06:38:20]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[06:38:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[06:38:20]</span> <span class="muted">instruction-issued</span> seq=7 kind=rejection reasons=4</div>
+<div class="line"><span class="at">[06:38:52]</span> <span class="muted">run-resumed</span> session=097 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[06:38:52]</span> <span class="muted">dispute-recorded</span> round=1 finding=0</div>
+<div class="line"><span class="at">[06:38:52]</span> <span class="muted">dispute-recorded</span> round=1 finding=1</div>
+<div class="line"><span class="at">[06:38:52]</span> <span class="muted">dispute-recorded</span> round=1 finding=3</div>
+<div class="line"><span class="at">[06:38:52]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[] reject=[0,1,3] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;Session 96's unprefixed, joined classification notes have never shipped. The last release is 0.12.0 (session 93), and the next is 0.13.0 (session 100), so no released database holds one. Only development and test databases do, and the suites clear their notes. Retiring rows already written would be a data migration, which this session's declared non-goals exclude ('No migration'). From this session on, every note the classifier writes carries CaseClassifier.NotePrefix and is struck when its finding stops holding.&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The report header shows a case status as its code, not its label: Status renders report.CaseStatus as stored (C for Confirmed), and this session changed nothing there. The test asserts exactly what a user sees for Confirmed, 'C'. Asserting the word 'Confirmed' would need the header's display changed, which nothing in session 97 asks for.&quot;},{&quot;finding&quot;:3,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The findings are tied to the save that produced them. Each tab renders ClassificationFindings only inside its own saved-confirmation block, which appears only after that tab's save; the component also shows only a classification of the case on screen. A circuit shows one case and the save that just ran is the last classification, so the findings shown are that save's.&quot;}]</div>
+<div class="line"><span class="at">[06:38:52]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[06:38:52]</span> <span class="muted">job-started</span> name=verification pid=52600 log=.dabbler/runs/s97/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[06:39:05]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s97/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[06:39:05]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[06:39:05]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[06:39:05]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[06:39:05]</span> <span class="muted">job-started</span> name=run of record: unit pid=55228 log=.dabbler/runs/s97/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[06:39:15]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s97/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[06:39:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[06:39:18]</span> <span class="muted">landed</span> commit=2c32be9afdf4378c7d22e653c0ab69bfc16bda1d</div>
+<div class="line"><span class="at">[06:39:18]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[06:39:18]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[06:39:18]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[06:39:19]</span> <span class="muted">job-started</span> name=close pid=33156 log=.dabbler/runs/s97/driver/jobs/close.log</div>
+<div class="line"><span class="at">[06:39:23]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s97/driver/jobs/close.log</div>
+<div class="line"><span class="at">[06:39:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>4 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Pre-session-97 classification notes are never retired, so existing cases retain unstruck findings that no longer hold.</td><td>disputed — Session 96's unprefixed, joined classification notes have never shipped. The last release is 0.12.0 (session 93), and the next is 0.13.0 (session 100), so no released database holds one. Only development and test databases do, and the suites clear their notes. Retiring rows already written would be a data migration, which this session's declared non-goals exclude ('No migration'). From this session on, every note the classifier writes carries CaseClassifier.NotePrefix and is struck when its finding stops holding.</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The Playwright test does not assert the explicitly promised user-facing text, `Confirmed`.</td><td>disputed — The report header shows a case status as its code, not its label: Status renders report.CaseStatus as stored (C for Confirmed), and this session changed nothing there. The test asserts exactly what a user sees for Confirmed, 'C'. Asserting the word 'Confirmed' would need the header's display changed, which nothing in session 97 asks for.</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** A finding that disappears and later reappears creates another note instead of reusing the existing struck note.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Nit:** Findings are circuit-global rather than associated with the tab/save that produced them.</td><td>disputed — The findings are tied to the save that produced them. Each tab renders ClassificationFindings only inside its own saved-confirmation block, which appears only after that tab's save; the component also shows only a classification of the case on screen. A circuit shows one case and the save that just ran is the last classification, so the findings shown are that save's.</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>9s</td><td>2114</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

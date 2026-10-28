@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 085 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 085 transcript</h1>
+<p class="stamp">Rendered 2026-10-20T22:36:45.392Z by dabbler-ai-router 3.21.0 at 9c21b7a7630be1fa7c75d3dbfa6187c4bd6e4871.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-20T18:31:21.598-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 85: Editor settings ignored, and the integration sign-in flake</h3>
+<p>*Inserted after session 81. Two faults outside the product keep stopping the framework. Choosing the authoring model in VS Code writes <code>.vscode/settings.json</code>, which <code>.gitignore</code> does not cover, and the untracked file refuses a release session's working-tree and verification gates, as it did at 0.4.0. And since session 79 the full integration run has now and then failed <code>PersonConditionEndpointsTests.TheOptionsAreTheStatesMovesNarrowedToTheCallersPrivileges</code> on a 401 from <code>SurvsysApi.SignIn</code>, though the class passes alone. Most likely another test changes a user, its password or its lockout and does not put it back. Both come before release 0.11.0.*</p>
+<ol><li>Register.</li><li><code>.gitignore</code>: <code>.vscode/</code> ignored as <code>.dabbler/</code> is, with a comment saying why. Nothing else in the file changes.</li><li><code>Survsys.IntegrationTests</code>: the test that leaves the sign-in state behind is found, and is made to sign in with a user of its own or to put back what it changed, so no test depends on the order the suite runs in. The session's notes name the test and the cause.</li><li>Cross-provider verification.</li><li>Full test suite, the integration suite included, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Remove two faults outside the product that stop the framework. First, <code>.gitignore</code> ignores <code>.vscode/</code> as it ignores <code>.dabbler/</code>, with a comment saying why: choosing the authoring model in VS Code writes <code>.vscode/settings.json</code>, and the untracked file refuses a release session's working-tree and verification gates. Second, the integration sign-in flake: <code>PersonMergeEndpointsTests.ACallerWithoutMergePersonsIsAnswered403</code> creates a user named <code>case-editor</code> (role <code>Case editor</code>) with its own password, <code>person-merge-test-password</code>, while <code>PersonConditionEndpointsTests.SignedInCaseEditor</code> creates the same user name with <code>case-editor-password</code> and reuses the user when it already exists. The database is created once per run, so when the merge test runs first, <code>TheOptionsAreTheStatesMovesNarrowedToTheCallersPrivileges</code> finds the merge test's user, signs in with the wrong password and gets 401. The merge test is given a user and role of its own (<code>merge-case-editor</code>, <code>Merge case editor</code>) so neither class depends on the order the suite runs in.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/6949579f7ee725793af8f4ccdbda7977667253bf"><code>6949579f7ee725793af8f4ccdbda7977667253bf</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Ignore vscode</td><td><p>Add <code>.vscode/</code> to <code>.gitignore</code>, ignored as <code>.dabbler/</code> is, with a comment saying why: choosing the authoring model in VS Code writes <code>.vscode/settings.json</code>, and an untracked file there refuses a release session's working-tree and verification gates. Nothing else in the file changes.</p></td><td><span class="mono">.gitignore</span></td><td><code>git check-ignore -q .vscode/settings.json</code></td><td>yes</td></tr>
+<tr><td>Own merge editor</td><td><p>In <code>Survsys.IntegrationTests/PersonMergeEndpointsTests.cs</code>, <code>ACallerWithoutMergePersonsIsAnswered403</code> signs in as a user and role of its own (<code>merge-case-editor</code>, <code>Merge case editor</code>) rather than <code>case-editor</code> / <code>Case editor</code>, which <code>PersonConditionEndpointsTests</code> creates with a different password; with the shared name, whichever class ran first decided the password and the other's sign-in was answered 401.</p></td><td><span class="mono">Survsys.IntegrationTests/PersonMergeEndpointsTests.cs</span></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code><br><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --no-build --filter FullyQualifiedName~PersonMergeEndpointsTests|FullyQualifiedName~PersonConditionEndpointsTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No other change to <code>.gitignore</code> than the <code>.vscode/</code> entry and its comment.</li><li>No change to the product (Survsys.Api, Survsys.Web, Survsys.Data and the rest) or to SurvsysApi's sign-in helper.</li><li>No shared user-creation helper across test classes and no reorganization of how the suite creates its users.</li><li>No release: 0.11.0 is a later session.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[22:31:21]</span> <span class="muted">run-started</span> session=085 mode=pull</div>
+<div class="line"><span class="at">[22:31:21]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[22:32:08]</span> <span class="muted">run-resumed</span> session=085 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[22:32:08]</span> <span class="muted">plan-accepted</span> steps=[&quot;ignore-vscode&quot;,&quot;own-merge-editor&quot;] non_goals=4</div>
+<div class="line"><span class="at">[22:32:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[22:32:09]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=ignore-vscode</div>
+<div class="line"><span class="at">[22:32:44]</span> <span class="muted">run-resumed</span> session=085 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:32:45]</span> <span class="muted">report-rejected</span> seq=2 step=ignore-vscode rejection=1 reasons=[&quot;[files-changed-unchanged] files_changed names '.vscode/settings.json', which the tree did not change since the last accepted step&quot;]</div>
+<div class="line"><span class="at">[22:32:45]</span> <span class="muted">instruction-issued</span> seq=3 kind=rejection step=ignore-vscode reasons=1</div>
+<div class="line"><span class="at">[22:32:56]</span> <span class="muted">run-resumed</span> session=085 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:32:57]</span> <span class="muted">step-file-unchanged</span> step=ignore-vscode file=.vscode/settings.json</div>
+<div class="line"><span class="at">[22:32:57]</span> <span class="muted">check-passed</span> step=ignore-vscode argv=[&quot;git&quot;,&quot;check-ignore&quot;,&quot;-q&quot;,&quot;.vscode/settings.json&quot;]</div>
+<div class="line"><span class="at">[22:32:58]</span> <span class="muted">report-accepted</span> seq=3 step=ignore-vscode files=[&quot;.gitignore&quot;] notes=.vscode/ ignored with a comment; .vscode/settings.json was tracked since before session 30, so its index entry is removed with git rm --cached (working-tree file unchanged) for the ignore to take effect</div>
+<div class="line"><span class="at">[22:32:58]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=own-merge-editor</div>
+<div class="line"><span class="at">[22:34:22]</span> <span class="muted">run-resumed</span> session=085 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[22:34:25]</span> <span class="muted">check-passed</span> step=own-merge-editor argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[22:35:16]</span> <span class="muted">check-passed</span> step=own-merge-editor argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--no-build&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~PersonMergeEndpointsTests|FullyQualifiedName~PersonConditionEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[22:35:17]</span> <span class="muted">report-accepted</span> seq=4 step=own-merge-editor files=[&quot;Survsys.IntegrationTests/PersonMergeEndpointsTests.cs&quot;] notes=Cause: PersonMergeEndpointsTests.ACallerWithoutMergePersonsIsAnswered403 created user case-editor with person-merge-test-password; when it ran before PersonConditionEndpointsTests, SignedInCaseEditor found that user and signed in with case-editor-password, 401. The merge test now uses merge-case-editor / Merge case editor</div>
+<div class="line"><span class="at">[22:35:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[22:35:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[22:35:19]</span> <span class="muted">job-started</span> name=verification pid=36728 log=.dabbler/runs/s85/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[22:35:32]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s85/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[22:35:32]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[22:35:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[22:35:33]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[22:35:34]</span> <span class="muted">job-started</span> name=run of record: unit pid=12348 log=.dabbler/runs/s85/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[22:35:54]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s85/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[22:35:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[22:36:01]</span> <span class="muted">landed</span> commit=a5b84fc4dff8c43ce39b9096e24bbb4af6c7d802</div>
+<div class="line"><span class="at">[22:36:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[22:36:01]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[22:36:02]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[22:36:03]</span> <span class="muted">job-started</span> name=close pid=37656 log=.dabbler/runs/s85/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:36:09]</span> <span class="muted">job-finished</span> name=close exit=<span class="bad">1</span> log=.dabbler/runs/s85/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:36:12]</span> <span class="muted">rewound</span> to=verify why=gates: verification_clean</div>
+<div class="line"><span class="at">[22:36:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[22:36:14]</span> <span class="muted">job-started</span> name=verification pid=21456 log=.dabbler/runs/s85/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[22:36:25]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s85/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[22:36:25]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[22:36:25]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[22:36:26]</span> <span class="muted">run-of-record-standing</span> suite=unit reason=fresh, green, recorded 2026-10-20T18:35:54.503000-04:00</div>
+<div class="line"><span class="at">[22:36:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[22:36:32]</span> <span class="muted">landed</span> commit=6949579f7ee725793af8f4ccdbda7977667253bf</div>
+<div class="line"><span class="at">[22:36:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[22:36:32]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[22:36:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[22:36:33]</span> <span class="muted">job-started</span> name=close pid=28812 log=.dabbler/runs/s85/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:36:45]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s85/driver/jobs/close.log</div>
+<div class="line"><span class="at">[22:36:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>17s</td><td>1940</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

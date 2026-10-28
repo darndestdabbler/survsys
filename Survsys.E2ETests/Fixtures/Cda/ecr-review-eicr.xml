@@ -1,0 +1,1650 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:hl7-org:v3 ../../../cda-core-2.0/schema/extensions/SDTC/infrastructure/cda/CDA_SDTC.xsd">
+  
+  
+  <realmCode code="US" />
+  <typeId extension="POCD_HD000040" root="2.16.840.1.113883.1.3" />
+  
+  <templateId root="2.16.840.1.113883.10.20.22.1.1" />
+  
+  <templateId root="2.16.840.1.113883.10.20.22.1.1" extension="2015-08-01" />
+  
+  <templateId root="2.16.840.1.113883.10.20.15.2" extension="2022-05-01" />
+  
+  <id root="2.16.840.1.113883.9.9.9.9.9" extension="e2e-review-eicr" />
+  
+  <code code="55751-2" codeSystem="2.16.840.1.113883.6.1" displayName="Public Health Case Report" codeSystemName="LOINC" />
+  <title>Initial Public Health Case Report</title>
+  <effectiveTime value="20201107094421-0500" />
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25" displayName="Normal" />
+  <languageCode code="en-US" />
+  <setId root="2.16.840.1.113883.3.117.1.1.5.2.1.1.1" extension="e2e-review-eicr" />
+  
+  <versionNumber value="1" />
+  
+  <recordTarget>
+    
+    <patientRole>
+      
+      <id extension="e2e-review-eicr-mrn" root="2.16.840.1.113883.19.5" />
+      
+      <addr use="H">
+        <streetAddressLine>12 Pioneer Way</streetAddressLine>
+        <city>Salt Lake City</city>
+        <state>UT</state>
+        <postalCode>84101</postalCode>
+        
+        <country>US</country>
+        
+        <useablePeriod xsi:type="IVL_TS">
+          <low value="200007200845" />
+        </useablePeriod>
+      </addr>
+      
+      <telecom use="HP" value="tel:+1-555-555-2003" />
+      <telecom use="WP" value="tel:+1-555-555-2004" />
+      <patient>
+        
+        <name use="L">
+          <given>Ingrid</given>
+          <family>Solberg</family>
+        </name>
+        
+        <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1" />
+        
+        <birthTime value="19850607" />
+        
+        <sdtc:deceasedInd value="false" />
+        
+        <raceCode nullFlavor="OTH" />
+        
+        
+        <ethnicGroupCode code="2186-5" codeSystem="2.16.840.1.113883.6.238" codeSystemName="Race &amp; Ethnicity - CDC" displayName="Not Hispanic or Latino" />
+        
+        <guardian>
+          <code code="MTH" displayName="mother" codeSystem="2.16.840.1.113883.5.111" codeSystemName="RoleCode" />
+          
+          <addr use="H">
+            <streetAddressLine>4444 Home Street</streetAddressLine>
+            <city>Ann Arbor</city>
+            <state>MI</state>
+            <postalCode>99999</postalCode>
+            <country>US</country>
+          </addr>
+          
+          <telecom use="HP" value="tel:+1-555-555-2006" />
+          
+          <telecom value="mailto:mail@guardian.com" />
+          <guardianPerson>
+            
+            <name use="L">
+              <given>Martha</given>
+              <given qualifier="IN">L</given>
+              <family>Mum</family>
+            </name>
+          </guardianPerson>
+        </guardian>
+        <languageCommunication>
+          <languageCode code="en" />
+          <modeCode code="ESP" codeSystem="2.16.840.1.113883.5.60" codeSystemName="LanguageAbilityMode" displayName="Expressed spoken" />
+          <proficiencyLevelCode code="G" codeSystem="2.16.840.1.113883.5.61" codeSystemName="LanguageAbilityProficiency" displayName="Good" />
+          
+          <preferenceInd value="true" />
+        </languageCommunication>
+      </patient>
+    </patientRole>
+  </recordTarget>
+  
+  
+  <author>
+    <time value="20201107094421-0500" />
+    
+    <assignedAuthor>
+      
+      <id root="2.16.840.1.113883.3.72.5.20" />
+      
+      <addr>
+        <streetAddressLine>1002 Healthcare Drive</streetAddressLine>
+        <city>Ann Arbor</city>
+        <state>MI</state>
+        <postalCode>99999</postalCode>
+        <country>US</country>
+      </addr>
+      <telecom use="WP" value="tel:+1-(555)555-1212;ext=9998" />
+      <assignedAuthoringDevice>
+        <manufacturerModelName displayName="Acme" />
+        <softwareName displayName="Acme EHR" />
+      </assignedAuthoringDevice>
+    </assignedAuthor>
+  </author>
+  
+  <custodian>
+    <assignedCustodian>
+      <representedCustodianOrganization>
+        <id extension="88888888" root="2.16.840.1.113883.4.6" />
+        <name>Good Health Hospital</name>
+        <telecom use="WP" value="tel:+1(555)555-1212" />
+        <addr>
+          <streetAddressLine>1000 Hospital Lane</streetAddressLine>
+          <city>Ann Arbor</city>
+          <state>MI</state>
+          <postalCode>99999</postalCode>
+          <country>US</country>
+        </addr>
+      </representedCustodianOrganization>
+    </assignedCustodian>
+  </custodian>
+  
+  
+  <relatedDocument typeCode="RPLC">
+    <parentDocument>
+      
+      <id root="2.16.840.1.113883.9.9.9.9.9" extension="db734647-fc99-424c-a864-7e3cda82e704" />
+      
+      <setId root="2.16.840.1.113883.3.117.1.1.5.2.1.1.1" extension="31" />
+      
+      <versionNumber value="1" />
+    </parentDocument>
+  </relatedDocument>
+  
+  <componentOf>
+    <encompassingEncounter>
+      
+      <id extension="9937012" root="2.16.840.1.113883.19" />
+      
+      
+      <code code="AMB" codeSystem="2.16.840.1.113883.5.4" codeSystemName="HL7 ActEncounterCode" displayName="Ambulatory" />
+      
+      
+      <effectiveTime>
+        
+        <low value="20201107084421-0500" />
+        
+        <high value="20201108112103-0500" />
+      </effectiveTime>
+      
+      <responsibleParty>
+        <assignedEntity>
+          
+          <id extension="6666666666666" root="2.16.840.1.113883.4.6" />
+          
+          <addr>
+            <streetAddressLine>1002 Healthcare Drive</streetAddressLine>
+            <city>Ann Arbor</city>
+            <state>MI</state>
+            <postalCode>99999</postalCode>
+            <country>US</country>
+          </addr>
+          
+          
+          <telecom use="WP" value="tel:+1(555)555-1003" />
+          
+          <telecom use="WP" value="fax:+1(555)555-1234" />
+          
+          <telecom use="WP" value="mailto:mail@provider_domain.com" />
+          <assignedPerson>
+            
+            <name>
+              <given>Henry</given>
+              <family>Seven</family>
+              <suffix qualifier="AC">M.D.</suffix>
+            </name>
+          </assignedPerson>
+          
+          <representedOrganization>
+            
+            <name>Community Health and Hospitals</name>
+            
+            <addr>
+              <streetAddressLine>1002 Healthcare Drive</streetAddressLine>
+              <city>Ann Arbor</city>
+              <state>MI</state>
+              <postalCode>99999</postalCode>
+              <country>US</country>
+            </addr>
+          </representedOrganization>
+        </assignedEntity>
+      </responsibleParty>
+      
+      <location>
+        
+        <healthCareFacility>
+          
+          <id extension="77777777777" root="2.16.840.1.113883.4.6" />
+          
+          <code code="OF" codeSystem="2.16.840.1.113883.5.111" displayName="Outpatient facility" />
+          
+          <location>
+            
+            <name>Hospital Facility Name</name>
+            
+            <addr>
+              <streetAddressLine>1000 Hospital Lane</streetAddressLine>
+              <city>Ann Arbor</city>
+              <state>MI</state>
+              <postalCode>99999</postalCode>
+              <country>US</country>
+            </addr>
+          </location>
+          
+          <serviceProviderOrganization>
+            
+            <id extension="2828282828" root="2.16.840.1.113883.4.6" />
+            
+            <name>Good Health Hospital</name>
+            
+            
+            <telecom use="WP" value="tel: 1+(555)-555-1212" />
+            
+            <telecom use="WP" value="fax: 1+(555)-555-3333" />
+            
+            <telecom use="WP" value="mailto: mail@goodhealthhospital.com" />
+            
+            <addr>
+              <streetAddressLine>1000 Hospital Lane</streetAddressLine>
+              <city>Ann Arbor</city>
+              <state>MI</state>
+              <postalCode>99999</postalCode>
+              <country>US</country>
+            </addr>
+          </serviceProviderOrganization>
+        </healthCareFacility>
+      </location>
+    </encompassingEncounter>
+  </componentOf>
+  <component>
+    <structuredBody>
+      
+      <component>
+        <section>
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.22" />
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.22" extension="2015-08-01" />
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.22.1" />
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.22.1" extension="2015-08-01" />
+          <code code="46240-8" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="History of encounters" />
+          <title>Encounters</title>
+          <text>
+            <table>
+              <thead>
+                <tr>
+                  <th>Encounter</th>
+                  <th>Date(s)</th>
+                  <th>Location</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ID="id_2a620155-9d11-439e-92b3-5d9815ff4de8_ref">
+                  <td>Office outpatient visit 15 minutes</td>
+                  <td>NOV 7, 2020</td>
+                  <td>
+                    <list styleCode="none">
+                      <item>
+                        <content styleCode="Italics">Urgent Care Center</content>
+                      </item>
+                    </list>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="20">
+                    <list styleCode="none">
+                      <item>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Encounter Diagnosis Type</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Diagnosis</td>
+                            </tr>
+                            <tr>
+                              <td colspan="20">
+                                <list styleCode="none">
+                                  <item>
+                                    <table>
+                                      <thead>
+                                        <tr>
+                                          <th>Initial Case Report Trigger<br />Code Problem Observation </th>
+                                          <th>Problem</th>
+                                          <th>Trigger Code</th>
+                                          <th>Trigger Code codeSystem</th>
+                                          <th>RCTC OID</th>
+                                          <th>RCTC Version</th>
+                                          <th>Date(s)</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        <tr ID="id_db734647-fc99-424c-a864-7e3cda82e705_ref">
+                                          <td>Diagnosis</td>
+                                          <td>Pertussis (disorder)</td>
+                                          <td>27836007</td>
+                                          <td>SNOMED CT</td>
+                                          <td>2.16.840.1.114222.4.11.7508</td>
+                                          <td>19/05/2020</td>
+                                          <td>NOV 7, 2020</td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                    <table>
+                                      <thead>
+                                        <tr>
+                                          <th>Encounter Diagnosis Type</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        <tr>
+                                          <td>Diagnosis</td>
+                                        </tr>
+                                        <tr>
+                                          <td colspan="20">
+                                            <list styleCode="none">
+                                              <item>
+                                                <table>
+                                                  <thead>
+                                                    <tr>
+                                                      <th>Problem Type</th>
+                                                      <th>Problem</th>
+                                                      <th>Date(s)</th>
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                    <tr ID="id_db734647-fc99-424c-a864-7e3cda82e704_ref">
+                                                      <td>Diagnosis</td>
+                                                      <td>A non-trigger code diagnosis (disorder)</td>
+                                                      <td>NOV 7, 2020</td>
+                                                    </tr>
+                                                  </tbody>
+                                                </table>
+                                              </item>
+                                            </list>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </item>
+                                </list>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </item>
+                    </list>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </text>
+          <entry typeCode="DRIV">
+            <encounter classCode="ENC" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.49" />
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.49" extension="2015-08-01" />
+              <id root="2a620155-9d11-439e-92b3-5d9815ff4de8" />
+              <code code="99213" codeSystem="2.16.840.1.113883.6.12" codeSystemName="CPT-4" displayName="Office outpatient visit 15 minutes" />
+              <effectiveTime value="20201107" />
+              <entryRelationship typeCode="COMP">
+                <act classCode="ACT" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.80" />
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.80" extension="2015-08-01" />
+                  <code code="29308-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Diagnosis" />
+                  <entryRelationship typeCode="SUBJ">
+                    <observation classCode="OBS" moodCode="EVN" negationInd="false">
+                      
+                      <templateId root="2.16.840.1.113883.10.20.22.4.4" />
+                      
+                      <templateId root="2.16.840.1.113883.10.20.22.4.4" extension="2015-08-01" />
+                      
+                      <templateId root="2.16.840.1.113883.10.20.15.2.3.3" extension="2021-01-01" />
+                      <id root="db734647-fc99-424c-a864-7e3cda82e705" />
+                      <code code="29308-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Diagnosis">
+                        <translation code="282291009" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Diagnosis" />
+                      </code>
+                      <statusCode code="completed" />
+                      <effectiveTime>
+                        <low value="20201107" />
+                      </effectiveTime>
+                      
+                      <value xsi:type="CD" code="27836007" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Pertussis (disorder)" sdtc:valueSet="2.16.840.1.114222.4.11.7508" sdtc:valueSetVersion="2020-11-13" />
+                    </observation>
+                  </entryRelationship>
+                </act>
+              </entryRelationship>
+              <entryRelationship typeCode="COMP">
+                <act classCode="ACT" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.80" />
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.80" extension="2015-08-01" />
+                  <code code="29308-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Diagnosis" />
+                  <entryRelationship typeCode="SUBJ">
+                    <observation classCode="OBS" moodCode="EVN">
+                      
+                      <templateId root="2.16.840.1.113883.10.20.22.4.4" />
+                      
+                      <templateId root="2.16.840.1.113883.10.20.22.4.4" extension="2015-08-01" />
+                      <id root="db734647-fc99-424c-a864-7e3cda82e704" />
+                      <code code="29308-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Diagnosis">
+                        <translation code="282291009" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Diagnosis" />
+                      </code>
+                      <statusCode code="completed" />
+                      <effectiveTime>
+                        <low value="20201107" />
+                      </effectiveTime>
+                      <value xsi:type="CD" code="282291009" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="A non-trigger code diagnosis (disorder)" />
+                    </observation>
+                  </entryRelationship>
+                </act>
+              </entryRelationship>
+            </encounter>
+          </entry>
+        </section>
+      </component>
+      
+      <component>
+        <section>
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.38" />
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.38" extension="2014-06-09" />
+          <code code="29549-3" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Medications Administered" />
+          <title>Medications Administered</title>
+          <text>
+            <table>
+              <thead>
+                <tr>
+                  <th>Medication</th>
+                  <th>Dose</th>
+                  <th>Duration</th>
+                  <th>Route</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ID="id_6c844c75-aa34-411c-b7bd-5e4a9f206e29_ref">
+                  <td>Azithromycin 500 MG Oral Tablet</td>
+                  <td>1 g</td>
+                  <td>NOV 7, 2020 11:59</td>
+                  <td>ORAL</td>
+                </tr>
+              </tbody>
+            </table>
+          </text>
+          <entry typeCode="DRIV">
+            <substanceAdministration classCode="SBADM" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.16" />
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.16" extension="2014-06-09" />
+              <id root="6c844c75-aa34-411c-b7bd-5e4a9f206e29" />
+              <statusCode code="completed" />
+              <effectiveTime xsi:type="PIVL_TS" operator="A" value="202011071159-0700" />
+              <routeCode code="C38288" codeSystem="2.16.840.1.113883.3.26.1.1" codeSystemName="NCI Thesaurus" displayName="ORAL" />
+              <doseQuantity value="1" unit="g" />
+              <consumable>
+                <manufacturedProduct classCode="MANU">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.23" extension="2014-06-09" />
+                  
+                  <templateId root="2.16.840.1.113883.10.20.15.2.3.36" extension="2019-04-01" />
+                  <id root="2a620155-9d11-439e-92b3-5d9815ff4ee8" />
+                  <manufacturedMaterial>
+                    <code code="248656" codeSystem="2.16.840.1.113883.6.88" codeSystemName="RxNorm" displayName="Azithromycin 500 MG Oral Tablet" sdtc:valueSet="2.16.840.1.114222.4.11.7508" sdtc:valueSetVersion="2020-11-13" />
+                  </manufacturedMaterial>
+                </manufacturedProduct>
+              </consumable>
+              <entryRelationship typeCode="CAUS">
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.15.2.3.37" extension="2019-04-01" />
+                  <id root="ab1791b0-5c71-11db-b0de-0800200c9a55" />
+                  <code code="67540-5" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Response to medication" />
+                  <statusCode code="completed" />
+                  <effectiveTime>
+                    <low value="20201101" />
+                  </effectiveTime>
+                  <value code="268910001" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Patient's condition improved (finding)" xsi:type="CD" />
+                </observation>
+              </entryRelationship>
+            </substanceAdministration>
+          </entry>
+        </section>
+      </component>
+      
+      <component>
+        <section>
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.5" />
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.5" extension="2015-08-01" />
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.5.1" />
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.5.1" extension="2015-08-01" />
+          <code code="11450-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Problem List" />
+          <title>Problems</title>
+          <text>
+            <table>
+              <thead>
+                <tr>
+                  <th>Concern</th>
+                  <th>Concern Status</th>
+                  <th>Date(s)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ID="id_ec8a6ff8-ed4b-4f7e-82c3-e98e58b45de7_ref">
+                  <td>Problem</td>
+                  <td>active</td>
+                  <td>NOV 7, 2020</td>
+                </tr>
+                <tr>
+                  <td colspan="20">
+                    <list styleCode="none">
+                      <item>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Problem Type</th>
+                              <th>Problem</th>
+                              <th>Date(s)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr ID="id_ab1791b0-5c71-11db-b0de-0800200c9a66_ref">
+                              <td>Symptom</td>
+                              <td>Dark stools (finding)</td>
+                              <td>NOV 1, 2020</td>
+                            </tr>
+                            <tr ID="id_ab1791b0-5c71-11db-b0de-0800200c9a67_ref">
+                              <td>Complaint</td>
+                              <td>Paroxysmal cough (finding)</td>
+                              <td>NOV 4, 2020</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </item>
+                    </list>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Concern</th>
+                  <th>Concern Status</th>
+                  <th>Date(s)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ID="id_ec8a6ff8-ed4b-4f7e-82c3-e98e58b45de8_ref">
+                  <td>Problem</td>
+                  <td>active</td>
+                  <td>MAY 23, 2020</td>
+                </tr>
+              </tbody>
+            </table>
+          </text>
+          <entry typeCode="DRIV">
+            <act classCode="ACT" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.3" />
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.3" extension="2015-08-01" />
+              <id root="ec8a6ff8-ed4b-4f7e-82c3-e98e58b45de7" />
+              <code code="CONC" codeSystem="2.16.840.1.113883.5.6" displayName="Concern" />
+              
+              
+              <statusCode code="active" />
+              <effectiveTime>
+                
+                <low value="20201107" />
+              </effectiveTime>
+              <entryRelationship typeCode="SUBJ">
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.4" />
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.4" extension="2015-08-01" />
+                  <id root="ab1791b0-5c71-11db-b0de-0800200c9a66" />
+                  <code code="75325-1" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Symptom">
+                    <translation code="418799008" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Symptom" />
+                  </code>
+                  
+                  <statusCode code="completed" />
+                  <effectiveTime>
+                    
+                    <low value="20201101" />
+                  </effectiveTime>
+                  <value code="35064005" codeSystem="2.16.840.1.113883.6.96" displayName="Dark stools (finding)" xsi:type="CD" />
+                </observation>
+              </entryRelationship>
+              <entryRelationship typeCode="SUBJ">
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.4" />
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.4" extension="2015-08-01" />
+                  <id root="ab1791b0-5c71-11db-b0de-0800200c9a67" />
+                  <code code="55607006" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Problem (finding)">
+                    <translation code="75326-9" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Problem" />
+                  </code>
+                  
+                  <statusCode code="completed" />
+                  <effectiveTime>
+                    
+                    <low value="20201104" />
+                  </effectiveTime>
+                  <value code="43025008" codeSystem="2.16.840.1.113883.6.96" displayName="Paroxysmal cough (finding)" xsi:type="CD" />
+                </observation>
+              </entryRelationship>
+            </act>
+          </entry>
+          <entry typeCode="DRIV">
+            <act classCode="ACT" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.3" />
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.3" extension="2015-08-01" />
+              <id root="ec8a6ff8-ed4b-4f7e-82c3-e98e58b45de8" />
+              <code code="CONC" codeSystem="2.16.840.1.113883.5.6" displayName="Concern" />
+              
+              
+              <statusCode code="active" />
+              <effectiveTime>
+                
+                <low value="20200523" />
+              </effectiveTime>
+              <entryRelationship typeCode="SUBJ">
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.4" />
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.4" extension="2015-08-01" />
+                  <id root="ab1791b0-5c71-11db-b0de-0800200c9a66" />
+                  <code code="75325-1" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Symptom">
+                    <translation code="418799008" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Symptom" />
+                  </code>
+                  
+                  <statusCode code="completed" />
+                  <effectiveTime>
+                    
+                    <low value="20201101" />
+                  </effectiveTime>
+                  <value code="35064005" codeSystem="2.16.840.1.113883.6.96" displayName="Dark stools (finding)" xsi:type="CD" />
+                </observation>
+              </entryRelationship>
+              <entryRelationship typeCode="SUBJ">
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.4" />
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.4" extension="2015-08-01" />
+                  <id root="ab1791b0-5c71-11db-b0de-0800200c9a67" />
+                  <code code="55607006" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Problem (finding)">
+                    <translation code="75326-9" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Problem" />
+                  </code>
+                  
+                  <statusCode code="completed" />
+                  <effectiveTime>
+                    
+                    <low value="20201104" />
+                  </effectiveTime>
+                  <value code="43025008" codeSystem="2.16.840.1.113883.6.96" displayName="Paroxysmal cough (finding)" xsi:type="CD" />
+                </observation>
+              </entryRelationship>
+            </act>
+          </entry>
+        </section>
+      </component>
+      
+      <component>
+        <section>
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.17" />
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.17" extension="2015-08-01" />
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.17" extension="2020-09-01" />
+          <code code="29762-2" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Social History" />
+          <title>Social History</title>
+          <text>
+            <table>
+              <thead>
+                <tr>
+                  <th>Birth Sex</th>
+                  <th>Value</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Sex Assigned At Birth</td>
+                  <td>Female</td>
+                  <td>NOV 24, 1974</td>
+                </tr>
+              </tbody>
+            </table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Gender identity</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Female-to-male transsexual (finding)</td>
+                  <td>JAN 1, 2020</td>
+                </tr>
+              </tbody>
+            </table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Characteristics of Home Environment</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Homeless</td>
+                  <td>NOV 9, 2020</td>
+                </tr>
+              </tbody>
+            </table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Exposure/Contact Information</th>
+                  <th>Date</th>
+                  <th>Location</th>
+                  <th>Address</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mass Gathering: Football game</td>
+                  <td>November 11, 2020</td>
+                  <td>City Football Stadium</td>
+                  <td>99 Football Stadium Road, My City, AZ, 8562</td>
+                </tr>
+              </tbody>
+            </table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Current Occupation</th>
+                  <th>Current Industry</th>
+                  <th>Current Job Title</th>
+                  <th>Current Employer Name</th>
+                  <th>Current Employer Address</th>
+                  <th>Current Employer Telcom</th>
+                  <th>Occupational Exposure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Nursing, psychiatric, and home health aides</td>
+                  <td>Accounting, tax preparation, bookkeeping, and payroll services</td>
+                  <td>Nurse</td>
+                  <td>University Hospital</td>
+                  <td>Peachtree Street, Atlanta, Georgia</td>
+                  <td>1-555-555-1212</td>
+                  <td>Nursing care facilities</td>
+                  <td>Asbestos</td>
+                </tr>
+              </tbody>
+            </table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Usual Occupation</th>
+                  <th>Usual Industry</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Nursing, psychiatric, and home health aides</td>
+                  <td>Nursing care facilities</td>
+                </tr>
+              </tbody>
+            </table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Travel History: Date(s)</th>
+                  <th>Notes</th>
+                  <th>Location</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1999 to 2007</td>
+                  <td>Spent 8 years in the UK during the BSE outbreak</td>
+                  <td />
+                </tr>
+                <tr>
+                  <td>In the 3 weeks before NOV 9, 2020</td>
+                  <td />
+                  <td>
+                    <list styleCode="none">
+                      <item>Brazil</item>
+                    </list>
+                  </td>
+                </tr>
+                <tr>
+                  <td>APR 25, 2020 to APR 30, 2020</td>
+                  <td />
+                  <td>
+                    <list styleCode="none">
+                      <item>Nadi, FJ</item>
+                    </list>
+                  </td>
+                </tr>
+                <tr>
+                  <td>MAY 6, 2020 to MAY 15, 2020</td>
+                  <td />
+                  <td>
+                    <list styleCode="none">
+                      <item>Montreal, QC, CA</item>
+                    </list>
+                  </td>
+                </tr>
+                <tr>
+                  <td>JUL 13, 2020 to JUL 15, 2020</td>
+                  <td />
+                  <td>
+                    <list styleCode="none">
+                      <item>Sydney, NSW, AU</item>
+                    </list>
+                  </td>
+                </tr>
+                <tr>
+                  <td>OCT 22, 2020 to OCT 30, 2020</td>
+                  <td />
+                  <td>
+                    <list styleCode="none">
+                      <item>1170 N Rancho Robles Rd Oracle, AZ8562, US</item>
+                    </list>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Country of Residence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>United Kingdom of Great Britain and Northern Ireland</td>
+                </tr>
+              </tbody>
+            </table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Country of Nationality</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Australia</td>
+                </tr>
+              </tbody>
+            </table>
+          </text>
+          <entry typeCode="DRIV">
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.200" extension="2016-06-01" />
+              <code code="76689-9" codeSystem="2.16.840.1.113883.6.1" displayName="Sex Assigned At Birth" />
+              <statusCode code="completed" />
+              
+              <effectiveTime value="19741124" />
+              <value xsi:type="CD" codeSystem="2.16.840.1.113883.5.1" codeSystemName="AdministrativeGender" code="F" displayName="Female"> </value>
+            </observation>
+          </entry>
+          <entry typeCode="DRIV">
+            
+            <observation classCode="OBS" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.38" extension="2015-08-01" />
+              
+              <templateId root="2.16.840.1.113883.10.20.34.3.45" extension="2022-06-01" />
+              <id root="5501b49a-32ea-4c78-9c31-3dbe782871b7" />
+              <code code="76691-5" displayName="Gender identity" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" />
+              <statusCode code="completed" />
+              <effectiveTime>
+                <low value="20200101" />
+              </effectiveTime>
+              <value xsi:type="CD" code="407377005" displayName="Female-to-male transsexual (finding)" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" />
+            </observation>
+          </entry>
+          <entry typeCode="DRIV">
+            
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.109" />
+              <id root="37f76c51-6411-4e1d-8a37-957fd49d2ced" />
+              <code code="75274-1" codeSystem="2.16.840.1.113883.6.1" displayName="Characteristics of residence" />
+              <statusCode code="completed" />
+              <effectiveTime value="20201109" />
+              <value xsi:type="CD" code="32911000" displayName="Homeless (finding)" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" />
+            </observation>
+          </entry>
+          <entry typeCode="DRIV">
+            
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.52" extension="2021-01-01" />
+              <id root="5f2e0ab0-b505-438a-9d50-f22d78ad1567" />
+              <code code="C3841750" displayName="Mass gathering" codeSystem="2.16.840.1.113883.6.86" codeSystemName="UMLS">
+                <originalText>Football game</originalText>
+              </code>
+              <statusCode code="completed" />
+              <effectiveTime>
+                <low value="202011101800" />
+                <high value="202011102130" />
+              </effectiveTime>
+              <value xsi:type="CD" code="264379009" displayName="Sports stadium (environment)" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT">
+                <originalText>City Football Stadium</originalText>
+              </value>
+              <participant typeCode="LOC">
+                
+                <templateId root="2.16.840.1.113883.10.20.15.2.4.4" extension="2021-01-01" />
+                <participantRole classCode="TERR">
+                  <addr>
+                    <streetAddressLine>99 Football Stadium Road</streetAddressLine>
+                    <city>My City</city>
+                    <state>AZ</state>
+                    <postalCode>8562</postalCode>
+                    <country>US</country>
+                  </addr>
+                </participantRole>
+              </participant>
+            </observation>
+          </entry>
+          <entry typeCode="DRIV">
+            
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.52" extension="2021-01-01" />
+              <id root="a78adeed-d623-49cb-95df-42a0a2c33fca" />
+              <code code="PHC2266" displayName="Animal with confirmed or suspected case" codeSystem="2.16.840.1.114222.4.5.274" codeSystemName="PHIN VS (CDC Local Coding System)" />
+              <statusCode code="completed" />
+              <effectiveTime>
+                <low value="20201109" />
+                <high value="20201113" />
+              </effectiveTime>
+              <participant typeCode="IND">
+                
+                <templateId root="2.16.840.1.113883.10.20.15.2.4.5" extension="2021-01-01" />
+                <sdtc:functionCode code="AEXPOS" displayName="acquisition exposure" codeSystem="2.16.840.1.113883.5.6" codeSystemName="HL7ActClass" />
+                <participantRole>
+                  <playingEntity classCode="ANM">
+                    <code code="35794008" displayName="Wild mink (organism)" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" />
+                  </playingEntity>
+                </participantRole>
+              </participant>
+            </observation>
+          </entry>
+          <entry typeCode="DRIV">
+            
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.52" extension="2021-01-01" />
+              <id root="a78adeed-d623-49cb-95df-42a0a2c33fca" />
+              <code code="PHC2267" displayName="Contact with known case" codeSystem="2.16.840.1.114222.4.5.274" codeSystemName="PHIN VS (CDC Local Coding System)" />
+              <statusCode code="completed" />
+              <effectiveTime>
+                <low value="20201109" />
+                <high value="20201113" />
+              </effectiveTime>
+              <participant typeCode="IND">
+                
+                <templateId root="2.16.840.1.113883.10.20.15.2.4.6" extension="2021-01-01" />
+                <sdtc:functionCode code="AEXPOS" displayName="acquisition exposure" codeSystem="2.16.840.1.113883.5.6" codeSystemName="HL7ActClass" />
+                <participantRole>
+                  <playingEntity classCode="PSN">
+                    <name use="L">
+                      <given>Adam</given>
+                      <family>Everyman</family>
+                    </name>
+                  </playingEntity>
+                </participantRole>
+              </participant>
+              
+              <participant typeCode="CSM">
+                <participantRole>
+                  <playingEntity>
+                    <code code="840533007" displayName="Severe acute respiratory syndrome coronavirus 2 (organism)" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" />
+                  </playingEntity>
+                </participantRole>
+              </participant>
+            </observation>
+          </entry>
+          <entry typeCode="DRIV">
+            
+            <act classCode="ACT" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.1" extension="2022-05-01" />
+              <id root="79565142-eae0-4213-a3b3-b73cdf474682" />
+              <code code="420008001" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Travel" />
+              <text>Spent 8 years in the UK during the BSE outbreak</text>
+              <statusCode code="completed" />
+              
+              <effectiveTime>
+                <low value="1999" />
+                <high value="2007" />
+              </effectiveTime>
+            </act>
+          </entry>
+          <entry typeCode="DRIV">
+            
+            <act classCode="ACT" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.1" extension="2022-05-01" />
+              <id root="030df1dc-1d31-4e5d-abdd-5edd0b74c5c3" />
+              <code code="420008001" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Travel" />
+              <statusCode code="completed" />
+              
+              <effectiveTime>
+                <width value="3" unit="weeks" />
+                <high value="20201109" />
+              </effectiveTime>
+              <participant typeCode="LOC">
+                <participantRole classCode="TERR">
+                  
+                  <code code="BRA" displayName="Brazil" codeSystem="1.0.3166.1" codeSystemName="Country (ISO 3166-1)" />
+                </participantRole>
+              </participant>
+            </act>
+          </entry>
+          <entry typeCode="DRIV">
+            
+            <act classCode="ACT" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.1" extension="2022-05-01" />
+              <id root="b98e410c-d29a-46d8-8fc8-f55a9d3022b9" />
+              <code code="420008001" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Travel" />
+              <statusCode code="completed" />
+              
+              <effectiveTime>
+                <low value="20200425" />
+                <high value="20200430" />
+              </effectiveTime>
+              <participant typeCode="LOC">
+                <participantRole classCode="TERR">
+                  
+                  <addr>
+                    <country>FJ</country>
+                    <city>Nadi</city>
+                  </addr>
+                </participantRole>
+              </participant>
+              <entryRelationship typeCode="COMP">
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.15.2.3.51" extension="2022-05-01" />
+                  <id root="3adc7f4d-ff0a-4b38-9252-bd65edbe3df1" />
+                  <code code="280147009" codeSystem="2.16.840.1.113883.6.96" displayName="Type of activity" codeSystemName="SNOMED CT" />
+                  <statusCode code="completed" />
+                  <value xsi:type="CD" code="C0683587" codeSystem="2.16.840.1.113883.6.86" displayName="tourism" codeSystemName="UMLS" />
+                </observation>
+              </entryRelationship>
+              <entryRelationship typeCode="COMP">
+                <organizer classCode="CLUSTER" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.15.2.3.50" extension="2021-01-01" />
+                  <id root="afd5c96f-9289-4796-b8fa-faa50ac113ff" />
+                  
+                  <code code="21812002" codeSystem="2.16.840.1.113883.6.96" displayName="Ocean liner, device (physical object)" codeSystemName="SNOMED CT" />
+                  <statusCode code="completed" />
+                  <effectiveTime>
+                    <low value="20200425" />
+                    <high value="20200515" />
+                  </effectiveTime>
+                  <component>
+                    <observation classCode="OBS" moodCode="EVN">
+                      
+                      <templateId root="2.16.840.1.113883.10.20.15.2.3.49" extension="2021-01-01" />
+                      <id root="1679fc35-4cbf-48d5-8998-9d5bfd70fcc2" />
+                      <code nullFlavor="OTH">
+                        <originalText>Ship Name</originalText>
+                      </code>
+                      <statusCode code="completed" />
+                      <effectiveTime>
+                        <low value="20200425" />
+                        <high value="20200515" />
+                      </effectiveTime>
+                      <value xsi:type="ST">Princess of the Sea</value>
+                    </observation>
+                  </component>
+                  <component>
+                    <observation classCode="OBS" moodCode="EVN">
+                      
+                      <templateId root="2.16.840.1.113883.10.20.15.2.3.49" extension="2021-01-01" />
+                      <id root="1679fc35-4cbf-48d5-8998-9d5bfd70fcc2" />
+                      <code nullFlavor="OTH">
+                        <originalText>Cabin Number</originalText>
+                      </code>
+                      <statusCode code="completed" />
+                      <effectiveTime>
+                        <low value="20200425" />
+                        <high value="20200515" />
+                      </effectiveTime>
+                      <value xsi:type="ST">69B</value>
+                    </observation>
+                  </component>
+                </organizer>
+              </entryRelationship>
+            </act>
+          </entry>
+          <entry typeCode="DRIV">
+            
+            <act classCode="ACT" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.1" extension="2022-05-01" />
+              <id root="b97346f7-8f9e-4c5b-97bb-df4f6e057fd4" />
+              <code code="420008001" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Travel" />
+              <statusCode code="completed" />
+              
+              <effectiveTime>
+                <low value="20200506" />
+                <high value="20200515" />
+              </effectiveTime>
+              <participant typeCode="LOC">
+                <participantRole classCode="TERR">
+                  <addr>
+                    <country>CA</country>
+                    <city>Montreal</city>
+                    <state>QC</state>
+                  </addr>
+                </participantRole>
+              </participant>
+            </act>
+          </entry>
+          <entry typeCode="DRIV">
+            
+            <act classCode="ACT" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.1" extension="2021-01-01" />
+              <id root="1d957c2a-6133-427d-a6cc-26f132773b86" />
+              <code code="420008001" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Travel" />
+              <statusCode code="completed" />
+              <effectiveTime>
+                <low value="20200713" />
+                <high value="20200715" />
+              </effectiveTime>
+              <participant typeCode="LOC">
+                <participantRole classCode="TERR">
+                  <addr>
+                    <country>AU</country>
+                    <city>Sydney</city>
+                    <state>NSW</state>
+                  </addr>
+                </participantRole>
+              </participant>
+            </act>
+          </entry>
+          <entry typeCode="DRIV">
+            
+            <act classCode="ACT" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.1" extension="2021-01-01" />
+              <id root="45397b5c-e974-4cf1-8b19-e1555bd55701" />
+              <code code="420008001" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Travel" />
+              <statusCode code="completed" />
+              <effectiveTime>
+                <low value="20201022" />
+                <high value="20201030" />
+              </effectiveTime>
+              <participant typeCode="LOC">
+                <participantRole classCode="TERR">
+                  <addr>
+                    <streetAddressLine>1170 N Rancho Robles Rd</streetAddressLine>
+                    <city>Oracle</city>
+                    <state>AZ</state>
+                    <postalCode>8562</postalCode>
+                    <country>US</country>
+                  </addr>
+                </participantRole>
+              </participant>
+            </act>
+          </entry>
+          <entry typeCode="DRIV">
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.53" extension="2021-01-01" />
+              <id root="3adc7f4d-ff0a-4b38-9252-bd65edbe3df2" />
+              <code code="77983-5" codeSystem="2.16.840.1.113883.6.1" displayName="Country of usual residence" codeSystemName="LOINC" />
+              <statusCode code="completed" />
+              <value xsi:type="CD" code="GB" codeSystem="1.0.3166.1.2.2" displayName="United Kingdom of Great Britain and Northern Ireland" codeSystemName="ISO 3166 Part 1 Country Codes, 2nd Edition, Alpha-2" />
+            </observation>
+          </entry>
+          <entry typeCode="DRIV">
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.54" extension="2021-01-01" />
+              <id root="3adc7f4d-ff0a-4b38-9252-bd65edbe3dfa" />
+              <code code="186034007" codeSystem="2.16.840.1.113883.6.96" displayName="Ethnicity / related nationality data (observable entity)" codeSystemName="SNOMED CT" />
+              <statusCode code="completed" />
+              <value xsi:type="CD" code="AU" codeSystem="1.0.3166.1.2.2" displayName="Australia" codeSystemName="ISO 3166 Part 1 Country Codes, 2nd Edition, Alpha-2" />
+            </observation>
+          </entry>
+          <entry typeCode="DRIV">
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.47" extension="2021-01-01" />
+              <id root="c09ac074-605e-47bd-8b1c-735e7321fbc2" />
+              <code code="69856-3" codeSystem="2.16.840.1.113883.6.1" displayName="Are you deaf, or do you have serious difficulty hearing [HHS.ACA Section 4302]" codeSystemName="LOINC" />
+              <statusCode code="completed" />
+              <effectiveTime value="20201109" />
+              <value xsi:type="BL" value="true" />
+            </observation>
+          </entry>
+          <entry typeCode="DRIV">
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.48" extension="2021-01-01" />
+              <id root="cecfb1ba-1e13-47bd-b6ea-5a40f22798a9" />
+              
+              <code code="91" codeSystem="2.16.840.1.113883.5.140" displayName="Fort Mojave Indian Tribe of Arizona, California" codeSystemName="TribalEntityUS" />
+              <statusCode code="completed" />
+              <effectiveTime value="20201109" />
+              
+              <value xsi:type="BL" value="true" />
+            </observation>
+          </entry>
+          
+          
+          <entry>
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.221" extension="2020-09-01" />
+              <id root="4f4b3876-8570-41a0-b995-cf34f37c5cbf" />
+              <code code="21843-8" displayName="Usual Occupation" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" />
+              <statusCode code="completed" />
+              <effectiveTime>
+                <low value="19961124" />
+              </effectiveTime>
+              
+              <value xsi:type="CD" code="3600" codeSystem="2.16.840.1.113883.6.240" codeSystemName="U.S. Census Occupation Code (2010)" displayName="Nursing, psychiatric, and home health aides">
+                <translation code="31-1014.00.007136" codeSystem="2.16.840.1.114222.4.5.327" codeSystemName="Occupational Data for Health (ODH)" displayName="Certified Nursing Assistant (CNA) [Nursing Assistants]" />
+              </value>
+              
+              <entryRelationship typeCode="REFR">
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.219" extension="2020-09-01" />
+                  <id root="280af6dc-bef4-4216-beb4-25579add98d4" />
+                  <code code="21844-6" displayName="Usual Industry" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" />
+                  <statusCode code="completed" />
+                  <effectiveTime>
+                    <low value="19961124" />
+                  </effectiveTime>
+                  
+                  <value xsi:type="CD" code="8270" codeSystem="2.16.840.1.114222.4.5.315" codeSystemName="Industry CDC Census 2010" displayName="Nursing care facilities">
+                    <translation code="621610.008495" codeSystem="2.16.840.1.114222.4.5.327" codeSystemName="Occupational Data for Health (ODH)" displayName="Home nursing services " />
+                  </value>
+                </observation>
+              </entryRelationship>
+            </observation>
+          </entry>
+          
+          <entry>
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.217" extension="2020-09-01" />
+              <id root="1728123a-7b6c-418c-adc2-f78417caf62c" />
+              <code code="11341-5" displayName="History of Occupation" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" />
+              <text>Nurse</text>
+              
+              <statusCode code="active" />
+              
+              <effectiveTime>
+                <low value="20150424" />
+              </effectiveTime>
+              
+              <value xsi:type="CD" code="3600" codeSystem="2.16.840.1.113883.6.240" codeSystemName="U.S. Census Occupation Code (2010)" displayName="Nursing, psychiatric, and home health aides">
+                <translation code="31-1014.00.007136" codeSystem="2.16.840.1.114222.4.5.327" codeSystemName="Occupational Data for Health (ODH) " displayName="Certified Nursing Assistant (CNA) [Nursing Assistants]" />
+              </value>
+              <participant typeCode="IND">
+                <participantRole classCode="ROL">
+                  <id root="58822180-ab0d-42e4-90c6-35336bf55654" extension="12345" />
+                  
+                  <addr>
+                    <streetAddressLine>Peachtree St</streetAddressLine>
+                    <city>Atlanta</city>
+                    <state>Georgia</state>
+                    <postalCode>77775</postalCode>
+                  </addr>
+                  
+                  <telecom use="WP" value="tel: 1+(555)-555-1212" />
+                  <playingEntity>
+                    
+                    <name>University Hospital</name>
+                  </playingEntity>
+                </participantRole>
+              </participant>
+              
+              <entryRelationship typeCode="REFR">
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.215" extension="2017-11-30" />
+                  <id root="8cb3c421-473b-43ee-96cd-a8e3514f7dc7" />
+                  <code code="87729-0" displayName="History of Occupational hazard" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" />
+                  <statusCode code="completed" />
+                  
+                  <value xsi:type="ST">Asbestos</value>
+                </observation>
+              </entryRelationship>
+              
+              <entryRelationship typeCode="REFR">
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.216" extension="2020-09-01" />
+                  <id root="2cbd83d6-5fd7-436e-99cd-3e1644aa8742" />
+                  <code code="86188-0" displayName="Occupation Industry" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" />
+                  <statusCode code="completed" />
+                  
+                  <value xsi:type="CD" code="8270" codeSystem="2.16.840.1.114222.4.5.315" codeSystemName="Industry CDC Census 2010" displayName="Nursing care facilities">
+                    <translation code="621610.008495" codeSystem="2.16.840.1.114222.4.5.327" codeSystemName="Occupational Data for Health (ODH)" displayName="Home nursing services " />
+                  </value>
+                </observation>
+              </entryRelationship>
+            </observation>
+          </entry>
+          
+          <entry>
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.212" extension="2017-11-30" />
+              <id root="c1e39467-4b79-474e-9c75-927b45e8616a" />
+              <code code="74165-2" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="History of Employment Status" />
+              <statusCode code="completed" />
+              <effectiveTime xsi:type="IVL_TS">
+                <low value="20170116154714" />
+              </effectiveTime>
+              <value xsi:type="CD" code="Employed" codeSystem="2.16.840.1.113883.5.1063" codeSystemName="HL7ObservationValue" displayName="Employed" />
+            </observation>
+          </entry>
+        </section>
+      </component>
+      
+      <component>
+        <section>
+          
+          <templateId root="2.16.840.1.113883.10.20.22.2.80" extension="2018-04-01" />
+          <code code="90767-5" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Pregnancy summary Document" />
+          <title>Pregnancy Section</title>
+          <text>
+            <table>
+              <thead>
+                <tr>
+                  <th>Pregnancy Status</th>
+                  <th>Date(s) over which status holds<br />(if no high date, status was<br />current at time of recording)</th>
+                  <th>Determination Method</th>
+                  <th>Determination Date</th>
+                  <th>Recorded Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Pregnant</td>
+                  <td>AUG 26, 2017</td>
+                  <td>Diagnostic ultrasonography</td>
+                  <td>OCT 1, 2017</td>
+                  <td>OCT 1, 2017 10:35</td>
+                </tr>
+                <tr>
+                  <td colspan="20">
+                    <list styleCode="none">
+                      <item>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Estimated Date of Delivery</th>
+                              <th>EDD</th>
+                              <th>EDD Determination Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Delivery date estimated from ovulation date</td>
+                              <td>MAY 22, 2017</td>
+                              <td>OCT 1, 2017 10:15</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Estimated Gestational Age of Pregnancy</th>
+                              <th>Days</th>
+                              <th>Determination Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Gestational age Estimated from selected delivery date</td>
+                              <td>143 d</td>
+                              <td>OCT 1, 2017 10:15</td>
+                            </tr>
+                            <tr>
+                              <td colspan="20">
+                                <list styleCode="none">
+                                  <item>
+                                    <table>
+                                      <thead>
+                                        <tr>
+                                          <th>Reference to selected delivery date</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        <tr>
+                                          <td>
+                                            <linkHtml href="#id_f3dfc576-2329-4f71-af3f-d500cab1146b_ref">Link to referenced entry</linkHtml>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </item>
+                                </list>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Pregnancy Outcome</th>
+                              <th>Birth Order</th>
+                              <th>Time</th>
+                              <th>Method of Delivery</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Stillbirth (finding)</td>
+                              <td>1</td>
+                              <td>JAN 5, 2020 08:50</td>
+                              <td>Breech delivery (procedure)</td>
+                            </tr>
+                            <tr>
+                              <td>Term birth of newborn (finding)</td>
+                              <td>2</td>
+                              <td>JAN 5, 2020 10:05</td>
+                              <td>Breech delivery (procedure)</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </item>
+                    </list>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Last menstrual period start date</th>
+                  <th>Observation Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>AUG 1, 2017</td>
+                  <td>JAN 5, 2020 10:15</td>
+                </tr>
+              </tbody>
+            </table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Postpartum Status</th>
+                  <th>Observation date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mid postpartum state (finding)</td>
+                  <td>JAN 5, 2020 10:15</td>
+                </tr>
+              </tbody>
+            </table>
+          </text>
+          
+          <entry typeCode="DRIV">
+            
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.15.3.8" />
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.293" extension="2018-04-01" />
+              <id root="bab77407-f76d-4a51-a2ed-980c8a59fe28" />
+              <code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4" />
+              <statusCode code="completed" />
+              
+              <effectiveTime>
+                <low value="20170826" />
+              </effectiveTime>
+              
+              <value xsi:type="CD" code="77386006" displayName="Pregnant" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" />
+              
+              <methodCode code="16310003" displayName="Diagnostic ultrasonography (procedure)" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" />
+              <performer>
+                
+                <time value="20171001" />
+                <assignedEntity>
+                  <id nullFlavor="NA" />
+                </assignedEntity>
+              </performer>
+              <author>
+                
+                <time value="201710011035" />
+                <assignedAuthor>
+                  <id nullFlavor="NA" />
+                </assignedAuthor>
+              </author>
+              
+              <entryRelationship typeCode="REFR">
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.297" extension="2020-04-01" />
+                  <id root="f3dfc576-2329-4f71-af3f-d500cab1146b" />
+                  
+                  
+                  <code code="11780-4" codeSystem="2.16.840.1.113883.6.1" displayName="Delivery date estimated from ovulation date" codeSystemName="LOINC" />
+                  <statusCode code="completed" />
+                  
+                  <effectiveTime value="201710011015" />
+                  
+                  <value xsi:type="TS" value="20170522" />
+                </observation>
+              </entryRelationship>
+              
+              <entryRelationship typeCode="REFR">
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.280" extension="2020-04-01" />
+                  <id root="9ae62b42-0e67-4ddc-8ef7-909d03732292" />
+                  <code code="11887-7" codeSystem="2.16.840.1.113883.6.1" displayName="Gestational age Estimated from selected delivery date" codeSystemName="LOINC" />
+                  <statusCode code="completed" />
+                  
+                  <effectiveTime value="201710011015" />
+                  
+                  <value xsi:type="PQ" unit="d" value="143" />
+                  
+                  <entryRelationship typeCode="REFR">
+                    <act classCode="ACT" moodCode="EVN">
+                      
+                      <templateId root="2.16.840.1.113883.10.20.22.4.122" />
+                      
+                      <id root="f3dfc576-2329-4f71-af3f-d500cab1146b" />
+                      
+                      <code nullFlavor="NP" />
+                      <statusCode code="completed" />
+                    </act>
+                  </entryRelationship>
+                </observation>
+              </entryRelationship>
+              
+              <entryRelationship typeCode="COMP">
+                
+                <sequenceNumber value="1" />
+                <observation classCode="OBS" moodCode="EVN">
+                  
+                  <templateId root="2.16.840.1.113883.10.20.22.4.284" extension="2020-04-01" />
+                  <id root="6df3e951-e6f8-441d-a298-d9d6d3f405db" />
+                  <code code="63893-2" codeSystem="2.16.840.1.113883.6.1" displayName="Outcome of Pregnancy" codeSystemName="LOINC" />
+                  <statusCode code="completed" />
+                  
+                  <effectiveTime value="202001050850" />
+                  
+                  <value xsi:type="CD" code="237364002" codeSystem="2.16.840.1.113883.6.96" displayName="Stillbirth (finding)" codeSystemName="SNOMED CT" />
+                </observation>
+              </entryRelationship>
+            </observation>
+          </entry>
+          
+          <entry typeCode="DRIV">
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.30.3.34" extension="2014-06-09" />
+              <id root="5ffea0ae-9ae5-4313-956a-30219b4a6afa" />
+              <code code="8665-2" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Last menstrual period start date" />
+              <statusCode code="completed" />
+              
+              <effectiveTime value="202001051015" />
+              <value xsi:type="TS" value="20170801" />
+            </observation>
+          </entry>
+          
+          <entry typeCode="DRIV">
+            <observation classCode="OBS" moodCode="EVN">
+              
+              <templateId root="2.16.840.1.113883.10.20.22.4.285" extension="2020-04-01" />
+              <id root="9701b264-0f70-47f9-bfbf-aa4f9686cd3a" />
+              <code code="249197004" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Maternal condition during puerperium (observable entity)" />
+              <statusCode code="completed" />
+              <effectiveTime value="202001051015" />
+              
+              <value xsi:type="CD" code="42814007" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Mid postpartum state (finding)" />
+            </observation>
+          </entry>
+        </section>
+      </component>
+      
+      </structuredBody>
+  </component>
+</ClinicalDocument>
