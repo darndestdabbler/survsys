@@ -37,11 +37,11 @@ public class EnterALaboratoryResultTests(SurvsysHarness harness) : SurvsysPageTe
     /// <summary>
     /// The one specimen row as the document promises it at steps 14 and 15:
     /// the accession number, the collection date, the source by its
-    /// description, and a dash in each of the five columns this walkthrough
-    /// leaves empty.
+    /// description, the ordering clinician by name, and a dash in each of the
+    /// four columns this walkthrough leaves empty.
     /// </summary>
     private static readonly string[] SpecimenRow =
-        ["A2026-0417", "2026-10-03", "Serum", "—", "—", "—", "—", "—"];
+        ["A2026-0417", "2026-10-03", "Serum", "—", "Okafor, Chidi", "—", "—", "—"];
 
     /// <summary>
     /// The specimen row's cells but its last, which holds the Edit and Delete
@@ -119,7 +119,7 @@ public class EnterALaboratoryResultTests(SurvsysHarness harness) : SurvsysPageTe
             await OpenLaboratoryTab();
 
             await Expect(Page.Locator("#lab-specimens thead th")).ToHaveTextAsync(
-                ["Accession", "Collected", "Source", "Lab facility", "Provider", "Diagnostic", "Reporting", "Sent to state", "Actions"]);
+                ["Accession", "Collected", "Source", "Lab facility", "Ordering clinician", "Diagnostic", "Reporting", "Sent to state", "Actions"]);
             await Expect(Page.Locator("#lab-specimens tbody tr")).ToHaveTextAsync(["No specimens recorded yet."]);
 
             await Expect(Page.Locator("#lab-entry")).ToBeVisibleAsync();
@@ -129,12 +129,24 @@ public class EnterALaboratoryResultTests(SurvsysHarness harness) : SurvsysPageTe
             await Expect(Page.Locator("#lab-entry-record")).ToHaveTextAsync("Record specimen");
         });
 
-        // 11. The specimen's accession number, collection date and source.
-        await Step(Document, 11, "type A2026-0417 in Accession number, enter 2026-10-03 in Collection date and choose Serum from Specimen source", async () =>
+        // 11. The specimen's accession number, collection date and source,
+        //     and its ordering clinician, added to the registry from the tab.
+        await Step(Document, 11, "type A2026-0417 in Accession number, enter 2026-10-03 in Collection date, choose Serum from Specimen source, and add Okafor, Chidi as the Ordering clinician", async () =>
         {
             await Page.Locator("#lab-entry-accession-no").FillAsync("A2026-0417");
             await Page.Locator("#lab-entry-collection-date").FillAsync("2026-10-03");
             await Choose("Specimen source", "Serum");
+
+            // Nobody named Okafor is on file, so New clinician is offered.
+            await Page.Locator("#lab-entry-provider-id").FillAsync("Okafor");
+            await Page.Locator("#lab-entry-new-clinician").ClickAsync();
+
+            await Expect(Page.Locator("#lab-entry-new-clinician-last-name")).ToHaveValueAsync("Okafor");
+            await Page.Locator("#lab-entry-new-clinician-first-name").FillAsync("Chidi");
+            await Page.Locator("#lab-entry-new-clinician-save").ClickAsync();
+
+            await Expect(Page.Locator("#lab-entry-new-clinician-form")).ToHaveCountAsync(0);
+            await Expect(Page.Locator("#lab-entry-provider-id")).ToHaveValueAsync("Okafor, Chidi");
         });
 
         // 12. Add test, then the test's type from its list, its LOINC code

@@ -45,9 +45,13 @@ describes what Survsys shows rather than what EpiTrax showed:
   its description — **Serum**. Lab facility, diagnostic facility and
   reporting facility are searchable lists over the facilities kept on the
   **Facilities** screen, and the table shows a chosen facility by name; this
-  walkthrough leaves them empty, and the table shows a dash for each. Provider
-  is still a box that takes the legacy identifier, because there is no
-  provider list to choose from yet; it is left empty too.
+  walkthrough leaves them empty, and the table shows a dash for each.
+  **Ordering clinician** searches the providers kept on the **Providers**
+  screen by last name as you type, and the table shows the chosen clinician
+  as last name, first name. Where nobody matches, **New clinician** adds the
+  clinician to that registry by name and chooses them, so a clinician not
+  yet on file is added without leaving the case; it is offered to a user
+  who may change reference data, as the administrator may.
 - **A test's LOINC code is chosen or typed.** The **LOINC code** box offers
   the master LOINC codes kept on the **Vocabulary** screen that hold what you
   type, each with its concept name, and keeps a code it does not hold as you
@@ -102,13 +106,17 @@ You need all five of these. The fourth is the one people forget.
    that user name and password on the **Sign in** page, and press **Sign
    in**; then begin at step 1.
 
-This walkthrough **creates a report and records a specimen on it**. Perform
-it twice and you have two reports on An Nguyen, each with one specimen; that
-is what the legacy system does too, and nothing here prevents it. It changes
+This walkthrough **creates a report and records a specimen on it**, and
+**adds the clinician Okafor, Chidi to the provider registry**. Perform it
+twice and you have two reports on An Nguyen, each with one specimen; that
+is what the legacy system does too, and nothing here prevents it. The second
+time, though, Okafor is already on file: the **Ordering clinician** list
+offers **Okafor, Chidi** at step 11, and you choose it rather than pressing
+**New clinician**. It changes
 nothing about the person, so the *Find a person* walkthrough reads the same
-seven people before and after it. The end-to-end suite empties the specimens
-and the reports along with the people it reseeds on every run, so a run
-always begins with none.
+seven people before and after it. The end-to-end suite empties the specimens,
+the reports and the providers along with the people it reseeds on every run,
+so a run always begins with none.
 
 **To watch this walkthrough performed instead of performing it yourself**, run
 
@@ -148,7 +156,7 @@ of every test it runs, and writes the recordings to
    step 15 comes back to it.
 10. Press **Edit** at the top of the report, which opens it for editing, then press the **Laboratory** tab. The tab opens on two panels. The first,
     headed **Specimens**, is a table with the columns **Accession**,
-    **Collected**, **Source**, **Lab facility**, **Provider**,
+    **Collected**, **Source**, **Lab facility**, **Ordering clinician**,
     **Diagnostic**, **Reporting**, **Sent to state** and **Actions**, and
     its one row
     reads **No specimens recorded yet.** The second, headed **Record a
@@ -158,8 +166,15 @@ of every test it runs, and writes the recordings to
     button.
 11. In the box labelled **Accession number**, type `A2026-0417`. In the box
     labelled **Collection date**, enter the date `2026-10-03`. Open the
-    **Specimen source** list and choose **Serum**. Leave the other specimen
-    boxes empty and **Sent to state lab** untouched.
+    **Specimen source** list and choose **Serum**. In the box labelled
+    **Ordering clinician**, type `Okafor`: no provider of that name is on
+    file, so the list under the box offers nothing, and a **New clinician**
+    button appears under the box. Press **New clinician**. A **New
+    clinician** panel opens under the specimen's boxes, its **Last name**
+    already reading `Okafor`; in its **First name** box type `Chidi`, then
+    press **Save clinician**. The panel closes, and the **Ordering
+    clinician** box reads **Okafor, Chidi**. Leave the other specimen boxes
+    empty and **Sent to state lab** untouched.
 12. Under **Tests**, press **Add test**. A test block appears above the
     button, with the boxes **Test type**, **Test status**, **LOINC code**,
     **Reference range** and **Test date**, and under them a **Results**
@@ -177,16 +192,17 @@ of every test it runs, and writes the recordings to
 14. Press **Record specimen** at the bottom of the form. A green message
     appears at the top of the tab, reading **The specimen has been
     recorded.** The **Specimens** table now has one row, reading, left to
-    right: **A2026-0417**, **2026-10-03**, **Serum**, a dash in each of the
-    five other columns, and **Edit** and **Delete** buttons under
+    right: **A2026-0417**, **2026-10-03**, **Serum**, a dash under **Lab
+    facility**, **Okafor, Chidi** under **Ordering clinician**, a dash in
+    each of the three other columns, and **Edit** and **Delete** buttons under
     **Actions**. The entry form is empty again: **Accession number** is blank
     and there is no test block under **Tests**.
 15. Go back to the report's address — the one you noted in step 9 — by
     entering it in the address bar again, so that the screen is read afresh
     from the database rather than from what you typed, and press the
     **Laboratory** tab. The **Specimens** table has the one row, reading
-    **A2026-0417**, **2026-10-03**, **Serum** and five dashes, exactly as in
-    step 14.
+    **A2026-0417**, **2026-10-03**, **Serum**, a dash, **Okafor, Chidi** and
+    three dashes, exactly as in step 14.
     That is how you know the specimen reached the database.
 
 ## What you should see
@@ -199,7 +215,9 @@ back:
 - The **Laboratory** tab with no specimens yet, and an entry form that takes
   a specimen, a test under it and a result under that.
 - After entering accession number **A2026-0417**, collected **2026-10-03**
-  from **Serum**, with one **IgM Antibody** test coded **20575-7** on
+  from **Serum** and ordered by **Okafor, Chidi**, a clinician added to the
+  provider registry from the tab, with one **IgM Antibody** test coded
+  **20575-7** on
   **2026-10-04** and one primary result
   reading **Positive**, **Record specimen** answers **The specimen has been
   recorded.** and lists the specimen as the table's one row.

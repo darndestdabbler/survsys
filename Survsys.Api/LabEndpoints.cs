@@ -240,6 +240,11 @@ public static class LabEndpoints
             return Refused(missing);
         }
 
+        if (await labs.WhyNotAProvider(request.ProviderId, cancellationToken) is { } noProvider)
+        {
+            return Refused(noProvider);
+        }
+
         var labId = await labs.Add(id, request, cancellationToken);
 
         var created = await labs.Detail(labId, cancellationToken)
@@ -294,6 +299,11 @@ public static class LabEndpoints
         UpdateLabRequest request,
         CancellationToken cancellationToken = default)
     {
+        if (await labs.WhyNotAProvider(request.ProviderId, cancellationToken) is { } noProvider)
+        {
+            return Refused(noProvider);
+        }
+
         if (await labs.UpdateSpecimen(id, request, cancellationToken) is not { } specimen)
         {
             return NoSuchLab(id);
@@ -462,6 +472,23 @@ internal sealed class LabQueries(SurvsysDbContext database)
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Why the ordering clinician a specimen names is not one to name, or null
+    /// when it names none or a provider on file — the refusal an unknown
+    /// person on a contact gets.
+    /// </summary>
+    public async Task<string?> WhyNotAProvider(int? providerId, CancellationToken cancellationToken)
+    {
+        if (providerId is not { } id
+            || await database.Providers.AnyAsync(provider => provider.Id == id, cancellationToken))
+        {
+            return null;
+        }
+
+        return $"providerId {id} is not a provider on file: find the clinician on the Providers "
+            + "registry, or add them there first, with POST /api/providers.";
     }
 
     /// <summary>

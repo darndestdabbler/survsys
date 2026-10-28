@@ -98,10 +98,11 @@ public static class WalkthroughDatabase
     /// agency by a reference the schema enforces, but the agencies are the
     /// migration's and the suite never clears them, so a facility is cleared
     /// on its own and listed first, where nothing the suite clears hangs off
-    /// it. A provider is cleared on its own beside it, for the same reason: its
-    /// type is a code the migration seeds and the suite never clears, and the
-    /// provider walkthrough adds the one provider it then reads back as the only
-    /// one. A saved view is cleared the same way and for the same reason: it
+    /// it. A provider is cleared on its own, for the same reason: its type is
+    /// a code the migration seeds and the suite never clears, and the provider
+    /// walkthrough adds the one provider it then reads back as the only one.
+    /// It goes after the specimens, because a specimen names its ordering
+    /// clinician by a reference the schema enforces. A saved view is cleared the same way and for the same reason: it
     /// names its user by a reference the schema enforces, but the API tier
     /// creates the administrator and the suite never clears that user;
     /// <see cref="AccountsClearedButTheAdministrator"/> clears the others.
@@ -169,7 +170,6 @@ public static class WalkthroughDatabase
         "vocab_master_organism",
         "zip_code_agencies",
         "facilities",
-        "providers",
         "saved_views",
         "attachments",
         "attachment_files",
@@ -185,6 +185,7 @@ public static class WalkthroughDatabase
         "lab_tests",
         "lab_resist_tests",
         "labs",
+        "providers",
         "nmi_log",
         "nmi_export_queue",
         "form_answers",

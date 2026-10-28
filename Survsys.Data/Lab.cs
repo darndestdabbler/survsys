@@ -17,7 +17,7 @@ namespace Survsys.Data;
 /// Every column of the legacy <c>lab</c> table is here. The performing lab, the
 /// diagnostic facility and the reporting facility are each a bare nullable id
 /// into the <c>facility</c> table, and the ordering provider one into the
-/// <c>provider</c> table, which does not exist here yet — the "Performing
+/// <c>providers</c> table — the "Performing
 /// Lab", "Ordering Clinician" and "Ordering Facility" fields of the legacy Add
 /// Lab form, as <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c>
 /// section 4 lists
@@ -64,9 +64,9 @@ public class Lab
 
     /// <summary>
     /// The clinician who ordered the lab work, as the legacy
-    /// <c>provider_id</c> — the Add Lab form's "Ordering Clinician". A bare
-    /// nullable id into the <c>provider</c> table, which does not exist here
-    /// yet.
+    /// <c>provider_id</c> — the Add Lab form's "Ordering Clinician". A
+    /// nullable id into the <c>providers</c> table, a foreign key without a
+    /// navigation.
     /// </summary>
     public int? ProviderId { get; set; }
 

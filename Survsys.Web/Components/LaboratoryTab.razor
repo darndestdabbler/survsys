@@ -12,8 +12,12 @@
    Every coded field (the specimen source, the test type and status, the
    organism, the result code, the agent and the coded outcome) is chosen from
    its code list, and the three facilities from the facility list, so the
-   specimens table shows names rather than ids. The provider alone is still a
-   plain box holding the legacy id: there is no provider table to choose from.
+   specimens table shows names rather than ids. The ordering clinician is
+   searched for in the provider registry by last name as it is typed, and the
+   table shows the clinician's name. Where nothing matches, a user who may
+   change reference data is offered New clinician, which records the provider
+   by name through the registry's own endpoint and chooses them, so a
+   clinician not yet on file is added without leaving the case.
 
    The at-most-one-primary-result rule and the coded-value rules stay the API
    tier's; an answer it refuses is shown as the entry error rather than
@@ -25,6 +29,7 @@
 @using System.Globalization
 @inject LabsClient Api
 @inject FacilitiesClient Facilities
+@inject ProvidersClient Providers
 @inject CodesClient Codes
 @inject VocabularyClient Vocabulary
 @inject IDialogService Dialogs
@@ -67,7 +72,7 @@
                 <th>Collected</th>
                 <th>Source</th>
                 <th>Lab facility</th>
-                <th>Provider</th>
+                <th>Ordering clinician</th>
                 <th>Diagnostic</th>
                 <th>Reporting</th>
                 <th>Sent to state</th>
@@ -84,7 +89,7 @@
                     <td>@Shown(Written(specimen.CollectionDate))</td>
                     <td>@SourceName(specimen.SpecimenSourceId)</td>
                     <td>@FacilityName(specimen.LabFacilityId)</td>
-                    <td>@Shown(specimen.ProviderId)</td>
+                    <td>@Shown(ClinicianName(specimen.ProviderId))</td>
                     <td>@FacilityName(specimen.DiagnosticFacilityId)</td>
                     <td>@FacilityName(specimen.ReportingFacilityId)</td>
                     <td>@Flag(specimen.SpecimenSentToState)</td>
@@ -140,9 +145,17 @@
                             Label="Lab facility" Margin="Margin.Dense" />
         </MudItem>
         <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="specimenForm.ProviderId" id="lab-entry-provider-id"
-                          Label="Provider" Variant="Variant.Outlined" Margin="Margin.Dense"
-                          InputType="InputType.Number" />
+            <MudAutocomplete T="int?" @bind-Value="specimenForm.ProviderId" id="lab-entry-provider-id"
+                             Label="Ordering clinician" Variant="Variant.Outlined" Margin="Margin.Dense"
+                             Clearable="true" SearchFunc="@SearchClinicians" ToStringFunc="@ClinicianName"
+                             MaxItems="null" />
+            @if (mayAddClinician && noClinicianMatched && newClinician is null)
+            {
+                <MudButton id="lab-entry-new-clinician" Variant="Variant.Text" Size="Size.Small"
+                           OnClick="@OpenNewClinician">
+                    New clinician
+                </MudButton>
+            }
         </MudItem>
         <MudItem xs="12" sm="3">
             <FacilitySelect @bind-Value="specimenForm.DiagnosticFacilityId" id="lab-entry-diagnostic-facility-id"
@@ -159,6 +172,34 @@
                          TriState="true" Label="Sent to state lab" />
         </MudItem>
     </MudGrid>
+
+    @if (newClinician is { } adding)
+    {
+        <MudPaper id="lab-entry-new-clinician-form" Outlined="true" Class="pa-3 mt-2">
+            <MudText Typo="Typo.subtitle2">New clinician</MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="3">
+                    <MudTextField @bind-Value="adding.LastName" id="lab-entry-new-clinician-last-name"
+                                  Label="Last name" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudTextField @bind-Value="adding.FirstName" id="lab-entry-new-clinician-first-name"
+                                  Label="First name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="6" Class="d-flex align-center gap-2">
+                    <MudButton id="lab-entry-new-clinician-save" Variant="Variant.Filled" Color="Color.Primary"
+                               Disabled="@recording" OnClick="@SaveNewClinician">
+                        Save clinician
+                    </MudButton>
+                    <MudButton id="lab-entry-new-clinician-cancel" Variant="Variant.Outlined"
+                               Disabled="@recording" OnClick="@(() => newClinician = null)">
+                        Cancel
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
 
     <div id="lab-entry-tests" class="mt-4">
         <MudText Typo="Typo.subtitle1">Tests</MudText>
@@ -346,6 +387,9 @@
     [Parameter]
     public int? ConditionId { get; set; }
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
     /// <summary>
     /// How this tier writes a date into a date box and reads one out: the form
     /// a native date input yields, under the culture the other tier parses it
@@ -390,8 +434,29 @@
     /// <summary>The master LOINC codes, read once, that a test's LOINC code is chosen from.</summary>
     private IReadOnlyList<VocabMasterLoincRow> loincs = [];
 
+    /// <summary>
+    /// The providers met so far, by id — those a search offered, those the
+    /// listed specimens name, and those added here — to name a clinician by.
+    /// </summary>
+    private readonly Dictionary<int, ProviderResponse> clinicians = [];
+
+    /// <summary>Whether the signed-in user may add a provider: manage_reference_data.</summary>
+    private bool mayAddClinician;
+
+    /// <summary>Whether the last clinician search, for something typed, found nobody.</summary>
+    private bool noClinicianMatched;
+
+    /// <summary>What the last clinician search was for, which a new clinician's last name starts as.</summary>
+    private string? clinicianTyped;
+
+    /// <summary>The new clinician being entered, or null while the form is closed.</summary>
+    private NewClinicianForm? newClinician;
+
     protected override async Task OnInitializedAsync()
     {
+        var user = AuthenticationState is { } state ? (await state).User : null;
+        mayAddClinician = user?.HasClaim(AccountClient.PrivilegeClaim, Privileges.ManageReferenceData) == true;
+
         facilities = (await Facilities.Page(1, APageful)).Value?.Items ?? [];
         sources = (await Codes.List(CodeLists.SpecimenSource)).Value ?? [];
         loincs = (await Vocabulary.List<VocabMasterLoincRow>(VocabularyClient.MasterLoincs)).Value ?? [];
@@ -405,6 +470,91 @@
 
         specimens = listed.Value?.Items.ToList() ?? [];
         listFailure = listed.Failure;
+
+        // The clinicians the specimens name, read one by one: a report has a
+        // handful of specimens, and the registry may be far longer than a page.
+        foreach (var id in specimens.Select(specimen => specimen.ProviderId).OfType<int>().Distinct())
+        {
+            if (!clinicians.ContainsKey(id) && (await Providers.Find(id)).Value is { } provider)
+            {
+                clinicians[id] = provider;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The providers whose last name starts with what was typed — up to the
+    /// comma, so a chosen clinician's shown name searches for them again —
+    /// noting whether nobody matched, which is when New clinician is offered.
+    /// </summary>
+    private async Task<IEnumerable<int?>> SearchClinicians(string? typed, CancellationToken cancellationToken)
+    {
+        var lastName = typed?.Split(',')[0].Trim();
+        var found = (await Providers.Page(1, APageful, lastName, cancellationToken)).Value?.Items ?? [];
+
+        foreach (var provider in found)
+        {
+            clinicians[provider.Id] = provider;
+        }
+
+        clinicianTyped = lastName;
+        var none = found.Count == 0 && !string.IsNullOrWhiteSpace(lastName);
+
+        if (none != noClinicianMatched)
+        {
+            noClinicianMatched = none;
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return found.Select(provider => (int?)provider.Id);
+    }
+
+    /// <summary>Opens the new clinician form, the last name starting as what was searched for.</summary>
+    private void OpenNewClinician() =>
+        newClinician = new NewClinicianForm { LastName = clinicianTyped };
+
+    /// <summary>
+    /// Records the new clinician in the provider registry and chooses them as
+    /// the ordering clinician, or shows why the API tier refused them.
+    /// </summary>
+    private async Task SaveNewClinician()
+    {
+        if (newClinician is not { } adding)
+        {
+            return;
+        }
+
+        if (Blank(adding.LastName) is not { } lastName)
+        {
+            complaint = "Give the new clinician's last name.";
+
+            return;
+        }
+
+        complaint = null;
+        entryFailure = null;
+        recording = true;
+
+        try
+        {
+            var created = await Providers.Create(new SaveProviderRequest(lastName, Blank(adding.FirstName)));
+
+            if (created.Value is not { } provider)
+            {
+                entryFailure = created.Failure;
+
+                return;
+            }
+
+            clinicians[provider.Id] = provider;
+            specimenForm.ProviderId = provider.Id;
+            newClinician = null;
+            noClinicianMatched = false;
+        }
+        finally
+        {
+            recording = false;
+        }
     }
 
     private async Task Record()
@@ -916,6 +1066,8 @@
         specimenForm = new SpecimenForm();
         tests = [];
         resistTests = [];
+        newClinician = null;
+        noClinicianMatched = false;
     }
 
     /// <summary>A value as the list shows it, or a dash for what nobody has recorded.</summary>
@@ -931,6 +1083,17 @@
         facilities.FirstOrDefault(facility => facility.Id == id) is { } facility
             ? facility.ShortName ?? facility.Name
             : Shown(id);
+
+    /// <summary>
+    /// A clinician as the list and the search show them — last name, then
+    /// first — or #id for one the registry does not hold, and nothing for none.
+    /// </summary>
+    private string ClinicianName(int? id) =>
+        id is not { } chosen
+            ? ""
+            : clinicians.TryGetValue(chosen, out var provider)
+                ? provider.LastName + (string.IsNullOrWhiteSpace(provider.FirstName) ? "" : $", {provider.FirstName}")
+                : $"#{chosen.ToString(CultureInfo.InvariantCulture)}";
 
     /// <summary>A specimen source as the list shows it: its description, else its id.</summary>
     private string SourceName(int? id) =>
@@ -1005,6 +1168,13 @@
         public int? DiagnosticFacilityId { get; set; }
         public int? ReportingFacilityId { get; set; }
         public bool? SentToState { get; set; }
+    }
+
+    /// <summary>A clinician not yet on file, as the new clinician boxes hold them.</summary>
+    private sealed class NewClinicianForm
+    {
+        public string? LastName { get; set; }
+        public string? FirstName { get; set; }
     }
 
     /// <summary>One test as its boxes hold it, with the results under it.</summary>

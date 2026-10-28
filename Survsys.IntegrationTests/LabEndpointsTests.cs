@@ -29,6 +29,9 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
+    /// <summary>The last name of the providers this class records, and clears.</summary>
+    private const string ClinicianLastName = "LabEndpointsTests-Clinician";
+
     private readonly SurvsysApi api = new(server.ConnectionString);
 
     public void Dispose() => api.Dispose();
@@ -44,13 +47,14 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
     public async Task ASpecimenRecordedAgainstAReportReadsBackWhole()
     {
         var reportId = await EnsureSeededReport();
+        var providerId = await RecordProvider();
         var client = api.CreateClient();
 
         try
         {
             var request = new CreateLabRequest(
                 LabFacilityId: 11,
-                ProviderId: 13,
+                ProviderId: providerId,
                 DiagnosticFacilityId: 17,
                 ReportingFacilityId: 18,
                 SpecimenSourceId: 12,
@@ -101,7 +105,7 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
             Assert.Equal(await PersonOfReport(reportId), round.Specimen.PersonId);
             Assert.Equal(reportId, round.Specimen.PersonConditionId);
             Assert.Equal(11, round.Specimen.LabFacilityId);
-            Assert.Equal(13, round.Specimen.ProviderId);
+            Assert.Equal(providerId, round.Specimen.ProviderId);
             Assert.Equal(17, round.Specimen.DiagnosticFacilityId);
             Assert.Equal(18, round.Specimen.ReportingFacilityId);
             Assert.Equal(12, round.Specimen.SpecimenSourceId);
@@ -258,6 +262,7 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
     public async Task ASpecimenEditChangesItsColumnsAndIsAudited()
     {
         var reportId = await EnsureSeededReport();
+        var providerId = await RecordProvider();
         var client = api.CreateClient();
 
         try
@@ -268,7 +273,7 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
             using var put = await client.PutAsJsonAsync($"/api/labs/{labId}",
                 new UpdateLabRequest(
                     LabFacilityId: 99,
-                    ProviderId: 13,
+                    ProviderId: providerId,
                     AccessionNo: "LAB-2026-011-CORRECTED",
                     SpecimenSentToState: true),
                 Json);
@@ -276,6 +281,7 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
             Assert.Equal(HttpStatusCode.OK, put.StatusCode);
             var updated = (await put.Content.ReadFromJsonAsync<LabResponse>(Json))!;
             Assert.Equal(99, updated.LabFacilityId);
+            Assert.Equal(providerId, updated.ProviderId);
             Assert.Equal("LAB-2026-011-CORRECTED", updated.AccessionNo);
             Assert.True(updated.SpecimenSentToState);
 
@@ -608,6 +614,79 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
     }
 
     /// <summary>
+    /// A specimen naming an ordering clinician who is not a provider on file is
+    /// refused with a 400 Problem Details, as an unknown person on a contact
+    /// is, and nothing is recorded against the report.
+    /// </summary>
+    [Fact]
+    public async Task ASpecimenNamingNoProviderOnFileIsRefused()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            using var response = await client.PostAsJsonAsync(
+                $"/api/person-conditions/{reportId}/labs",
+                new CreateLabRequest(ProviderId: 987654, AccessionNo: "LAB-2026-011"),
+                Json);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+            using (var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync()))
+            {
+                Assert.Contains("providerId 987654 is not a provider on file",
+                    problem.RootElement.GetProperty("detail").GetString(), StringComparison.Ordinal);
+            }
+
+            Assert.Equal(0, (await PageOfSpecimens(client, reportId, page: 1, pageSize: 10)).TotalCount);
+        }
+        finally
+        {
+            await ClearSpecimensOf(reportId);
+        }
+    }
+
+    /// <summary>
+    /// An edit naming an ordering clinician who is not a provider on file is
+    /// refused with a 400 Problem Details, and the specimen is left as it was.
+    /// </summary>
+    [Fact]
+    public async Task ASpecimenEditNamingNoProviderOnFileIsRefused()
+    {
+        var reportId = await EnsureSeededReport();
+        var client = api.CreateClient();
+
+        try
+        {
+            var labId = (await Record(client, reportId,
+                new CreateLabRequest(AccessionNo: "LAB-2026-011"))).Specimen.Id;
+
+            using var put = await client.PutAsJsonAsync($"/api/labs/{labId}",
+                new UpdateLabRequest(ProviderId: 987654, AccessionNo: "LAB-2026-011-CORRECTED"),
+                Json);
+
+            Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+
+            using (var problem = JsonDocument.Parse(await put.Content.ReadAsStringAsync()))
+            {
+                Assert.Contains("providerId 987654 is not a provider on file",
+                    problem.RootElement.GetProperty("detail").GetString(), StringComparison.Ordinal);
+            }
+
+            using var read = await client.GetAsync($"/api/labs/{labId}");
+            read.EnsureSuccessStatusCode();
+            var round = (await read.Content.ReadFromJsonAsync<LabDetailResponse>(Json))!;
+            Assert.Null(round.Specimen.ProviderId);
+            Assert.Equal("LAB-2026-011", round.Specimen.AccessionNo);
+        }
+        finally
+        {
+            await ClearSpecimensOf(reportId);
+        }
+    }
+
+    /// <summary>
     /// An edit or a delete of a row nobody has is a 404 Problem Details, the
     /// resource named in the route not being there to change.
     /// </summary>
@@ -636,6 +715,21 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         return (await response.Content.ReadFromJsonAsync<LabDetailResponse>(Json))!;
+    }
+
+    /// <summary>
+    /// Records a provider for a specimen to name as its ordering clinician, and
+    /// answers with their id; <see cref="ClearSpecimensOf"/> takes them out again.
+    /// </summary>
+    private async Task<int> RecordProvider()
+    {
+        await using var context = server.NewContext();
+
+        var provider = new Provider { FirstName = "Ada", LastName = ClinicianLastName };
+        context.Providers.Add(provider);
+        await context.SaveChangesAsync();
+
+        return provider.Id;
     }
 
     /// <summary>One page of a report's specimens, read over the wire.</summary>
@@ -724,6 +818,8 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
     /// database — the join first, then the specimens, which cascade to their
     /// tests, results and susceptibility — and leaves the report, so that a
     /// report test's clear is not refused by a specimen still linked to it.
+    /// The providers <see cref="RecordProvider"/> recorded go after the
+    /// specimens that named them.
     /// </summary>
     private async Task ClearSpecimensOf(int reportId)
     {
@@ -742,6 +838,10 @@ public class LabEndpointsTests(SqlServerFixture server) : IDisposable
         {
             await context.Labs.Where(lab => labIds.Contains(lab.Id)).ExecuteDeleteAsync();
         }
+
+        await context.Providers
+            .Where(provider => provider.LastName == ClinicianLastName)
+            .ExecuteDeleteAsync();
     }
 
     /// <summary>

@@ -243,7 +243,7 @@ headers; terminate TLS at IIS.
 
 ## The data model
 
-The schema is `Survsys.Data`'s, built by 58 migrations, in order:
+The schema is `Survsys.Data`'s, built by 59 migrations, in order:
 `InitialCreate`, `Persons`, `PersonConditions`, `ClinicalAndLaboratory`,
 `CaseClassification`, `Workflow`, `InvestigationAndAdministrative`,
 `ContactsAndExposures`, `NotesAndTasks`, `Attachments`,
@@ -261,7 +261,11 @@ The schema is `Survsys.Data`'s, built by 58 migrations, in order:
 `NotificationAdministration`, `ExportLogBatchFile`, `AuditUserAndValues`,
 `JurisdictionAccessAndLockout`, `ConditionIntakeFlags`, `SystemSettings`,
 `EcrDocuments`, `EcrValidationFindings`, `EcrReportability`, `EcrCases`,
-`EcrSenders`, `AddressGeocoding`, `DropSystemSettings` and `Providers`.
+`EcrSenders`, `AddressGeocoding`, `DropSystemSettings`, `Providers` and
+`LabProvider`. `LabProvider` makes a lab's `provider_id` a foreign key to
+`providers`, created `WITH NOCHECK`: a lab already on file whose
+`provider_id` names no provider is kept as it is, and
+`DBCC CHECKCONSTRAINTS('labs')` reports it.
 
 | Area | Tables |
 |---|---|

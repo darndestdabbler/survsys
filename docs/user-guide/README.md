@@ -276,8 +276,12 @@ date or, where there is none, the date diagnosed.
 
 **The Laboratory tab** lists the report's specimens and records new ones. A
 specimen carries its accession number, collection date, source, the lab,
-provider, diagnostic and reporting facilities, and whether it was sent to the
-state lab. Under it go any number of **tests** (type, status, LOINC code,
+diagnostic and reporting facilities, its ordering clinician, and whether it
+was sent to the state lab. **Ordering clinician** searches the providers
+registry by last name as you type; where nobody matches, a user holding
+`manage_reference_data` is offered **New clinician**, which adds the
+clinician to the registry by name and chooses them without leaving the case.
+Under it go any number of **tests** (type, status, LOINC code,
 reference range, test date), under each test any number of **results**
 (organism, value, result code, units, comment, and whether it is the primary
 result), and any **antimicrobial susceptibility** results. **Record specimen**

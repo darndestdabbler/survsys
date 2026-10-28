@@ -51,5 +51,15 @@ internal sealed class LabConfiguration : IEntityTypeConfiguration<Lab>
             .HasForeignKey(lab => lab.PersonId)
             .IsRequired()
             .OnDelete(DeleteBehavior.Restrict);
+
+        // The ordering clinician is a provider on file, held without a
+        // navigation as the person is, and a provider named by a lab is not
+        // deleted out from under it. The LabProvider migration creates the
+        // constraint WITH NOCHECK, so a lab already on file whose provider_id
+        // names no provider is kept as it is rather than changed.
+        builder.HasOne<Provider>()
+            .WithMany()
+            .HasForeignKey(lab => lab.ProviderId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

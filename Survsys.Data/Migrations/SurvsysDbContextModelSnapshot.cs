@@ -13316,6 +13316,8 @@ namespace Survsys.Data.Migrations
 
                     b.HasIndex("PersonId");
 
+                    b.HasIndex("ProviderId");
+
                     b.ToTable("labs", (string)null);
                 });
 
@@ -16505,6 +16507,11 @@ namespace Survsys.Data.Migrations
                         .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Survsys.Data.Provider", null)
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Survsys.Data.LabResistTest", b =>
