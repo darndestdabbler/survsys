@@ -2426,9 +2426,9 @@
     {
       "number": 117,
       "title": "A grouped navigation menu",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-28T11:58:14.356000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-28T12:06:03.637000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
