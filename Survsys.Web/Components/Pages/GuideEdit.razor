@@ -1,0 +1,261 @@
+@* One notification guide's editor: its name and version (the version is the
+   profile its message is generated for, Arbo_Case_Map_v1.0 writing the two-OBR
+   arbovirus message), the PHIN variables it carries (chosen from the
+   catalogue, offering those it does not carry yet), the guides whose
+   variables it carries alongside its own, and its own value for each header
+   variable, blank to use the default. Each section saves on its own. The
+   guide exports as JSON, and is deleted unless a condition is exported under
+   it. *@
+@page "/guides/{Id:int}"
+@inject GuidesClient Client
+@inject PhinVariablesClient PhinVariables
+@inject NavigationManager Navigation
+
+<PageTitle>Notification guide — Survsys</PageTitle>
+
+<MudText id="guide-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    @(guide?.Name ?? "Notification guide")
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="guide-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@whyNot</MudAlert>
+}
+
+@if (saved is { } done)
+{
+    <MudAlert id="guide-saved" Severity="Severity.Success" Class="mb-4">@done</MudAlert>
+}
+
+@if (guide is null)
+{
+    @if (failure is null)
+    {
+        <MudProgressCircular id="guide-loading" Color="Color.Primary" Indeterminate="true" />
+    }
+}
+else
+{
+    <div class="d-flex gap-2 mb-4">
+        <MudButton id="guide-back" Variant="Variant.Text" Href="/guides">All guides</MudButton>
+        <MudButton id="guide-export" Variant="Variant.Outlined" Href="@($"/guides/{Id}/export")" Target="_blank">
+            Export JSON
+        </MudButton>
+        <MudButton id="guide-delete" Variant="Variant.Outlined" Color="Color.Error" Disabled="@saving" OnClick="@Delete">
+            Delete guide
+        </MudButton>
+    </div>
+
+    <MudPaper id="guide-form" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Guide</MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="name" id="guide-name" Label="Name" Variant="Variant.Outlined"
+                              Required="true" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="version" id="guide-version" Label="Version (profile)" Variant="Variant.Outlined"
+                              MaxLength="100" />
+            </MudItem>
+        </MudGrid>
+        <MudButton id="guide-save" Class="mt-4" Variant="Variant.Filled" Color="Color.Primary" Disabled="@saving"
+                   OnClick="@SaveGuide">
+            Save
+        </MudButton>
+    </MudPaper>
+
+    <MudPaper id="guide-phin-variables" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">PHIN variables</MudText>
+        <div class="d-flex gap-2 align-center mb-2">
+            <MudAutocomplete T="string" @bind-Value="addPhinVar" id="guide-phin-variable-add" Label="PHIN variable"
+                             Variant="Variant.Outlined" Clearable="true" SearchFunc="@SearchPhinVars" MaxItems="null">
+                <ItemTemplate Context="phinVar">@phinVar @DescriptionOf(phinVar)</ItemTemplate>
+            </MudAutocomplete>
+            <MudButton id="guide-phin-variable-add-button" Variant="Variant.Outlined" OnClick="@AddPhinVar">Add</MudButton>
+        </div>
+        <MudChipSet T="string" AllClosable="true" OnClose="@(chip => phinVars.Remove(chip.Value!))">
+            @foreach (var phinVar in phinVars)
+            {
+                <MudChip T="string" id="@($"guide-phin-variable-{phinVar}")" Value="@phinVar" Text="@phinVar" />
+            }
+        </MudChipSet>
+        <MudButton id="guide-phin-variables-save" Class="mt-4" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@saving" OnClick="@SavePhinVars">
+            Save variables
+        </MudButton>
+    </MudPaper>
+
+    <MudPaper id="guide-links" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Linked guides</MudText>
+        @foreach (var other in guides.Where(item => item.Id != Id))
+        {
+            <MudCheckBox T="bool" id="@($"guide-link-{other.Id}")" Label="@($"{other.Name} {other.Version}")"
+                         Value="@links.Contains(other.Id)"
+                         ValueChanged="@(on => { if (on) links.Add(other.Id); else links.Remove(other.Id); })" />
+        }
+        <MudButton id="guide-links-save" Class="mt-4" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@saving" OnClick="@SaveLinks">
+            Save links
+        </MudButton>
+    </MudPaper>
+
+    <MudPaper id="guide-variables" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Header variables</MudText>
+        <MudSimpleTable Dense="true">
+            <thead>
+                <tr><th>Variable</th><th>Default</th><th>This guide's value</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var row in variables)
+                {
+                    <tr id="@($"guide-variable-row-{row.GuideVariableDefaultId}")">
+                        <td>@row.Name</td>
+                        <td>@row.DefaultValue</td>
+                        <td>
+                            <MudTextField @bind-Value="row.Value" id="@($"guide-variable-{row.GuideVariableDefaultId}")"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="500" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+        <MudButton id="guide-variables-save" Class="mt-4" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@saving" OnClick="@SaveVariables">
+            Save header
+        </MudButton>
+    </MudPaper>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private GuideDetailResponse? guide;
+
+    private IReadOnlyList<GuideRow> guides = [];
+
+    private string? name;
+
+    private string? version;
+
+    private string? addPhinVar;
+
+    private List<string> phinVars = [];
+
+    /// <summary>The PHIN variable catalogue, read once, that the guide's variables are chosen from.</summary>
+    private IReadOnlyList<PhinVariableRow> catalogue = [];
+
+    private HashSet<int> links = [];
+
+    private List<VariableForm> variables = [];
+
+    private bool saving;
+
+    private string? failure;
+
+    private string? saved;
+
+    protected override async Task OnInitializedAsync() =>
+        catalogue = (await PhinVariables.List()).Value ?? [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var loaded = await Client.Get(Id);
+        guides = (await Client.List()).Value ?? [];
+        failure = loaded.Failure;
+
+        if (loaded.Value is { } detail)
+        {
+            Show(detail);
+        }
+    }
+
+    private void Show(GuideDetailResponse detail)
+    {
+        guide = detail;
+        name = detail.Name;
+        version = detail.Version;
+        phinVars = [.. detail.PhinVars];
+        links = [.. detail.LinkedGuideIds];
+        variables = detail.Variables.Select(row => new VariableForm(row)).ToList();
+    }
+
+    private void AddPhinVar()
+    {
+        if (addPhinVar?.Trim() is { Length: > 0 } phinVar && !phinVars.Contains(phinVar))
+        {
+            phinVars.Add(phinVar);
+        }
+
+        addPhinVar = null;
+    }
+
+    /// <summary>
+    /// The catalogued variables the guide does not carry yet whose name,
+    /// identifier or description holds what was typed.
+    /// </summary>
+    private Task<IEnumerable<string>> SearchPhinVars(string? typed, CancellationToken cancellationToken) =>
+        Task.FromResult(catalogue
+            .Where(row => !phinVars.Contains(row.PhinVar))
+            .Where(row => string.IsNullOrWhiteSpace(typed)
+                || row.PhinVar.Contains(typed.Trim(), StringComparison.OrdinalIgnoreCase)
+                || row.Identifier?.Contains(typed.Trim(), StringComparison.OrdinalIgnoreCase) == true
+                || row.Description.Contains(typed.Trim(), StringComparison.OrdinalIgnoreCase))
+            .Select(row => row.PhinVar));
+
+    private string? DescriptionOf(string? phinVar) =>
+        catalogue.FirstOrDefault(row => row.PhinVar == phinVar)?.Description;
+
+    private Task SaveGuide() => Save(() => Client.Update(Id, new GuideRow(Id, name ?? "", version)), "The guide was saved.");
+
+    private Task SavePhinVars() => Save(() => Client.SavePhinVariables(Id, phinVars), "The guide's variables were saved.");
+
+    private Task SaveLinks() => Save(() => Client.SaveLinks(Id, links.ToList()), "The guide's links were saved.");
+
+    private Task SaveVariables() =>
+        Save(() => Client.SaveVariables(Id, variables.Select(row => row.ToRow()).ToList()), "The guide's header was saved.");
+
+    private async Task Save(Func<Task<Asked<GuideDetailResponse>>> save, string done)
+    {
+        saving = true;
+        failure = null;
+        saved = null;
+
+        var asked = await save();
+        saving = false;
+
+        if (asked.Value is { } detail)
+        {
+            Show(detail);
+            saved = done;
+            return;
+        }
+
+        failure = asked.Failure;
+    }
+
+    private async Task Delete()
+    {
+        saving = true;
+        failure = await Client.Delete(Id);
+        saving = false;
+
+        if (failure is null)
+        {
+            Navigation.NavigateTo("/guides");
+        }
+    }
+
+    private sealed class VariableForm(GuideVariableRow row)
+    {
+        public int GuideVariableDefaultId { get; } = row.GuideVariableDefaultId;
+
+        public string? Name { get; } = row.Name;
+
+        public string? DefaultValue { get; } = row.DefaultValue;
+
+        public string? Value { get; set; } = row.Value;
+
+        public GuideVariableRow ToRow() => new(GuideVariableDefaultId, Name, Value, DefaultValue);
+    }
+}
