@@ -2564,9 +2564,9 @@
     {
       "number": 124,
       "title": "The ordering clinician chosen from the registry",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-28T15:41:17.171000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-28T15:53:35.247000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
