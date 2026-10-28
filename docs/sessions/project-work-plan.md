@@ -129,7 +129,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 115 | Release 1.0.0 (release: 1.0.0) | yes | 2026-10-24 |
 | 116 | A kit for testing by hand | no | 2026-10-25 |
 | 117 | A grouped navigation menu | no | 2026-10-28 |
-| 118 | Release 1.0.1 (release: 1.0.1) | — | not declared |
+| 118 | Release 1.0.1 (release: 1.0.1) | yes | 2026-10-28 |
 
 ### Session 1 — Author or import the solution plan
 
@@ -1027,3 +1027,9 @@ Give a person a kit for performing the walkthroughs by hand against a running Su
 **Releasable: no.**
 
 Move the screen links out of the wrapping application bar into a side drawer grouped by area. MainLayout.razor gains a MudDrawer, open by default and toggled from the app bar, holding a MudNavMenu with five MudNavGroups expanded by default: Cases (People, Events, New CMR, Work queue, Agency board, Outbreaks, Tasks, Saved views, Reports, Duplicate persons), Intake (Staged messages, Intake statistics, eCR, eCR quality), Notifications (Notifications, Export log, Reconciliation), Reference data (Conditions and the fifteen reference screens) and Administration (Users, Roles, Audit, Access audit). Every link keeps its nav-... id, its address and the privilege that shows it, and a group none of whose links the person may see is not rendered. The app bar returns to one line holding only Survsys, the drawer toggle, the signed-in person and Sign out, and the layout comment says why. A new end-to-end test, MainLayoutTests, proves the app bar holds no screen link, that each group shows only to a person holding a privilege one of its links needs, and that the toggle hides and shows the drawer; the existing walkthrough tests keep clicking #nav-... links unchanged. The walkthroughs and the user guide are reworded from the application bar to the side menu and its groups.
+
+### Session 118 — Release 1.0.1 (release: 1.0.1)
+
+**Releasable: yes.**
+
+Release 1.0.1: the framework packs and publishes what is on the trunk.
