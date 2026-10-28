@@ -2118,3 +2118,24 @@ carries the new menu.*
    and the whole end-to-end walkthrough suite. Both must be green. A red run
    stops the release: the step is reported blocked with the failures, and a
    repair session is planned before a new release session.
+
+### Session 119: The side menu's group headings in the primary colour
+
+*Inserted at the operator's request on 2026-10-28, after a preview they
+approved. The group headings of session 117's side menu read as plain text
+among the links under them; they take the application bar's purple with
+white text, with a small gap above the first and between groups so that they
+run neither into the bar nor into each other.*
+
+1. Register.
+2. `Survsys.Web/Components/Layout/MainLayout.razor`: each `MudNavGroup`'s
+   heading takes the theme's primary colour as its background and the
+   primary text colour for its words and its expand arrow, through the
+   theme's own variables so that it follows the app bar; a small gap above
+   the first heading and between groups. The links under the headings, and
+   the highlight on the open screen's link, are unchanged.
+3. `Survsys.E2ETests/MainLayoutTests.cs`: a test that a group heading's
+   background is the app bar's.
+4. Cross-provider verification.
+5. Full test suite, recorded as the run of record.
+6. Close-out.
