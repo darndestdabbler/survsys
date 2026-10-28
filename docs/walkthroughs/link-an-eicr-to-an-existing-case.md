@@ -87,8 +87,7 @@ browser. It records video of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Events**. In the box labelled
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **Events**. In the box labelled
    **Last name**, type `Osei`. In the list labelled **Disease**, choose
    **Giardiasis**, then press **Search**.
 2. The count line reads **1 case(s) found, showing 1.** The one row reads
@@ -103,7 +102,7 @@ browser. It records video of every test it runs, and writes the recordings to
    reportable. Within a few seconds of each copy the file is gone from the
    drop directory: the intake has read and stored it and moved it into the
    directory's `.processed` folder.
-4. In the application bar, press **eCR**. The screen is headed **eCR
+4. In the side menu, under **Intake**, choose **eCR**. The screen is headed **eCR
    documents**, and the row whose **Document** reads
    **2.16.840.1.113883.9.9.9.9.9^e2e-link-eicr** reads **eICR** under
    **Kind**.
@@ -120,7 +119,7 @@ browser. It records video of every test it runs, and writes the recordings to
    morbidity report**. In the header bar, **Patient name** reads **Osei,
    Amara**, **Disease** reads **Giardiasis**, and **Record #** reads
    **202600902** — the record number from step 2.
-8. In the application bar, press **Events**. In the box labelled **Last
+8. In the side menu, under **Cases**, choose **Events**. In the box labelled **Last
    name**, type `Osei`. In the list labelled **Disease**, choose
    **Giardiasis**, then press **Search**. The count line still reads **1
    case(s) found, showing 1.**, and the one row is still **202600902**: the

@@ -93,8 +93,7 @@ of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **People**. (The people screen is
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **People**. (The people screen is
    also at `/people`, so <http://localhost:5000/people> opens the same
    screen.)
 2. The browser tab reads **People — Survsys**, and below the application bar

@@ -1317,6 +1317,13 @@
       "what": "step 'shared-seeding-and-reset': its files",
       "reason": "Two walkthrough tests cite SurvsysHarness.TablesInDeletionOrder in their doc comments; the cref moves to WalkthroughDatabase with the list.",
       "by": "claude-code (anthropic, claude-opus-5-5)"
+    },
+    {
+      "kind": "task-declaration",
+      "sessionNumber": 117,
+      "dateTime": "2026-10-28T11:59:50.282000-04:00",
+      "task": "Move the screen links out of the wrapping application bar into a side drawer grouped by area. MainLayout.razor gains a MudDrawer, open by default and toggled from the app bar, holding a MudNavMenu with five MudNavGroups expanded by default: Cases (People, Events, New CMR, Work queue, Agency board, Outbreaks, Tasks, Saved views, Reports, Duplicate persons), Intake (Staged messages, Intake statistics, eCR, eCR quality), Notifications (Notifications, Export log, Reconciliation), Reference data (Conditions and the fifteen reference screens) and Administration (Users, Roles, Audit, Access audit). Every link keeps its nav-... id, its address and the privilege that shows it, and a group none of whose links the person may see is not rendered. The app bar returns to one line holding only Survsys, the drawer toggle, the signed-in person and Sign out, and the layout comment says why. A new end-to-end test, MainLayoutTests, proves the app bar holds no screen link, that each group shows only to a person holding a privilege one of its links needs, and that the toggle hides and shows the drawer; the existing walkthrough tests keep clicking #nav-... links unchanged. The walkthroughs and the user guide are reworded from the application bar to the side menu and its groups.",
+      "releasable": false
     }
   ]
 }

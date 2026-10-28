@@ -95,8 +95,7 @@ of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Outbreaks**. The screen is
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **Outbreaks**. The screen is
    headed **Outbreaks**, with a **New outbreak** button above a table whose
    columns are **Number**, **Name**, **Condition**, **Owning agency** and
    **Status**.
@@ -112,7 +111,7 @@ of every test it runs, and writes the recordings to
 6. Press **Save**. You are back on the **Outbreaks** screen, and the
    outbreak's row reads, left to right: **OB-2026-014**, **Provo church
    supper hepatitis A**, **Hepatitis A**, **Utah County** and **Active**.
-7. In the application bar, press **New CMR**. In the box labelled **Last
+7. In the side menu, under **Cases**, choose **New CMR**. In the box labelled **Last
    name**, type `Nguyen`, then press **Search**.
 8. The line above the table reads **1 person(s) found, showing 1.**, and the
    one row's **Last, First** reads **Nguyen, An**. Press **Create CMR** on
@@ -139,7 +138,7 @@ of every test it runs, and writes the recordings to
     entering it in the address bar again, so that the screen is read afresh
     from the database, and press the **Administrative** tab. The **Outbreak
     name** box reads **Provo church supper hepatitis A**.
-16. In the application bar, press **Outbreaks**.
+16. In the side menu, under **Cases**, choose **Outbreaks**.
 17. In the outbreak's row, press its name, **Provo church supper hepatitis
     A**. The screen is headed **Edit outbreak**, and its **Name** box reads
     **Provo church supper hepatitis A**.

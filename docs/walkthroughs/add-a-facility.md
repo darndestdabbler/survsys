@@ -87,8 +87,7 @@ recordings to `Survsys.E2ETests/bin/<configuration>/net10.0/videos` as
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Facilities**. (The facilities
+   developer machine, <http://localhost:5000>. In the side menu, under **Reference data**, choose **Facilities**. (The facilities
    screen is also at `/facilities`.)
 2. The browser tab reads **Facilities — Survsys**, and below the application
    bar is the heading **Facilities**. Above the list is a **New facility**

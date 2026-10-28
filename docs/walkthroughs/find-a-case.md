@@ -77,8 +77,7 @@ It records video of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**. The heading reads
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**. The heading reads
    **New case morbidity report**.
 2. In the box labelled **Last name**, type `Rodriguez`, then press **Search**.
 3. The count line reads **2 person(s) found, showing 2.** Press **Create CMR**
@@ -96,7 +95,7 @@ It records video of every test it runs, and writes the recordings to
    disease and **Tooele County** for the agency, with a record number of the
    current year and five more digits. Note the record number: it is what you
    will find the case by.
-9. In the application bar, press **Events**. The browser tab reads **Events —
+9. In the side menu, under **Cases**, choose **Events**. The browser tab reads **Events —
    Survsys**, the heading reads **Events**, and no results are shown until you
    search.
 10. In the box labelled **Last name**, type `Rodriguez`; in the box labelled

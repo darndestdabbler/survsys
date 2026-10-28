@@ -93,8 +93,7 @@ browser. It records video of every test it runs, and writes the recordings to
    has read it, queued it and moved it into the directory's `.processed`
    folder.
 2. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Staged messages**. The heading
+   developer machine, <http://localhost:5000>. In the side menu, under **Intake**, choose **Staged messages**. The heading
    reads **Staged messages**.
 3. Open the **Review state** list and choose **assigned**. The table shows the
    messages assigned to a case. The row whose **Source** reads
@@ -112,7 +111,7 @@ browser. It records video of every test it runs, and writes the recordings to
    **PID|1||ASSIGNPAT001^^^ARUP_LAB^MR||CASTILLO^ROSA||19941205|F**. Below it,
    where a reviewer would promote a message, the screen reads **This message
    has already been promoted to a case.**
-6. In the application bar, press **Events**. The heading reads **Events**. In
+6. In the side menu, under **Cases**, choose **Events**. The heading reads **Events**. In
    the box labelled **Last name**, type `Castillo`. In the list labelled
    **Disease**, choose **Hepatitis A**, then press **Search**.
 7. The count line reads **1 case(s) found, showing 1.** The one row reads

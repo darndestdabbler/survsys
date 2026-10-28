@@ -76,8 +76,7 @@ it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. Under the heading **New case morbidity report**, in the box labelled
    **Last name**, type `Okafor`, then press **Search**.
 3. The one row reads **Okafor, Chidi**. Press its **Create CMR** button.

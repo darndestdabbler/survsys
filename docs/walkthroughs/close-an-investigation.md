@@ -118,8 +118,7 @@ of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. In the box labelled **Last name**, type `Abbott`, then press **Search**.
 3. The line above the table reads **1 person(s) found, showing 1.**, and the
    one row's **Last, First** reads **Abbott, Jane**.
@@ -140,7 +139,7 @@ of every test it runs, and writes the recordings to
    report's id, which is the number at the end of the address in your
    browser's address bar, after `/event/edit/`, and which step 11 needs; and
    the address itself, which step 18 comes back to.
-10. In the application bar, press **Agency board**. Below the application
+10. In the side menu, under **Cases**, choose **Agency board**. Below the application
     bar is the heading **Agency board**. Open the **Agency** list and choose
     **Summit County**. The list closes, and the **Agency** box now reads
     **Summit County**. The board below shows Summit County's queue, and no
@@ -155,7 +154,7 @@ of every test it runs, and writes the recordings to
     record number, and it reads, left to right: the record number, **Lyme
     disease**, **Assigned to LHD**, **Unknown**, today's date written as
     `yyyy-mm-dd`, and **Investigating**.
-13. In the application bar, press **Work queue**. Below the application bar
+13. In the side menu, under **Cases**, choose **Work queue**. Below the application bar
     is the heading **Work queue**. Open the **Agency** list and choose
     **Summit County**. The list closes, and the **Agency** box now reads
     **Summit County**.

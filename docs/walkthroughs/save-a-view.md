@@ -88,8 +88,7 @@ recordings to `Survsys.E2ETests/bin/<configuration>/net10.0/videos` as
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Saved views**. (The screen is
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **Saved views**. (The screen is
    also at `/saved-views`.)
 2. The browser tab reads **Saved views — Survsys**, and below the application
    bar is the heading **Saved views**. Below that is a form whose own heading

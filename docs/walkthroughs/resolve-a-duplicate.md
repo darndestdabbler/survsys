@@ -78,8 +78,7 @@ browser. It records video of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Staged messages**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Intake**, choose **Staged messages**.
 2. Open the **Review state** list and choose **Queued for review**. In the
    table, find the row whose **Source** reads **elr-duplicate-example.hl7**,
    and press the **elr-duplicate-example.hl7** link in its **Source** column.
@@ -95,7 +94,7 @@ browser. It records video of every test it runs, and writes the recordings to
    been raised to public health.**, and below it is a link reading **Open
    case** followed by that record number. **Note the record number** — this is
    the one case.
-6. In the application bar, press **Staged messages**. The **Review state**
+6. In the side menu, under **Intake**, choose **Staged messages**. The **Review state**
    list is back on **All**. In the table, find the row whose **Source** reads
    **elr-duplicate-example.hl7** again: there is still just the one, and its
    **Review state** now reads **assigned** — the message has left the review

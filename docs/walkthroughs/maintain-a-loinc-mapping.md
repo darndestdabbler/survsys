@@ -71,8 +71,7 @@ recordings to `Survsys.E2ETests/bin/<configuration>/net10.0/videos` as
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Vocabulary**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Reference data**, choose **Vocabulary**.
 2. The browser tab reads **Vocabulary — Survsys**, and the heading reads
    **Vocabulary**. Below it are the tabs **Master LOINC**, **Child LOINC**,
    **Organisms**, **Specimens** and **Results**, with **Master LOINC** open.

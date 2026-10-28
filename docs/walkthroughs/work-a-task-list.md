@@ -25,7 +25,7 @@ inferred from two legacy screens, read-only here and never modified:
 which is what the legacy **Show all tasks** filter is for. So the same list is
 on two screens in Survsys: the **Tasks** section of a report's Notes tab,
 which is that report's tasks and is where a task is added, and the **Tasks**
-screen the application bar opens, which is every report's. This walkthrough
+screen the side menu opens, which is every report's. This walkthrough
 raises the tasks on the first and works them on the second.
 
 Four differences from the legacy section are deliberate, and this walkthrough
@@ -33,7 +33,7 @@ describes what Survsys shows rather than what EpiTrax showed:
 
 - **A task is added only where a report is in hand.** The **Add a task**
   panel is on the Notes tab, where the report is known; the Tasks screen is
-  opened from the application bar and has no report, so it lists and
+  opened from the side menu and has no report, so it lists and
   completes but does not add. The panel opens inline rather than behind a
   **+ Add Task** button, as the note and attachment panels do.
 - **A repeat is expanded once, into one dated task per date.** Give the task
@@ -123,8 +123,7 @@ of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. In the box labelled **Last name**, type `Doe`, then press **Search**.
 3. The line above the table reads **1 person(s) found, showing 1.**, and the
    one row's **Last, First** reads **Doe** — that person is on file under a
@@ -171,7 +170,7 @@ of every test it runs, and writes the recordings to
     **2026-10-19**, **2026-10-26** and **2026-11-02**. Each of the three
     reads **low**, **open**, and **weekly until 2026-11-02** under
     **Schedule**, and each offers a **Complete** button.
-13. In the application bar, press **Tasks**. The screen that opens is headed
+13. In the side menu, under **Cases**, choose **Tasks**. The screen that opens is headed
     **Tasks**, and under the heading a line explains that it holds the tasks
     raised against every case, soonest due first. Its table has the same
     columns with one more between **Schedule** and **Action**: **Report**.
@@ -206,7 +205,7 @@ Four tasks raised on Doe's case morbidity report and one of them worked off:
 - **Weekly symptom check**, due **2026-10-19** and repeating weekly until
   **2026-11-02**, added as **3 dated tasks** — one row per Monday, each
   carrying the schedule it came from.
-- The **Tasks** screen from the application bar listing all four with the
+- The **Tasks** screen from the side menu listing all four with the
   report's own number beside each, soonest due first.
 - **Complete** on the first answering **The task has been completed.**,
   leaving that row in place reading **complete** with nothing left to press.

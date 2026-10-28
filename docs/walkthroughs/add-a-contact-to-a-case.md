@@ -129,8 +129,7 @@ of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **People**. The screen that opens
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **People**. The screen that opens
    is headed **People**, and the line under the heading says that leaving
    every box empty lists everyone on file.
 2. In the box labelled **Last name**, type `Rodriguez`, then press
@@ -141,7 +140,7 @@ of every test it runs, and writes the recordings to
    Rodriguez, Maria row** — step 14 types it. It is the identifier the
    system holds for her, assigned by the database, so it is a number you
    read here rather than one this document can name.
-4. In the application bar, press **New CMR**. The screen that opens is
+4. In the side menu, under **Cases**, choose **New CMR**. The screen that opens is
    headed **New case morbidity report**, and the line under the heading
    begins **Step 1 of 2.**
 5. In the box labelled **Last name**, type `Zimmerman`, then press

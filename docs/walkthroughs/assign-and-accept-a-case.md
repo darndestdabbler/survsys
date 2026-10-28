@@ -120,8 +120,7 @@ of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. In the box labelled **Last name**, type `Okafor`, then press **Search**.
 3. The line above the table reads **1 person(s) found, showing 1.**, and the
    one row's **Last, First** reads **Okafor, Chidi**.
@@ -142,7 +141,7 @@ of every test it runs, and writes the recordings to
    numbers**: the record number, which steps 13 to 17 find the case by, and
    the report's id, which is the number at the end of the address in your
    browser's address bar, after `/event/edit/` — step 12 needs it.
-10. In the application bar, press **Agency board**. The browser tab reads
+10. In the side menu, under **Cases**, choose **Agency board**. The browser tab reads
     **Agency board — Survsys**, and below the application bar is the heading
     **Agency board**. Under the **Agency** list, a line reads **Choose an
     agency to see its work queue.**, and below that are two panels, headed
@@ -164,7 +163,7 @@ of every test it runs, and writes the recordings to
     which is the day the report was opened, as the *Create a case morbidity
     report* walkthrough says of the event date; **Unknown** is the case
     status nobody has set.
-14. In the application bar, press **Work queue**. The browser tab reads
+14. In the side menu, under **Cases**, choose **Work queue**. The browser tab reads
     **Work queue — Survsys**, and below the application bar is the heading
     **Work queue**. Under the **Agency** list, a line reads **Choose an
     agency to see its work queue.**
@@ -178,7 +177,7 @@ of every test it runs, and writes the recordings to
     reading **Report** followed by the record number and **moved to
     Accepted.** In the row, **Workflow** now reads **Accepted**, and the
     button in the **Action** column now reads **Begin investigation**.
-17. In the application bar, press **Agency board**, open the **Agency** list
+17. In the side menu, under **Cases**, choose **Agency board**, open the **Agency** list
     and choose **Davis County** again, so that the queue is read afresh from
     the database rather than from what you just pressed. The row carrying
     the record number reads **Accepted** under **Workflow**. That is how

@@ -81,8 +81,7 @@ video of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. The browser tab reads **New case morbidity report — Survsys**, the heading
    reads **New case morbidity report**, and a line under it reads **Step 1 of
    2.**
@@ -104,7 +103,7 @@ video of every test it runs, and writes the recordings to
     disease and **Davis County** for the agency, with a record number of the
     current year and five more digits. This is the report you are about to
     export.
-11. In the application bar, press **Saved views**. The browser tab reads
+11. In the side menu, under **Cases**, choose **Saved views**. The browser tab reads
     **Saved views — Survsys** and the heading reads **Saved views**, with a
     form headed **New saved view**.
 12. Define the view that selects your report:

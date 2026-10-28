@@ -75,19 +75,24 @@ that is not yours is empty. A case shared with your agency is read-only to
 you: it opens saying so, without **Edit** or **Delete**, and nothing on it
 or filed under it can be changed.
 
-The application bar shows only the buttons your privileges open, in this
-order: **Conditions**, **People**, **Events**, **New CMR**, **Work queue**,
-**Agency board**, **Outbreaks**, **Staged messages**, **Intake statistics**,
-**eCR**, **eCR quality**, **Notifications**, **Export log**,
-**Reconciliation**, **Tasks**, **Saved views**, **Reports**, **Duplicate
-persons**, **Agencies**, **Facilities**, **Field visibility**, **Forms**,
-**Treatments**, **Code lists**, **Vocabulary**, **eCR conditions**, **eCR
-senders**, **Towns and zip codes**, **Vaccines**, **Notification guides**,
-**PHIN variables**, **Value sets**, **Hepatitis lab setup**, **Users**,
-**Roles**, **Audit** and **Access audit**. It wraps onto
-more lines rather than run off the window. The API tier checks the privilege
-on every request, so a screen opened by its address without the privilege
-shows what it was refused rather than the data.
+**The side menu.** The screens are opened from the side menu down the left of
+the window. It is open when you sign in; the menu button at the left-hand end
+of the application bar, before **Survsys**, hides it and shows it again. The
+menu groups the screens by area, every group open:
+
+| Group | Screens |
+|---|---|
+| **Cases** | **People**, **Events**, **New CMR**, **Work queue**, **Agency board**, **Outbreaks**, **Tasks**, **Saved views**, **Reports**, **Duplicate persons** |
+| **Intake** | **Staged messages**, **Intake statistics**, **eCR**, **eCR quality** |
+| **Notifications** | **Notifications**, **Export log**, **Reconciliation** |
+| **Reference data** | **Conditions**, **Agencies**, **Facilities**, **Field visibility**, **Forms**, **Treatments**, **Code lists**, **Vocabulary**, **eCR conditions**, **eCR senders**, **Towns and zip codes**, **Vaccines**, **Notification guides**, **PHIN variables**, **Value sets**, **Hepatitis lab setup** |
+| **Administration** | **Users**, **Roles**, **Audit**, **Access audit** |
+
+The menu shows only the screens your privileges open, and a group none of
+whose screens you may open is not shown at all: **Conditions** is there for
+everyone signed in, so **Reference data** always is. The API tier checks the
+privilege on every request, so a screen opened by its address without the
+privilege shows what it was refused rather than the data.
 
 **Users** (`/users`) lists every user by user name, display name, roles,
 agencies and whether they **May sign in**. **New user** clears the form;

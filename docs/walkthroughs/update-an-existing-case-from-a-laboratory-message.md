@@ -85,8 +85,7 @@ browser. It records video of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Events**. In the box labelled
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **Events**. In the box labelled
    **Last name**, type `Haddad`. In the list labelled **Disease**, choose
    **Giardiasis**, then press **Search**.
 2. The count line reads **1 case(s) found, showing 1.** The one row reads
@@ -107,7 +106,7 @@ browser. It records video of every test it runs, and writes the recordings to
    the accession number **OBR86002**, collected on **2026-10-05**. Within a
    few seconds the file is gone from the drop directory: the intake has read
    it, queued it and moved it into the directory's `.processed` folder.
-6. In the application bar, press **Staged messages**. Open the **Review
+6. In the side menu, under **Intake**, choose **Staged messages**. Open the **Review
    state** list and choose **assigned**. The row whose **Source** reads
    **elr-update-example.hl7** reads **assigned** under **Review state** and a
    dash under **Exception**. If the row is not there yet, the assignment pass
@@ -120,7 +119,7 @@ browser. It records video of every test it runs, and writes the recordings to
    **Laboratory** tab. The **Specimens** table now has one row, whose
    **Accession** reads **OBR86002** and **Collected** reads **2026-10-05**:
    the message's specimen, written onto the case Leila Haddad already had.
-8. In the application bar, press **Events**. In the box labelled **Last
+8. In the side menu, under **Cases**, choose **Events**. In the box labelled **Last
    name**, type `Haddad`. In the list labelled **Disease**, choose
    **Giardiasis**, then press **Search**. The count line still reads **1
    case(s) found, showing 1.**, and the one row is still **202600901**: the

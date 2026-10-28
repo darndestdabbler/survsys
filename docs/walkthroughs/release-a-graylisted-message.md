@@ -92,8 +92,7 @@ browser. It records video of every test it runs, and writes the recordings to
    the file is gone from the drop directory: the intake has read it, queued it
    and moved it into the directory's `.processed` folder.
 2. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Staged messages**. Open the
+   developer machine, <http://localhost:5000>. In the side menu, under **Intake**, choose **Staged messages**. Open the
    **Review state** list and choose **Graylisted**.
 3. The row whose **Source** reads **elr-graylist-example.hl7** reads
    **Graylisted** under **Review state**, and under **Exception**:
@@ -102,7 +101,7 @@ browser. It records video of every test it runs, and writes the recordings to
    yet, the assignment pass has not run since the intake queued the message:
    choose **All** from the **Review state** list and then **Graylisted**
    again, which reads the queue afresh, until it is.
-4. In the application bar, press **New CMR**. In the box labelled **Last
+4. In the side menu, under **Cases**, choose **New CMR**. In the box labelled **Last
    name**, type `Brennan`, then press **Search**.
 5. The line above the table reads **1 person(s) found, showing 1.**, and the
    one row reads **Brennan, Owen**. Press **Create CMR** on that row. Under
@@ -113,7 +112,7 @@ browser. It records video of every test it runs, and writes the recordings to
 7. The report's own form opens. In the header bar, **Patient name** reads
    **Brennan, Owen** and **Disease** reads **Lyme disease**. Note the record
    number in the header bar: the released message names it.
-8. In the application bar, press **Staged messages**. Open the **Review
+8. In the side menu, under **Intake**, choose **Staged messages**. Open the **Review
    state** list and choose **Held for review**. The row whose **Source** reads
    **elr-graylist-example.hl7** reads **Held for review** under **Review
    state**, and under **Exception**: **Released from the graylist: case**,

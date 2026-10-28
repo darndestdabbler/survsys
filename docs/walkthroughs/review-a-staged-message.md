@@ -86,8 +86,7 @@ runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Staged messages**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Intake**, choose **Staged messages**.
 2. The browser tab reads **Staged messages — Survsys**, and below the
    application bar is the heading **Staged messages**. Under it a line reads
    **The inbound electronic lab reports waiting for review. Filter by review

@@ -85,8 +85,7 @@ runs, and writes the recordings to
 
    Written exactly so, the file is **42 B**.
 2. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 3. In the box labelled **Last name**, type `Abbott`, then press **Search**.
    The line above the table reads **1 person(s) found, showing 1.**, and the
    one row's **Last, First** reads **Abbott, Jane**.

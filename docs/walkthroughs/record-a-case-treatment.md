@@ -85,15 +85,14 @@ of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Treatments**, then press **New
+   developer machine, <http://localhost:5000>. In the side menu, under **Reference data**, choose **Treatments**, then press **New
    treatment**. The screen is headed **New treatment**.
 2. In the box labelled **Name**, type `Amoxicillin`. Leave **Active** ticked
    and **Default** unticked, and under **Conditions** tick **Lyme disease**.
 3. Press **Save**. You are back on the **Treatments** screen, and the
    treatment's row reads, left to right: **Amoxicillin**, **Yes**, **No** and
    **1**.
-4. In the application bar, press **New CMR**. In the box labelled **Last
+4. In the side menu, under **Cases**, choose **New CMR**. In the box labelled **Last
    name**, type `Rodriguez`, then press **Search**.
 5. The line above the table reads **2 person(s) found, showing 2.** Press
    **Create CMR** on the row reading **Rodriguez, Maria**.

@@ -87,8 +87,7 @@ browser. It records video of every test it runs, and writes the recordings to
    seconds the file is gone from the drop directory: the intake has read and
    stored it and moved it into the directory's `.processed` folder.
 2. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **eCR**. The screen is headed
+   developer machine, <http://localhost:5000>. In the side menu, under **Intake**, choose **eCR**. The screen is headed
    **eCR documents**. Tick **Needs review**. The row whose **Document** reads
    **2.16.840.1.113883.9.9.9.9.8^e2e-map-rr** reads **RR** under **Kind** and
    **1** under **To review**.
@@ -100,7 +99,7 @@ browser. It records video of every test it runs, and writes the recordings to
    **Determination**, but a dash under **Maps to** and **Needs review** under
    **Routing**: the RR found it reportable, and Survsys does not know which of
    its conditions the code is.
-4. In the application bar, press **eCR conditions**. The screen is headed
+4. In the side menu, under **Reference data**, choose **eCR conditions**. The screen is headed
    **eCR condition mapping**. Under **New code**, type
    `2.16.840.1.113883.6.96` — SNOMED CT's code system — in **Code system
    OID**, `50694005` in **Code** and `Bartonellosis` in **Display name**. Open
@@ -110,7 +109,7 @@ browser. It records video of every test it runs, and writes the recordings to
    **2.16.840.1.113883.6.96** under **Code system**, **50694005** under
    **Code**, **Bartonellosis** under **Display name** and **Bartonellosis**
    under **Condition**.
-6. In the application bar, press **eCR**. The row whose **Document** reads
+6. In the side menu, under **Intake**, choose **eCR**. The row whose **Document** reads
    **2.16.840.1.113883.9.9.9.9.8^e2e-map-rr** now reads **0** under **To
    review**.
 7. Press **2.16.840.1.113883.9.9.9.9.8^e2e-map-rr**. The one condition now

@@ -89,8 +89,7 @@ browser. It records video of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Staged messages**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Intake**, choose **Staged messages**.
 2. Open the **Review state** list and choose **Queued for review**. The list
    closes, and the **Review state** box now reads **Queued for review**. In
    the table, find the row whose **Source** reads **elr-promote-example.hl7**.

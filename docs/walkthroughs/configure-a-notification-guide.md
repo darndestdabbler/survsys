@@ -79,8 +79,7 @@ It records video of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **PHIN variables**. The browser
+   developer machine, <http://localhost:5000>. In the side menu, under **Reference data**, choose **PHIN variables**. The browser
    tab reads **PHIN variables — Survsys** and the heading reads **PHIN
    variables**.
 2. In the box labelled **Identifier**, type `INV169`. In the box labelled
@@ -88,7 +87,7 @@ It records video of every test it runs, and writes the recordings to
    type `CWE`. Press **Save**.
 3. The table has a row for **INV169**, reading **Condition** for its
    **Description** and **CWE** for its **Data type**.
-4. In the application bar, press **Notification guides**. The browser tab
+4. In the side menu, under **Reference data**, choose **Notification guides**. The browser tab
    reads **Notification guides — Survsys** and the heading reads
    **Notification guides**. The table of guides lists **Walkthrough guide**.
 5. Under **New guide**, in the box labelled **Name**, type

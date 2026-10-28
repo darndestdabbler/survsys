@@ -77,14 +77,13 @@ of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Roles**. The screen is headed
+   developer machine, <http://localhost:5000>. In the side menu, under **Administration**, choose **Roles**. The screen is headed
    **Roles**, and its form **New role**.
 2. In the box labelled **Name**, type `Davis County investigator`. Tick
    **view_cases** and **edit_cases**, and nothing else, and press **Save
    role**. The table gains a row whose **Name** reads **Davis County
    investigator** and whose **Privileges** read **view_cases, edit_cases**.
-3. In the application bar, press **Users**. The screen is headed **Users**,
+3. In the side menu, under **Administration**, choose **Users**. The screen is headed **Users**,
    and its form **New user**. Type `davis.investigator` in **User name**,
    `Davis Investigator` in **Display name** and `davis-walkthrough-password`
    in **Password**. Leave **May sign in** ticked, tick **Davis County
@@ -92,7 +91,7 @@ of every test it runs, and writes the recordings to
    else. Press **Save user**. The table gains a row whose **User name** reads
    **davis.investigator**, **Roles** **Davis County investigator**,
    **Agencies** **Davis County** and **May sign in** **Yes**.
-4. In the application bar, press **New CMR**. In the box labelled **Last
+4. In the side menu, under **Cases**, choose **New CMR**. In the box labelled **Last
    name**, type `Abbott` and press **Search**; press **Create CMR** on the one
    row, **Abbott, Jane**. Open the **Disease** list and choose
    **Listeriosis**, open the **Investigating agency** list and choose **Salt
@@ -101,16 +100,16 @@ of every test it runs, and writes the recordings to
    browser's address bar, after `/event/edit/`, which is the report's id; and
    the one the header bar reads under **Record #**, which is its record
    number.
-5. In the application bar, press **Agency board**. In the **Share a report
+5. In the side menu, under **Cases**, choose **Agency board**. In the **Share a report
    read-only** panel, type the report's id in **Report id**, open the **Share
    with agency** list and choose **Davis County**, and press **Share**. A
    message reads **Report** and the report's id **is shared read-only with
    Davis County.**
-6. In the application bar, press **Sign out**. The screen is the **Sign in**
+6. Press **Sign out** at the right of the application bar. The screen is the **Sign in**
    page. Type `davis.investigator` as the user name and
    `davis-walkthrough-password` as the password, and press **Sign in**. The
    application bar now reads **Davis Investigator** beside **Sign out**.
-7. In the application bar, press **Agency board**. Open the **Agency** list
+7. In the side menu, under **Cases**, choose **Agency board**. Open the **Agency** list
    and choose **Davis County**. The row whose **Record #** reads the record
    number you noted reads **Listeriosis** under **Disease**, and **Shared
    read-only** under **Sharing**.

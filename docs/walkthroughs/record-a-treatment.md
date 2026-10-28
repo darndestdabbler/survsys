@@ -85,8 +85,7 @@ of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Treatments**. The screen is
+   developer machine, <http://localhost:5000>. In the side menu, under **Reference data**, choose **Treatments**. The screen is
    headed **Treatments**, with a **New treatment** button above a table whose
    columns are **Name**, **Active**, **Default** and **Conditions**.
 2. Press **New treatment**. The screen is headed **New treatment**. **Active**

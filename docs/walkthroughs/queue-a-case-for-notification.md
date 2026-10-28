@@ -78,8 +78,7 @@ It records video of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. The browser tab reads **New case morbidity report — Survsys**, the heading
    reads **New case morbidity report**, and a line under it reads **Step 1 of
    2.**
@@ -107,7 +106,7 @@ It records video of every test it runs, and writes the recordings to
 12. A green confirmation appears in the panel, reading **This case was queued
     for notification at** followed by the date and time you pressed, as
     `yyyy-mm-dd hh:mm`.
-13. In the application bar, press **Notifications**. The browser tab
+13. In the side menu, under **Notifications**, choose **Notifications**. The browser tab
     reads **Notification queue — Survsys** and the heading reads
     **Notification queue**.
 14. The count line reads **_n_ case(s) queued, showing _m_.**, where the

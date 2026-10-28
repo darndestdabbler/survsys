@@ -86,8 +86,7 @@ video of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Agencies**. (The agencies
+   developer machine, <http://localhost:5000>. In the side menu, under **Reference data**, choose **Agencies**. (The agencies
    screen is also at `/agencies`, so <http://localhost:5000/agencies> opens
    the same screen.)
 2. The browser tab reads **Agencies — Survsys**, and below the application

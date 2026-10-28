@@ -96,8 +96,7 @@ browser. It records video of every test it runs, and writes the recordings to
    from the drop directory: the intake has read and stored it and moved it
    into the directory's `.processed` folder.
 2. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **eCR**. The screen is headed
+   developer machine, <http://localhost:5000>. In the side menu, under **Intake**, choose **eCR**. The screen is headed
    **eCR documents**, and the row whose **Document** reads
    **2.16.840.1.113883.9.9.9.9.9^e2e-held-eicr** reads **eICR** under
    **Kind**.

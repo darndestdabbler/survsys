@@ -74,8 +74,7 @@ the recordings to `Survsys.E2ETests/bin/<configuration>/net10.0/videos` as
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. Under the heading **New case morbidity report**, in the box labelled
    **Last name**, type `Nguyen`, then press **Search**. The one row reads
    **Nguyen, An**. Press its **Create CMR** button.

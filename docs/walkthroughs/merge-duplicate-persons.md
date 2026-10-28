@@ -85,8 +85,7 @@ of every test to `Survsys.E2ETests/bin/<configuration>/net10.0/videos`.
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. In the box labelled **Last name**, type `Zimmerman`; in the box labelled
    **First name**, type `Paul`; then press **Search**. The line above the
    table reads **1 person(s) found, showing 1.**, and the one row's **Last,
@@ -96,7 +95,7 @@ of every test to `Survsys.E2ETests/bin/<configuration>/net10.0/videos`.
    **Save & Continue**. The report's form opens, and in its header bar
    **Patient name** reads **Zimmerman, Paul** and **Disease** reads
    **Hepatitis A**.
-4. Press **New CMR** in the application bar again. The heading reads **New
+4. In the side menu, under **Cases**, choose **New CMR** again. The heading reads **New
    case morbidity report**.
 5. This time, as a second report about him might, give his middle initial:
    type `Zimmerman` in **Last name**, `Paul` in **First name**, `J` in
@@ -109,7 +108,7 @@ of every test to `Survsys.E2ETests/bin/<configuration>/net10.0/videos`.
    **Investigating agency** list and choose **Utah State**. Press **Save &
    Continue**. The report's form opens, and in its header bar **Patient
    name** reads **Zimmerman, Paul** and **Disease** reads **Giardiasis**.
-8. In the application bar, press **Duplicate persons**. The heading reads
+8. In the side menu, under **Cases**, choose **Duplicate persons**. The heading reads
    **Duplicate persons**, and the table has one row: **Person** reads
    **Zimmerman, Paul**, born **1950-07-04**; **Possible duplicate** reads
    **Zimmerman, Paul**, born **1950-07-04**; **Score** reads **80**,
@@ -125,7 +124,7 @@ of every test to `Survsys.E2ETests/bin/<configuration>/net10.0/videos`.
     **Zimmerman, Paul**, **Middle name** reads **—**, and under **Cases** are
     both reports — the **Hepatitis A** report opened in step 3 and the
     **Giardiasis** report opened on the second record in step 7.
-12. In the application bar, press **Duplicate persons** again. The screen now
+12. In the side menu, under **Cases**, choose **Duplicate persons** again. The screen now
     reads **No duplicate persons were found.**
 
 ## What you should see

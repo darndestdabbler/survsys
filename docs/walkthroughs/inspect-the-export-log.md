@@ -83,8 +83,7 @@ It records video of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. Under the heading **New case morbidity report**, in the box labelled
    **Last name**, type `Okafor`, then press **Search**.
 3. The one row reads **Okafor, Chidi**. Press its **Create CMR** button.
@@ -100,11 +99,11 @@ It records video of every test it runs, and writes the recordings to
    notification**, press **Queue for notification**. A green confirmation
    reads **This case was queued for notification at** followed by the date
    and time you pressed.
-7. In the application bar, press **Notifications**. On the **Notification
+7. In the side menu, under **Notifications**, choose **Notifications**. On the **Notification
    queue**, press **Process now**. A line beside it reads **_n_ case(s)
    processed; each is on the export log.**, where _n_ counts every case that
    was waiting, including those other work queued.
-8. In the application bar, press **Export log**. The browser tab reads
+8. In the side menu, under **Notifications**, choose **Export log**. The browser tab reads
    **Export log — Survsys** and the heading reads **Export log**. Under it a
    line reads **The history of case exports to CDC, newest first. Open an
    export to read the message that was generated for it, resend its case, or

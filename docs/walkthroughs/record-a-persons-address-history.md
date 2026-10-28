@@ -82,8 +82,7 @@ of every test to `Survsys.E2ETests/bin/<configuration>/net10.0/videos`.
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. In the box labelled **Last name**, type `Rodriguez`; in the box labelled
    **First name**, type `Maria`; then press **Search**.
 3. The line above the table reads **1 person(s) found, showing 1.**, and the
@@ -119,7 +118,7 @@ of every test to `Survsys.E2ETests/bin/<configuration>/net10.0/videos`.
     **Street** **45 East 400 South**, **City** **Salt Lake City**, **Zip
     code** **84111-1234**, **Earliest known** **2019-06-01** and **Moved**
     **2024-03-01**: historic by its dates, and saved made regular.
-11. In the application bar, press **People**. Type `Rodriguez` in **Last
+11. In the side menu, under **Cases**, choose **People**. Type `Rodriguez` in **Last
     name** and `Maria` in **First name**, press **Search**, and press
     **Rodriguez, Maria**, the name on the one row.
 12. Her own screen opens. Its **Addresses** table has two rows, in the order

@@ -110,8 +110,7 @@ of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. The browser tab reads **New case morbidity report — Survsys**, and below
    the application bar is the heading **New case morbidity report**. Under
    the heading, a line of small text begins **Step 1 of 2.** and tells you to

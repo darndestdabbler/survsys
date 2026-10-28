@@ -2414,7 +2414,29 @@
         "identityProvenance": "direct"
       },
       "verificationVerdict": "VERIFIED",
-      "startCommit": "dee6f0910624e1cf273513c8bebfa34fd6b9d291",
+      "verification": {
+        "rounds": 1,
+        "verifierModel": "gpt-5.6-terra",
+        "verifierProvider": "openai",
+        "transport": "api"
+      },
+      "frameworkVersion": "3.23.0",
+      "startCommit": "dee6f0910624e1cf273513c8bebfa34fd6b9d291"
+    },
+    {
+      "number": 117,
+      "title": "A grouped navigation menu",
+      "status": "in-progress",
+      "startedAt": "2026-10-28T11:58:14.356000-04:00",
+      "completedAt": null,
+      "orchestrator": {
+        "engine": "claude-code",
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "identityProvenance": "direct"
+      },
+      "verificationVerdict": "VERIFIED",
+      "startCommit": "3023954a8d2ae7adc5b026eb1dd22decd6161507",
       "frameworkVersion": "3.23.0",
       "verification": {
         "rounds": 1,
@@ -2422,6 +2444,15 @@
         "verifierProvider": "openai",
         "transport": "api"
       }
+    },
+    {
+      "number": 118,
+      "title": "Release 1.0.1 (release: 1.0.1)",
+      "status": "not-started",
+      "startedAt": null,
+      "completedAt": null,
+      "orchestrator": null,
+      "verificationVerdict": null
     }
   ]
 }

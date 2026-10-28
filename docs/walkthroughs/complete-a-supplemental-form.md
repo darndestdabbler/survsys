@@ -95,8 +95,7 @@ of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **Forms**. The screen is headed
+   developer machine, <http://localhost:5000>. In the side menu, under **Reference data**, choose **Forms**. The screen is headed
    **Forms**, with a **New form** button above a table whose columns are
    **Name**, **Condition** and **Auto-assign**.
 2. Press **New form**. The screen is headed **New form**, and its
@@ -119,7 +118,7 @@ of every test it runs, and writes the recordings to
 8. Press **Save**. You are back on the **Forms** screen, and the form's row
    reads, left to right: **Lyme disease tick exposure**, **Lyme disease**
    and **Yes**.
-9. In the application bar, press **New CMR**. In the box labelled **Last
+9. In the side menu, under **Cases**, choose **New CMR**. In the box labelled **Last
    name**, type `Zimmerman`, then press **Search**. The line above the table
    reads **1 person(s) found, showing 1.**, and the one row's **Last, First**
    reads **Zimmerman, Paul**. Press **Create CMR** on that row.

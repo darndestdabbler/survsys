@@ -78,8 +78,7 @@ It records video of every test it runs, and writes the recordings to
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. Under the heading **New case morbidity report**, in the box labelled
    **Last name**, type `Nguyen`, then press **Search**. The one row reads
    **Nguyen, An**. Press its **Create CMR** button.
@@ -88,7 +87,7 @@ It records video of every test it runs, and writes the recordings to
    **Save & Continue**. The report's own form opens, its header bar reading
    **Nguyen, An** for the patient and **Lyme disease** for the
    disease.
-4. In the application bar, press **New CMR** again. In the box labelled
+4. In the side menu, under **Cases**, choose **New CMR** again. In the box labelled
    **Last name**, type `Abbott`, then press **Search**. The one row reads
    **Abbott, Jane**. Press its **Create CMR** button.
 5. In the list labelled **Disease**, choose **Lyme disease**. In
@@ -96,12 +95,12 @@ It records video of every test it runs, and writes the recordings to
    **Save & Continue**. The report's own form opens, its header bar reading
    **Abbott, Jane** for the patient and **Lyme disease** for the
    disease.
-6. In the application bar, press **Saved views**. Under **New saved view**, in
+6. In the side menu, under **Cases**, choose **Saved views**. Under **New saved view**, in
    the box labelled **Name**, type `Lyme disease by agency`. Tick the
    columns **last_name** and **agency**. In the list labelled **Condition**,
    choose **Lyme disease**. Press **Save view**. The list of views
    has a row for **Lyme disease by agency**.
-7. In the application bar, press **Reports**. The browser tab reads
+7. In the side menu, under **Cases**, choose **Reports**. The browser tab reads
    **Reports — Survsys** and the heading reads **Reports**. Below it, under
    the heading **Saved view report**, in the list labelled **Saved view**,
    choose **Lyme disease by agency**. The list labelled **Group by** now

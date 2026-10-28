@@ -77,8 +77,7 @@ of every test to `Survsys.E2ETests/bin/<configuration>/net10.0/videos`.
 ## Steps
 
 1. Open your browser and go to the application tier's address — on a
-   developer machine, <http://localhost:5000>. In the coloured application
-   bar across the top of the window, press **New CMR**.
+   developer machine, <http://localhost:5000>. In the side menu, under **Cases**, choose **New CMR**.
 2. In the box labelled **Last name**, type `Abbott`; then press **Search**.
 3. The line above the table reads **1 person(s) found, showing 1.**, and the
    one row's **Last, First** reads **Abbott, Jane**.
@@ -97,7 +96,7 @@ of every test to `Survsys.E2ETests/bin/<configuration>/net10.0/videos`.
    saved.** Under the name boxes, **Former names** now lists one name:
    **Abbott, Jane Marie — changed** and today's date, written year-month-day
    — her whole name as it was, middle name and all.
-10. In the application bar, press **People**. The heading reads **People**.
+10. In the side menu, under **Cases**, choose **People**. The heading reads **People**.
 11. In the box labelled **Last name**, type `Abbott` — the name she used to
     have — and press **Search**.
 12. The line above the table reads **1 person(s) found, showing 1.**, and the
