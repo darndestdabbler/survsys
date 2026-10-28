@@ -10753,6 +10753,15 @@ namespace Survsys.Data.Migrations
                             List = "county",
                             SortOrder = 340,
                             State = "CT"
+                        },
+                        new
+                        {
+                            Id = 1175,
+                            Active = true,
+                            Code = "clinician",
+                            Description = "Clinician",
+                            List = "provider_type",
+                            SortOrder = 1
                         });
                 });
 
@@ -14636,6 +14645,58 @@ namespace Survsys.Data.Migrations
                     b.ToTable("phin_var", (string)null);
                 });
 
+            modelBuilder.Entity("Survsys.Data.Provider", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit")
+                        .HasColumnName("active");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("first_name");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("last_name");
+
+                    b.Property<string>("MiddleName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("middle_name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("phone");
+
+                    b.Property<int?>("ProviderTypeId")
+                        .HasColumnType("int")
+                        .HasColumnName("provider_type_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastName");
+
+                    b.HasIndex("ProviderTypeId");
+
+                    b.ToTable("providers", (string)null);
+                });
+
             modelBuilder.Entity("Survsys.Data.ReconciliationCutoffSetting", b =>
                 {
                     b.Property<int>("Id")
@@ -16713,6 +16774,14 @@ namespace Survsys.Data.Migrations
                         .HasForeignKey("VaccineId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Survsys.Data.Provider", b =>
+                {
+                    b.HasOne("Survsys.Data.CodeValue", null)
+                        .WithMany()
+                        .HasForeignKey("ProviderTypeId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Survsys.Data.RolePrivilege", b =>

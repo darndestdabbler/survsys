@@ -54,7 +54,7 @@ privileges:
 |---|---|
 | `view_cases` | Read people, cases and everything filed under them; the queues, outbreaks, staged messages, eCR documents, notifications, the export log, tasks and saved views. |
 | `edit_cases` | Create and change cases and what is filed under them, and outbreaks; send a case to IBIS. |
-| `manage_reference_data` | Change the conditions, agencies, facilities, field visibility, code lists, vocabulary, towns and zip codes, vaccines, treatments, forms, the notification set-up and the eCR mappings and senders. Reading them needs only to be signed in. |
+| `manage_reference_data` | Change the conditions, agencies, facilities, providers, field visibility, code lists, vocabulary, towns and zip codes, vaccines, treatments, forms, the notification set-up and the eCR mappings and senders. Reading them needs only to be signed in, except the providers, which need `view_cases`. |
 | `manage_users` | Add and change users and roles; read the audit and access audit. |
 | `run_reports` | Run the reports. |
 | `route_cases` | Route a case to another agency. |
@@ -85,7 +85,7 @@ menu groups the screens by area, every group open:
 | **Cases** | **People**, **Events**, **New CMR**, **Work queue**, **Agency board**, **Outbreaks**, **Tasks**, **Saved views**, **Reports**, **Duplicate persons** |
 | **Intake** | **Staged messages**, **Intake statistics**, **eCR**, **eCR quality** |
 | **Notifications** | **Notifications**, **Export log**, **Reconciliation** |
-| **Reference data** | **Conditions**, **Agencies**, **Facilities**, **Field visibility**, **Forms**, **Treatments**, **Code lists**, **Vocabulary**, **eCR conditions**, **eCR senders**, **Towns and zip codes**, **Vaccines**, **Notification guides**, **PHIN variables**, **Value sets**, **Hepatitis lab setup** |
+| **Reference data** | **Conditions**, **Agencies**, **Facilities**, **Providers**, **Field visibility**, **Forms**, **Treatments**, **Code lists**, **Vocabulary**, **eCR conditions**, **eCR senders**, **Towns and zip codes**, **Vaccines**, **Notification guides**, **PHIN variables**, **Value sets**, **Hepatitis lab setup** |
 | **Administration** | **Users**, **Roles**, **Audit**, **Access audit** |
 
 The menu shows only the screens your privileges open, and a group none of
@@ -437,12 +437,21 @@ reads back in unchanged.
   **Agency** that owns it, with its short name, address and phone; open one
   to change it. A laboratory that sends messages is a facility whose short
   name is its sending facility.
+- **Providers** (`/providers`): the provider registry — the clinicians a
+  record can name. **New provider** adds one with their name, **Provider
+  type** (from the **Provider type** code list), phone and email; type the
+  start of a last name and press **Search** to find one, **Previous** and
+  **Next** turning the pages where there are more than fifty, and open one
+  to change it. A provider who no longer practises is retired by switching
+  **Active** off rather than deleted. Reading the registry needs
+  `view_cases`; **Export providers CSV** and **Import providers CSV** work as
+  the facilities' do.
 - **Field visibility** (`/core-elements`): which fields the Clinical,
   Investigation and Administrative tabs show. Each field has a **Hidden by
   default** switch, which saves as soon as you flip it. An **override** shows
   or hides one field for a condition, an agency, or both; **Delete** removes
   it.
-- **Code lists** (`/codes`): the 29 reference code lists every coded field is
+- **Code lists** (`/codes`): the 30 reference code lists every coded field is
   chosen from. Choose a **List** to see its codes, retired ones included;
   **Edit** on a row, or **New code**, fills the form — **Code**,
   **Description**, **Sort order** and **Active** — and **Save** saves it. A
@@ -473,6 +482,7 @@ reads back in unchanged.
 **Walk through it:**
 [Configure an agency](../walkthroughs/configure-an-agency.md),
 [Add a facility](../walkthroughs/add-a-facility.md),
+[Maintain a provider](../walkthroughs/maintain-a-provider.md),
 [Save a view](../walkthroughs/save-a-view.md),
 [Export a dataset](../walkthroughs/export-a-dataset.md),
 [Run an ad-hoc report](../walkthroughs/run-an-ad-hoc-report.md).

@@ -41,6 +41,8 @@ public class SurvsysDbContext(DbContextOptions<SurvsysDbContext> options, IAudit
 
     public DbSet<Facility> Facilities => Set<Facility>();
 
+    public DbSet<Provider> Providers => Set<Provider>();
+
     public DbSet<CoreElement> CoreElements => Set<CoreElement>();
 
     public DbSet<CoreElementOverride> CoreElementOverrides => Set<CoreElementOverride>();

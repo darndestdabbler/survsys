@@ -70,6 +70,24 @@ public class PrivilegeRulesTests
     }
 
     [Theory]
+    [InlineData("GET", "/api/providers")]
+    [InlineData("GET", "/api/providers/3")]
+    [InlineData("GET", "/api/providers/csv")]
+    public void RequiredForAProviderReadIsViewCases(string method, string path)
+    {
+        Assert.Equal(Privileges.ViewCases, PrivilegeRules.RequiredFor(method, path));
+    }
+
+    [Theory]
+    [InlineData("POST", "/api/providers")]
+    [InlineData("PUT", "/api/providers/3")]
+    [InlineData("POST", "/api/providers/csv")]
+    public void RequiredForAProviderWriteIsManageReferenceData(string method, string path)
+    {
+        Assert.Equal(Privileges.ManageReferenceData, PrivilegeRules.RequiredFor(method, path));
+    }
+
+    [Theory]
     [InlineData("GET", "/api/users")]
     [InlineData("PUT", "/api/users/3")]
     [InlineData("POST", "/api/roles")]

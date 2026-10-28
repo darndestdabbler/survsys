@@ -243,7 +243,7 @@ headers; terminate TLS at IIS.
 
 ## The data model
 
-The schema is `Survsys.Data`'s, built by 57 migrations, in order:
+The schema is `Survsys.Data`'s, built by 58 migrations, in order:
 `InitialCreate`, `Persons`, `PersonConditions`, `ClinicalAndLaboratory`,
 `CaseClassification`, `Workflow`, `InvestigationAndAdministrative`,
 `ContactsAndExposures`, `NotesAndTasks`, `Attachments`,
@@ -261,7 +261,7 @@ The schema is `Survsys.Data`'s, built by 57 migrations, in order:
 `NotificationAdministration`, `ExportLogBatchFile`, `AuditUserAndValues`,
 `JurisdictionAccessAndLockout`, `ConditionIntakeFlags`, `SystemSettings`,
 `EcrDocuments`, `EcrValidationFindings`, `EcrReportability`, `EcrCases`,
-`EcrSenders`, `AddressGeocoding` and `DropSystemSettings`.
+`EcrSenders`, `AddressGeocoding`, `DropSystemSettings` and `Providers`.
 
 | Area | Tables |
 |---|---|
@@ -270,7 +270,7 @@ The schema is `Survsys.Data`'s, built by 57 migrations, in order:
 | Laboratory | `labs`, `lab_tests`, `lab_test_results`, `lab_resist_tests` |
 | Exposures | `exposures`, `exposure_places`, `exposure_contacts`, `exposure_sources` |
 | Treatments and vaccines | `treatments`, `condition_treatments`, `person_treatments`, `vaccines`, `person_vaccines` |
-| Reference data | `conditions`, `agencies`, `facilities`, `zip_code_agencies`, `zip_codes`, `ct_towns`, `core_elements`, `core_element_overrides`, `report_sections`, `code_values`, `code_value_conditions` |
+| Reference data | `conditions`, `agencies`, `facilities`, `providers`, `zip_code_agencies`, `zip_codes`, `ct_towns`, `core_elements`, `core_element_overrides`, `report_sections`, `code_values`, `code_value_conditions` |
 | Supplemental forms | `forms`, `form_sections`, `form_questions`, `form_question_options`, `form_assignments`, `form_answers` |
 | Outbreaks | `outbreaks`, `outbreak_access`, `outbreak_updates`, `outbreak_report_sections` |
 | Security and audit | `users`, `roles`, `user_roles`, `role_privileges`, `user_agencies`, `access_records`, `audit_entries` |
@@ -320,6 +320,7 @@ its `encounters`, `treatments`, `vaccines` and `forms`. Beside them: `persons`
 `notification-setup` (guides, PHIN variables, rule sets, value sets, units of
 measure, hepatitis lab groups and header defaults), `conditions` (with its
 `rules`, `print-criteria` and `lab-overrides`), `agencies`, `facilities`,
+`providers` (searched by `?lastName=`, the start of a last name),
 `core-elements`, `codes`, `vocabulary`, `ct-towns`, `zip-codes`, `users`,
 `investigators`, `roles`, `privileges`, `audit`, `access-audit`,
 `system-settings`, `sign-in` and `me`. Reference tables answer CSV on their
@@ -340,6 +341,8 @@ access audit need `manage_users`; reference data —
 conditions, agencies, facilities, core elements, codes, vocabulary, towns and
 zip codes, vaccines, the notification set-up, forms, treatments and the eCR
 mappings and senders — is readable by anyone signed in and needs
+`manage_reference_data` to change; the provider registry needs
+`view_cases` to read, because it names people and how to reach them, and
 `manage_reference_data` to change; saved views need `view_cases`; reports
 need `run_reports`; person merges need `merge_persons`; a workflow move needs
 `view_cases` here, and its endpoint then checks the move's own privilege

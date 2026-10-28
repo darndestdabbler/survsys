@@ -22,7 +22,11 @@ namespace Survsys.Api;
 /// notification setup (guides, PHIN variables, rule sets, value sets and
 /// hepatitis lab groups) — is readable by anyone signed in,
 /// because every case screen reads it, and changed with
-/// <see cref="Privileges.ManageReferenceData"/>; who the caller is
+/// <see cref="Privileges.ManageReferenceData"/>; the provider registry
+/// (<c>/api/providers</c>) is reference data too, changed with
+/// <see cref="Privileges.ManageReferenceData"/>, but read with
+/// <see cref="Privileges.ViewCases"/>, because it names people and their
+/// contact details, which only those who read cases need; who the caller is
 /// (<c>/api/me</c>) needs nothing beyond being signed in; a saved view and its
 /// export need <see cref="Privileges.ViewCases"/> whatever the method, because
 /// a view is the caller's own and changes no case; an ad-hoc report needs
@@ -51,6 +55,8 @@ public static class PrivilegeRules
         "/api/ecr-condition-mappings", "/api/ecr-senders",
     ];
 
+    private static readonly string[] Providers = ["/api/providers"];
+
     private static readonly string[] AnySignedIn = ["/api/me"];
 
     private static readonly string[] CaseReadsWhateverTheMethod = ["/api/saved-views"];
@@ -77,6 +83,11 @@ public static class PrivilegeRules
         if (Under(path, ReferenceData))
         {
             return reads ? null : Privileges.ManageReferenceData;
+        }
+
+        if (Under(path, Providers))
+        {
+            return reads ? Privileges.ViewCases : Privileges.ManageReferenceData;
         }
 
         if (Under(path, AnySignedIn) || !Under(path, ["/api"]))

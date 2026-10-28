@@ -89,6 +89,7 @@ builder.Services.AddHttpClient<ConditionsClient>(http => http.BaseAddress = api)
 builder.Services.AddHttpClient<PersonsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<AgenciesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<FacilitiesClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
+builder.Services.AddHttpClient<ProvidersClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<CoreElementsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<PersonConditionsClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>();
 builder.Services.AddHttpClient<ClinicalClient>(http => http.BaseAddress = api).AddHttpMessageHandler<ApiTokenHandler>()
@@ -266,6 +267,12 @@ app.MapGet("/agencies/{id:int}/zip-codes/export", async (int id, AgenciesClient 
 app.MapGet("/facilities/export", async (FacilitiesClient facilities, CancellationToken cancellationToken) =>
     await facilities.Export(cancellationToken) is var exported && exported.Value is { } csv
         ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "facilities.csv")
+        : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
+
+// The providers as CSV, handed over the same way from the Providers screen.
+app.MapGet("/providers/export", async (ProvidersClient providers, CancellationToken cancellationToken) =>
+    await providers.Export(cancellationToken) is var exported && exported.Value is { } csv
+        ? Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "providers.csv")
         : Results.Problem(detail: exported.Failure, statusCode: StatusCodes.Status502BadGateway));
 
 // The conditions as CSV, handed over the same way from the Conditions screen.

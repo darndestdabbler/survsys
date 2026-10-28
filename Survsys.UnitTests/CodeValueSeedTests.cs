@@ -5,7 +5,7 @@ namespace Survsys.UnitTests;
 
 /// <summary>
 /// The county list's seed: Connecticut's historical counties and planning
-/// regions beside Utah's legacy codes.
+/// regions beside Utah's legacy codes; and the provider type's.
 /// </summary>
 public class CodeValueSeedTests
 {
@@ -53,6 +53,16 @@ public class CodeValueSeedTests
         Assert.Null(outOfState.State);
         Assert.Null(outOfState.Fips);
         Assert.Equal(CodeValue.CountyKind, outOfState.Kind);
+    }
+
+    [Fact]
+    public void TheProviderTypeIsTheLegacyClinician()
+    {
+        var clinician = Assert.Single(CodeValueSeed.Rows, row => row.List == "provider_type");
+
+        Assert.Equal("clinician", clinician.Code);
+        Assert.Equal("Clinician", clinician.Description);
+        Assert.True(clinician.Active);
     }
 
     [Fact]

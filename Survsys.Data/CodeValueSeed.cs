@@ -7,7 +7,8 @@ namespace Survsys.Data;
 /// <remarks>
 /// Generated from the legacy Flyway seed under
 /// <c>../nedss/legacy/nedss-jpa/src/main/resources/db/migration</c>, one list
-/// per legacy reference table: <c>V0003__init.sql</c> for most of them,
+/// per legacy reference table: <c>V0003__init.sql</c> for most of them, the
+/// provider type among them,
 /// <c>V0009__more_init_source_type.sql</c> for source type,
 /// <c>V0158__add_cntry_usual_res_and_more.sql</c> for transmission mode,
 /// <c>V0164__redefine_countries.sql</c> for country,
@@ -1270,5 +1271,8 @@ public static class CodeValueSeed
         new() { Id = 1172, List = "county", Code = "09170", Description = "South Central Connecticut Planning Region", SortOrder = 330, State = "CT", Fips = "09170", Kind = CodeValue.CountyEquivalentKind },
         new() { Id = 1173, List = "county", Code = "09180", Description = "Southeastern Connecticut Planning Region", SortOrder = 335, State = "CT", Fips = "09180", Kind = CodeValue.CountyEquivalentKind },
         new() { Id = 1174, List = "county", Code = "09190", Description = "Western Connecticut Planning Region", SortOrder = 340, State = "CT", Fips = "09190", Kind = CodeValue.CountyEquivalentKind },
+
+        // provider_type
+        new() { Id = 1175, List = "provider_type", Code = "clinician", Description = "Clinician", SortOrder = 1 },
     ];
 }

@@ -85,6 +85,7 @@ down the list.
 | [Review the conditions catalogue](review-the-conditions-catalogue.md) | Yes |
 | [Configure an agency](configure-an-agency.md) | Yes |
 | [Add a facility](add-a-facility.md) | No: it reads its facility as the only one on file |
+| [Maintain a provider](maintain-a-provider.md) | No: it reads its provider as the only one on file |
 | [Record a treatment](record-a-treatment.md) | No: the list then shows two of the same name |
 | [Configure a notification guide](configure-a-notification-guide.md) | No: its PHIN variable must not be there yet |
 

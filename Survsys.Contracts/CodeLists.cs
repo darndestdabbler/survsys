@@ -70,6 +70,8 @@ public static class CodeLists
 
     public const string AttachmentCategory = "attachment_category";
 
+    public const string ProviderType = "provider_type";
+
     /// <summary>Every list, in the order the administration screen offers them.</summary>
     public static readonly IReadOnlyList<string> All =
     [
@@ -102,5 +104,6 @@ public static class CodeLists
         VaccineManufacturer,
         VaccineInformationSource,
         AttachmentCategory,
+        ProviderType,
     ];
 }
