@@ -106,8 +106,8 @@ else
                 </MudText>
                 <MudGrid Spacing="2">
                     <MudItem xs="12" sm="4">
-                        @FacilitySelect("child-loinc-lab", childLoinc.LabId,
-                               chosen => childLoinc.LabId = chosen)
+                        <FacilitySelect id="child-loinc-lab" Label="Sending lab" Required="true"
+                                        @bind-Value="childLoinc.LabId" />
                     </MudItem>
                     <MudItem xs="12" sm="4">
                         <MudTextField @bind-Value="childLoinc.ChildLoinc" id="child-loinc-code" Label="Lab's code"
@@ -421,19 +421,6 @@ else
         </MudSelect>
     };
 
-    private RenderFragment FacilitySelect(string id, int? value, Action<int?> chosen) => __builder =>
-    {
-        <MudSelect T="int?" id="@id" Label="Sending lab" Variant="Variant.Outlined" Required="true"
-                   Value="@value" ValueChanged="@chosen">
-            @foreach (var facility in facilities)
-            {
-                <MudSelectItem T="int?" Value="@((int?)facility.Id)">
-                    @facility.Name@(facility.ShortName is { } shortName ? $" ({shortName})" : "")
-                </MudSelectItem>
-            }
-        </MudSelect>
-    };
-
     /// <summary>A category's master values: their form and their table, with the lab codes beside each.</summary>
     private RenderFragment MasterValueSection(string category, string noun) => __builder =>
     {
@@ -495,7 +482,8 @@ else
             </MudText>
             <MudGrid Spacing="2">
                 <MudItem xs="12" sm="4">
-                    @FacilitySelect($"{category}-child-lab", form.LabId, chosen => form.LabId = chosen)
+                    <FacilitySelect id="@($"{category}-child-lab")" Label="Sending lab" Required="true"
+                                    @bind-Value="form.LabId" />
                 </MudItem>
                 <MudItem xs="12" sm="4">
                     <MudTextField @bind-Value="form.ChildCode" id="@($"{category}-child-code")" Label="Lab's code"

@@ -83,7 +83,7 @@ public class MaintainALoincMappingTests(IntakeHarness harness) : IntakePageTest
         {
             await Page.GetByRole(AriaRole.Tab, new() { Name = "Child LOINC", Exact = true }).ClickAsync();
             await Expect(Page.Locator("#child-loinc-form")).ToContainTextAsync("New child LOINC");
-            await Choose("Sending lab", new Regex(@"^ARUP Laboratories \(ARUP_LAB\)$"));
+            await Search("#child-loinc-lab", "ARUP", "ARUP Laboratories (ARUP_LAB)");
             await Page.Locator("#child-loinc-code").FillAsync(LabCode);
             await Choose("Master LOINC", new Regex($"^{Regex.Escape(Loinc)}"));
             await Page.Locator("#child-loinc-concept").FillAsync("Listeria PCR");
@@ -170,5 +170,17 @@ public class MaintainALoincMappingTests(IntakeHarness harness) : IntakePageTest
         await box.ClickAsync();
         await Page.GetByRole(AriaRole.Option, new() { NameRegex = item }).ClickAsync();
         await Expect(box).ToHaveTextAsync(item);
+    }
+
+    /// <summary>
+    /// Types <paramref name="typed"/> into the searchable list at
+    /// <paramref name="box"/>, chooses the entry reading
+    /// <paramref name="item"/>, and reads the box, which now shows it.
+    /// </summary>
+    private async Task Search(string box, string typed, string item)
+    {
+        await Page.Locator(box).FillAsync(typed);
+        await Page.GetByRole(AriaRole.Option, new() { Name = item, Exact = true }).ClickAsync();
+        await Expect(Page.Locator(box)).ToHaveValueAsync(item);
     }
 }

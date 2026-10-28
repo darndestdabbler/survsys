@@ -15,11 +15,12 @@ namespace Survsys.Data;
 /// from specimen source 12, at lab facility 11.
 ///
 /// Every column of the legacy <c>lab</c> table is here. The performing lab, the
-/// ordering provider, the diagnostic facility and the reporting facility are
-/// each a bare nullable id into the <c>facility</c> or <c>provider</c> tables
-/// that do not exist here yet — the "Performing Lab", "Ordering Clinician" and
-/// "Ordering Facility" fields of the legacy Add Lab form, as
-/// <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c> section 4 lists
+/// diagnostic facility and the reporting facility are each a bare nullable id
+/// into the <c>facility</c> table, and the ordering provider one into the
+/// <c>provider</c> table, which does not exist here yet — the "Performing
+/// Lab", "Ordering Clinician" and "Ordering Facility" fields of the legacy Add
+/// Lab form, as <c>../nedss/docs/functional/epitrax-cmr-deep-editing.md</c>
+/// section 4 lists
 /// them — held as plain ints and not navigations, for the reason
 /// <see cref="SpecimenSourceId"/> is.
 ///
@@ -57,8 +58,7 @@ public class Lab
     /// <summary>
     /// The facility that performed the lab work, as the legacy
     /// <c>lab_facility_id</c> — the Add Lab form's "Performing Lab". A bare
-    /// nullable id into the <c>facility</c> table, which does not exist here
-    /// yet.
+    /// nullable id into the <c>facility</c> table.
     /// </summary>
     public int? LabFacilityId { get; set; }
 
@@ -73,15 +73,14 @@ public class Lab
     /// <summary>
     /// The facility that performed the diagnosis, as the legacy
     /// <c>diagnostic_facility_id</c>. A bare nullable id into the
-    /// <c>facility</c> table, which does not exist here yet.
+    /// <c>facility</c> table.
     /// </summary>
     public int? DiagnosticFacilityId { get; set; }
 
     /// <summary>
     /// The facility that reported the result, as the legacy
     /// <c>reporting_facility_id</c> — the Add Lab form's "Ordering Facility". A
-    /// bare nullable id into the <c>facility</c> table, which does not exist
-    /// here yet.
+    /// bare nullable id into the <c>facility</c> table.
     /// </summary>
     public int? ReportingFacilityId { get; set; }
 

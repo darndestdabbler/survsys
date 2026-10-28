@@ -34,8 +34,9 @@ walkthrough describes what Survsys shows rather than what EpiTrax showed:
 - **The empty choice reads (none).** The legacy picker's "No associated
   outbreak" is **(none)** in Survsys, and choosing it clears the link.
 
-The outbreak's agency access, its report and its activity log are on the same
-screen and are not part of this walkthrough.
+The outbreak's agency access and its report are on the same screen and are
+not part of this walkthrough. Its activity log is, as far as one entry: an
+entry is recorded under whoever is signed in, so there is no author to type.
 
 ## Before you start
 
@@ -146,6 +147,12 @@ of every test it runs, and writes the recordings to
     number**, **Person** and **Condition**, and it has one row, reading the
     record number you noted in step 11, **Nguyen, An** and **Hepatitis A**.
     That is how you know the link reached the database.
+19. In the panel headed **Activity log**, type `Linked the first case.` in
+    the box labelled **What happened**, then press **Add entry**. The table
+    under it, with the columns **When**, **Author** and **Entry**, has one
+    row: its **Author** reads your own name, the one at the right of the
+    application bar beside **Sign out**, and its **Entry** reads **Linked the
+    first case.**
 
 ## What you should see
 
@@ -160,6 +167,8 @@ An outbreak opened, and a case linked to it and read back from both sides:
   opened again.
 - The outbreak's own screen listing that report under **Linked cases**, by its
   record number, its person and its condition.
+- An activity log entry, **Linked the first case.**, listed under your own
+  name without your typing it.
 
 You now know how to open an outbreak and link the cases it is made of. If what
 you saw differs from what is written above, the walkthrough has failed: say so

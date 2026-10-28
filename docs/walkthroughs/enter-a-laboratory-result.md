@@ -27,7 +27,7 @@ them. So this walkthrough begins by opening a report on An Nguyen — the same
 two steps the *Create a case morbidity report* walkthrough describes — and
 then enters a result on it.
 
-Four differences from the legacy form are deliberate, and this walkthrough
+Five differences from the legacy form are deliberate, and this walkthrough
 describes what Survsys shows rather than what EpiTrax showed:
 
 - **A specimen is recorded whole, in three levels.** The entry form takes
@@ -41,11 +41,17 @@ describes what Survsys shows rather than what EpiTrax showed:
   code are lists over the reference code lists an administrator keeps on the
   **Code lists** screen, seeded from the legacy lookup tables. The test types
   offered are the ones listed for the report's disease, or every test type
-  where none is listed for it. The specimens table shows the number a chosen
-  source has on its list — `558` for **Serum**. Lab facility, provider,
-  diagnostic facility and reporting facility are still boxes that take the
-  legacy identifier; this walkthrough leaves them empty, and the specimens
-  table shows a dash for each.
+  where none is listed for it. The specimens table shows a chosen source by
+  its description — **Serum**. Lab facility, diagnostic facility and
+  reporting facility are searchable lists over the facilities kept on the
+  **Facilities** screen, and the table shows a chosen facility by name; this
+  walkthrough leaves them empty, and the table shows a dash for each. Provider
+  is still a box that takes the legacy identifier, because there is no
+  provider list to choose from yet; it is left empty too.
+- **A test's LOINC code is chosen or typed.** The **LOINC code** box offers
+  the master LOINC codes kept on the **Vocabulary** screen that hold what you
+  type, each with its concept name, and keeps a code it does not hold as you
+  typed it.
 - **Nothing on a specimen is required.** The legacy form required a
   performing lab — and in the legacy development environment that
   requirement could not be met, because its facility table was empty, which
@@ -159,8 +165,10 @@ of every test it runs, and writes the recordings to
     **Reference range** and **Test date**, and under them a **Results**
     section with an **Add result** button and nothing under it. Open the
     **Test type** list and choose **IgM Antibody**. In the box labelled
-    **LOINC code**, type `20575-7`. In the box labelled **Test
-    date**, enter the date `2026-10-04`. Leave the other test boxes empty.
+    **LOINC code**, type `20575-7`: on a database seeded as above no master
+    LOINC code is on file, so the list under the box offers nothing, and the
+    box keeps `20575-7` as typed. In the box labelled **Test date**, enter the
+    date `2026-10-04`. Leave the other test boxes empty.
 13. Under that test's **Results**, press **Add result**. A result row
     appears above the button, with the boxes **Organism**, **Value**,
     **Result code**, **Units** and **Comment** and a **Primary** tick box.
@@ -169,15 +177,15 @@ of every test it runs, and writes the recordings to
 14. Press **Record specimen** at the bottom of the form. A green message
     appears at the top of the tab, reading **The specimen has been
     recorded.** The **Specimens** table now has one row, reading, left to
-    right: **A2026-0417**, **2026-10-03**, **558** — the number Serum has
-    on the specimen source list — a dash in each of the five other
-    columns, and **Edit** and **Delete** buttons under **Actions**. The entry form is empty again: **Accession number** is
-    blank and there is no test block under **Tests**.
+    right: **A2026-0417**, **2026-10-03**, **Serum**, a dash in each of the
+    five other columns, and **Edit** and **Delete** buttons under
+    **Actions**. The entry form is empty again: **Accession number** is blank
+    and there is no test block under **Tests**.
 15. Go back to the report's address — the one you noted in step 9 — by
     entering it in the address bar again, so that the screen is read afresh
     from the database rather than from what you typed, and press the
     **Laboratory** tab. The **Specimens** table has the one row, reading
-    **A2026-0417**, **2026-10-03**, **558** and five dashes, exactly as in
+    **A2026-0417**, **2026-10-03**, **Serum** and five dashes, exactly as in
     step 14.
     That is how you know the specimen reached the database.
 

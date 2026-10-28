@@ -86,8 +86,9 @@ recordings to `Survsys.E2ETests/bin/<configuration>/net10.0/videos` as
    **Concept** reads **Listeria monocytogenes DNA [Presence] in Specimen**
    and whose **Condition** reads **Listeriosis**. Its **Lab codes** is empty:
    no lab's code resolves to it yet.
-5. Press the **Child LOINC** tab. Its form is headed **New child LOINC**. Open
-   the **Sending lab** list and choose **ARUP Laboratories (ARUP_LAB)**. Type
+5. Press the **Child LOINC** tab. Its form is headed **New child LOINC**. Type
+   `ARUP` in the box labelled **Sending lab**, which lists the facilities whose
+   name holds what you type, and choose **ARUP Laboratories (ARUP_LAB)**. Type
    `LISPCR` in the box labelled **Lab's code**. Open the **Master LOINC** list
    and choose the entry beginning **88017-0**. Type `Listeria PCR` in the box
    labelled **Lab's concept name**. Press **Save**.

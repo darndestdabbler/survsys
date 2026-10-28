@@ -24,8 +24,8 @@ Three differences from the legacy are deliberate, and this walkthrough
 describes what Survsys shows rather than what NMI showed:
 
 - **A guide carries only catalogued variables.** A PHIN variable is added to
-  the catalogue on the **PHIN variables** screen first; a guide refuses one
-  the catalogue does not list.
+  the catalogue on the **PHIN variables** screen first, and a guide's
+  variables are chosen from that catalogue.
 - **The header falls back to defaults.** Each header variable has a default,
   kept on the **Notification guides** screen; a guide's own value replaces it
   for that guide only, and a blank one uses the default.
@@ -96,9 +96,10 @@ It records video of every test it runs, and writes the recordings to
 6. The guide opens in its editor. The browser tab reads **Notification guide
    — Survsys**, the heading reads **Configured guide**, and the box labelled
    **Version (profile)** holds `Generic_MMG_V2.0`.
-7. In the panel headed **PHIN variables**, in the box labelled **PHIN
-   variable**, type `INV169` and press **Add**. A chip reading **INV169**
-   appears. Press **Save variables**. A green confirmation reads **The
+7. In the panel headed **PHIN variables**, type `INV169` in the box labelled
+   **PHIN variable**, which lists the catalogued variables the guide does not
+   carry yet, and choose **INV169 Condition** from the list under it. Press
+   **Add**. A chip reading **INV169** appears. Press **Save variables**. A green confirmation reads **The
    guide's variables were saved.**
 8. In the panel headed **Header variables**, find the row whose **Variable**
    is **sending_facility**. Its **Default** reads

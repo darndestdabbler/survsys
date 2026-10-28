@@ -255,7 +255,7 @@ public class OutbreaksClientTests
             return Answer(HttpStatusCode.OK, Report);
         }));
 
-        var saved = await client.SaveReportSection(1, 2, new SaveOutbreakReportSectionRequest(4, "Text."));
+        var saved = await client.SaveReportSection(1, 2, new SaveOutbreakReportSectionRequest("Text."));
 
         Assert.Equal(HttpMethod.Put, sent?.Method);
         Assert.Equal("http://api.example.test/api/outbreaks/1/report/2", sent?.RequestUri?.ToString());
@@ -288,7 +288,7 @@ public class OutbreaksClientTests
             return Answer(HttpStatusCode.OK, OneEntry);
         }));
 
-        var added = await client.AddActivity(1, new AddOutbreakUpdateRequest(1, "Noted.", 0));
+        var added = await client.AddActivity(1, new AddOutbreakUpdateRequest("Noted.", 0));
 
         Assert.Equal(HttpMethod.Post, sent?.Method);
         Assert.Equal("http://api.example.test/api/outbreaks/1/activity", sent?.RequestUri?.ToString());

@@ -24,7 +24,9 @@ namespace Survsys.E2ETests;
 /// the name is the one row it finds. The document has its reader note the
 /// record number and the report's address at step 11, and this test keeps
 /// both: the address is opened again at step 15, and the record number is
-/// what the linked-cases row is asserted against at step 18.
+/// what the linked-cases row is asserted against at step 18. The activity
+/// entry's author is asserted against the name the application bar shows
+/// as signed in.
 /// </remarks>
 [Collection(SurvsysCollection.Name)]
 public class OpenAnOutbreakAndLinkCasesTests(SurvsysHarness harness) : SurvsysPageTest
@@ -198,6 +200,22 @@ public class OpenAnOutbreakAndLinkCasesTests(SurvsysHarness harness) : SurvsysPa
                 .ToHaveTextAsync(["Record number", "Person", "Condition"]);
             await Expect(Page.Locator("#outbreak-cases-table [data-case] td"))
                 .ToHaveTextAsync([recordNumber, "Nguyen, An", "Hepatitis A"]);
+        });
+
+        // 19. An activity entry, recorded under the signed-in user.
+        await Step(Document, 19, "add an activity entry and read it under your own name", async () =>
+        {
+            await Page.Locator("#outbreak-activity-text").FillAsync("Linked the first case.");
+            await Page.Locator("#outbreak-activity-add").ClickAsync();
+
+            var signedInAs = (await Page.Locator("#nav-signed-in-as").InnerTextAsync()).Trim();
+
+            await Expect(Page.Locator("#outbreak-activity-table thead th"))
+                .ToHaveTextAsync(["When", "Author", "Entry"]);
+            await Expect(Page.Locator("#outbreak-activity-table [data-activity]")).ToHaveCountAsync(1);
+            await Expect(Page.Locator("#outbreak-activity-table [data-activity-author]")).ToHaveTextAsync(signedInAs);
+            await Expect(Page.Locator("#outbreak-activity-table [data-activity-entry]"))
+                .ToHaveTextAsync("Linked the first case.");
         });
     }
 

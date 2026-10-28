@@ -98,6 +98,8 @@ public class ConfigureANotificationGuideTests(SurvsysHarness harness) : SurvsysP
         await Step(Document, 7, "add the PHIN variable and press Save variables", async () =>
         {
             await Page.Locator("#guide-phin-variable-add").FillAsync(PhinVar);
+            await Page.GetByRole(AriaRole.Option, new() { Name = $"{PhinVar} {Description}", Exact = true }).ClickAsync();
+            await Expect(Page.Locator("#guide-phin-variable-add")).ToHaveValueAsync(PhinVar);
             await Page.Locator("#guide-phin-variable-add-button").ClickAsync();
             await Expect(Page.Locator($"#guide-phin-variable-{PhinVar}")).ToBeVisibleAsync();
             await Page.Locator("#guide-phin-variables-save").ClickAsync();

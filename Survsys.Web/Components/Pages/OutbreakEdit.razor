@@ -3,13 +3,16 @@
    A new outbreak carries only its core fields; the access, report, activity
    and linked cases are an existing outbreak's, each saved on its own so the
    screen need not save the whole at once. The core Save goes back to the
-   outbreaks list, as the agency screen's does. *@
+   outbreaks list, as the agency screen's does. A report section and an
+   activity entry are recorded under the signed-in user, and the activity log
+   names each entry's author. *@
 @page "/outbreaks/new"
 @page "/outbreaks/{Id:int}"
 @using System.Globalization
 @inject OutbreaksClient Client
 @inject AgenciesClient Agencies
 @inject ConditionsClient Conditions
+@inject UsersClient Users
 @inject NavigationManager Navigation
 
 <PageTitle>@Heading — Survsys</PageTitle>
@@ -131,10 +134,6 @@ else
         <MudPaper id="outbreak-report" Elevation="1" Class="pa-4 mb-4">
             <MudText Typo="Typo.h6" GutterBottom="true">Outbreak report</MudText>
 
-            <MudTextField @bind-Value="reportAuthorId" id="outbreak-report-author"
-                          Label="Author (user id)" Variant="Variant.Outlined"
-                          InputType="InputType.Number" Class="mb-3" Style="max-width: 12rem;" />
-
             @if (reportSaved is { } okReport)
             {
                 <MudAlert id="outbreak-report-saved" Severity="Severity.Success" Class="mb-2">@okReport</MudAlert>
@@ -167,12 +166,7 @@ else
             }
 
             <MudGrid Spacing="2" Class="mb-2">
-                <MudItem xs="12" sm="2">
-                    <MudTextField @bind-Value="activityAuthorId" id="outbreak-activity-author"
-                                  Label="Author (user id)" Variant="Variant.Outlined"
-                                  InputType="InputType.Number" Margin="Margin.Dense" />
-                </MudItem>
-                <MudItem xs="12" sm="8">
+                <MudItem xs="12" sm="10">
                     <MudTextField @bind-Value="activityText" id="outbreak-activity-text"
                                   Label="What happened" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 </MudItem>
@@ -201,7 +195,7 @@ else
                     {
                         <tr data-activity="@entry.Id">
                             <td data-activity-when>@entry.CreatedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
-                            <td data-activity-author>@entry.UserId</td>
+                            <td data-activity-author>@AuthorName(entry.UserId)</td>
                             <td data-activity-entry>@entry.Description</td>
                         </tr>
                     }
@@ -293,8 +287,6 @@ else
 
     private readonly List<SectionEdit> report = [];
 
-    private int? reportAuthorId;
-
     private bool savingReport;
 
     private string? reportSaved;
@@ -303,7 +295,8 @@ else
 
     private List<OutbreakUpdateResponse> activity = [];
 
-    private int? activityAuthorId;
+    /// <summary>The users, read once, to name each activity entry's author.</summary>
+    private IReadOnlyList<InvestigatorResponse> users = [];
 
     private string? activityText;
 
@@ -328,6 +321,8 @@ else
         {
             conditions = loadedConditions.Items;
         }
+
+        users = (await Users.Investigators()).Value ?? [];
 
         if (Id is { } id)
         {
@@ -510,7 +505,7 @@ else
         var saved = await Client.SaveReportSection(
             id,
             section.SectionId,
-            new SaveOutbreakReportSectionRequest(reportAuthorId ?? 0, section.Text));
+            new SaveOutbreakReportSectionRequest(section.Text));
 
         savingReport = false;
 
@@ -543,7 +538,7 @@ else
 
         var added = await Client.AddActivity(
             id,
-            new AddOutbreakUpdateRequest(activityAuthorId ?? 0, activityText, 0));
+            new AddOutbreakUpdateRequest(activityText, 0));
 
         addingActivity = false;
 
@@ -557,6 +552,11 @@ else
 
         activityFailure = added.Failure;
     }
+
+    /// <summary>An activity entry's author by display name, or their id where the users do not list them.</summary>
+    private string AuthorName(int userId) =>
+        users.FirstOrDefault(user => user.Id == userId)?.DisplayName
+            ?? userId.ToString(CultureInfo.InvariantCulture);
 
     private async Task LoadCases(int id)
     {

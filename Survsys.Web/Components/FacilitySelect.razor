@@ -1,0 +1,63 @@
+@* A searchable list over the facilities, in place of a box that takes a
+   facility's id. Typing narrows the list by name and short name; each entry
+   shows the facility's name and, where it has one, its short name. An id on
+   file that is not on the list is still shown, as #id, so opening and saving
+   a record never loses it.
+   Any other attribute, such as id, is passed to the list. *@
+@using System.Globalization
+@inject FacilitiesClient Client
+
+<MudAutocomplete T="int?" Label="@Label" Variant="Variant.Outlined" Margin="@Margin" Required="@Required"
+                 Clearable="true" Value="@Value" ValueChanged="@ValueChanged" SearchFunc="@Search"
+                 ToStringFunc="@Named" MaxItems="null" @attributes="Attributes" />
+
+@code {
+    /// <summary>
+    /// How many facilities the list asks for: a page large enough that every
+    /// facility arrives in one, as the Vocabulary screen asks for them.
+    /// </summary>
+    private const int APageful = 200;
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public Margin Margin { get; set; } = Margin.None;
+
+    [Parameter]
+    public bool Required { get; set; }
+
+    /// <summary>The id of the facility chosen.</summary>
+    [Parameter]
+    public int? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<int?> ValueChanged { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? Attributes { get; set; }
+
+    private IReadOnlyList<FacilityResponse> facilities = [];
+
+    protected override async Task OnInitializedAsync() =>
+        facilities = (await Client.Page(1, APageful)).Value?.Items ?? [];
+
+    private Task<IEnumerable<int?>> Search(string? typed, CancellationToken cancellationToken)
+    {
+        var matching = facilities
+            .Where(facility => string.IsNullOrWhiteSpace(typed)
+                || facility.Name.Contains(typed.Trim(), StringComparison.OrdinalIgnoreCase)
+                || facility.ShortName?.Contains(typed.Trim(), StringComparison.OrdinalIgnoreCase) == true)
+            .Select(facility => (int?)facility.Id);
+
+        return Task.FromResult(matching);
+    }
+
+    /// <summary>A facility as the list shows it, or #id for one the list does not hold.</summary>
+    private string Named(int? id) =>
+        id is not { } chosen
+            ? ""
+            : facilities.FirstOrDefault(facility => facility.Id == chosen) is { } facility
+                ? facility.Name + (facility.ShortName is { } shortName ? $" ({shortName})" : "")
+                : $"#{chosen.ToString(CultureInfo.InvariantCulture)}";
+}

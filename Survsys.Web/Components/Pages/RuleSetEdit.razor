@@ -2,10 +2,13 @@
    the value set coded output resolves through, whether every response is
    carried, the fields it reads (one per line), its named parameters (dataSet
    names the repeating dataset, for example Lab or HepLab), its value maps,
-   and its expressions with their conditions. Saving replaces the
-   configuration whole. *@
+   and its expressions with their conditions. The value set is chosen from the
+   value sets on file and a condition's field from the fields the rule set
+   reads; a stored value either list does not hold is still offered, as
+   itself. Saving replaces the configuration whole. *@
 @page "/rule-sets/{Id:int}"
 @inject RuleSetsClient Client
+@inject ValueSetsClient ValueSets
 
 <PageTitle>Rule set — Survsys</PageTitle>
 
@@ -47,8 +50,14 @@ else
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="5">
-                <MudTextField @bind-Value="form.ValueSetName" id="rule-set-value-set" Label="Value set"
-                              Variant="Variant.Outlined" MaxLength="200" />
+                <MudSelect T="string" id="rule-set-value-set" Label="Value set" Variant="Variant.Outlined"
+                           @bind-Value="form.ValueSetName">
+                    <MudSelectItem T="string" Value="@((string?)null)">(none)</MudSelectItem>
+                    @foreach (var valueSet in WithStored(valueSetNames, form.ValueSetName))
+                    {
+                        <MudSelectItem T="string" Value="@valueSet">@valueSet</MudSelectItem>
+                    }
+                </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="3" Class="d-flex align-center">
                 <MudCheckBox @bind-Value="form.Repeating" id="rule-set-repeating" Label="Repeating" />
@@ -120,8 +129,13 @@ else
                             <MudSelectItem T="string" Value="@("AND")">AND</MudSelectItem>
                             <MudSelectItem T="string" Value="@("OR")">OR</MudSelectItem>
                         </MudSelect>
-                        <MudTextField @bind-Value="condition.Field" id="@($"rule-set-condition-field-{at}-{index}")"
-                                      Label="Field" Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="200" />
+                        <MudSelect T="string" id="@($"rule-set-condition-field-{at}-{index}")" Label="Field"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="condition.Field">
+                            @foreach (var field in WithStored(form.FieldList, condition.Field))
+                            {
+                                <MudSelectItem T="string" Value="@field">@field</MudSelectItem>
+                            }
+                        </MudSelect>
                         <MudSelect T="string" id="@($"rule-set-condition-operator-{at}-{index}")" Label="Operator"
                                    Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="condition.Operator"
                                    Style="max-width: 7rem">
@@ -174,6 +188,25 @@ else
     private bool saved;
 
     private string? failure;
+
+    /// <summary>The names of the value sets on file, read once, that the value set is chosen from.</summary>
+    private IReadOnlyList<string> valueSetNames = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var concepts = (await ValueSets.List<PhinValueSetRow>(ValueSetsClient.PhinValueSets)).Value ?? [];
+        var units = (await ValueSets.List<PhinUnitOfMeasureRow>(ValueSetsClient.UnitsOfMeasure)).Value ?? [];
+
+        valueSetNames = concepts.Select(row => row.ValueSetName)
+            .Concat(units.Select(row => row.ValueSetName))
+            .Distinct()
+            .Order(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>A list's values, and a stored value the list does not hold as one of its own.</summary>
+    private static IEnumerable<string> WithStored(IEnumerable<string> values, string? stored) =>
+        string.IsNullOrEmpty(stored) || values.Contains(stored) ? values : values.Append(stored);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -231,13 +264,17 @@ else
             }).ToList(),
         }).ToList();
 
+        /// <summary>The fields the Fields box names, one per line.</summary>
+        public string[] FieldList =>
+            (Fields ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
         public RuleSetConfigRow ToRow() =>
             new(
                 0,
                 FormatType,
                 ValueSetName,
                 Repeating,
-                (Fields ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                FieldList,
                 Data.Select(item => new RuleSetDataRow(item.Name ?? "", item.Value)).ToList(),
                 ValueMaps.Select(map => new RuleSetValueMapRow(map.ValueFrom, map.ValueTo, map.OtherSpecified)).ToList(),
                 Expressions.Select(expression => new RuleSetExpressionRow(

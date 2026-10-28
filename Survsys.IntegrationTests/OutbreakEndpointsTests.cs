@@ -327,7 +327,6 @@ public class OutbreakEndpointsTests(SqlServerFixture server) : IDisposable
         try
         {
             var created = await Open(new SaveOutbreakRequest("Spring picnic"));
-            var author = await MyUserId();
 
             var sections = await ReportSections();
             Assert.Equal(7, sections.Count);
@@ -343,7 +342,7 @@ public class OutbreakEndpointsTests(SqlServerFixture server) : IDisposable
             var first = sections[0].Id;
             using var write = await api.CreateClient().PutAsJsonAsync(
                 $"/api/outbreaks/{created.Id}/report/{first}",
-                new SaveOutbreakReportSectionRequest(author, "The picnic was on the first."),
+                new SaveOutbreakReportSectionRequest("The picnic was on the first."),
                 Json);
             Assert.Equal(HttpStatusCode.OK, write.StatusCode);
 
@@ -357,7 +356,7 @@ public class OutbreakEndpointsTests(SqlServerFixture server) : IDisposable
             // Writing the same section again saves over the one row.
             using var rewrite = await api.CreateClient().PutAsJsonAsync(
                 $"/api/outbreaks/{created.Id}/report/{first}",
-                new SaveOutbreakReportSectionRequest(author, "Corrected: the second."),
+                new SaveOutbreakReportSectionRequest("Corrected: the second."),
                 Json);
             Assert.Equal(HttpStatusCode.OK, rewrite.StatusCode);
             var corrected = (await rewrite.Content
@@ -381,18 +380,17 @@ public class OutbreakEndpointsTests(SqlServerFixture server) : IDisposable
         try
         {
             var created = await Open(new SaveOutbreakRequest("Spring picnic"));
-            var author = await MyUserId();
 
             using var badSection = await api.CreateClient().PutAsJsonAsync(
                 $"/api/outbreaks/{created.Id}/report/987654321",
-                new SaveOutbreakReportSectionRequest(author, "Nowhere"),
+                new SaveOutbreakReportSectionRequest("Nowhere"),
                 Json);
             Assert.Equal(HttpStatusCode.NotFound, badSection.StatusCode);
 
             var sections = await ReportSections();
             using var badOutbreak = await api.CreateClient().PutAsJsonAsync(
                 $"/api/outbreaks/987654321/report/{sections[0].Id}",
-                new SaveOutbreakReportSectionRequest(author, "Nowhere"),
+                new SaveOutbreakReportSectionRequest("Nowhere"),
                 Json);
             Assert.Equal(HttpStatusCode.NotFound, badOutbreak.StatusCode);
         }
@@ -414,14 +412,14 @@ public class OutbreakEndpointsTests(SqlServerFixture server) : IDisposable
 
             using var first = await api.CreateClient().PostAsJsonAsync(
                 $"/api/outbreaks/{created.Id}/activity",
-                new AddOutbreakUpdateRequest(author, "Opened the outbreak.", 0),
+                new AddOutbreakUpdateRequest("Opened the outbreak.", 0),
                 Json);
             Assert.Equal(HttpStatusCode.OK, first.StatusCode);
             var firstEntry = (await first.Content.ReadFromJsonAsync<OutbreakUpdateResponse>(Json))!;
 
             using var second = await api.CreateClient().PostAsJsonAsync(
                 $"/api/outbreaks/{created.Id}/activity",
-                new AddOutbreakUpdateRequest(author, "Linked the first cases.", 0),
+                new AddOutbreakUpdateRequest("Linked the first cases.", 0),
                 Json);
             Assert.Equal(HttpStatusCode.OK, second.StatusCode);
             var secondEntry = (await second.Content.ReadFromJsonAsync<OutbreakUpdateResponse>(Json))!;
@@ -435,6 +433,9 @@ public class OutbreakEndpointsTests(SqlServerFixture server) : IDisposable
             Assert.Equal(secondEntry.Id, log[0].Id);
             Assert.Equal(firstEntry.Id, log[1].Id);
             Assert.Equal("Linked the first cases.", log[0].Description);
+
+            // Each entry is recorded under the signed-in caller who added it.
+            Assert.All(log, entry => Assert.Equal(author, entry.UserId));
         }
         finally
         {

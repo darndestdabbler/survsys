@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Survsys.Contracts;
@@ -315,9 +316,10 @@ public static class OutbreakEndpoints
         return TypedResults.Ok(report);
     }
 
-    private static async Task<Results<Ok<IReadOnlyList<OutbreakReportSectionResponse>>, ProblemHttpResult>>
+    private static async Task<Results<Ok<IReadOnlyList<OutbreakReportSectionResponse>>, ProblemHttpResult, UnauthorizedHttpResult>>
         SaveOutbreakReport(
             OutbreakQueries outbreaks,
+            ClaimsPrincipal user,
             int id,
             int sectionId,
             SaveOutbreakReportSectionRequest request,
@@ -330,9 +332,9 @@ public static class OutbreakEndpoints
             return Refused($"reportText is longer than {ReportTextLength} characters.");
         }
 
-        if (!await outbreaks.UserExists(request.UserId, cancellationToken))
+        if (AccountEndpoints.UserIdOf(user) is not { } author)
         {
-            return Refused(NotAUser(request.UserId));
+            return TypedResults.Unauthorized();
         }
 
         if (!await outbreaks.ReportSectionExists(sectionId, cancellationToken))
@@ -340,7 +342,7 @@ public static class OutbreakEndpoints
             return NoSuchReportSection(sectionId);
         }
 
-        if (await outbreaks.SaveReportSection(id, sectionId, request, cancellationToken) is not { } report)
+        if (await outbreaks.SaveReportSection(id, sectionId, request, author, cancellationToken) is not { } report)
         {
             return NoSuchOutbreak(id);
         }
@@ -362,20 +364,21 @@ public static class OutbreakEndpoints
         return TypedResults.Ok(activity);
     }
 
-    private static async Task<Results<Ok<OutbreakUpdateResponse>, ProblemHttpResult>> AddOutbreakActivity(
+    private static async Task<Results<Ok<OutbreakUpdateResponse>, ProblemHttpResult, UnauthorizedHttpResult>> AddOutbreakActivity(
         OutbreakQueries outbreaks,
+        ClaimsPrincipal user,
         int id,
         AddOutbreakUpdateRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!await outbreaks.UserExists(request.UserId, cancellationToken))
+        if (AccountEndpoints.UserIdOf(user) is not { } author)
         {
-            return Refused(NotAUser(request.UserId));
+            return TypedResults.Unauthorized();
         }
 
-        if (await outbreaks.AddActivity(id, request, cancellationToken) is not { } entry)
+        if (await outbreaks.AddActivity(id, request, author, cancellationToken) is not { } entry)
         {
             return NoSuchOutbreak(id);
         }
@@ -421,13 +424,6 @@ public static class OutbreakEndpoints
 
         return null;
     }
-
-    /// <summary>
-    /// The sentence a user no row has is refused with, as the author of a
-    /// report section or an activity entry.
-    /// </summary>
-    public static string NotAUser(int userId) =>
-        $"userId {userId} is not a user this tier knows.";
 
     private static ProblemHttpResult NoSuchOutbreak(int id) =>
         TypedResults.Problem(
@@ -648,10 +644,6 @@ internal sealed class OutbreakQueries(SurvsysDbContext database)
     public Task<bool> AgencyExists(int id, CancellationToken cancellationToken) =>
         database.Agencies.AnyAsync(agency => agency.Id == id, cancellationToken);
 
-    /// <summary>Whether a user this tier knows has that id.</summary>
-    public Task<bool> UserExists(int id, CancellationToken cancellationToken) =>
-        database.Users.AnyAsync(user => user.Id == id, cancellationToken);
-
     /// <summary>Whether a report section has that id.</summary>
     public Task<bool> ReportSectionExists(int id, CancellationToken cancellationToken) =>
         database.ReportSections.AnyAsync(section => section.Id == id, cancellationToken);
@@ -697,12 +689,14 @@ internal sealed class OutbreakQueries(SurvsysDbContext database)
     /// <summary>
     /// Writes the text for one section of the outbreak's report, upserting the
     /// one row, and answers the whole report; null where no outbreak has the
-    /// id. The caller has proven the section and the author exist.
+    /// id. The caller has proven the section exists; the author is the
+    /// signed-in user writing it.
     /// </summary>
     public async Task<IReadOnlyList<OutbreakReportSectionResponse>?> SaveReportSection(
         int id,
         int sectionId,
         SaveOutbreakReportSectionRequest request,
+        int authorId,
         CancellationToken cancellationToken)
     {
         if (!await database.Outbreaks.AnyAsync(outbreak => outbreak.Id == id, cancellationToken))
@@ -720,13 +714,13 @@ internal sealed class OutbreakQueries(SurvsysDbContext database)
             {
                 OutbreakId = id,
                 ReportSectionId = sectionId,
-                UserId = request.UserId,
+                UserId = authorId,
                 ReportText = Text(request.ReportText),
             });
         }
         else
         {
-            written.UserId = request.UserId;
+            written.UserId = authorId;
             written.ReportText = Text(request.ReportText);
         }
 
@@ -763,12 +757,13 @@ internal sealed class OutbreakQueries(SurvsysDbContext database)
 
     /// <summary>
     /// Appends one entry to the outbreak's activity log, stamping the moment,
-    /// and answers it; null where no outbreak has the id. The caller has proven
-    /// the author exists.
+    /// and answers it under its author, the signed-in user adding it; null
+    /// where no outbreak has the id.
     /// </summary>
     public async Task<OutbreakUpdateResponse?> AddActivity(
         int id,
         AddOutbreakUpdateRequest request,
+        int authorId,
         CancellationToken cancellationToken)
     {
         if (!await database.Outbreaks.AnyAsync(outbreak => outbreak.Id == id, cancellationToken))
@@ -780,7 +775,7 @@ internal sealed class OutbreakQueries(SurvsysDbContext database)
         {
             OutbreakId = id,
             CreatedAt = DateTimeOffset.UtcNow,
-            UserId = request.UserId,
+            UserId = authorId,
             Description = Text(request.Description),
             Type = request.Type,
         };

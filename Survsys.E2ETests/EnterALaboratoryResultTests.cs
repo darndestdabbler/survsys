@@ -36,17 +36,12 @@ public class EnterALaboratoryResultTests(SurvsysHarness harness) : SurvsysPageTe
 
     /// <summary>
     /// The one specimen row as the document promises it at steps 14 and 15:
-    /// the accession number, the collection date, and a dash in each of the
-    /// six columns this walkthrough leaves empty.
+    /// the accession number, the collection date, the source by its
+    /// description, and a dash in each of the five columns this walkthrough
+    /// leaves empty.
     /// </summary>
     private static readonly string[] SpecimenRow =
-        ["A2026-0417", "2026-10-03", Serum, "—", "—", "—", "—", "—"];
-
-    /// <summary>
-    /// The number Serum has on the specimen source list, which is what the
-    /// specimen stores and the Source column shows: the seed fixes it.
-    /// </summary>
-    private const string Serum = "558";
+        ["A2026-0417", "2026-10-03", "Serum", "—", "—", "—", "—", "—"];
 
     /// <summary>
     /// The specimen row's cells but its last, which holds the Edit and Delete
@@ -153,8 +148,11 @@ public class EnterALaboratoryResultTests(SurvsysHarness harness) : SurvsysPageTe
             await Expect(Page.Locator("#lab-entry-test-0-result-0")).ToHaveCountAsync(0);
 
             await Choose("Test type", "IgM Antibody");
+            // No master LOINC code is on file, so the list offers nothing and
+            // the box keeps the code as typed once it is left.
             await Page.Locator("#lab-entry-test-0-loinc-code").FillAsync("20575-7");
             await Page.Locator("#lab-entry-test-0-lab-test-date").FillAsync("2026-10-04");
+            await Expect(Page.Locator("#lab-entry-test-0-loinc-code")).ToHaveValueAsync("20575-7");
         });
 
         // 13. Add result, then the result's value, marked primary.

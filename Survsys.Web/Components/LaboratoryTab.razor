@@ -9,11 +9,11 @@
    API tier records a specimen whole and has no endpoint to change or remove a
    stored one.
 
-   Every coded field (the facility and provider ids, the specimen source, the
-   test type and status, the organism, the result code, the agent and the
-   coded outcome) is a plain box holding the legacy id, as the Demographic tab
-   holds its coded fields: the reference tables behind the legacy dropdowns do
-   not exist yet.
+   Every coded field (the specimen source, the test type and status, the
+   organism, the result code, the agent and the coded outcome) is chosen from
+   its code list, and the three facilities from the facility list, so the
+   specimens table shows names rather than ids. The provider alone is still a
+   plain box holding the legacy id: there is no provider table to choose from.
 
    The at-most-one-primary-result rule and the coded-value rules stay the API
    tier's; an answer it refuses is shown as the entry error rather than
@@ -24,6 +24,9 @@
    name it: lab-entry-test-0-result-1 and so on. *@
 @using System.Globalization
 @inject LabsClient Api
+@inject FacilitiesClient Facilities
+@inject CodesClient Codes
+@inject VocabularyClient Vocabulary
 @inject IDialogService Dialogs
 
 @if (listFailure is { } whyNoList)
@@ -79,11 +82,11 @@
                 <tr id="@($"lab-specimen-{rowAt}")" @key="specimen.Id">
                     <td>@Shown(specimen.AccessionNo)</td>
                     <td>@Shown(Written(specimen.CollectionDate))</td>
-                    <td>@Shown(specimen.SpecimenSourceId)</td>
-                    <td>@Shown(specimen.LabFacilityId)</td>
+                    <td>@SourceName(specimen.SpecimenSourceId)</td>
+                    <td>@FacilityName(specimen.LabFacilityId)</td>
                     <td>@Shown(specimen.ProviderId)</td>
-                    <td>@Shown(specimen.DiagnosticFacilityId)</td>
-                    <td>@Shown(specimen.ReportingFacilityId)</td>
+                    <td>@FacilityName(specimen.DiagnosticFacilityId)</td>
+                    <td>@FacilityName(specimen.ReportingFacilityId)</td>
                     <td>@Flag(specimen.SpecimenSentToState)</td>
                     <td class="d-flex gap-1">
                         <MudButton id="@($"lab-specimen-{rowAt}-edit")" Variant="Variant.Text"
@@ -133,9 +136,8 @@
                         id="lab-entry-specimen-source-id" Label="Specimen source" Margin="Margin.Dense" />
         </MudItem>
         <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="specimenForm.LabFacilityId" id="lab-entry-lab-facility-id"
-                          Label="Lab facility" Variant="Variant.Outlined" Margin="Margin.Dense"
-                          InputType="InputType.Number" />
+            <FacilitySelect @bind-Value="specimenForm.LabFacilityId" id="lab-entry-lab-facility-id"
+                            Label="Lab facility" Margin="Margin.Dense" />
         </MudItem>
         <MudItem xs="12" sm="3">
             <MudTextField @bind-Value="specimenForm.ProviderId" id="lab-entry-provider-id"
@@ -143,14 +145,12 @@
                           InputType="InputType.Number" />
         </MudItem>
         <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="specimenForm.DiagnosticFacilityId" id="lab-entry-diagnostic-facility-id"
-                          Label="Diagnostic facility" Variant="Variant.Outlined" Margin="Margin.Dense"
-                          InputType="InputType.Number" />
+            <FacilitySelect @bind-Value="specimenForm.DiagnosticFacilityId" id="lab-entry-diagnostic-facility-id"
+                            Label="Diagnostic facility" Margin="Margin.Dense" />
         </MudItem>
         <MudItem xs="12" sm="3">
-            <MudTextField @bind-Value="specimenForm.ReportingFacilityId" id="lab-entry-reporting-facility-id"
-                          Label="Reporting facility" Variant="Variant.Outlined" Margin="Margin.Dense"
-                          InputType="InputType.Number" />
+            <FacilitySelect @bind-Value="specimenForm.ReportingFacilityId" id="lab-entry-reporting-facility-id"
+                            Label="Reporting facility" Margin="Margin.Dense" />
         </MudItem>
         <MudItem xs="12" sm="3" Class="d-flex align-center">
             @* Three states, as the stored column has: sent, not sent, and
@@ -179,8 +179,14 @@
                                     Label="Test status" Margin="Margin.Dense" />
                     </MudItem>
                     <MudItem xs="12" sm="3">
-                        <MudTextField @bind-Value="test.LoincCode" id="@($"lab-entry-test-{testAt}-loinc-code")"
-                                      Label="LOINC code" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        @* The list offers the master LOINC codes, and a code
+                           it does not hold is kept as typed. *@
+                        <MudAutocomplete T="string" @bind-Value="test.LoincCode"
+                                         id="@($"lab-entry-test-{testAt}-loinc-code")" Label="LOINC code"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
+                                         SearchFunc="@SearchLoincs" CoerceValue="true" MaxItems="null">
+                            <ItemTemplate Context="loinc">@loinc @ConceptName(loinc)</ItemTemplate>
+                        </MudAutocomplete>
                     </MudItem>
                     <MudItem xs="12" sm="3">
                         <MudTextField @bind-Value="test.ReferenceRange" id="@($"lab-entry-test-{testAt}-reference-range")"
@@ -375,7 +381,22 @@
 
     private string? complaint;
 
-    protected override Task OnInitializedAsync() => Reload();
+    /// <summary>The facilities, read once, to name each specimen's facilities in the list.</summary>
+    private IReadOnlyList<FacilityResponse> facilities = [];
+
+    /// <summary>The specimen sources, read once, to name each specimen's source in the list.</summary>
+    private IReadOnlyList<CodeResponse> sources = [];
+
+    /// <summary>The master LOINC codes, read once, that a test's LOINC code is chosen from.</summary>
+    private IReadOnlyList<VocabMasterLoincRow> loincs = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        facilities = (await Facilities.Page(1, APageful)).Value?.Items ?? [];
+        sources = (await Codes.List(CodeLists.SpecimenSource)).Value ?? [];
+        loincs = (await Vocabulary.List<VocabMasterLoincRow>(VocabularyClient.MasterLoincs)).Value ?? [];
+        await Reload();
+    }
 
     /// <summary>Reads the report's specimens into the list, or why there are none.</summary>
     private async Task Reload()
@@ -904,6 +925,30 @@
     /// <summary>An identifier as the list shows it, or a dash where none is recorded.</summary>
     private static string Shown(int? value) =>
         value is { } id ? id.ToString(CultureInfo.InvariantCulture) : "—";
+
+    /// <summary>A facility as the list shows it: its short name, else its name, else its id.</summary>
+    private string FacilityName(int? id) =>
+        facilities.FirstOrDefault(facility => facility.Id == id) is { } facility
+            ? facility.ShortName ?? facility.Name
+            : Shown(id);
+
+    /// <summary>A specimen source as the list shows it: its description, else its id.</summary>
+    private string SourceName(int? id) =>
+        sources.FirstOrDefault(source => source.Id == id) is { } source
+            ? source.Description ?? source.Code
+            : Shown(id);
+
+    /// <summary>The master LOINC codes whose code or concept name holds what was typed.</summary>
+    private Task<IEnumerable<string>> SearchLoincs(string? typed, CancellationToken cancellationToken) =>
+        Task.FromResult(loincs
+            .Where(row => string.IsNullOrWhiteSpace(typed)
+                || row.Loinc.Contains(typed.Trim(), StringComparison.OrdinalIgnoreCase)
+                || row.ConceptName?.Contains(typed.Trim(), StringComparison.OrdinalIgnoreCase) == true)
+            .Select(row => row.Loinc));
+
+    /// <summary>A master LOINC code's concept name, or nothing for a code the vocabulary does not hold.</summary>
+    private string? ConceptName(string? code) =>
+        loincs.FirstOrDefault(row => row.Loinc == code)?.ConceptName;
 
     /// <summary>A three-state flag as the list shows it.</summary>
     private static string Flag(bool? value) => value switch
