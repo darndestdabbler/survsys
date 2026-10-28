@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 117 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 117 transcript</h1>
+<p class="stamp">Rendered 2026-10-28T16:06:08.984Z by dabbler-ai-router 3.23.0 at 4b7230043744487652035319288d75db5be58dc5.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-28T11:58:21.989-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 117: A grouped navigation menu</h3>
+<p>*Inserted at the operator's request on 2026-10-28, before the walkthroughs are performed by hand. Since session 73 the app bar has wrapped its buttons onto further lines; with 38 screens an administrator now sees three rows of undifferentiated links above every page. The links move into a side drawer grouped by area, and the app bar keeps only the application's name, the drawer's toggle, the signed-in person and Sign out.*</p>
+<ol><li>Register.</li><li><code>Survsys.Web/Components/Layout/MainLayout.razor</code>: a <code>MudDrawer</code>, open by default and toggled from the app bar, holding a <code>MudNavMenu</code> whose <code>MudNavGroup</code>s are expanded by default — <strong>Cases</strong> (People, Events, New CMR, Work queue, Agency board, Outbreaks, Tasks, Saved views, Reports, Duplicate persons), <strong>Intake</strong> (Staged messages, Intake statistics, eCR, eCR quality), <strong>Notifications</strong> (Notifications, Export log, Reconciliation), <strong>Reference data</strong> (Conditions and the fifteen reference screens) and <strong>Administration</strong> (Users, Roles, Audit, Access audit). Each link keeps its <code>nav-…</code> identifier, its address and the privilege that shows it; a group none of whose links a person may see is not shown. The app bar returns to one line, and the layout comment says why. The privilege gating is unchanged; the API tier still enforces it.</li><li><code>Survsys.E2ETests</code>: the tests that click a <code>#nav-…</code> link pass against the drawer unchanged where they can; any that cannot are given one harness helper rather than edited one by one. A test that the app bar holds no screen link, that each group shows only to a person holding a privilege one of its links needs, and that the drawer's toggle hides and shows it.</li><li><code>docs/walkthroughs/</code> and <code>docs/user-guide/</code>: &quot;In the application bar, press <strong>X</strong>&quot; becomes &quot;In the side menu, under <strong>Group</strong>, choose <strong>X</strong>&quot;, and the user guide describes the menu and its groups.</li><li>Cross-provider verification.</li><li>Full test suite, the end-to-end walkthrough suite included, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Move the screen links out of the wrapping application bar into a side drawer grouped by area. MainLayout.razor gains a MudDrawer, open by default and toggled from the app bar, holding a MudNavMenu with five MudNavGroups expanded by default: Cases (People, Events, New CMR, Work queue, Agency board, Outbreaks, Tasks, Saved views, Reports, Duplicate persons), Intake (Staged messages, Intake statistics, eCR, eCR quality), Notifications (Notifications, Export log, Reconciliation), Reference data (Conditions and the fifteen reference screens) and Administration (Users, Roles, Audit, Access audit). Every link keeps its nav-... id, its address and the privilege that shows it, and a group none of whose links the person may see is not rendered. The app bar returns to one line holding only Survsys, the drawer toggle, the signed-in person and Sign out, and the layout comment says why. A new end-to-end test, MainLayoutTests, proves the app bar holds no screen link, that each group shows only to a person holding a privilege one of its links needs, and that the toggle hides and shows the drawer; the existing walkthrough tests keep clicking #nav-... links unchanged. The walkthroughs and the user guide are reworded from the application bar to the side menu and its groups.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/d9fcbc8d0b91149616e35d077dd828d88754cf62"><code>d9fcbc8d0b91149616e35d077dd828d88754cf62</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Drawer</td><td><p>In Survsys.Web/Components/Layout/MainLayout.razor replace the wrapping app bar's buttons with a MudDrawer (open by default, toggled by an icon button in the app bar, id nav-drawer-toggle) holding a MudNavMenu of MudNavGroups expanded by default: Cases, Intake, Notifications, Reference data and Administration, with the links the session plan lists in each. Each MudNavLink keeps its nav-... id, Href and privilege gate; a group is rendered only if the person may see at least one of its links. The app bar returns to one line (no WrapContent, no auto height) with Survsys, the toggle, the signed-in name and Sign out. Rewrite the layout comment to say why the links moved to a grouped drawer.</p></td><td><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Layout tests</td><td><p>Add Survsys.E2ETests/MainLayoutTests.cs: a test that the app bar holds no nav-... screen link; a test that each group shows only to a person holding a privilege one of its links needs (the administrator sees all five groups; a user given a role holding only manage_users sees Reference data and Administration and no other group); and a test that the drawer toggle hides and shows the drawer. The existing walkthrough tests are left as they are.</p></td><td><span class="mono">Survsys.E2ETests/MainLayoutTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code></td><td>yes</td></tr>
+<tr><td>Walkthroughs</td><td><p>In docs/walkthroughs, reword every instruction that presses a screen link in the application bar (&quot;In the application bar, press <strong>X</strong>&quot;, &quot;In the coloured application bar across the top of the window, press <strong>X</strong>&quot;, &quot;Press <strong>X</strong> in the application bar&quot;, and the like) to &quot;In the side menu, under <strong>Group</strong>, choose <strong>X</strong>&quot;, with the group the link sits in. Lines that only say the heading sits under an application bar reading Survsys, or that the bar shows the signed-in name and Sign out, stay true and may stay.</p></td><td></td><td><code>pwsh -NoProfile -NonInteractive -Command if (Select-String -Path docs/walkthroughs/*.md -Pattern 'application bar, press|bar across the top of the window, press|in the application bar' -Quiet) { exit 1 }; if (-not (Select-String -Path docs/walkthroughs/*.md -Pattern 'In the side menu, under' -Quiet)) { exit 1 }; exit 0</code></td><td>yes</td></tr>
+<tr><td>User guide</td><td><p>In docs/user-guide/README.md replace the paragraph listing the application bar's buttons with a description of the side menu: its toggle in the app bar, its five groups and the links in each, that a link shows only to a person holding the privilege its screen needs and a group with no such link is not shown, and that the API tier checks the privilege on every request. Keep the app bar's remaining contents (Survsys, the signed-in name and Sign out) accurate wherever the guide mentions them.</p></td><td><span class="mono">docs/user-guide/README.md</span></td><td><code>pwsh -NoProfile -NonInteractive -Command $t = Get-Content -Raw docs/user-guide/README.md; if ($t -match 'application bar shows only the buttons' -or $t -notmatch 'side menu' -or $t -notmatch 'Reference data' -or $t -notmatch 'Administration') { exit 1 }; exit 0</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to which privilege shows which link, and no change to the API tier's enforcement of those privileges.</li><li>No new screens, no renamed nav-... identifiers and no changed addresses.</li><li>No edits to the existing walkthrough tests one by one; if any cannot pass against the drawer unchanged, one harness helper is added instead (by plan amendment).</li><li>No restyling of the application beyond the layout's app bar and drawer (no theme, colour or page-content changes).</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[15:58:22]</span> <span class="muted">run-started</span> session=117 mode=pull</div>
+<div class="line"><span class="at">[15:58:22]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[15:59:50]</span> <span class="muted">run-resumed</span> session=117 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[15:59:50]</span> <span class="muted">plan-accepted</span> steps=[&quot;drawer&quot;,&quot;layout-tests&quot;,&quot;walkthroughs&quot;,&quot;user-guide&quot;] non_goals=4</div>
+<div class="line"><span class="at">[15:59:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[15:59:51]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=drawer</div>
+<div class="line"><span class="at">[16:01:23]</span> <span class="muted">run-resumed</span> session=117 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[16:01:26]</span> <span class="muted">check-passed</span> step=drawer argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[16:01:27]</span> <span class="muted">report-accepted</span> seq=2 step=drawer files=[&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;] notes=Links moved into a MudDrawer of five expanded MudNavGroups gated by privilege; app bar back to one line with toggle, name and Sign out</div>
+<div class="line"><span class="at">[16:01:27]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=layout-tests</div>
+<div class="line"><span class="at">[16:03:05]</span> <span class="muted">run-resumed</span> session=117 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[16:03:09]</span> <span class="muted">check-passed</span> step=layout-tests argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[16:03:09]</span> <span class="muted">report-accepted</span> seq=3 step=layout-tests files=[&quot;Survsys.E2ETests/MainLayoutTests.cs&quot;] notes=MainLayoutTests: app bar holds no screen link, groups gated by privilege (admin vs manage_users-only user), toggle hides and shows the drawer; existing walkthrough tests unchanged</div>
+<div class="line"><span class="at">[16:03:09]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=walkthroughs</div>
+<div class="line"><span class="at">[16:04:04]</span> <span class="muted">run-resumed</span> session=117 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[16:04:06]</span> <span class="muted">check-passed</span> step=walkthroughs argv=[&quot;pwsh&quot;,&quot;-NoProfile&quot;,&quot;-NonInteractive&quot;,&quot;-Command&quot;,&quot;if (Select-String -Path docs/walkthroughs/*.md -Pattern 'application bar, press|bar across the top of the window, press|in the application bar' -Quiet) { exit 1 }; if (-not (Select-String -Path docs/walkthroughs/*.md -Pattern 'In the side menu, under' -Quiet)) { exit 1 }; exit 0&quot;]</div>
+<div class="line"><span class="at">[16:04:07]</span> <span class="muted">report-accepted</span> seq=4 step=walkthroughs files=[] notes=Every walkthrough instruction pressing a screen link in the application bar now reads In the side menu, under **Group**, choose **X**; Sign out stays in the bar</div>
+<div class="line"><span class="at">[16:04:07]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=user-guide</div>
+<div class="line"><span class="at">[16:04:30]</span> <span class="muted">run-resumed</span> session=117 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[16:04:33]</span> <span class="muted">check-passed</span> step=user-guide argv=[&quot;pwsh&quot;,&quot;-NoProfile&quot;,&quot;-NonInteractive&quot;,&quot;-Command&quot;,&quot;$t = Get-Content -Raw docs/user-guide/README.md; if ($t -match 'application bar shows only the buttons' -or $t -notmatch 'side menu' -or $t -notmatch 'Reference data' -or $t -notmatch 'Administration') { exit 1 }; exit 0&quot;]</div>
+<div class="line"><span class="at">[16:04:34]</span> <span class="muted">report-accepted</span> seq=5 step=user-guide files=[&quot;docs/user-guide/README.md&quot;] notes=User guide describes the side menu, its toggle, its five groups and their screens, and privilege gating; Sign out still at the end of the application bar</div>
+<div class="line"><span class="at">[16:04:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[16:04:34]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[16:04:35]</span> <span class="muted">job-started</span> name=verification pid=61300 log=.dabbler/runs/s117/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[16:05:28]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s117/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[16:05:28]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[16:05:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[16:05:28]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[16:05:29]</span> <span class="muted">job-started</span> name=run of record: unit pid=63284 log=.dabbler/runs/s117/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[16:05:51]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s117/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[16:05:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[16:05:56]</span> <span class="muted">landed</span> commit=d9fcbc8d0b91149616e35d077dd828d88754cf62</div>
+<div class="line"><span class="at">[16:05:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[16:05:56]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[16:05:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[16:05:57]</span> <span class="muted">job-started</span> name=close pid=46732 log=.dabbler/runs/s117/driver/jobs/close.log</div>
+<div class="line"><span class="at">[16:06:08]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s117/driver/jobs/close.log</div>
+<div class="line"><span class="at">[16:06:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>4 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `MainLayoutTests.cs` does not independently prove that **Administration** is hidden from a user without `manage_users`; its restricted user has `manage_users`, so both the administrator and restricted-user portions pass if Administration were accidentally rendered for everyone.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Case:** Precondition: create a user with only `view_cases`. Input: sign in as that user. Expectation: **Cases**, **Intake**, **Notifications**, and **Reference data** are visible, while `#nav-group-administration` has count zero. Today’s layout code appears to produce that result, but no visible added test pins it.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** `TheApplicationBarHoldsNoScreenLink` verifies only that the app bar’s `nav-*` IDs are the expected three IDs. It would not fail if a future screen link were added to the app bar without a `nav-*` identifier.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Case:** Precondition: authenticated administrator on the root page. Input: inspect anchors and buttons in `.mud-appbar`. Expectation: no element in the app bar has an application-screen `href` such as `/people`, `/conditions`, or `/reports`; only the drawer toggle, identity text, and sign-out control remain.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>21s</td><td>2284</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
