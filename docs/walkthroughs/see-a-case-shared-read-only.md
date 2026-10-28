@@ -22,11 +22,11 @@ modified:
 
 Three things this walkthrough describes as Survsys does them:
 
-- **Sharing is a form on the Agency board, naming the report by its id.** The
-  legacy shared a case from the report's own **Options** menu. Survsys has a
-  **Share a report read-only** panel on the **Agency board**, which takes the
-  report's id — the number at the end of the report's address, after
-  `/event/edit/` — and the agency to share it with.
+- **Sharing is a button on the case's row on the Agency board.** The legacy
+  shared a case from the report's own **Options** menu. On the Survsys
+  **Agency board**, each row carries a **Share** button that opens the
+  choice of agency to share that report with; the row is found by its
+  record number.
 - **Read-only is enforced, not only shown.** A user who sees a case only
   because it is shared with their agency may read it and every record under
   it, and the API tier refuses every change to them. The report says so, and
@@ -96,15 +96,16 @@ of every test it runs, and writes the recordings to
    row, **Abbott, Jane**. Open the **Disease** list and choose
    **Listeriosis**, open the **Investigating agency** list and choose **Salt
    Lake County**, and press **Save & Continue**. The screen is the report's
-   own form. Note two numbers: the one at the end of the address in your
-   browser's address bar, after `/event/edit/`, which is the report's id; and
-   the one the header bar reads under **Record #**, which is its record
-   number.
-5. In the side menu, under **Cases**, choose **Agency board**. In the **Share a report
-   read-only** panel, type the report's id in **Report id**, open the **Share
-   with agency** list and choose **Davis County**, and press **Share**. A
-   message reads **Report** and the report's id **is shared read-only with
-   Davis County.**
+   own form. Note the number the header bar reads under **Record #**, which
+   is its record number.
+5. In the side menu, under **Cases**, choose **Agency board**. Open the
+   **Agency** list and choose **Salt Lake County**. Its queue is newest
+   record number first, so the row carrying the record number you noted is
+   at the top. Press **Share** on that row. A panel opens below the board,
+   headed **Share report** and the record number and **read-only**. Open its
+   **Share with agency** list and choose **Davis County**, and press the
+   panel's **Share**. A message reads **Report** and the record number **is
+   shared read-only with Davis County.**
 6. Press **Sign out** at the right of the application bar. The screen is the **Sign in**
    page. Type `davis.investigator` as the user name and
    `davis-walkthrough-password` as the password, and press **Sign in**. The

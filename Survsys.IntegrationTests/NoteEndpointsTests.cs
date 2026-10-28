@@ -37,11 +37,14 @@ public class NoteEndpointsTests(SqlServerFixture server) : IDisposable
             var shared = await Recorded(admin, report,
                 new CreateNoteRequest("Called the clinic", "clinical"));
             var mine = await Recorded(admin, report,
-                new CreateNoteRequest("Patient seemed evasive", "clinical", UserId: 987654, Private: true));
+                new CreateNoteRequest("Patient seemed evasive", "clinical", Private: true));
 
+            // Every note is recorded under the signed-in user who wrote it,
+            // private or not.
             Assert.True(mine.Private);
             Assert.Equal(adminId, mine.UserId);
             Assert.False(shared.Private);
+            Assert.Equal(adminId, shared.UserId);
 
             var authorSees = await Notes(admin, report);
             Assert.Equal([mine.Id, shared.Id], authorSees.Items.Select(note => note.Id));

@@ -83,11 +83,13 @@ public class SeeACaseSharedReadOnlyTests(SurvsysHarness harness) : SurvsysPageTe
                 [UserName, DisplayName, RoleName, "Davis County", "Yes", "Edit"]);
         });
 
-        // 4. The report, under Salt Lake County, its id and record number noted.
+        // 4. The report, under Salt Lake County, its record number noted; its
+        //    id, read off the address, is what the queue row's identifier
+        //    carries, and the reader types it nowhere.
         var reportId = string.Empty;
         var recordNumber = string.Empty;
 
-        await Step(Document, 4, "open a Listeriosis report on Abbott, Jane under Salt Lake County and note its id and record number", async () =>
+        await Step(Document, 4, "open a Listeriosis report on Abbott, Jane under Salt Lake County and note its record number", async () =>
         {
             await Page.Locator("#nav-new-report").ClickAsync();
             await Page.Locator("#person-search-last-name").FillAsync("Abbott");
@@ -107,19 +109,28 @@ public class SeeACaseSharedReadOnlyTests(SurvsysHarness harness) : SurvsysPageTe
             recordNumber = (await Page.Locator("#report-header-record-number").InnerTextAsync()).Trim();
         });
 
-        // 5. The share, from the Agency board.
-        await Step(Document, 5, "share the report read-only with Davis County on the Agency board", async () =>
+        // 5. The share, from the case's row on Salt Lake County's board.
+        await Step(Document, 5, "choose Salt Lake County on the Agency board, press Share on the top row and share it with Davis County", async () =>
         {
             await Page.Locator("#nav-agency-queue").ClickAsync();
             await Expect(Page.Locator("#agency-queue-heading")).ToHaveTextAsync("Agency board");
 
-            await Page.Locator("#agency-queue-share-report").FillAsync(reportId);
+            await Choose("Agency", "Salt Lake County");
+
+            await Expect(Page.Locator("#work-queue-table tbody tr").First)
+                .ToHaveAttributeAsync("id", $"queue-row-{reportId}");
+            await Expect(Page.Locator($"#queue-row-{reportId}-record")).ToHaveTextAsync(recordNumber);
+
+            await Page.Locator($"#queue-row-{reportId}-share").ClickAsync();
+            await Expect(Page.Locator("#agency-queue-share"))
+                .ToContainTextAsync($"Share report {recordNumber} read-only");
+
             await Choose("Share with agency", "Davis County");
             await Page.Locator("#agency-queue-share-save").ClickAsync();
 
             await Expect(Page.Locator("#agency-queue-share-error")).ToHaveCountAsync(0);
             await Expect(Page.Locator("#agency-queue-share-saved"))
-                .ToHaveTextAsync($"Report {reportId} is shared read-only with Davis County.");
+                .ToHaveTextAsync($"Report {recordNumber} is shared read-only with Davis County.");
         });
 
         // 6. Signed out, and signed in again as the user.

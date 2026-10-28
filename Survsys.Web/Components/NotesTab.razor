@@ -19,9 +19,8 @@
    this release stores the text, which round-trips through the same column
    without this tier having to decide what HTML it trusts.
 
-   The creator is a plain number box holding the legacy user id, as the
-   Laboratory and Contacts tabs hold their coded fields: there is no user
-   resource in this release to choose from.
+   There is no Creator box: the API tier records a note under the signed-in
+   user who wrote it, as it files an attachment under its uploader.
 
    The Tasks section below the notes is the shared TasksPanel, with this
    report in hand so a task can be added here; the task list screen shows the
@@ -31,6 +30,7 @@
    can name it: notes-note-0, notes-note-0-strikethrough and so on. *@
 @using System.Globalization
 @inject NotesClient Api
+@inject ExposuresClient Exposures
 @inject IDialogService Dialogs
 
 <AttachmentsPanel ReportId="@ReportId" />
@@ -122,19 +122,18 @@
                 <MudSelectItem T="string" Value="@Administrative">Administrative</MudSelectItem>
             </MudSelect>
         </MudItem>
-        <MudItem xs="12" sm="2">
-            <MudTextField @bind-Value="noteForm.UserId" id="notes-entry-user-id"
-                          Label="Creator" Variant="Variant.Outlined" Margin="Margin.Dense"
-                          InputType="InputType.Number" />
-        </MudItem>
-        <MudItem xs="12" sm="2">
-            <MudTextField @bind-Value="noteForm.ExposureId" id="notes-entry-exposure-id"
-                          Label="Exposure" Variant="Variant.Outlined" Margin="Margin.Dense"
-                          InputType="InputType.Number" />
+        <MudItem xs="12" sm="4">
+            <MudSelect T="int?" @bind-Value="noteForm.ExposureId" id="notes-entry-exposure"
+                       Label="Exposure" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelectItem T="int?" Value="@((int?)null)">None</MudSelectItem>
+                @foreach (var exposure in exposures)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)exposure.Id)">@ExposureShown(exposure)</MudSelectItem>
+                }
+            </MudSelect>
         </MudItem>
         <MudItem xs="12" sm="4" Class="d-flex align-center">
-            @* A private note is recorded under the signed-in user and listed
-               to them alone, whatever the Creator box says. *@
+            @* A private note is listed to its author alone. *@
             <MudCheckBox T="bool" @bind-Value="noteForm.Private" id="notes-entry-private"
                          Label="Private" />
         </MudItem>
@@ -178,6 +177,12 @@
 
     private List<NoteResponse> notes = [];
 
+    /// <summary>
+    /// The report's exposures, which a note may be about; empty where they
+    /// could not be read, and a note is then about the report itself.
+    /// </summary>
+    private IReadOnlyList<ExposureResponse> exposures = [];
+
     private NoteForm noteForm = new();
 
     private bool recording;
@@ -194,6 +199,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        exposures = (await Exposures.All(ReportId)).Value ?? [];
+
         // Every note of the report, however many pages the API tier lists
         // them over: the client walks the pages, so none is left off the end
         // of the list. Struck-through notes are among them.
@@ -232,7 +239,6 @@
             var answered = await Api.Record(ReportId, new CreateNoteRequest(
                 Text: noteForm.Text.Trim(),
                 NoteType: noteForm.NoteType,
-                UserId: noteForm.UserId,
                 ExposureId: noteForm.ExposureId,
                 Private: noteForm.Private));
 
@@ -322,6 +328,10 @@
     private static string Shown(int? value) =>
         value is { } id ? id.ToString(CultureInfo.InvariantCulture) : "—";
 
+    /// <summary>An exposure as the Exposure list offers it: its name and the day it started.</summary>
+    private static string ExposureShown(ExposureResponse exposure) =>
+        $"{Shown(exposure.Name)}, {exposure.ExposureStart?.ToString(DateForm, CultureInfo.InvariantCulture) ?? "no start date"}";
+
     /// <summary>The local day a note was written, in the report screens' date form.</summary>
     public static string Written(DateTimeOffset written) =>
         written.ToLocalTime().ToString(DateForm, CultureInfo.InvariantCulture);
@@ -332,8 +342,6 @@
         public string? Text { get; set; }
 
         public string? NoteType { get; set; } = Clinical;
-
-        public int? UserId { get; set; }
 
         public int? ExposureId { get; set; }
 

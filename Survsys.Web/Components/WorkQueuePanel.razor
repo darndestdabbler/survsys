@@ -75,6 +75,10 @@ else
                     {
                         <th>Action</th>
                     }
+                    @if (RowActions is not null)
+                    {
+                        <th>Actions</th>
+                    }
                 </tr>
             </thead>
             <tbody>
@@ -103,6 +107,10 @@ else
                                     </MudButton>
                                 }
                             </td>
+                        }
+                        @if (RowActions is { } rowActions)
+                        {
+                            <td class="d-flex gap-1">@rowActions(row)</td>
                         }
                     </tr>
                 }
@@ -135,6 +143,13 @@ else
     /// <summary>Whether a row the agency investigates offers its next workflow move.</summary>
     [Parameter]
     public bool Actions { get; set; }
+
+    /// <summary>
+    /// What else each row offers, drawn in a column of its own: the agency
+    /// board's Assign and Share. Null draws no column.
+    /// </summary>
+    [Parameter]
+    public RenderFragment<WorkQueueItemResponse>? RowActions { get; set; }
 
     /// <summary>
     /// Whether rows the agency only has shared to it are shown. The assignee

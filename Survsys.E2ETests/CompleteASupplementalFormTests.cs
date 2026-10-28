@@ -71,15 +71,14 @@ public class CompleteASupplementalFormTests(SurvsysHarness harness) : SurvsysPag
                 .ToHaveTextAsync("No sections yet. Add one to begin.");
         });
 
-        // 3. Name, Lyme disease from Condition, Auto-assign ticked.
-        await Step(Document, 3, "type the name, choose Lyme disease from Condition and tick Auto-assign", async () =>
+        // 3. Name, Lyme disease from Condition, Auto-assign left unticked.
+        await Step(Document, 3, "type the name, choose Lyme disease from Condition and leave Auto-assign unticked", async () =>
         {
             await Page.Locator("#form-name").FillAsync(FormName);
             await Choose(Page.Locator("#form-core"), "Condition", "Lyme disease");
 
-            var autoAssign = Page.GetByRole(AriaRole.Checkbox, new() { Name = "Auto-assign", Exact = true });
-            await autoAssign.CheckAsync();
-            await Expect(autoAssign).ToBeCheckedAsync();
+            await Expect(Page.GetByRole(AriaRole.Checkbox, new() { Name = "Auto-assign", Exact = true }))
+                .Not.ToBeCheckedAsync();
         });
 
         // 4. Add section, titled Tick exposure.
@@ -132,7 +131,7 @@ public class CompleteASupplementalFormTests(SurvsysHarness harness) : SurvsysPag
 
             await Expect(Page.Locator("#forms-heading")).ToHaveTextAsync("Forms");
             await Expect(Page.Locator("#forms-table [data-form]").Filter(new() { HasText = FormName }).Locator("td"))
-                .ToHaveTextAsync([FormName, "Lyme disease", "Yes"]);
+                .ToHaveTextAsync([FormName, "Lyme disease", "No"]);
         });
 
         // 9. New CMR, Zimmerman, one person found, Create CMR.
@@ -173,12 +172,20 @@ public class CompleteASupplementalFormTests(SurvsysHarness harness) : SurvsysPag
             reportAddress = Page.Url;
         });
 
-        // 12. The Forms tab: the one assigned form.
-        await Step(Document, 12, "press Edit, then the Forms tab, and read the one assigned form", async () =>
+        // 12. The Forms tab: no form yet, then the form assigned by hand.
+        await Step(Document, 12, "press Edit, then the Forms tab, read that no form is assigned, assign the form and read it listed", async () =>
         {
             await Page.Locator("#report-edit").ClickAsync();
             await Expect(Page.Locator("#report-done")).ToBeVisibleAsync();
-            await OpenFormsTab();
+            await Page.Locator("#report-tab-forms").ClickAsync();
+
+            await Expect(Page.Locator("#forms-tab-empty")).ToHaveTextAsync("No forms are assigned to this case.");
+
+            await Choose(Page.Locator("#forms-tab-list"), "Assign form", FormName);
+            await Page.Locator("#forms-tab-assign").ClickAsync();
+
+            await Expect(Page.Locator("#forms-tab-assign-error")).ToHaveCountAsync(0);
+            await ReadTheAssignedForm();
         });
 
         // 13. Open: the form, its section and its two empty questions.
@@ -224,12 +231,20 @@ public class CompleteASupplementalFormTests(SurvsysHarness harness) : SurvsysPag
 
     /// <summary>
     /// Presses the Forms tab and reads its one assigned form and the Open
-    /// button on it: steps 12 and 16 both begin this way.
+    /// button on it, as step 16 begins.
     /// </summary>
     private async Task OpenFormsTab()
     {
         await Page.Locator("#report-tab-forms").ClickAsync();
+        await ReadTheAssignedForm();
+    }
 
+    /// <summary>
+    /// Reads the Forms tab's one assigned form and the Open button on it:
+    /// what step 12 ends on and step 16 reads again.
+    /// </summary>
+    private async Task ReadTheAssignedForm()
+    {
         await Expect(Page.Locator("#forms-tab-list")).ToContainTextAsync("Assigned forms");
         await Expect(Page.Locator("#forms-tab-table [data-assignment-name]")).ToHaveTextAsync([FormName]);
         await Expect(Page.Locator("#forms-tab-table [data-assignment] button")).ToHaveTextAsync("Open");

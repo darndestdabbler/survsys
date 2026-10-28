@@ -12,6 +12,10 @@ namespace Survsys.Contracts;
 /// <c>../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md</c>
 /// maps the section.
 ///
+/// <strong>The author is not here either.</strong> A note is recorded under the
+/// signed-in user who wrote it, as an attachment is filed under its uploader:
+/// a caller that could name the author could name somebody else.
+///
 /// <strong>The report and the moment are not here.</strong> A note is recorded
 /// against the report in the route, so the server sets
 /// <c>person_condition_id</c> from it rather than taking it on the wire, as
@@ -32,21 +36,15 @@ namespace Survsys.Contracts;
 /// <c>administrative</c> code. The API tier validates it against the two,
 /// refusing anything else.
 /// </param>
-/// <param name="UserId">
-/// Who wrote the note — the Notes tab's "Creator" — or null where nobody is
-/// named. A bare id: there is no user resource in this release.
-/// </param>
 /// <param name="ExposureId">
 /// The exposure this note is about, where it is about one, as the legacy
 /// <c>exposure_id</c>; null for a note about the report itself.
 /// </param>
 /// <param name="Private">
-/// Whether only its author may see the note. A private note is recorded under
-/// the signed-in user, whatever <paramref name="UserId"/> says.
+/// Whether only its author may see the note.
 /// </param>
 public record CreateNoteRequest(
     string? Text = null,
     string? NoteType = null,
-    int? UserId = null,
     int? ExposureId = null,
     bool Private = false);

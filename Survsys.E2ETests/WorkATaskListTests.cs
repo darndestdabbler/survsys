@@ -130,6 +130,8 @@ public class WorkATaskListTests(SurvsysHarness harness) : SurvsysPageTest
                 .ToHaveTextAsync("To do");
             await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = "Repeats", Exact = true }))
                 .ToHaveTextAsync("Not at all");
+            await Expect(Page.GetByRole(AriaRole.Combobox, new() { Name = "Assigned to", Exact = true }))
+                .ToHaveTextAsync((await Page.Locator("#nav-signed-in-as").InnerTextAsync()).Trim());
             await Expect(Page.Locator("#tasks-entry-record")).ToHaveTextAsync("Add task");
         });
 

@@ -213,7 +213,6 @@ public class NotesClientTests
         var recorded = await client.Record(14, new CreateNoteRequest(
             Text: "Spoke to the patient",
             NoteType: "clinical",
-            UserId: 11,
             ExposureId: 31));
 
         Assert.Equal(HttpMethod.Post, sent?.Method);
@@ -223,13 +222,14 @@ public class NotesClientTests
 
         Assert.Contains("\"text\":\"Spoke to the patient\"", body, StringComparison.Ordinal);
         Assert.Contains("\"noteType\":\"clinical\"", body, StringComparison.Ordinal);
-        Assert.Contains("\"userId\":11", body, StringComparison.Ordinal);
         Assert.Contains("\"exposureId\":31", body, StringComparison.Ordinal);
 
-        // The report and the moment are the server's to set, and a note is
-        // recorded standing, so the posted note names none of the three.
+        // The report, the author and the moment are the server's to set, and
+        // a note is recorded standing, so the posted note names none of the
+        // four.
         using var posted = JsonDocument.Parse(body!);
         Assert.False(posted.RootElement.TryGetProperty("personConditionId", out _));
+        Assert.False(posted.RootElement.TryGetProperty("userId", out _));
         Assert.False(posted.RootElement.TryGetProperty("createdAt", out _));
         Assert.False(posted.RootElement.TryGetProperty("struckthrough", out _));
 

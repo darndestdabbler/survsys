@@ -84,13 +84,14 @@ public class AccountClientTests
     }
 
     [Fact]
-    public void PrincipalForCarriesTheNamesThePrivilegesAndTheToken()
+    public void PrincipalForCarriesTheIdTheNamesThePrivilegesAndTheToken()
     {
         var principal = AccountClient.PrincipalFor(
             new CurrentUserResponse(7, "ada", "Ada Lovelace", [Privileges.ViewCases, Privileges.ManageUsers]),
             "t0ken");
 
         Assert.True(principal.Identity?.IsAuthenticated);
+        Assert.Equal("7", principal.FindFirstValue(ClaimTypes.NameIdentifier));
         Assert.Equal("ada", principal.Identity?.Name);
         Assert.Equal("Ada Lovelace", principal.FindFirstValue(AccountClient.DisplayNameClaim));
         Assert.Equal("t0ken", principal.FindFirstValue(AccountClient.ApiTokenClaim));

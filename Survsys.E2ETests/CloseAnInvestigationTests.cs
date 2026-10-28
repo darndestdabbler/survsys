@@ -20,13 +20,13 @@ namespace Survsys.E2ETests;
 /// position. Every list is opened and its item chosen by the text the
 /// document names, as the creation walkthrough's test does.
 ///
-/// The document has its reader note three things at step 9 — the record
-/// number, the report's id and the report's address — and this test keeps
-/// all three: the record number is what the messages and the row's first
-/// cell are asserted against, the id is what is typed into the Agency
-/// board's box and what the queue row's identifier carries, and the address
-/// is opened again at step 18, which is how the document has its reader
-/// prove the closed case is still on file.
+/// The document has its reader note two things at step 9 — the record number
+/// and the report's address — and this test keeps both: the record number is
+/// what the messages and the row's first cell are asserted against, and the
+/// address is opened again at step 18, which is how the document has its
+/// reader prove the closed case is still on file. The report's id is read
+/// off that address only because the queue row's identifier carries it: the
+/// reader finds the row by its record number and types the id nowhere.
 /// </remarks>
 [Collection(SurvsysCollection.Name)]
 public class CloseAnInvestigationTests(SurvsysHarness harness) : SurvsysPageTest
@@ -94,13 +94,13 @@ public class CloseAnInvestigationTests(SurvsysHarness harness) : SurvsysPageTest
         await Step(Document, 8, "press Save & Continue", async () =>
             await Page.Locator("#report-save").ClickAsync());
 
-        // 9. The report's form, and the three things the reader notes: the
-        //    record number, the id from the address, and the address itself.
+        // 9. The report's form, and the two things the reader notes: the
+        //    record number and the address, whose id names the queue row.
         var recordNumber = string.Empty;
         var reportId = string.Empty;
         var reportAddress = string.Empty;
 
-        await Step(Document, 9, "read the report form's header and note the record number, the report's id and its address", async () =>
+        await Step(Document, 9, "read the report form's header and note the record number and its address", async () =>
         {
             var year = DateTime.Today.Year.ToString("D4", CultureInfo.InvariantCulture);
 
@@ -130,15 +130,24 @@ public class CloseAnInvestigationTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator($"#queue-row-{reportId}")).ToHaveCountAsync(0);
         });
 
-        // 11. The report's id and Summit County in the Assign a report panel.
-        await Step(Document, 11, "type the report's id in Report id and choose Summit County from Assign to agency", async () =>
+        // 11. Utah State's board, the case's row at its top, and Assign on it
+        //     opening the agency choice for that report.
+        await Step(Document, 11, "choose Utah State, press Assign on the top row and choose Summit County from Assign to agency", async () =>
         {
-            await Page.Locator("#agency-queue-assign-report").FillAsync(reportId);
+            await Choose("Agency", "Utah State");
+
+            await Expect(Page.Locator("#work-queue-table tbody tr").First)
+                .ToHaveAttributeAsync("id", $"queue-row-{reportId}");
+            await Expect(Page.Locator($"#queue-row-{reportId}-record")).ToHaveTextAsync(recordNumber);
+
+            await Page.Locator($"#queue-row-{reportId}-assign").ClickAsync();
+
+            await Expect(Page.Locator("#agency-queue-assign")).ToContainTextAsync($"Assign report {recordNumber}");
             await Choose("Assign to agency", "Summit County");
         });
 
-        // 12. Assign: the message, and the row now on the board.
-        await Step(Document, 12, "press Assign and read the assigned message and the row on the board", async () =>
+        // 12. Assign: the message, and the row now on Summit County's board.
+        await Step(Document, 12, "press Assign, read the assigned message, choose Summit County and read the row", async () =>
         {
             await Page.Locator("#agency-queue-assign-save").ClickAsync();
 
@@ -146,8 +155,10 @@ public class CloseAnInvestigationTests(SurvsysHarness harness) : SurvsysPageTest
                 .ToHaveTextAsync($"Report {recordNumber} is assigned, at the assigned-to-LHD start.");
             await Expect(Page.Locator("#agency-queue-assign-error")).ToHaveCountAsync(0);
 
+            await Choose("Agency", "Summit County");
+
             await Expect(Page.Locator($"#queue-row-{reportId} td")).ToHaveTextAsync(
-                [recordNumber, "Lyme disease", "Assigned to LHD", "Unknown", Today, "Investigating"]);
+                [recordNumber, "Lyme disease", "Assigned to LHD", "Unknown", Today, "Investigating", "Assign Share"]);
         });
 
         // 13. The Work queue, Summit County chosen.

@@ -13,10 +13,11 @@ to work around.
 > condition-specific detail its investigation needs, and anyone who opens the
 > report reads the answers I gave.
 
-A supplemental form is built once, for a condition, and given to every new
-case on that condition automatically. This walkthrough builds one first,
-because the end-to-end suite starts with none, and then completes it on a
-case. It is inferred from two legacy screens, read-only here and never
+A supplemental form is built once, for a condition, and given to a case on
+that condition — automatically when the case is opened, if the form says so,
+or by hand on the case's **Forms** tab. This walkthrough builds one first,
+because the end-to-end suite starts with none, assigns it to a case by hand,
+and then completes it. It is inferred from two legacy screens, read-only here and never
 modified:
 
 | Legacy source | Where it is documented | What it shows |
@@ -31,10 +32,12 @@ walkthrough describes what Survsys shows rather than what EpiTrax showed:
   an admin screen of its own and drew a form's questions from it; Survsys
   writes each question, and a coded question's choices, inside the form that
   asks it.
-- **A form is assigned when the case is opened.** A form marked
+- **A form is assigned when the case is opened, or by hand.** A form marked
   **Auto-assign** is given to every case created on its condition from then
   on. Changing a case's disease later does not assign another form, and a
-  form built after a case was opened is not given to that case.
+  form built after a case was opened is not given to that case
+  automatically; any form for the case's condition not yet assigned to it
+  can be assigned from the **Assign form** list on its **Forms** tab.
 - **A case's forms are on a Forms tab of their own.** The report form lists
   the forms assigned to the case there, and opens one to complete it.
 
@@ -102,7 +105,8 @@ of every test it runs, and writes the recordings to
    **Sections** panel reads **No sections yet. Add one to begin.**
 3. In the box labelled **Name**, type `Lyme disease tick exposure`. Open
    the **Condition** list and choose **Lyme disease**; the list closes, and
-   the **Condition** box reads **Lyme disease**. Tick **Auto-assign**.
+   the **Condition** box reads **Lyme disease**. Leave **Auto-assign**
+   unticked: step 12 assigns the form to the case by hand.
 4. Press **Add section**. In the new section's box labelled **Section
    title**, type `Tick exposure`.
 5. Press **Add question** in that section. In the new question's box
@@ -117,7 +121,7 @@ of every test it runs, and writes the recordings to
    choice's **Code** box type `N` and in its **Label** box type `No`.
 8. Press **Save**. You are back on the **Forms** screen, and the form's row
    reads, left to right: **Lyme disease tick exposure**, **Lyme disease**
-   and **Yes**.
+   and **No**.
 9. In the side menu, under **Cases**, choose **New CMR**. In the box labelled **Last
    name**, type `Zimmerman`, then press **Search**. The line above the table
    reads **1 person(s) found, showing 1.**, and the one row's **Last, First**
@@ -131,8 +135,12 @@ of every test it runs, and writes the recordings to
     and **Disease** reads **Lyme disease**. Note the address in your
     browser's address bar: it ends in `/event/edit/` and a number, and step
     16 comes back to it.
-12. Press **Edit** at the top of the report, which opens it for editing, then press the **Forms** tab. Its **Assigned forms** table has one row,
-    **Lyme disease tick exposure**, with an **Open** button.
+12. Press **Edit** at the top of the report, which opens it for editing, then
+    press the **Forms** tab. Its **Assigned forms** table reads **No forms
+    are assigned to this case.** Below the table, open the **Assign form**
+    list and choose **Lyme disease tick exposure**, then press **Assign**.
+    The table now has one row, **Lyme disease tick exposure**, with an
+    **Open** button.
 13. Press **Open**. The form opens below the table under its name,
     **Lyme disease tick exposure**, with the section **Tick exposure**,
     a box labelled **Where was the patient when the tick bite happened?**
@@ -154,14 +162,15 @@ of every test it runs, and writes the recordings to
 
 ## What you should see
 
-A supplemental form built for a condition, given to a new case on it, and
-completed:
+A supplemental form built for a condition, assigned to a case on it by hand,
+and completed:
 
-- The form **Lyme disease tick exposure**, for **Lyme disease**,
+- The form **Lyme disease tick exposure**, for **Lyme disease**, not
   auto-assigned, with one section, **Tick exposure**, holding a text question
   and a coded question whose choices are **Yes** and **No**.
 - A report on **Zimmerman, Paul** for **Lyme disease** whose **Forms** tab
-  already lists that form when the report is first opened.
+  lists no form when the report is first opened, and lists that form once it
+  is chosen from **Assign form** and assigned.
 - The form opened on the case, answered **Hiking near Park City** and **Yes**,
   saved with **The answers have been saved.**, and read back the same when the
   report is opened again.

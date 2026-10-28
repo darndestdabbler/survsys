@@ -491,7 +491,7 @@ else if (report is { } shown && person is not null && clinical is { } clinicalDa
                 <span id="report-tab-forms">Forms</span>
             </TabContent>
             <ChildContent>
-                <FormsTab ReportId="@shown.Id" />
+                <FormsTab ReportId="@shown.Id" ConditionId="@shown.ConditionId" />
             </ChildContent>
         </MudTabPanel>
         <MudTabPanel Text="Vaccines">

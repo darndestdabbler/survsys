@@ -249,6 +249,36 @@ public class FormsClientTests
     }
 
     [Fact]
+    public async Task AssignPostsToTheCasesFormRoute()
+    {
+        HttpRequestMessage? sent = null;
+        var client = new FormsClient(Transport(request =>
+        {
+            sent = request;
+            return Answer(
+                HttpStatusCode.Created,
+                """{ "id": 8, "formId": 2, "formName": "Gastro supplement", "assignedAt": "2026-06-03T09:00:00+00:00" }""");
+        }));
+
+        var asked = await client.Assign(7, 2);
+
+        Assert.Equal(HttpMethod.Post, sent?.Method);
+        Assert.Equal("http://api.example.test/api/cases/7/forms/2", sent?.RequestUri?.ToString());
+        Assert.Equal(8, asked.Value?.Id);
+        Assert.Equal("Gastro supplement", asked.Value?.FormName);
+    }
+
+    [Fact]
+    public async Task AnAssignThatFailedCarriesTheAssignPrefix()
+    {
+        var client = new FormsClient(Transport(_ => Answer(HttpStatusCode.BadRequest, "{}")));
+
+        var asked = await client.Assign(7, 99);
+
+        Assert.StartsWith(FormsClient.AssignFailurePrefix, asked.Failure);
+    }
+
+    [Fact]
     public async Task ACaseFormsLoadThatFailedCarriesTheCaseFormsPrefix()
     {
         var client = new FormsClient(Transport(_ => Answer(HttpStatusCode.NotFound, "{}")));

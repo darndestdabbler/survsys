@@ -39,6 +39,9 @@ public sealed class FormsClient(HttpClient http)
     /// <summary>How a failure to save a case's answers starts.</summary>
     public const string AnswersSaveFailurePrefix = "The answers could not be saved";
 
+    /// <summary>How a failure to assign a form to a case starts.</summary>
+    public const string AssignFailurePrefix = "The form could not be assigned";
+
     /// <summary>The largest page the list asks for, wide enough to be the only one.</summary>
     private const int PageSize = 200;
 
@@ -53,6 +56,8 @@ public sealed class FormsClient(HttpClient http)
     private static readonly ApiAsk AskingCaseForm = new(CaseFormFailurePrefix, "the assigned form");
 
     private static readonly ApiAsk SavingAnswers = new(AnswersSaveFailurePrefix, "the answers as saved");
+
+    private static readonly ApiAsk Assigning = new(AssignFailurePrefix, "the form's assignment");
 
     /// <summary>Every form, newest first, or why there is no list.</summary>
     public Task<Asked<PagedResult<FormResponse>>> All(
@@ -100,6 +105,24 @@ public sealed class FormsClient(HttpClient http)
             http,
             $"api/cases/{personConditionId}/forms",
             cancellationToken);
+
+    /// <summary>
+    /// Assigns a form to a case, answering with the assignment or why there is
+    /// none. The route names both, so the post carries no body.
+    /// </summary>
+    public async Task<Asked<FormAssignmentResponse>> Assign(
+        int personConditionId,
+        int formId,
+        CancellationToken cancellationToken = default)
+    {
+        using var nothing = new ByteArrayContent([]);
+
+        return await Assigning.PostContent<FormAssignmentResponse>(
+            http,
+            $"api/cases/{personConditionId}/forms/{formId}",
+            nothing,
+            cancellationToken);
+    }
 
     /// <summary>
     /// One assigned form, its tree and the case's answers so far, or why there

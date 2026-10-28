@@ -59,8 +59,9 @@ A task's **Priority** and **Task category** are chosen from lists — the
 reference code lists an administrator keeps on the **Code lists** screen —
 and the table shows the code the chosen entry stands for, so a task chosen as
 **High** reads `high`. This walkthrough leaves **Task category** empty.
-Assigning a task to a named user is not part of it: **Assigned to** is a box
-holding the legacy user id rather than a list of the users on file.
+**Assigned to** is a list of the active users, by name, and a new task is
+assigned to you — the user signed in — unless you choose someone else; this
+walkthrough leaves it so.
 
 ## Before you start
 
@@ -145,8 +146,10 @@ of every test it runs, and writes the recordings to
    headed **Tasks**, with a **Show** box beside the heading reading **To
    do**, and under the heading it reads **No tasks found.** Below it is the
    **Add a task** panel: the boxes **Task**, **Due**, **Priority**,
-   **Task category**, **Assigned to**, **Repeats** — reading **Not at all**
-   — **Repeats until** and **Notes**, and an **Add task** button.
+   **Task category**, **Assigned to** — reading your own name, the one at
+   the right of the application bar beside **Sign out** — **Repeats** —
+   reading **Not at all** — **Repeats until** and **Notes**, and an **Add
+   task** button.
 10. In the box labelled **Task**, type `Interview the patient`. In the box
     labelled **Due**, enter the date `2026-10-17`. Open the **Priority** list
     and choose **High**; the list closes and the **Priority** box now reads

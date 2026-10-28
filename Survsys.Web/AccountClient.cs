@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -122,6 +123,7 @@ public sealed class AccountClient(HttpClient http)
 
         Claim[] identity =
         [
+            new(ClaimTypes.NameIdentifier, user.Id.ToString(CultureInfo.InvariantCulture)),
             new(ClaimTypes.Name, user.UserName),
             new(DisplayNameClaim, user.DisplayName),
             new(ApiTokenClaim, token),

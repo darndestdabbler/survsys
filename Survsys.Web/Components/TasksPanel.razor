@@ -24,7 +24,9 @@
    A row carries its own id in its identifier, so a walkthrough can name it:
    tasks-row-21, tasks-row-21-complete. *@
 @using System.Globalization
+@using System.Security.Claims
 @inject TasksClient Api
+@inject UsersClient Users
 
 @if (failure is { } whyNot)
 {
@@ -161,9 +163,14 @@
                             Label="Task category" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="2">
-                <MudTextField @bind-Value="taskForm.UserId" id="tasks-entry-user-id"
-                              Label="Assigned to" Variant="Variant.Outlined" Margin="Margin.Dense"
-                              InputType="InputType.Number" />
+                <MudSelect T="int?" @bind-Value="taskForm.UserId" id="tasks-entry-assigned-to"
+                           Label="Assigned to" Variant="Variant.Outlined" Margin="Margin.Dense">
+                    <MudSelectItem T="int?" Value="@((int?)null)">Nobody</MudSelectItem>
+                    @foreach (var user in assignees)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)user.Id)">@user.DisplayName</MudSelectItem>
+                    }
+                </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudSelect T="string" @bind-Value="taskForm.RepeatingInterval"
@@ -282,6 +289,35 @@
     /// empty list still reads "Page 1 of 1".
     /// </summary>
     private int LastPage => Math.Max(1, (totalCount + PageSize - 1) / PageSize);
+
+    /// <summary>
+    /// The active users a task may be assigned to, from the investigator list
+    /// a case reader may read; empty where it could not be read, and the task
+    /// is then assigned to nobody.
+    /// </summary>
+    private IReadOnlyList<InvestigatorResponse> assignees = [];
+
+    /// <summary>The signed-in user's id, which a new task is assigned to unless another is chosen.</summary>
+    private int? signedInUserId;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Adding)
+        {
+            return;
+        }
+
+        var user = AuthenticationState is { } state ? (await state).User : null;
+        signedInUserId = int.TryParse(user?.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+        assignees = (await Users.Investigators()).Value ?? [];
+        taskForm = NewTaskForm();
+    }
+
+    /// <summary>An empty task form, assigned to the signed-in user.</summary>
+    private TaskForm NewTaskForm() => new() { UserId = signedInUserId };
 
     protected override async Task OnParametersSetAsync()
     {
@@ -425,7 +461,7 @@
 
             if (answered.Value is { } recorded)
             {
-                taskForm = new TaskForm();
+                taskForm = NewTaskForm();
                 saved = recorded.Tasks.Count == 1
                     ? "The task has been added."
                     : $"The task has been added, as {recorded.Tasks.Count} dated tasks.";

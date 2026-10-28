@@ -17,8 +17,7 @@ namespace Survsys.E2ETests;
 /// they will see, selecting by the stable identifiers the screens carry —
 /// never by a MudBlazor class. The index case is opened on <strong>Okafor,
 /// Chidi</strong>, and <strong>Zimmerman, Paul</strong> is added as the
-/// contact; Zimmerman's identifier is read off the search row at step 9,
-/// because the database assigns it and no document can name it.
+/// contact, by the one row the search finds, and the contact row names him.
 ///
 /// Step 11 follows the <strong>(contact event)</strong> link rather than
 /// opening the contact's address: the link is a move from one report to
@@ -45,7 +44,6 @@ public class PromoteAContactToACaseTests(SurvsysHarness harness) : SurvsysPageTe
     public async Task PromoteAContactToACase()
     {
         var indexRecordNumber = string.Empty;
-        var contactPersonId = string.Empty;
         var contactAddress = string.Empty;
         var contactRecordNumber = string.Empty;
 
@@ -123,8 +121,8 @@ public class PromoteAContactToACaseTests(SurvsysHarness harness) : SurvsysPageTe
             await Choose("Contact type", "Household");
         });
 
-        // 9. Zimmerman found, his identifier noted, and Add as contact.
-        await Step(Document, 9, "search Zimmerman in the panel, note the row's ID and press Add as contact", async () =>
+        // 9. Zimmerman found, and Add as contact on his row.
+        await Step(Document, 9, "search Zimmerman in the panel and press Add as contact on the row", async () =>
         {
             var panel = Page.Locator("#contacts-add");
 
@@ -134,10 +132,7 @@ public class PromoteAContactToACaseTests(SurvsysHarness harness) : SurvsysPageTe
             await Expect(panel.Locator("#person-search-results [data-person-name]"))
                 .ToHaveTextAsync(["Zimmerman, Paul"]);
 
-            contactPersonId = (await panel.Locator("#person-search-results [data-person-id]").InnerTextAsync()).Trim();
-            Assert.Matches(@"^\d+$", contactPersonId);
-
-            await panel.Locator($"#contacts-add-person-{contactPersonId}").ClickAsync();
+            await panel.Locator("#person-search-results [data-person-action] button").ClickAsync();
         });
 
         // 10. The contact, linked to their contact event.
@@ -149,8 +144,8 @@ public class PromoteAContactToACaseTests(SurvsysHarness harness) : SurvsysPageTe
 
             await Expect(Page.Locator("#contacts-exposure-0-contacts tbody tr")).ToHaveCountAsync(1);
             await Expect(Page.Locator($"{Contact} td").Nth(0))
-                .ToHaveTextAsync(new Regex($@"^\s*{contactPersonId}\s*\(contact event\)\s*$"));
-            await Expect(Page.Locator($"{Contact} td").Nth(1)).ToHaveTextAsync("HOUSEHOLD");
+                .ToHaveTextAsync(new Regex(@"^\s*Zimmerman, Paul\s*\(contact event\)\s*$"));
+            await Expect(Page.Locator($"{Contact} td").Nth(1)).ToHaveTextAsync("Household");
         });
 
         // 11. The link followed to the contact's own report.

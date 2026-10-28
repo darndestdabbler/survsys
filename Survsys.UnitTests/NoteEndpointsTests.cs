@@ -106,17 +106,16 @@ public class NoteEndpointsTests
     }
 
     /// <summary>
-    /// A note needs nothing but its text and its type: the user and the
-    /// exposure are optional, and a note that names neither is recorded.
+    /// A note needs nothing but its text and its type: the exposure is
+    /// optional, and a note that names none is recorded.
     /// </summary>
     [Fact]
-    public void ANoteNamingNeitherAUserNorAnExposureIsNotRefused()
+    public void ANoteNamingNoExposureIsNotRefused()
     {
         Assert.Null(NoteEndpoints.WhyNotANote(
             new CreateNoteRequest(
                 Text: "Left a voicemail",
                 NoteType: NoteEndpoints.ClinicalNoteType,
-                UserId: null,
                 ExposureId: null)));
     }
 

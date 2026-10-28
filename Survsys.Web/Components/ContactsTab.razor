@@ -12,18 +12,18 @@
    exposure whole and has no endpoint to change or remove a stored one, nor
    one to set a contact's disposition on its own.
 
-   A contact recorded with its exposure in the entry form is an existing
-   person, named by id. The legacy Contacts tab searches for or creates a
-   person and links them, and that is the Add contact panel each exposure row
-   opens: the person search panel, whose rows add the person found and whose
-   empty result creates one from the criteria, each added as a contact event
-   of their own that the contact row then links to. The Import contacts panel
-   posts a CSV file under a chosen exposure; the API tier saves the rows it
-   accepts as contact events and answers with the rows it refused, which are
-   listed by line with their reasons. Every coded field (the place type, the state, the
-   contact's disposition and type, the source's person, report and type) is a
-   plain box holding the legacy value, as the Laboratory tab holds its coded
-   fields: the reference tables behind the legacy dropdowns do not exist yet.
+   The legacy Contacts tab searches for or creates a person and links them,
+   and that is the Add contact panel each exposure row opens: the person
+   search panel, whose rows add the person found and whose empty result
+   creates one from the criteria, each added as a contact event of their own
+   that the contact row then links to. The entry form's contacts and sources
+   choose their person through the same panel, opened from the row's Choose
+   button, and a source's report from a list of that person's reports. The
+   Import contacts panel posts a CSV file under a chosen exposure; the API
+   tier saves the rows it accepts as contact events and answers with the rows
+   it refused, which are listed by line with their reasons. Coded fields are
+   chosen from their code lists, and the table shows persons by name, codes
+   by description and a source's report by its disease.
 
    The date-range rules and the coded-value rules stay the API tier's; an
    answer it refuses is shown as the entry error rather than re-checked here.
@@ -36,6 +36,9 @@
    contacts-exposure-0, contacts-exposure-0-contact-1 and so on. *@
 @using System.Globalization
 @inject ExposuresClient Api
+@inject PersonsClient Persons
+@inject CasesClient Cases
+@inject CodesClient Codes
 @inject IDialogService Dialogs
 
 @if (listFailure is { } whyNoList)
@@ -117,15 +120,15 @@
                                                the person; one recorded with its exposure has none,
                                                and its cell reads as it always has. *@
                                             <td>
-                                                @Shown(contact.PersonId)
+                                                @PersonShown(contact.PersonId)
                                                 @if (contact.PersonConditionId is { } eventId)
                                                 {
                                                     <a id="@($"contacts-exposure-{exposureAt}-contact-{c}-event")"
                                                        href="@($"/event/edit/{eventId}")">(contact event)</a>
                                                 }
                                             </td>
-                                            <td>@Shown(contact.ContactType)</td>
-                                            <td>@Shown(contact.DispositionId)</td>
+                                            <td>@Described(contactTypes, contact.ContactType)</td>
+                                            <td>@Described(dispositions, contact.DispositionId)</td>
                                             <td>@Shown(Written(contact.DispositionDate))</td>
                                             <td>@Shown(Written(contact.ExposureStart))</td>
                                             <td>@Shown(Written(contact.ExposureEnd))</td>
@@ -158,8 +161,8 @@
                                         <tr id="@($"contacts-exposure-{exposureAt}-source-{s}")" @key="source.Id">
                                             <td>@Shown(source.SourceName)</td>
                                             <td>@Shown(source.SourceType)</td>
-                                            <td>@Shown(source.PersonId)</td>
-                                            <td>@Shown(source.PersonConditionId)</td>
+                                            <td>@(source.PersonId is null ? "—" : PersonShown(source.PersonId))</td>
+                                            <td>@SourceReportShown(source.PersonId, source.PersonConditionId)</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -375,10 +378,20 @@
             var contactAt = c;
             var contact = contacts[contactAt];
             <MudGrid Spacing="2" Class="mb-1" id="@($"contacts-entry-contact-{contactAt}")" @key="contact">
-                <MudItem xs="12" sm="2">
-                    <MudTextField @bind-Value="contact.PersonId" id="@($"contacts-entry-contact-{contactAt}-person-id")"
-                                  Label="Person" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                  InputType="InputType.Number" />
+                <MudItem xs="12" sm="2" Class="d-flex align-center gap-1">
+                    <MudText id="@($"contacts-entry-contact-{contactAt}-person")" Typo="Typo.body2">
+                        @PersonShown(contact.PersonId)
+                    </MudText>
+                    <MudButton id="@($"contacts-entry-contact-{contactAt}-choose-person")" Variant="Variant.Text"
+                               Size="Size.Small" Disabled="@recording"
+                               OnClick="@(() => OpenChoose($"contact {contactAt + 1}", chosen =>
+                                   {
+                                       contact.PersonId = chosen;
+
+                                       return Task.CompletedTask;
+                                   }))">
+                        Choose
+                    </MudButton>
                 </MudItem>
                 <MudItem xs="12" sm="2">
                     <CodeSelect List="@CodeLists.ContactType" @bind-Value="contact.ContactType"
@@ -439,15 +452,34 @@
                                 id="@($"contacts-entry-source-{sourceAt}-source-type")"
                                 Label="Source type" Margin="Margin.Dense" />
                 </MudItem>
-                <MudItem xs="12" sm="2">
-                    <MudTextField @bind-Value="source.PersonId" id="@($"contacts-entry-source-{sourceAt}-person-id")"
-                                  Label="Person" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                  InputType="InputType.Number" />
+                <MudItem xs="12" sm="2" Class="d-flex align-center gap-1">
+                    <MudText id="@($"contacts-entry-source-{sourceAt}-person")" Typo="Typo.body2">
+                        @PersonShown(source.PersonId)
+                    </MudText>
+                    <MudButton id="@($"contacts-entry-source-{sourceAt}-choose-person")" Variant="Variant.Text"
+                               Size="Size.Small" Disabled="@recording"
+                               OnClick="@(() => OpenChoose($"source {sourceAt + 1}", async chosen =>
+                                   {
+                                       // Another person's reports are not this one's, so a
+                                       // report chosen for the last person goes with them.
+                                       source.PersonId = chosen;
+                                       source.PersonConditionId = null;
+                                       await KnowReports(chosen);
+                                   }))">
+                        Choose
+                    </MudButton>
                 </MudItem>
                 <MudItem xs="12" sm="2">
-                    <MudTextField @bind-Value="source.PersonConditionId" id="@($"contacts-entry-source-{sourceAt}-person-condition-id")"
-                                  Label="Report" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                  InputType="InputType.Number" />
+                    <MudSelect T="int?" @bind-Value="source.PersonConditionId"
+                               id="@($"contacts-entry-source-{sourceAt}-report")"
+                               Label="Report" Variant="Variant.Outlined" Margin="Margin.Dense"
+                               Disabled="@(source.PersonId is null)">
+                        <MudSelectItem T="int?" Value="@((int?)null)">None</MudSelectItem>
+                        @foreach (var report in ReportsOf(source.PersonId))
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)report.Id)">@ReportShown(report)</MudSelectItem>
+                        }
+                    </MudSelect>
                 </MudItem>
                 <MudItem xs="12" sm="2" Class="d-flex align-center">
                     <MudButton id="@($"contacts-entry-source-remove-{sourceAt}")" Variant="Variant.Text"
@@ -466,6 +498,28 @@
             </MudButton>
         }
     </div>
+
+    @if (choosingFor is { } whose)
+    {
+        <MudPaper id="contacts-choose" Outlined="true" Class="pa-4 mt-4">
+            <div class="d-flex align-center justify-space-between">
+                <MudText Typo="Typo.subtitle1">Choose the person for @whose</MudText>
+                <MudButton id="contacts-choose-cancel" Variant="Variant.Outlined" Disabled="@choosing"
+                           OnClick="@CloseChoose">
+                    Cancel
+                </MudButton>
+            </div>
+
+            @if (chooseFailure is { } whyNotChosen)
+            {
+                <MudAlert id="contacts-choose-error" Severity="Severity.Error" Variant="Variant.Filled" Class="my-4">
+                    @whyNotChosen
+                </MudAlert>
+            }
+
+            <PersonSearchPanel RowAction="@ChooseThisPerson" WhenNobodyFound="@CreateAndChoose" />
+        </MudPaper>
+    }
 
     <div class="d-flex gap-2 mt-4">
         @if (editingId is null)
@@ -542,6 +596,31 @@
 
     private string? addFailure;
 
+    /// <summary>
+    /// Which entry row the Choose panel is choosing a person for, as its
+    /// heading names it, or null when the panel is closed.
+    /// </summary>
+    private string? choosingFor;
+
+    /// <summary>What choosing a person does to the row the panel was opened from.</summary>
+    private Func<int, Task>? chooser;
+
+    private bool choosing;
+
+    private string? chooseFailure;
+
+    /// <summary>The names of the persons this tab has shown or chosen, by id.</summary>
+    private readonly Dictionary<int, string> personNames = [];
+
+    /// <summary>The reports of the persons chosen as sources, by person id.</summary>
+    private readonly Dictionary<int, IReadOnlyList<CaseSearchItemResponse>> personReports = [];
+
+    /// <summary>
+    /// The most reports a source person's Report list offers: far more than
+    /// one person has.
+    /// </summary>
+    private const int ReportsPageSize = 100;
+
     private int? importExposureId;
 
     /// <summary>The chosen file's text, or null until a file is chosen.</summary>
@@ -553,10 +632,28 @@
 
     private string? importFailure;
 
-    protected override Task OnInitializedAsync() => Reload();
+    /// <summary>
+    /// The contact type and disposition codes, retired ones among them, so a
+    /// stored code is shown by its description; empty where a list could not
+    /// be read, and the stored code is shown instead.
+    /// </summary>
+    private IReadOnlyList<CodeResponse> contactTypes = [];
+
+    private IReadOnlyList<CodeResponse> dispositions = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        contactTypes = (await Codes.List(CodeLists.ContactType, inactive: true)).Value ?? [];
+        dispositions = (await Codes.List(CodeLists.Disposition, inactive: true)).Value ?? [];
+
+        await Reload();
+    }
 
     private void OpenAddContact(ExposureDetailResponse exposure)
     {
+        // One person search on the tab at a time: the panels share its
+        // identifiers.
+        CloseChoose();
         addingTo = exposure;
         addContactType = null;
         addFailure = null;
@@ -587,12 +684,164 @@
 
     /// <summary>The new person a search that found nobody describes, as a contact to add.</summary>
     private static CreateContactEventRequest NewContact(PersonSearchCriteria criteria) =>
-        new(NewPerson: new CreatePersonRequest(
+        new(NewPerson: NewPerson(criteria));
+
+    /// <summary>The new person a search that found nobody describes.</summary>
+    private static CreatePersonRequest NewPerson(PersonSearchCriteria criteria) =>
+        new(
             LastName: criteria.LastName,
             FirstName: criteria.FirstName,
             MiddleName: criteria.MiddleName,
             BirthDate: criteria.BirthDate,
-            BirthGender: criteria.BirthGender));
+            BirthGender: criteria.BirthGender);
+
+    /// <summary>
+    /// Opens the Choose panel for one entry row: the person search, whose rows
+    /// choose the person and whose empty result creates one to choose.
+    /// </summary>
+    private void OpenChoose(string whose, Func<int, Task> choose)
+    {
+        addingTo = null;
+        choosingFor = whose;
+        chooser = choose;
+        chooseFailure = null;
+    }
+
+    private void CloseChoose()
+    {
+        choosingFor = null;
+        chooser = null;
+    }
+
+    /// <summary>What each person the search found offers: choosing them for the row.</summary>
+    private RenderFragment<PersonResponse> ChooseThisPerson => person =>
+        @<MudButton id="@($"contacts-choose-person-{person.Id}")" Variant="Variant.Filled"
+                    Color="Color.Primary" Size="Size.Small" Disabled="@choosing"
+                    OnClick="@(() => Choose(person))">
+            Choose
+        </MudButton>;
+
+    /// <summary>
+    /// What a search that found nobody offers: creating the person from the
+    /// criteria searched with, and choosing them for the row.
+    /// </summary>
+    private RenderFragment<PersonSearchCriteria> CreateAndChoose => criteria =>
+        @<div class="mb-4">
+            <MudButton id="contacts-choose-create-person" Variant="Variant.Filled"
+                       Color="Color.Primary" Disabled="@choosing"
+                       OnClick="@(() => CreateThenChoose(criteria))">
+                Create person and choose
+            </MudButton>
+        </div>;
+
+    private async Task CreateThenChoose(PersonSearchCriteria criteria)
+    {
+        chooseFailure = null;
+        choosing = true;
+
+        try
+        {
+            var created = await Persons.Create(NewPerson(criteria));
+
+            if (created.Value is { } person)
+            {
+                await Choose(person);
+            }
+            else
+            {
+                chooseFailure = created.Failure;
+            }
+        }
+        finally
+        {
+            choosing = false;
+        }
+    }
+
+    /// <summary>Hands the person to the row the panel was opened from, and closes it.</summary>
+    private async Task Choose(PersonResponse person)
+    {
+        personNames[person.Id] = Named(person.LastName, person.FirstName);
+
+        if (chooser is { } choose)
+        {
+            await choose(person.Id);
+        }
+
+        CloseChoose();
+    }
+
+    /// <summary>Reads a person's name, once, for the rows that show it.</summary>
+    private async Task KnowPerson(int? personId)
+    {
+        if (personId is not { } id || personNames.ContainsKey(id))
+        {
+            return;
+        }
+
+        var found = await Persons.Find(id);
+
+        if (found.Value is { } person)
+        {
+            personNames[id] = Named(person.LastName, person.FirstName);
+        }
+    }
+
+    /// <summary>Reads a person's reports, once, for a source's Report list.</summary>
+    private async Task KnowReports(int? personId)
+    {
+        if (personId is not { } id || personReports.ContainsKey(id))
+        {
+            return;
+        }
+
+        var found = await Cases.Page(new CaseSearchCriteria(PersonId: id), 1, ReportsPageSize);
+
+        if (found.Value is { } reports)
+        {
+            personReports[id] = reports.Items;
+        }
+    }
+
+    /// <summary>The reports of the person a source names, or none where it names nobody.</summary>
+    private IReadOnlyList<CaseSearchItemResponse> ReportsOf(int? personId) =>
+        personId is { } id && personReports.TryGetValue(id, out var reports) ? reports : [];
+
+    /// <summary>
+    /// A report as a Report list offers it: its disease and onset date, and its
+    /// record number, which keeps two reports of one disease on one day apart.
+    /// </summary>
+    private static string ReportShown(CaseSearchItemResponse report) =>
+        $"{report.ConditionName}, {Written(report.EventOnsetDate) ?? "no onset date"} (#{report.RecordNumber})";
+
+    /// <summary>The person a row names, by name, or that it names nobody yet.</summary>
+    private string PersonShown(int? personId) =>
+        personId is not { } id ? "None chosen"
+        : personNames.TryGetValue(id, out var name) ? name
+        : $"person {id}";
+
+    /// <summary>
+    /// A source's report as the table shows it: its disease, or the report's
+    /// id where the person's reports do not hold it, or a dash for none.
+    /// </summary>
+    private string SourceReportShown(int? personId, int? reportId) =>
+        reportId is not { } id ? "—"
+        : ReportsOf(personId).FirstOrDefault(report => report.Id == id) is { } report ? report.ConditionName
+        : $"report {id}";
+
+    /// <summary>A stored code by its description, or the code itself where the list does not hold it.</summary>
+    private static string Described(IReadOnlyList<CodeResponse> list, string? code) =>
+        string.IsNullOrWhiteSpace(code) ? "—"
+        : list.FirstOrDefault(listed => listed.Code == code)?.Description ?? code;
+
+    /// <summary>A stored code id by its description, or the id itself where the list does not hold it.</summary>
+    private static string Described(IReadOnlyList<CodeResponse> list, int? codeId) =>
+        codeId is not { } id ? "—"
+        : list.FirstOrDefault(listed => listed.Id == id)?.Description ?? Shown(id);
+
+    /// <summary>A person's name as the tab writes it: last name, then first.</summary>
+    private static string Named(string lastName, string? firstName) =>
+        string.IsNullOrWhiteSpace(firstName) ? lastName : $"{lastName}, {firstName}";
 
     /// <summary>
     /// Adds the contact to the open exposure as a contact event of their own,
@@ -721,6 +970,26 @@
                 listFailure ??= found.Failure;
             }
         }
+
+        // The table names persons, not ids, and a source's report by its
+        // disease, so each person it shows is read once.
+        foreach (var exposure in exposures)
+        {
+            foreach (var contact in exposure.Contacts)
+            {
+                await KnowPerson(contact.PersonId);
+            }
+
+            foreach (var source in exposure.Sources)
+            {
+                await KnowPerson(source.PersonId);
+
+                if (source.PersonConditionId is not null)
+                {
+                    await KnowReports(source.PersonId);
+                }
+            }
+        }
     }
 
     private async Task Record()
@@ -801,11 +1070,23 @@
     /// <summary>
     /// Opens a listed exposure into the entry form, so its own columns, its
     /// place, its contacts and its sources can be corrected and removed in
-    /// place. The exposure is already in hand whole, so there is nothing to
-    /// read back.
+    /// place. The exposure is already in hand whole; what is read is the names
+    /// of the persons it names and the reports of its sources' persons, so the
+    /// rows show who they are and a source's Report list holds its report.
     /// </summary>
-    private void OpenForEdit(ExposureDetailResponse whole)
+    private async Task OpenForEdit(ExposureDetailResponse whole)
     {
+        foreach (var contact in whole.Contacts)
+        {
+            await KnowPerson(contact.PersonId);
+        }
+
+        foreach (var source in whole.Sources)
+        {
+            await KnowPerson(source.PersonId);
+            await KnowReports(source.PersonId);
+        }
+
         saved = null;
         entryFailure = null;
         complaint = null;
@@ -1231,6 +1512,7 @@
         placeForm = new PlaceForm();
         contacts = [];
         sources = [];
+        CloseChoose();
     }
 
     /// <summary>

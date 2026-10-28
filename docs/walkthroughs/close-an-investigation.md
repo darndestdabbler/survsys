@@ -134,26 +134,29 @@ of every test it runs, and writes the recordings to
 9. The report now exists, and the screen is its own form. In the header bar,
    **Patient name** reads **Abbott, Jane**, **Disease** reads **Lyme
    disease**, **Investigating agency** reads **Utah State** and **Record #**
-   is nine digits beginning with the current year. **Note three things**:
-   the record number, which every queue step finds the case by; the
-   report's id, which is the number at the end of the address in your
-   browser's address bar, after `/event/edit/`, and which step 11 needs; and
-   the address itself, which step 18 comes back to.
+   is nine digits beginning with the current year. **Note two things**: the
+   record number, which every queue step finds the case by, and the address
+   in your browser's address bar, which step 18 comes back to.
 10. In the side menu, under **Cases**, choose **Agency board**. Below the application
     bar is the heading **Agency board**. Open the **Agency** list and choose
     **Summit County**. The list closes, and the **Agency** box now reads
     **Summit County**. The board below shows Summit County's queue, and no
     row in it carries the record number you noted.
-11. In the **Assign a report** panel, type the report's id in the box
-    labelled **Report id**. Open the **Assign to agency** list and choose
+11. Open the **Agency** list again and choose **Utah State**, the agency
+    that opened the report. Its queue is newest record number first, so the
+    row carrying the record number you noted is at the top. Press **Assign**
+    on that row. A panel opens below the board, headed **Assign report** and
+    the record number. Open its **Assign to agency** list and choose
     **Summit County**. The list closes, and the **Assign to agency** box now
     reads **Summit County**.
-12. Press **Assign**. A green message appears at the top of the panel,
-    reading **Report** followed by the record number and **is assigned, at
-    the assigned-to-LHD start.** The board above now has a row carrying the
+12. Press the panel's **Assign**. A green message appears at the top of the
+    panel, reading **Report** followed by the record number and **is
+    assigned, at the assigned-to-LHD start.** Open the **Agency** list and
+    choose **Summit County** again. The board now has a row carrying the
     record number, and it reads, left to right: the record number, **Lyme
     disease**, **Assigned to LHD**, **Unknown**, today's date written as
-    `yyyy-mm-dd`, and **Investigating**.
+    `yyyy-mm-dd`, **Investigating**, and the **Assign** and **Share**
+    buttons.
 13. In the side menu, under **Cases**, choose **Work queue**. Below the application bar
     is the heading **Work queue**. Open the **Agency** list and choose
     **Summit County**. The list closes, and the **Agency** box now reads

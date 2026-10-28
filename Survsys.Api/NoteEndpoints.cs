@@ -24,7 +24,7 @@ namespace Survsys.Api;
 /// A note is scoped to the report in the route: the server sets
 /// <c>person_condition_id</c> to that report and <c>created_at</c> from the
 /// clock, taking neither on the wire, as the exposure slice sets an exposure's
-/// report.
+/// report. The note's author is the signed-in caller, whoever they are.
 ///
 /// <strong>There is no PUT over a note's text and no DELETE.</strong>
 /// Strikethrough is the soft delete the Notes tab offers, and it is the one
@@ -33,9 +33,8 @@ namespace Survsys.Api;
 /// struck. Nothing here hides a struck note, because hiding it would make the
 /// soft delete a hard one with extra steps.
 ///
-/// A private note is the one thing the list does hide: it is recorded under
-/// the signed-in user rather than the user on the wire, and listed only to
-/// that user, the page's total counting only what the caller may see.
+/// A private note is the one thing the list does hide: it is listed only to
+/// its author, the page's total counting only what the caller may see.
 /// </remarks>
 public static class NoteEndpoints
 {
@@ -273,7 +272,7 @@ internal sealed class NoteQueries(SurvsysDbContext database)
         {
             PersonConditionId = reportId,
             ExposureId = request.ExposureId,
-            UserId = request.Private ? callerId : request.UserId,
+            UserId = callerId,
             Private = request.Private,
             NoteType = request.NoteType,
             Text = request.Text,

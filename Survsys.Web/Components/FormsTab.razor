@@ -5,7 +5,8 @@
    with the case's answers so far, and Save sends the answers whole.
 
    A form is assigned to the case by its condition's auto-assign rule when the
-   case is opened, or built and assigned through the forms builder. The
+   case is opened, or by hand here: the Assign form list offers the forms for
+   the case's condition not already assigned to it. The
    required-answer and coded-choice rules stay the API tier's; an answer it
    refuses is shown as the client's message rather than re-checked here.
 
@@ -63,6 +64,28 @@ else
                 }
             </tbody>
         </MudSimpleTable>
+
+        @if (assignFailure is { } notAssigned)
+        {
+            <MudAlert id="forms-tab-assign-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mt-4">
+                @notAssigned
+            </MudAlert>
+        }
+
+        <div class="d-flex align-center gap-2 mt-4">
+            <MudSelect T="int?" @bind-Value="formToAssign" id="forms-tab-assign-form"
+                       Label="Assign form" Variant="Variant.Outlined" Margin="Margin.Dense"
+                       Style="max-width: 24rem">
+                @foreach (var unassigned in Assignable)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)unassigned.Id)">@unassigned.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudButton id="forms-tab-assign" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(assigning || formToAssign is null)" OnClick="@Assign">
+                Assign
+            </MudButton>
+        </div>
     </MudPaper>
 
     @if (openForm is { } form)
@@ -133,7 +156,25 @@ else
     [Parameter, EditorRequired]
     public int ReportId { get; set; }
 
+    /// <summary>The case's condition, whose forms the Assign form list offers.</summary>
+    [Parameter, EditorRequired]
+    public int ConditionId { get; set; }
+
     private const int CodedType = 1;
+
+    /// <summary>Every form on file; empty where they could not be read, and nothing is offered.</summary>
+    private IReadOnlyList<FormResponse> forms = [];
+
+    private int? formToAssign;
+
+    private bool assigning;
+
+    private string? assignFailure;
+
+    /// <summary>The forms for the case's condition not already assigned to it.</summary>
+    private IEnumerable<FormResponse> Assignable =>
+        forms.Where(form => form.ConditionId == ConditionId
+            && assignments?.Any(assignment => assignment.FormId == form.Id) != true);
 
     private List<FormAssignmentResponse>? assignments;
 
@@ -151,9 +192,45 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        forms = (await Api.All()).Value?.Items ?? [];
+
         var asked = await Api.CaseForms(ReportId);
         assignments = asked.Value ?? [];
         listFailure = asked.Failure;
+    }
+
+    /// <summary>
+    /// Assigns the chosen form to the case and adds it to the assigned list,
+    /// or shows why the API tier refused it.
+    /// </summary>
+    private async Task Assign()
+    {
+        if (formToAssign is not { } formId)
+        {
+            return;
+        }
+
+        assignFailure = null;
+        assigning = true;
+
+        try
+        {
+            var assigned = await Api.Assign(ReportId, formId);
+
+            if (assigned.Value is { } assignment)
+            {
+                assignments = [.. assignments ?? [], assignment];
+                formToAssign = null;
+            }
+            else
+            {
+                assignFailure = assigned.Failure;
+            }
+        }
+        finally
+        {
+            assigning = false;
+        }
     }
 
     private async Task Open(int assignmentId)

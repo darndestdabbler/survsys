@@ -25,13 +25,12 @@ inferred from three legacy sources, all read-only here and never modified:
 Five differences from the legacy screens are deliberate, and this walkthrough
 describes what Survsys shows rather than what EpiTrax showed:
 
-- **Assigning is a form on the Agency board, naming the report by its id.**
-  The legacy routed a case to a department from the report's own *Workflow
-  Options* menu. Survsys has an **Assign a report** panel on the **Agency
-  board**, which takes the report's id — the number at the end of the
-  report's address, after `/event/edit/` — and the agency to assign it to.
-  The record number is in the report's header, where the legacy shows it
-  too; the id is in the address only.
+- **Assigning is a button on the case's row on the Agency board.** The
+  legacy routed a case to a department from the report's own *Workflow
+  Options* menu. On the Survsys **Agency board**, each row carries an
+  **Assign** button that opens the choice of agency for that report. The
+  row is found by its record number, which is in the report's header, where
+  the legacy shows it too.
 - **Accepting is a button on the case's row in the Work queue**, not the
   **Accept Event** button in the report's header bar. The report form
   carries no workflow status and no workflow buttons yet; the queue screens
@@ -137,32 +136,34 @@ of every test it runs, and writes the recordings to
 9. The report now exists, and the screen is its own form. In the header bar,
    **Patient name** reads **Okafor, Chidi**, **Disease** reads
    **Listeriosis**, **Investigating agency** reads **Utah State** and
-   **Record #** is nine digits beginning with the current year. **Note two
-   numbers**: the record number, which steps 13 to 17 find the case by, and
-   the report's id, which is the number at the end of the address in your
-   browser's address bar, after `/event/edit/` — step 12 needs it.
+   **Record #** is nine digits beginning with the current year. **Note the
+   record number**: steps 11 to 17 find the case by it.
 10. In the side menu, under **Cases**, choose **Agency board**. The browser tab reads
     **Agency board — Survsys**, and below the application bar is the heading
     **Agency board**. Under the **Agency** list, a line reads **Choose an
-    agency to see its work queue.**, and below that are two panels, headed
-    **Assign a report** and **Share a report read-only**.
+    agency to see its work queue.**
 11. Open the **Agency** list and choose **Davis County**. The list closes,
     and the **Agency** box now reads **Davis County**. The board below it
     now shows Davis County's queue, and no row in it carries the record
     number you noted: the report is not Davis County's yet.
-12. In the **Assign a report** panel, type the report's id — the number you
-    noted from the address in step 9 — in the box labelled **Report id**.
-    Open the **Assign to agency** list and choose **Davis County**. The list
-    closes, and the **Assign to agency** box now reads **Davis County**.
-13. Press **Assign**. A green message appears at the top of the panel,
-    reading **Report** followed by the record number and **is assigned, at
-    the assigned-to-LHD start.** The board above now has a row carrying the
+12. Open the **Agency** list again and choose **Utah State**, the agency
+    that opened the report. Its queue is newest record number first, so the
+    row carrying the record number you noted is at the top, with an
+    **Assign** and a **Share** button at its end. Press **Assign** on that
+    row. A panel opens below the board, headed **Assign report** and the
+    record number. Open its **Assign to agency** list and choose **Davis
+    County**. The list closes, and the **Assign to agency** box now reads
+    **Davis County**.
+13. Press the panel's **Assign**. A green message appears at the top of the
+    panel, reading **Report** followed by the record number and **is
+    assigned, at the assigned-to-LHD start.** Open the **Agency** list and
+    choose **Davis County** again. The board now has a row carrying the
     record number, and it reads, left to right: the record number,
     **Listeriosis**, **Assigned to LHD**, **Unknown**, today's date written
-    as `yyyy-mm-dd`, and **Investigating**. The date is the case's onset,
-    which is the day the report was opened, as the *Create a case morbidity
-    report* walkthrough says of the event date; **Unknown** is the case
-    status nobody has set.
+    as `yyyy-mm-dd`, **Investigating**, and the **Assign** and **Share**
+    buttons. The date is the case's onset, which is the day the report was
+    opened, as the *Create a case morbidity report* walkthrough says of the
+    event date; **Unknown** is the case status nobody has set.
 14. In the side menu, under **Cases**, choose **Work queue**. The browser tab reads
     **Work queue — Survsys**, and below the application bar is the heading
     **Work queue**. Under the **Agency** list, a line reads **Choose an
@@ -189,9 +190,9 @@ A case morbidity report opened by the state, assigned to Davis County and
 accepted there:
 
 - A report on **Okafor, Chidi** for **Listeriosis**, investigated by **Utah
-  State**, with a nine-digit record number in its header and its id in its
-  address.
-- On the **Agency board**, after **Assign**, the message **Report … is
+  State**, with a nine-digit record number in its header.
+- On the **Agency board**, after **Assign** on the case's row under Utah
+  State, the message **Report … is
   assigned, at the assigned-to-LHD start.** and the case on Davis County's
   board at **Assigned to LHD**.
 - On the **Work queue** for Davis County, the case's row offering

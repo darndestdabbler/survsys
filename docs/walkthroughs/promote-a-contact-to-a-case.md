@@ -108,12 +108,12 @@ of every test it runs, and writes the recordings to
    Family dinner** opens, with a **Contact type** list and a person search
    under it. Open the **Contact type** list and choose **Household**.
 9. In the panel's box labelled **Last name**, type `Zimmerman`, then press
-   **Search**. The one row reads **Zimmerman, Paul**; note the number in its
-   **ID** column. Press **Add as contact** on that row.
+   **Search**. The one row reads **Zimmerman, Paul**. Press **Add as
+   contact** on that row.
 10. A green message reads **The contact has been added as a contact event.**,
     the panel closes, and the **Family dinner** row's **Contacts** cell holds
-    one contact: its **Person** reads the number you noted followed by the
-    link **(contact event)**, and its **Type** reads **HOUSEHOLD**.
+    one contact: its **Person** reads **Zimmerman, Paul** followed by the
+    link **(contact event)**, and its **Type** reads **Household**.
 11. Press **(contact event)**. The address changes to the contact's own
     report, and the screen shows it: in the header bar, **Patient name**
     reads **Zimmerman, Paul**, **Event type** reads **Contact**, **Disease**

@@ -20,12 +20,11 @@ namespace Survsys.E2ETests;
 /// position. Every list is opened and its item chosen by the text the
 /// document names, as the creation walkthrough's test does.
 ///
-/// The document has its reader note two numbers at step 9 — the record
-/// number from the header, and the report's id from the address — and this
-/// test keeps both the same way: the record number is what the messages and
-/// the row's first cell are asserted against, and the id is what is typed
-/// into the Agency board's box and what the queue row's identifier carries,
-/// which is how the row carrying the record number is found.
+/// The document has its reader note the record number at step 9, and find
+/// the case's row on the boards by it. This test asserts the messages and the
+/// row's first cell against that number, and reads the report's id off the
+/// address only because the queue row's identifier carries it: that is the
+/// stable identifier the row is selected by, and the reader types it nowhere.
 /// </remarks>
 [Collection(SurvsysCollection.Name)]
 public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
@@ -36,7 +35,7 @@ public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
     /// </summary>
     private const string Document = "docs/walkthroughs/assign-and-accept-a-case.md";
 
-    /// <summary>The report's address, as the document has the reader note it.</summary>
+    /// <summary>The report's address, whose id the queue rows' identifiers carry.</summary>
     private static readonly Regex ReportAddress = new(@"/event/edit/(\d+)$");
 
     /// <summary>
@@ -93,12 +92,12 @@ public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
         await Step(Document, 8, "press Save & Continue", async () =>
             await Page.Locator("#report-save").ClickAsync());
 
-        // 9. The report's form, and the two numbers the reader notes: the
-        //    record number from the header, the id from the address.
+        // 9. The report's form, and the record number the reader notes from
+        //    its header; the id, from the address, names the queue row.
         var recordNumber = string.Empty;
         var reportId = string.Empty;
 
-        await Step(Document, 9, "read the report form's header and note the record number and the report's id", async () =>
+        await Step(Document, 9, "read the report form's header and note the record number", async () =>
         {
             var year = DateTime.Today.Year.ToString("D4", CultureInfo.InvariantCulture);
 
@@ -114,16 +113,14 @@ public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
             reportId = address.Groups[1].Value;
         });
 
-        // 10. The Agency board: its tab, heading, hint and two panels.
-        await Step(Document, 10, "press Agency board and read its heading, hint and panels", async () =>
+        // 10. The Agency board: its tab, heading and hint.
+        await Step(Document, 10, "press Agency board and read its heading and hint", async () =>
         {
             await Page.Locator("#nav-agency-queue").ClickAsync();
 
             await Expect(Page).ToHaveTitleAsync("Agency board — Survsys");
             await Expect(Page.Locator("#agency-queue-heading")).ToHaveTextAsync("Agency board");
             await Expect(Page.Locator("#work-queue-empty")).ToHaveTextAsync("Choose an agency to see its work queue.");
-            await Expect(Page.Locator("#agency-queue-assign")).ToContainTextAsync("Assign a report");
-            await Expect(Page.Locator("#agency-queue-share")).ToContainTextAsync("Share a report read-only");
         });
 
         // 11. Davis County on the board: its queue, without this report.
@@ -136,15 +133,24 @@ public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
             await Expect(Page.Locator($"#queue-row-{reportId}")).ToHaveCountAsync(0);
         });
 
-        // 12. The report's id and Davis County in the Assign a report panel.
-        await Step(Document, 12, "type the report's id in Report id and choose Davis County from Assign to agency", async () =>
+        // 12. Utah State's board, the case's row at its top, and Assign on it
+        //     opening the agency choice for that report.
+        await Step(Document, 12, "choose Utah State, press Assign on the top row and choose Davis County from Assign to agency", async () =>
         {
-            await Page.Locator("#agency-queue-assign-report").FillAsync(reportId);
+            await Choose("Agency", "Utah State");
+
+            await Expect(Page.Locator("#work-queue-table tbody tr").First)
+                .ToHaveAttributeAsync("id", $"queue-row-{reportId}");
+            await Expect(Page.Locator($"#queue-row-{reportId}-record")).ToHaveTextAsync(recordNumber);
+
+            await Page.Locator($"#queue-row-{reportId}-assign").ClickAsync();
+
+            await Expect(Page.Locator("#agency-queue-assign")).ToContainTextAsync($"Assign report {recordNumber}");
             await Choose("Assign to agency", "Davis County");
         });
 
-        // 13. Assign: the message, and the row now on the board.
-        await Step(Document, 13, "press Assign and read the assigned message and the row on the board", async () =>
+        // 13. Assign: the message, and the row now on Davis County's board.
+        await Step(Document, 13, "press Assign, read the assigned message, choose Davis County and read the row", async () =>
         {
             await Page.Locator("#agency-queue-assign-save").ClickAsync();
 
@@ -152,8 +158,10 @@ public class AssignAndAcceptACaseTests(SurvsysHarness harness) : SurvsysPageTest
                 .ToHaveTextAsync($"Report {recordNumber} is assigned, at the assigned-to-LHD start.");
             await Expect(Page.Locator("#agency-queue-assign-error")).ToHaveCountAsync(0);
 
+            await Choose("Agency", "Davis County");
+
             await Expect(Page.Locator($"#queue-row-{reportId} td")).ToHaveTextAsync(
-                [recordNumber, "Listeriosis", "Assigned to LHD", "Unknown", Today, "Investigating"]);
+                [recordNumber, "Listeriosis", "Assigned to LHD", "Unknown", Today, "Investigating", "Assign Share"]);
         });
 
         // 14. The Work queue: its tab, heading and hint.

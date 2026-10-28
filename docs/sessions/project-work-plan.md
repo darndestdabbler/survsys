@@ -132,6 +132,11 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 118 | Release 1.0.1 (release: 1.0.1) | yes | 2026-10-28 |
 | 119 | The side menu's group headings in the primary colour | no | 2026-10-28 |
 | 120 | Release 1.0.2 (release: 1.0.2) | yes | 2026-10-28 |
+| 121 | Choosing related records on a case, not typing their ids | no | 2026-10-28 |
+| 122 | Choosing related records on the Laboratory tab and the reference screens | — | not declared |
+| 123 | The provider registry | — | not declared |
+| 124 | The ordering clinician chosen from the registry | — | not declared |
+| 125 | Release 1.1.0 (release: 1.1.0) | — | not declared |
 
 ### Session 1 — Author or import the solution plan
 
@@ -1047,3 +1052,9 @@ Make the side menu's group headings stand out from the links under them. In Surv
 **Releasable: yes.**
 
 Release 1.0.2: the framework packs and publishes what is on the trunk.
+
+### Session 121 — Choosing related records on a case, not typing their ids
+
+**Releasable: no.**
+
+Stop the case screens asking for database ids. On the Contacts tab the entry form's contact Person and source Person become a Choose button that opens the PersonSearchPanel the Add contact panel already uses: its rows choose the person, its empty result creates one from the criteria (PersonsClient.Create), and the row then shows the chosen person's name; a source's Report becomes a list of that person's reports (the case search by personId) by disease and onset date. The Exposures table shows contacts' and sources' person names, the contact type's and disposition's descriptions (from the code lists) and the source report's disease, and the tab's comment loses its stale lines on plain coded boxes. On the Notes tab Creator goes: CreateNoteRequest loses UserId and the API tier records every note under the signed-in caller, as attachments are; Exposure becomes a list of the case's exposures by name and date. The task entry's Assigned to becomes a list over the existing view_cases endpoint /api/investigators (each active user's id and display name, nothing else, so no new endpoint is written), defaulting to the signed-in user, whose id the web tier's principal now carries as its NameIdentifier claim. The Agency board's two Report id boxes go: WorkQueuePanel takes an optional per-row action fragment, and the board gives each row Assign and Share buttons that open one agency choice for that report. The Forms tab gains an Assign form list of the forms for the case's condition not already assigned, calling POST /api/cases/{id}/forms/{formId} through a new FormsClient.Assign. The walkthroughs that typed these ids, and their end-to-end tests, choose instead, and Complete a supplemental form assigns a form by hand.
