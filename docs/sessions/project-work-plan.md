@@ -131,7 +131,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 117 | A grouped navigation menu | no | 2026-10-28 |
 | 118 | Release 1.0.1 (release: 1.0.1) | yes | 2026-10-28 |
 | 119 | The side menu's group headings in the primary colour | no | 2026-10-28 |
-| 120 | Release 1.0.2 (release: 1.0.2) | — | not declared |
+| 120 | Release 1.0.2 (release: 1.0.2) | yes | 2026-10-28 |
 
 ### Session 1 — Author or import the solution plan
 
@@ -1041,3 +1041,9 @@ Release 1.0.1: the framework packs and publishes what is on the trunk.
 **Releasable: no.**
 
 Make the side menu's group headings stand out from the links under them. In Survsys.Web/Components/Layout/MainLayout.razor, a small <style> block (as PrintReport.razor already carries one) scoped to #nav-drawer gives each MudNavGroup's heading the theme's primary colour as its background and the primary text colour for its words and its expand arrow, through MudBlazor's own --mud-palette-primary and --mud-palette-primary-text variables so that it follows the app bar, with a small margin above the first heading and between groups; the layout's opening comment records the change. Survsys.E2ETests/MainLayoutTests.cs gains a test that a group heading's computed background colour equals the app bar's.
+
+### Session 120 — Release 1.0.2 (release: 1.0.2)
+
+**Releasable: yes.**
+
+Release 1.0.2: the framework packs and publishes what is on the trunk.
