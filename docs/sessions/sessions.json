@@ -2520,9 +2520,9 @@
     {
       "number": 122,
       "title": "Choosing related records on the Laboratory tab and the reference screens",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-28T14:34:37.498000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-28T14:49:54.868000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
