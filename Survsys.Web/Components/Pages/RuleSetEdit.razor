@@ -1,0 +1,330 @@
+@* One rule set configuration's editor: the format its value is produced in,
+   the value set coded output resolves through, whether every response is
+   carried, the fields it reads (one per line), its named parameters (dataSet
+   names the repeating dataset, for example Lab or HepLab), its value maps,
+   and its expressions with their conditions. The value set is chosen from the
+   value sets on file and a condition's field from the fields the rule set
+   reads; a stored value either list does not hold is still offered, as
+   itself. Saving replaces the configuration whole. *@
+@page "/rule-sets/{Id:int}"
+@inject RuleSetsClient Client
+@inject ValueSetsClient ValueSets
+
+<PageTitle>Rule set — Survsys</PageTitle>
+
+<MudText id="rule-set-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Rule set configuration #@Id
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="rule-set-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@whyNot</MudAlert>
+}
+
+@if (saved)
+{
+    <MudAlert id="rule-set-saved" Severity="Severity.Success" Class="mb-4">The rule set was saved.</MudAlert>
+}
+
+@if (form is null)
+{
+    @if (failure is null)
+    {
+        <MudProgressCircular id="rule-set-loading" Color="Color.Primary" Indeterminate="true" />
+    }
+}
+else
+{
+    <MudButton id="rule-set-back" Variant="Variant.Text" Href="/phin-variables" Class="mb-4">PHIN variables</MudButton>
+
+    <MudPaper Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudSelect T="string" id="rule-set-format-type" Label="Format type" Variant="Variant.Outlined"
+                           @bind-Value="form.FormatType">
+                    <MudSelectItem T="string" Value="@((string?)null)">(none)</MudSelectItem>
+                    @foreach (var formatType in FormatTypes)
+                    {
+                        <MudSelectItem T="string" Value="@formatType">@formatType</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="5">
+                <MudSelect T="string" id="rule-set-value-set" Label="Value set" Variant="Variant.Outlined"
+                           @bind-Value="form.ValueSetName">
+                    <MudSelectItem T="string" Value="@((string?)null)">(none)</MudSelectItem>
+                    @foreach (var valueSet in WithStored(valueSetNames, form.ValueSetName))
+                    {
+                        <MudSelectItem T="string" Value="@valueSet">@valueSet</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3" Class="d-flex align-center">
+                <MudCheckBox @bind-Value="form.Repeating" id="rule-set-repeating" Label="Repeating" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="form.Fields" id="rule-set-fields" Label="Fields, one per line"
+                              Variant="Variant.Outlined" Lines="3" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper id="rule-set-data" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Parameters</MudText>
+        @foreach (var (item, at) in form.Data.Select((item, at) => (item, at)))
+        {
+            <div class="d-flex gap-2 align-center mb-2">
+                <MudTextField @bind-Value="item.Name" id="@($"rule-set-data-name-{at}")" Label="Name"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="100" />
+                <MudTextField @bind-Value="item.Value" id="@($"rule-set-data-value-{at}")" Label="Value"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="1000" />
+                <MudButton id="@($"rule-set-data-remove-{at}")" Size="Size.Small" Color="Color.Error"
+                           OnClick="@(() => form.Data.Remove(item))">Remove</MudButton>
+            </div>
+        }
+        <MudButton id="rule-set-data-add" Variant="Variant.Text" OnClick="@(() => form.Data.Add(new()))">Add parameter</MudButton>
+    </MudPaper>
+
+    <MudPaper id="rule-set-value-maps" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Value maps</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">null_value and default_value in From are the fallbacks.</MudText>
+        @foreach (var (map, at) in form.ValueMaps.Select((map, at) => (map, at)))
+        {
+            <div class="d-flex gap-2 align-center mb-2">
+                <MudTextField @bind-Value="map.ValueFrom" id="@($"rule-set-map-from-{at}")" Label="From"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="500" />
+                <MudTextField @bind-Value="map.ValueTo" id="@($"rule-set-map-to-{at}")" Label="To"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="500" />
+                <MudTextField @bind-Value="map.OtherSpecified" id="@($"rule-set-map-other-{at}")" Label="Other specified"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="500" />
+                <MudButton id="@($"rule-set-map-remove-{at}")" Size="Size.Small" Color="Color.Error"
+                           OnClick="@(() => form.ValueMaps.Remove(map))">Remove</MudButton>
+            </div>
+        }
+        <MudButton id="rule-set-map-add" Variant="Variant.Text" OnClick="@(() => form.ValueMaps.Add(new()))">Add value map</MudButton>
+    </MudPaper>
+
+    <MudPaper id="rule-set-expressions" Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Expressions</MudText>
+        @foreach (var (expression, at) in form.Expressions.Select((expression, at) => (expression, at)))
+        {
+            <MudPaper id="@($"rule-set-expression-{at}")" Elevation="0" Outlined="true" Class="pa-3 mb-3">
+                <div class="d-flex gap-2 align-center mb-2">
+                    <MudNumericField T="int" @bind-Value="expression.ExecutionOrder" id="@($"rule-set-expression-order-{at}")"
+                                     Label="Order" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 7rem" />
+                    <MudTextField @bind-Value="expression.Value" id="@($"rule-set-expression-value-{at}")" Label="Value"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="500" />
+                    <MudTextField @bind-Value="expression.OtherSpecified" id="@($"rule-set-expression-other-{at}")"
+                                  Label="Other specified" Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="500" />
+                    <MudButton id="@($"rule-set-expression-remove-{at}")" Size="Size.Small" Color="Color.Error"
+                               OnClick="@(() => form.Expressions.Remove(expression))">Remove</MudButton>
+                </div>
+                @foreach (var (condition, index) in expression.Conditions.Select((condition, index) => (condition, index)))
+                {
+                    <div class="d-flex gap-2 align-center mb-2 ml-6">
+                        <MudSelect T="string" id="@($"rule-set-condition-and-or-{at}-{index}")" Label="And/or"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="condition.AndOr"
+                                   Style="max-width: 7rem">
+                            <MudSelectItem T="string" Value="@((string?)null)">(first)</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("AND")">AND</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("OR")">OR</MudSelectItem>
+                        </MudSelect>
+                        <MudSelect T="string" id="@($"rule-set-condition-field-{at}-{index}")" Label="Field"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="condition.Field">
+                            @foreach (var field in WithStored(form.FieldList, condition.Field))
+                            {
+                                <MudSelectItem T="string" Value="@field">@field</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudSelect T="string" id="@($"rule-set-condition-operator-{at}-{index}")" Label="Operator"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="condition.Operator"
+                                   Style="max-width: 7rem">
+                            @foreach (var op in Operators)
+                            {
+                                <MudSelectItem T="string" Value="@op">@op</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudTextField @bind-Value="condition.Value" id="@($"rule-set-condition-value-{at}-{index}")"
+                                      Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="500" />
+                        <MudCheckBox @bind-Value="condition.ValueIsField" id="@($"rule-set-condition-is-field-{at}-{index}")"
+                                     Label="Value is a field" />
+                        <MudButton id="@($"rule-set-condition-remove-{at}-{index}")" Size="Size.Small" Color="Color.Error"
+                                   OnClick="@(() => expression.Conditions.Remove(condition))">Remove</MudButton>
+                    </div>
+                }
+                <MudButton id="@($"rule-set-condition-add-{at}")" Variant="Variant.Text" Class="ml-6"
+                           OnClick="@(() => expression.Conditions.Add(new()))">
+                    Add condition
+                </MudButton>
+            </MudPaper>
+        }
+        <MudButton id="rule-set-expression-add" Variant="Variant.Text"
+                   OnClick="@(() => form.Expressions.Add(new() { ExecutionOrder = form.Expressions.Count + 1 }))">
+            Add expression
+        </MudButton>
+    </MudPaper>
+
+    <MudButton id="rule-set-save" Variant="Variant.Filled" Color="Color.Primary" Disabled="@saving" OnClick="@Save">
+        Save rule set
+    </MudButton>
+}
+
+@code {
+    private static readonly string[] FormatTypes =
+    [
+        "string", "numeric", "date", "phinValueSet", "unitOfMeasure", "textToValueSet", "stringToValueSet",
+        "questionToValueSet", "formValueToText", "hospitalized", "text", "field",
+    ];
+
+    private static readonly string[] Operators = ["=", "<>", ">", "<", ">=", "<="];
+
+    [Parameter]
+    public int Id { get; set; }
+
+    private RuleSetForm? form;
+
+    private bool saving;
+
+    private bool saved;
+
+    private string? failure;
+
+    /// <summary>The names of the value sets on file, read once, that the value set is chosen from.</summary>
+    private IReadOnlyList<string> valueSetNames = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var concepts = (await ValueSets.List<PhinValueSetRow>(ValueSetsClient.PhinValueSets)).Value ?? [];
+        var units = (await ValueSets.List<PhinUnitOfMeasureRow>(ValueSetsClient.UnitsOfMeasure)).Value ?? [];
+
+        valueSetNames = concepts.Select(row => row.ValueSetName)
+            .Concat(units.Select(row => row.ValueSetName))
+            .Distinct()
+            .Order(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>A list's values, and a stored value the list does not hold as one of its own.</summary>
+    private static IEnumerable<string> WithStored(IEnumerable<string> values, string? stored) =>
+        string.IsNullOrEmpty(stored) || values.Contains(stored) ? values : values.Append(stored);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var loaded = await Client.Get(Id);
+        failure = loaded.Failure;
+        form = loaded.Value is { } row ? new RuleSetForm(row) : null;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        saved = false;
+        failure = null;
+        var asked = await Client.Save(Id, form!.ToRow());
+        saving = false;
+
+        if (asked.Value is { } row)
+        {
+            form = new RuleSetForm(row);
+            saved = true;
+            return;
+        }
+
+        failure = asked.Failure;
+    }
+
+    private sealed class RuleSetForm(RuleSetConfigRow row)
+    {
+        public string? FormatType { get; set; } = row.FormatType;
+
+        public string? ValueSetName { get; set; } = row.ValueSetName;
+
+        public bool Repeating { get; set; } = row.Repeating;
+
+        public string? Fields { get; set; } = string.Join('\n', row.Fields);
+
+        public List<DataForm> Data { get; } = row.Data.Select(item => new DataForm { Name = item.Name, Value = item.Value }).ToList();
+
+        public List<MapForm> ValueMaps { get; } = row.ValueMaps
+            .Select(map => new MapForm { ValueFrom = map.ValueFrom, ValueTo = map.ValueTo, OtherSpecified = map.OtherSpecified })
+            .ToList();
+
+        public List<ExpressionForm> Expressions { get; } = row.Expressions.Select(expression => new ExpressionForm
+        {
+            Value = expression.Value,
+            OtherSpecified = expression.OtherSpecified,
+            ExecutionOrder = expression.ExecutionOrder,
+            Conditions = expression.Conditions.Select(condition => new ConditionForm
+            {
+                Field = condition.Field,
+                Operator = condition.Operator,
+                Value = condition.Value,
+                AndOr = condition.AndOr,
+                ValueIsField = condition.ValueIsField,
+            }).ToList(),
+        }).ToList();
+
+        /// <summary>The fields the Fields box names, one per line.</summary>
+        public string[] FieldList =>
+            (Fields ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        public RuleSetConfigRow ToRow() =>
+            new(
+                0,
+                FormatType,
+                ValueSetName,
+                Repeating,
+                FieldList,
+                Data.Select(item => new RuleSetDataRow(item.Name ?? "", item.Value)).ToList(),
+                ValueMaps.Select(map => new RuleSetValueMapRow(map.ValueFrom, map.ValueTo, map.OtherSpecified)).ToList(),
+                Expressions.Select(expression => new RuleSetExpressionRow(
+                        expression.Value,
+                        expression.OtherSpecified,
+                        expression.ExecutionOrder,
+                        expression.Conditions
+                            .Select(condition => new RuleSetExpressionConditionRow(
+                                condition.Field, condition.Operator, condition.Value, condition.AndOr, condition.ValueIsField))
+                            .ToList()))
+                    .ToList());
+    }
+
+    private sealed class DataForm
+    {
+        public string? Name { get; set; }
+
+        public string? Value { get; set; }
+    }
+
+    private sealed class MapForm
+    {
+        public string? ValueFrom { get; set; }
+
+        public string? ValueTo { get; set; }
+
+        public string? OtherSpecified { get; set; }
+    }
+
+    private sealed class ExpressionForm
+    {
+        public string? Value { get; set; }
+
+        public string? OtherSpecified { get; set; }
+
+        public int ExecutionOrder { get; set; }
+
+        public List<ConditionForm> Conditions { get; init; } = [];
+    }
+
+    private sealed class ConditionForm
+    {
+        public string? Field { get; set; }
+
+        public string? Operator { get; set; } = "=";
+
+        public string? Value { get; set; }
+
+        public string? AndOr { get; set; }
+
+        public bool ValueIsField { get; set; }
+    }
+}

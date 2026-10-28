@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 098 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 098 transcript</h1>
+<p class="stamp">Rendered 2026-10-22T09:04:14.684Z by dabbler-ai-router 3.23.0 at ee41f516bd247ced69876d5a9fa736c0c0baa71b.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-22T04:40:20.235-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 98: IBIS, ad-hoc reporting and system configuration</h3>
+<ol><li>Register.</li><li><code>Survsys.Web</code>: a Send to IBIS action on the report, privilege-gated, over the endpoint session 55 built.</li><li><code>Survsys.Api</code> and <code>Survsys.Web</code>: ad-hoc reporting over the saved views — counts grouped by any of a view's columns, shown on screen and exported — and condition configuration's notification guide, print criteria and intake flags.</li><li><code>Survsys.Data</code>, <code>Survsys.Api</code> and <code>Survsys.Web</code>: system configuration settings stored in the database and edited on an Administration screen.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Finish Phase 12's IBIS, ad-hoc reporting and system configuration. In Survsys.Web the morbidity report gets a Send to IBIS action, shown only to a user holding edit_cases, over the existing POST /api/person-conditions/{id}/ibis: it shows the date IBIS accepted the case, or what the endpoint said when IBIS timed out or refused it. Ad-hoc reporting runs over the caller's saved views: GET /api/reports/saved-views/{id}/counts?groupBy=&lt;column&gt; counts the reports a view selects grouped by any one of that view's own columns, and /counts/export answers the same counts as CSV; both sit under /api/reports, so run_reports gates them, and a view that is not the caller's is a 404. The Reports screen gains a section to pick a saved view and one of its columns, show the counts and export them. Condition configuration gains the notification guide a condition is exported under (the condition_detail row, written by the condition save, removed when the guide is cleared) and two EMSA intake flags on the condition, bypass out-of-state and block preliminary results, which automatic assignment honours: a message for a bypassing condition is not held as out of state, and one whose results are all preliminary (OBX-11 P) for a blocking condition is filtered. Both flags and the guide are edited on the condition's edit screen beside the print criteria that screen already edits, and the flags ride in the conditions CSV. System configuration is a key-value system_setting table (name, value, description) with a migration, /api/system-settings to list, save and delete a setting under manage_users, and a System settings screen under the Administration links of the application bar. Unit tests cover each new public method and client call; integration tests cover the saved-view counts, the condition guide and flags, and the settings routes.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/d6274211d6d672809a7dddbdf5289fbec22cd379"><code>d6274211d6d672809a7dddbdf5289fbec22cd379</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Ibis action</td><td><p>Survsys.Web: PersonConditionsClient gains SendToIbis(id) over POST /api/person-conditions/{id}/ibis, answering the IbisTransmissionResponse or the endpoint's Problem Details detail as its failure. MorbidityReport.razor gains a Send to IBIS button (report-ibis-send) shown only when the user holds edit_cases, a success alert (report-ibis-sent) with the date accepted, and an error alert (report-ibis-error). Tests for SendToIbis in PersonConditionsClientTests.</p></td><td><span class="mono">Survsys.Web/PersonConditionsClient.cs</span><br><span class="mono">Survsys.Web/Components/Pages/MorbidityReport.razor</span><br><span class="mono">Survsys.UnitTests/PersonConditionsClientTests.cs</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~PersonConditionsClientTests</code></td><td>yes</td></tr>
+<tr><td>Saved view counts api</td><td><p>Survsys.Api: SavedViewQueries shares the rows a view selects between Export and a new Counts(userId, id, groupBy), which counts them by the formatted value of one of the view's columns (most first, then by value); a public SavedViewEndpoints.WhyNotAGrouping(view columns, groupBy) refuses a column the view does not export. ReportEndpoints maps GET /api/reports/saved-views/{id}/counts and /api/reports/saved-views/{id}/counts/export (CSV of the column and count, audited as an export as the saved-view export is). Unit tests in SavedViewEndpointsTests; integration tests in Survsys.IntegrationTests/ReportEndpointsTests.</p></td><td><span class="mono">Survsys.Api/SavedViewEndpoints.cs</span><br><span class="mono">Survsys.Api/ReportEndpoints.cs</span><br><span class="mono">Survsys.UnitTests/SavedViewEndpointsTests.cs</span><br><span class="mono">Survsys.IntegrationTests/ReportEndpointsTests.cs</span></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~SavedViewEndpointsTests|FullyQualifiedName~ReportEndpointsTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Saved view counts web</td><td><p>Survsys.Web: ReportsClient gains SavedViewCounts(id, groupBy) and SavedViewCountsCsv(id, groupBy); Program.cs proxies GET /reports/saved-views/{id}/counts/export so the browser downloads the CSV; Reports.razor gains a saved-view section (pick a view, one of its columns, Run, a counts table, an Export CSV link), its ids prefixed reports-view-. Tests in ReportsClientTests.</p></td><td><span class="mono">Survsys.Web/ReportsClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.Web/Components/Pages/Reports.razor</span><br><span class="mono">Survsys.UnitTests/ReportsClientTests.cs</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~ReportsClientTests</code></td><td>yes</td></tr>
+<tr><td>Condition configuration api</td><td><p>Survsys.Data: Condition gains BypassOutOfState and BlockPreliminary (bool, default false) with their configuration and a migration. Survsys.Contracts: ConditionDetailResponse and SaveConditionRequest gain GuideId and the two flags. Survsys.Api: the condition read answers them, the condition save writes the flags and the condition_detail row (removing it when GuideId is null, refusing a guide that does not exist), and the conditions CSV export and import carry the flags. Unit tests in ConditionEndpointsTests; integration tests in Survsys.IntegrationTests/ConditionEndpointsTests.</p></td><td><span class="mono">Survsys.Data/Condition.cs</span><br><span class="mono">Survsys.Data/ConditionConfiguration.cs</span><br><span class="mono">Survsys.Data/Migrations/20261022100000_ConditionIntakeFlags.cs</span><br><span class="mono">Survsys.Data/Migrations/20261022100000_ConditionIntakeFlags.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span><br><span class="mono">Survsys.Contracts/ConditionDetailResponse.cs</span><br><span class="mono">Survsys.Contracts/SaveConditionRequest.cs</span><br><span class="mono">Survsys.Api/ConditionEndpoints.cs</span><br><span class="mono">Survsys.UnitTests/ConditionEndpointsTests.cs</span><br><span class="mono">Survsys.IntegrationTests/ConditionEndpointsTests.cs</span></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~ConditionEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Intake flags honoured</td><td><p>Survsys.Api: MessageProcessingService.Decide takes the message condition's intake flags and whether every result is preliminary: a bypassing condition skips the out-of-state hold, and a blocking condition's all-preliminary message is filtered with why. AssignOne reads both from the database. Tests in MessageProcessingServiceTests.</p></td><td><span class="mono">Survsys.Api/MessageProcessingService.cs</span><br><span class="mono">Survsys.UnitTests/MessageProcessingServiceTests.cs</span></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~MessageProcessingServiceTests</code></td><td>yes</td></tr>
+<tr><td>Condition edit web</td><td><p>Survsys.Web: ConditionEdit.razor gains a notification guide select (condition-guide, with a none choice) filled from the guides, and two switches (condition-bypass-out-of-state, condition-block-preliminary), saved with the condition. Every existing element id stays unchanged.</p></td><td><span class="mono">Survsys.Web/Components/Pages/ConditionEdit.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>System settings data</td><td><p>Survsys.Data: a SystemSetting entity (Name key, up to 100 characters; Value; Description) mapped to system_setting, its configuration, a DbSet on SurvsysDbContext, and a migration.</p></td><td><span class="mono">Survsys.Data/SystemSetting.cs</span><br><span class="mono">Survsys.Data/SystemSettingConfiguration.cs</span><br><span class="mono">Survsys.Data/SurvsysDbContext.cs</span><br><span class="mono">Survsys.Data/Migrations/20261022110000_SystemSettings.cs</span><br><span class="mono">Survsys.Data/Migrations/20261022110000_SystemSettings.Designer.cs</span><br><span class="mono">Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs</span></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj --nologo -v q</code></td><td>yes</td></tr>
+<tr><td>System settings api</td><td><p>Survsys.Contracts: SystemSettingResponse and SaveSystemSettingRequest. Survsys.Api: SystemSettingEndpoints with GET /api/system-settings (by name), PUT /api/system-settings/{name} (adds or saves over, with a public WhyNotASystemSetting) and DELETE /api/system-settings/{name}, registered in Program.cs; PrivilegeRules puts /api/system-settings under manage_users. Unit tests in SystemSettingEndpointsTests and PrivilegeRulesTests; integration tests in Survsys.IntegrationTests/SystemSettingEndpointsTests.</p></td><td><span class="mono">Survsys.Contracts/SystemSettingResponse.cs</span><br><span class="mono">Survsys.Contracts/SaveSystemSettingRequest.cs</span><br><span class="mono">Survsys.Api/SystemSettingEndpoints.cs</span><br><span class="mono">Survsys.Api/Program.cs</span><br><span class="mono">Survsys.Api/PrivilegeRules.cs</span><br><span class="mono">Survsys.UnitTests/SystemSettingEndpointsTests.cs</span><br><span class="mono">Survsys.UnitTests/PrivilegeRulesTests.cs</span><br><span class="mono">Survsys.IntegrationTests/SystemSettingEndpointsTests.cs</span></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj --nologo -v q</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~SystemSettingEndpointsTests|FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>System settings web</td><td><p>Survsys.Web: SystemSettingsClient (list, save, delete) registered in Program.cs; a SystemSettings.razor page at /system-settings listing the settings with an edit form and delete, its ids prefixed system-setting-; a nav-system-settings link in MainLayout.razor among the manage_users links. Tests in SystemSettingsClientTests.</p></td><td><span class="mono">Survsys.Web/SystemSettingsClient.cs</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.Web/Components/Pages/SystemSettings.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span><br><span class="mono">Survsys.UnitTests/SystemSettingsClientTests.cs</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj --nologo -v q</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --nologo -v q --filter FullyQualifiedName~SystemSettingsClientTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to the IBIS endpoint or IbisTransmitter, and no IBIS sent status added to the case header or the case response.</li><li>No change to the existing case-counts report (/api/reports/case-counts) or to the saved-view export.</li><li>No settings moved out of appsettings.json into system_setting, and nothing yet reads a system setting: the table and its screen are the configuration store, not a rewiring of existing options.</li><li>No port of the other vocab_master_condition fields (whitelist rules stay in MessageProcessing configuration; no specimen, age-rule, cross-reference or district flags).</li><li>No change to print criteria beyond keeping them on the condition edit screen as they are.</li><li>No walkthroughs and no Playwright tests: those are session 99's.</li><li>No charts: counts are shown as a table.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[08:40:20]</span> <span class="muted">run-started</span> session=098 mode=pull</div>
+<div class="line"><span class="at">[08:40:20]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[08:44:32]</span> <span class="muted">run-resumed</span> session=098 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[08:44:32]</span> <span class="muted">plan-accepted</span> steps=[&quot;ibis-action&quot;,&quot;saved-view-counts-api&quot;,&quot;saved-view-counts-web&quot;,&quot;condition-configuration-api&quot;,&quot;intake-flags-honoured&quot;,&quot;condition-edit-web&quot;,&quot;system-settings-data&quot;,&quot;system-settings-api&quot;,&quot;system-settings-web&quot;] non_goals=7</div>
+<div class="line"><span class="at">[08:44:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[08:44:32]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=ibis-action</div>
+<div class="line"><span class="at">[08:46:54]</span> <span class="muted">run-resumed</span> session=098 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:46:57]</span> <span class="muted">check-passed</span> step=ibis-action argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[08:47:01]</span> <span class="muted">check-passed</span> step=ibis-action argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~PersonConditionsClientTests&quot;]</div>
+<div class="line"><span class="at">[08:47:02]</span> <span class="muted">report-accepted</span> seq=2 step=ibis-action files=[&quot;Survsys.Web/PersonConditionsClient.cs&quot;,&quot;Survsys.Web/Components/Pages/MorbidityReport.razor&quot;,&quot;Survsys.UnitTests/PersonConditionsClientTests.cs&quot;] notes=Send to IBIS on the report for edit_cases holders; the failure carries the 504 or 502 status under the IBIS prefix, as ApiAsk never relays a body</div>
+<div class="line"><span class="at">[08:47:02]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=saved-view-counts-api</div>
+<div class="line"><span class="at">[08:49:49]</span> <span class="muted">run-resumed</span> session=098 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:49:51]</span> <span class="muted">check-passed</span> step=saved-view-counts-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[08:49:54]</span> <span class="muted">check-passed</span> step=saved-view-counts-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[08:49:58]</span> <span class="muted">check-passed</span> step=saved-view-counts-api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~SavedViewEndpointsTests|FullyQualifiedName~ReportEndpointsTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[08:49:58]</span> <span class="muted">report-accepted</span> seq=3 step=saved-view-counts-api files=[&quot;Survsys.Api/SavedViewEndpoints.cs&quot;,&quot;Survsys.Api/ReportEndpoints.cs&quot;,&quot;Survsys.UnitTests/SavedViewEndpointsTests.cs&quot;,&quot;Survsys.IntegrationTests/ReportEndpointsTests.cs&quot;] notes=Saved-view counts and CSV export under /api/reports/saved-views/{id}, counted by the value the export writes; integration ReportEndpointsTests run by hand, 7 passed</div>
+<div class="line"><span class="at">[08:49:58]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=saved-view-counts-web</div>
+<div class="line"><span class="at">[08:51:19]</span> <span class="muted">run-resumed</span> session=098 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:51:21]</span> <span class="muted">check-passed</span> step=saved-view-counts-web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[08:51:26]</span> <span class="muted">check-passed</span> step=saved-view-counts-web argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ReportsClientTests&quot;]</div>
+<div class="line"><span class="at">[08:51:26]</span> <span class="muted">report-accepted</span> seq=4 step=saved-view-counts-web files=[&quot;Survsys.Web/ReportsClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.Web/Components/Pages/Reports.razor&quot;,&quot;Survsys.UnitTests/ReportsClientTests.cs&quot;] notes=Reports screen gains a saved-view report: pick a view and one of its columns, run, see the counts, export them as CSV through a proxied download</div>
+<div class="line"><span class="at">[08:51:26]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=condition-configuration-api</div>
+<div class="line"><span class="at">[08:55:23]</span> <span class="muted">run-resumed</span> session=098 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:55:26]</span> <span class="muted">check-passed</span> step=condition-configuration-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[08:55:28]</span> <span class="muted">check-passed</span> step=condition-configuration-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[08:55:33]</span> <span class="muted">check-passed</span> step=condition-configuration-api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ConditionEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[08:55:34]</span> <span class="muted">report-accepted</span> seq=5 step=condition-configuration-api files=[&quot;Survsys.Data/Condition.cs&quot;,&quot;Survsys.Data/ConditionConfiguration.cs&quot;,&quot;Survsys.Data/Migrations/20261022100000_ConditionIntakeFlags.cs&quot;,&quot;Survsys.Data/Migrations/20261022100000_ConditionIntakeFlags.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;,&quot;Survsys.Contracts/ConditionDetailResponse.cs&quot;,&quot;Survsys.Contracts/SaveConditionRequest.cs&quot;,&quot;Survsys.Api/ConditionEndpoints.cs&quot;,&quot;Survsys.UnitTests/ConditionEndpointsTests.cs&quot;,&quot;Survsys.IntegrationTests/ConditionEndpointsTests.cs&quot;] notes=Condition gains bypass_out_of_state and block_preliminary; its read and save carry the guide as its condition_detail row and the flags, which ride in the conditions CSV; integration ConditionEndpointsTests run by hand, 14 passed</div>
+<div class="line"><span class="at">[08:55:34]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=intake-flags-honoured</div>
+<div class="line"><span class="at">[08:57:00]</span> <span class="muted">run-resumed</span> session=098 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:57:03]</span> <span class="muted">check-passed</span> step=intake-flags-honoured argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[08:57:07]</span> <span class="muted">check-passed</span> step=intake-flags-honoured argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageProcessingServiceTests&quot;]</div>
+<div class="line"><span class="at">[08:57:08]</span> <span class="muted">report-accepted</span> seq=6 step=intake-flags-honoured files=[&quot;Survsys.Api/MessageProcessingService.cs&quot;,&quot;Survsys.UnitTests/MessageProcessingServiceTests.cs&quot;] notes=Decide takes the condition's intake flags: bypass skips the out-of-state hold, block filters a message whose every result is OBX-11 P; integration MessageProcessingServiceTests still pass by hand</div>
+<div class="line"><span class="at">[08:57:08]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=condition-edit-web</div>
+<div class="line"><span class="at">[08:57:55]</span> <span class="muted">run-resumed</span> session=098 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:57:58]</span> <span class="muted">check-passed</span> step=condition-edit-web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[08:57:58]</span> <span class="muted">report-accepted</span> seq=7 step=condition-edit-web files=[&quot;Survsys.Web/Components/Pages/ConditionEdit.razor&quot;] notes=Condition edit screen gains a notification guide select with a none choice and the two intake switches, saved with the condition; no existing id changed</div>
+<div class="line"><span class="at">[08:57:58]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=system-settings-data</div>
+<div class="line"><span class="at">[08:58:58]</span> <span class="muted">run-resumed</span> session=098 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[08:59:00]</span> <span class="muted">check-passed</span> step=system-settings-data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[08:59:01]</span> <span class="muted">report-accepted</span> seq=8 step=system-settings-data files=[&quot;Survsys.Data/SystemSetting.cs&quot;,&quot;Survsys.Data/SystemSettingConfiguration.cs&quot;,&quot;Survsys.Data/SurvsysDbContext.cs&quot;,&quot;Survsys.Data/Migrations/20261022110000_SystemSettings.cs&quot;,&quot;Survsys.Data/Migrations/20261022110000_SystemSettings.Designer.cs&quot;,&quot;Survsys.Data/Migrations/SurvsysDbContextModelSnapshot.cs&quot;] notes=system_setting table keyed by name, with value and description, its DbSet and migration</div>
+<div class="line"><span class="at">[08:59:01]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=system-settings-api</div>
+<div class="line"><span class="at">[09:01:11]</span> <span class="muted">run-resumed</span> session=098 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:01:13]</span> <span class="muted">check-passed</span> step=system-settings-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[09:01:16]</span> <span class="muted">check-passed</span> step=system-settings-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[09:01:21]</span> <span class="muted">check-passed</span> step=system-settings-api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~SystemSettingEndpointsTests|FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[09:01:21]</span> <span class="muted">report-accepted</span> seq=9 step=system-settings-api files=[&quot;Survsys.Contracts/SystemSettingResponse.cs&quot;,&quot;Survsys.Contracts/SaveSystemSettingRequest.cs&quot;,&quot;Survsys.Api/SystemSettingEndpoints.cs&quot;,&quot;Survsys.Api/Program.cs&quot;,&quot;Survsys.Api/PrivilegeRules.cs&quot;,&quot;Survsys.UnitTests/SystemSettingEndpointsTests.cs&quot;,&quot;Survsys.UnitTests/PrivilegeRulesTests.cs&quot;,&quot;Survsys.IntegrationTests/SystemSettingEndpointsTests.cs&quot;] notes=/api/system-settings lists, saves by name (adding where none) and deletes, under manage_users; integration SystemSettingEndpointsTests run by hand, 2 passed</div>
+<div class="line"><span class="at">[09:01:21]</span> <span class="muted">instruction-issued</span> seq=10 kind=step step=system-settings-web</div>
+<div class="line"><span class="at">[09:02:40]</span> <span class="muted">run-resumed</span> session=098 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:02:42]</span> <span class="muted">check-passed</span> step=system-settings-web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;]</div>
+<div class="line"><span class="at">[09:02:47]</span> <span class="muted">check-passed</span> step=system-settings-web argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--nologo&quot;,&quot;-v&quot;,&quot;q&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~SystemSettingsClientTests&quot;]</div>
+<div class="line"><span class="at">[09:02:47]</span> <span class="muted">report-accepted</span> seq=10 step=system-settings-web files=[&quot;Survsys.Web/SystemSettingsClient.cs&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.Web/Components/Pages/SystemSettings.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;,&quot;Survsys.UnitTests/SystemSettingsClientTests.cs&quot;] notes=System settings screen at /system-settings (list, edit, save by name, delete) with its client and a nav-system-settings link among the manage_users links</div>
+<div class="line"><span class="at">[09:02:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[09:02:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[09:02:47]</span> <span class="muted">job-started</span> name=verification pid=48956 log=.dabbler/runs/s98/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:03:57]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s98/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:03:57]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[09:03:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[09:03:57]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[09:03:57]</span> <span class="muted">job-started</span> name=run of record: unit pid=14772 log=.dabbler/runs/s98/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[09:04:06]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s98/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[09:04:06]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[09:04:09]</span> <span class="muted">landed</span> commit=d6274211d6d672809a7dddbdf5289fbec22cd379</div>
+<div class="line"><span class="at">[09:04:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[09:04:09]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[09:04:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[09:04:10]</span> <span class="muted">job-started</span> name=close pid=48692 log=.dabbler/runs/s98/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:04:14]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s98/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:04:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The visible saved-view count integration test does not prove the required cross-user 404 behavior.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** The visible integration tests persist and reread the condition flags, but do not exercise their database-to-worker path.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>8s</td><td>2143</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

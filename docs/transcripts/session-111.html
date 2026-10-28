@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 111 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 111 transcript</h1>
+<p class="stamp">Rendered 2026-10-24T06:25:57.652Z by dabbler-ai-router 3.23.0 at 4c28accdf91e1108e85f67156471ab3f55d11890.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-24T02:13:53.567-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 111: Jurisdiction on every list, and read-only sharing</h3>
+<p>*Inserted after session 109, whose gap analysis found that <code>CaseAccess</code> narrows every case route and the case search but not the work queue and agency board (<code>/api/work-queue</code>), the task list (<code>/api/tasks</code>), saved-view exports and counts (<code>SavedViewQueries.Rows</code> takes no caller), or the case-count report (<code>/api/reports/case-counts</code>); and that a case shared read-only (<code>person_condition_shares</code>) can be changed by the agency it is shared with — &quot;read-only in intent and not in enforcement&quot; (<code>WorkQueueEndpoints.cs</code>). The operator decided on 2026-10-23 that sharing is read-only in fact.*</p>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: the work queue, the agency board, the task list, saved-view exports and counts and the case-count report list only the cases <code>CaseAccess.Visible</code> lets the caller see. A work queue asked for an agency that is not the caller's, without <code>all_jurisdictions</code>, answers no rows.</li><li><code>Survsys.Api</code>: a case the caller sees only through a share is read-only to them: <code>CaseAccess</code> refuses every write to it, and to every record under it, with a 403 saying the case is shared with their agency read-only. Reading it is unchanged. <code>all_jurisdictions</code> and the investigating agency's users write as before.</li><li><code>Survsys.Web</code>: the report opens a shared case without <strong>Edit</strong>, saying it is shared with the user's agency read-only. Every element id stays unchanged.</li><li><code>Survsys.IntegrationTests</code>: each list narrowed, a work queue for another agency empty, and a write to a shared case and to a record under it refused. These reach SQL Server.</li><li><code>docs/</code>: the user and technical guides' jurisdiction paragraphs, and the gap analysis's open item marked closed.</li><li>Cross-provider verification.</li><li>Full test suite, the integration and end-to-end suites included, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Hold every case list to the caller's jurisdiction, and make a shared case read-only in fact. CaseAccess gains IsCallersAgency (the caller holds all_jurisdictions or works for the agency). The work queue (and so the agency board) answers an empty page for an agency that is not the caller's and narrows its rows by CaseAccess.Visible; the task list keeps tasks of no case and only those of cases Visible lets the caller see; a saved view's export and counts and the case-count report count only visible cases, each query taking the caller. UseCaseAccess, for every method but GET and HEAD on a case route, refuses with a 403 Problem Details saying the case is shared with the caller's agency read-only where the caller sees the case but it is not of one of their agencies and they lack all_jurisdictions; reading is unchanged. PersonConditionResponse gains SharedReadOnly, set on GET /api/person-conditions/{id}, and the report screen then shows no Edit or Delete and says the case is shared with the user's agency read-only, every existing element id unchanged. Integration tests against SQL Server prove each list narrowed, another agency's work queue empty, and a write to a shared case and to a record under it refused. The user and technical guides' jurisdiction paragraphs are updated and the gap analysis's open item is marked closed.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/071f9eed6c4146d8252ed59f2520023dc3a86806"><code>071f9eed6c4146d8252ed59f2520023dc3a86806</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Jurisdiction lists</td><td><p>Add CaseAccess.IsCallersAgency(ClaimsPrincipal caller, int? agencyId): true where the caller holds all_jurisdictions, or agencyId is one of AccountEndpoints.AgencyIdsOf(caller). GET /api/work-queue takes the caller: for an agency that is not the caller's it answers an empty page (after the existing agency and paging validation), and WorkQueueQueries.Queue narrows its rows by CaseAccess.Visible. GET /api/tasks passes the caller to TaskQueries.Page, which keeps a task of no case and a task whose case CaseAccess.Visible lets the caller see. SavedViewQueries.Export, Counts and the private Rows take the caller and narrow by CaseAccess.Visible; the saved-view export and the saved-view counts endpoints pass it. GET /api/reports/case-counts takes the caller and ReportQueries.CaseCounts narrows by CaseAccess.Visible. Add unit tests for IsCallersAgency to Survsys.UnitTests/CaseAccessTests.cs.</p></td><td></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CaseAccessTests</code></td><td>yes</td></tr>
+<tr><td>Shared read only</td><td><p>In UseCaseAccess, after the existing 404, refuse every request whose method is not GET or HEAD on a case route about a case the caller sees but whose agency is not theirs by CaseAccess.IsCallersAgency, as 403 Problem Details saying the case morbidity report is shared with their agency read-only. Add a trailing SharedReadOnly bool (default false) to PersonConditionResponse, documented; PersonConditionEndpoints.ToResponse passes false, and GET /api/person-conditions/{id} answers it as !CaseAccess.IsCallersAgency(caller, report.AgencyId). Rewrite the WorkQueueEndpoints remark that sharing is read-only in intent and not in enforcement to say CaseAccess enforces it. Update the CaseAccess remarks to describe the 403.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CaseAccessTests|FullyQualifiedName~PersonConditionEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Web shared report</td><td><p>In MorbidityReport.razor, where the shown report is SharedReadOnly, show an info alert (new id report-shared-read-only) saying the case is shared with the user's agency read-only, and do not offer Edit or Delete; every existing element id stays unchanged.</p></td><td></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Integration tests</td><td><p>In Survsys.IntegrationTests/CaseAccessTests.cs add tests against SQL Server: the work queue, the task list, a saved view's export and counts, and the case-count report list a case of the user's agency and not one of another agency; a work queue asked for another agency answers no rows; a PUT to a case shared with the user's agency and a write to a record under it (a note) are refused with 403 and the read-only detail, while GET of that case is served with SharedReadOnly true.</p></td><td></td><td><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --filter FullyQualifiedName~CaseAccessTests</code></td><td>yes</td></tr>
+<tr><td>Docs</td><td><p>In docs/user-guide/README.md replace the sentence that the work queue, agency board, task list, saved-view exports and reports are not narrowed with one saying they are, and say that a case shared with your agency opens read-only, without Edit; in docs/technical/README.md's Jurisdiction paragraph say the lists are narrowed and that a write to a shared case or a record under it is a 403; in docs/planning/gap-analysis.md move the 'Jurisdiction scoping stops short of some lists' item out of Still open, recorded as closed by session 111.</p></td><td><span class="mono">docs/user-guide/README.md</span><br><span class="mono">docs/technical/README.md</span><br><span class="mono">docs/planning/gap-analysis.md</span></td><td><code>pwsh -NoProfile -NonInteractive -Command $t = (Get-Content docs/user-guide/README.md -Raw) + (Get-Content docs/technical/README.md -Raw) + (Get-Content docs/planning/gap-analysis.md -Raw); foreach ($p in 'are not narrowed this way', 'saved-view\s+exports and the reports are not\.', 'read-only in name only') { if ($t -match $p) { Write-Error &quot;stale: $p&quot;; exit 1 } }; if ($t -notmatch 'session 111') { Write-Error 'gap item not closed'; exit 1 }</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No narrowing of lists the session plan does not name: the notification queue, staged messages, eCR documents, outbreaks, people and the audit screens are left as they are.</li><li>No refusal of writes that reach a case off a case route (linking an eCR or staged message to a case, person merges, notification-queue processing); only case routes are held read-only.</li><li>No change to who may share a case, to how shares are stored, or to the case search and case routes' existing 404 for a case the caller may not see.</li><li>No new privilege, role or setting; no change to element ids on any screen.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[06:13:53]</span> <span class="muted">run-started</span> session=111 mode=pull</div>
+<div class="line"><span class="at">[06:13:53]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[06:16:29]</span> <span class="muted">run-resumed</span> session=111 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[06:16:29]</span> <span class="muted">plan-accepted</span> steps=[&quot;jurisdiction-lists&quot;,&quot;shared-read-only&quot;,&quot;web-shared-report&quot;,&quot;integration-tests&quot;,&quot;docs&quot;] non_goals=4</div>
+<div class="line"><span class="at">[06:16:29]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[06:16:30]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=jurisdiction-lists</div>
+<div class="line"><span class="at">[06:18:23]</span> <span class="muted">run-resumed</span> session=111 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:18:26]</span> <span class="muted">check-passed</span> step=jurisdiction-lists argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;]</div>
+<div class="line"><span class="at">[06:18:29]</span> <span class="muted">check-passed</span> step=jurisdiction-lists argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseAccessTests&quot;]</div>
+<div class="line"><span class="at">[06:18:30]</span> <span class="muted">report-accepted</span> seq=2 step=jurisdiction-lists files=[] notes=IsCallersAgency added; work queue, task list, saved-view export and counts and case-count report narrowed by CaseAccess.Visible; another agency's queue answers an empty page</div>
+<div class="line"><span class="at">[06:18:30]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=shared-read-only</div>
+<div class="line"><span class="at">[06:19:27]</span> <span class="muted">run-resumed</span> session=111 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:19:30]</span> <span class="muted">check-passed</span> step=shared-read-only argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[06:19:34]</span> <span class="muted">check-passed</span> step=shared-read-only argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseAccessTests|FullyQualifiedName~PersonConditionEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[06:19:35]</span> <span class="muted">report-accepted</span> seq=3 step=shared-read-only files=[] notes=UseCaseAccess answers 403 for a write to a case seen only through a share; PersonConditionResponse.SharedReadOnly set on GET of a case; remarks rewritten</div>
+<div class="line"><span class="at">[06:19:35]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=web-shared-report</div>
+<div class="line"><span class="at">[06:20:07]</span> <span class="muted">run-resumed</span> session=111 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:20:09]</span> <span class="muted">check-passed</span> step=web-shared-report argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[06:20:10]</span> <span class="muted">report-accepted</span> seq=4 step=web-shared-report files=[] notes=A SharedReadOnly report shows report-shared-read-only and offers no Edit, Delete or Restore; existing ids unchanged</div>
+<div class="line"><span class="at">[06:20:10]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=integration-tests</div>
+<div class="line"><span class="at">[06:23:27]</span> <span class="muted">run-resumed</span> session=111 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:24:02]</span> <span class="muted">check-passed</span> step=integration-tests argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CaseAccessTests&quot;]</div>
+<div class="line"><span class="at">[06:24:03]</span> <span class="muted">report-accepted</span> seq=5 step=integration-tests files=[] notes=Two SQL Server tests added: every list narrowed and another agency's queue empty; every write on every case route of a shared case refused 403, GET says SharedReadOnly. Affected endpoint integration classes (37 tests) also pass</div>
+<div class="line"><span class="at">[06:24:03]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=docs</div>
+<div class="line"><span class="at">[06:24:34]</span> <span class="muted">run-resumed</span> session=111 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[06:24:35]</span> <span class="muted">check-passed</span> step=docs argv=[&quot;pwsh&quot;,&quot;-NoProfile&quot;,&quot;-NonInteractive&quot;,&quot;-Command&quot;,&quot;$t = (Get-Content docs/user-guide/README.md -Raw) + (Get-Content docs/technical/README.md -Raw) + (Get-Content docs/planning/gap-analysis.md -Raw); foreach ($p in 'are not narrowed this way', 'saved-view\\s+exports and the reports are not\\.', 'read-only in name only') { if ($t -match $p) { Write-Error \&quot;stale: $p\&quot;; exit 1 } }; if ($t -notmatch 'session 111') { Write-Error 'gap item not closed'; exit 1 }&quot;]</div>
+<div class="line"><span class="at">[06:24:36]</span> <span class="muted">report-accepted</span> seq=6 step=docs files=[&quot;docs/user-guide/README.md&quot;,&quot;docs/technical/README.md&quot;,&quot;docs/planning/gap-analysis.md&quot;] notes=Guides describe the narrowed lists and read-only sharing; the gap item left Still open and the session-95 row records session 111</div>
+<div class="line"><span class="at">[06:24:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[06:24:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[06:24:36]</span> <span class="muted">job-started</span> name=verification pid=20020 log=.dabbler/runs/s111/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[06:25:26]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s111/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[06:25:26]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[06:25:26]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[06:25:27]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[06:25:27]</span> <span class="muted">job-started</span> name=run of record: unit pid=31756 log=.dabbler/runs/s111/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[06:25:47]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s111/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[06:25:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[06:25:51]</span> <span class="muted">landed</span> commit=071f9eed6c4146d8252ed59f2520023dc3a86806</div>
+<div class="line"><span class="at">[06:25:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[06:25:51]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[06:25:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[06:25:51]</span> <span class="muted">job-started</span> name=close pid=15716 log=.dabbler/runs/s111/driver/jobs/close.log</div>
+<div class="line"><span class="at">[06:25:57]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s111/driver/jobs/close.log</div>
+<div class="line"><span class="at">[06:25:57]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `CaseAccess.IsCallersAgency`’s XML documentation says it is “false for no agency,” but the implementation intentionally returns `true` for an `all_jurisdictions` caller even when `agencyId` is `null`; the added unit test locks in that behavior.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Location:** `Survsys.Api/CaseAccess.cs`, `Survsys.UnitTests/CaseAccessTests.cs`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Fix:** Amend the documentation to say that a null agency is false unless the caller has `all_jurisdictions`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>20s</td><td>2268</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

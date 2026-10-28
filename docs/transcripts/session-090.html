@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 090 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 090 transcript</h1>
+<p class="stamp">Rendered 2026-10-21T12:44:24.905Z by dabbler-ai-router 3.21.0 at 98d2b7573a325738da21c412f3c6d4f043cb06bf.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-21T08:01:19.444-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 90: Guide, rule set and value set administration</h3>
+<ol><li>Register.</li><li><code>Survsys.Api</code> and <code>Survsys.Web</code>: screens for notification guides, their PHIN variables and variable defaults, and rule sets; guide JSON import and export; PHIN value sets and units of measure, imported from CSV with a preview.</li><li><code>Survsys.Messaging</code>: hepatitis lab grouping, organism and test-type overrides, the arbovirus two-OBR message and the NK1 mother segment.</li><li><code>Survsys.UnitTests</code>: each generator change, against the legacy examples in <code>NMI_XML_GENERATION.md</code>.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Put the notification configuration in an administrator's hands and finish the generator's guide-specific shapes. Survsys.Data gains, in one migration (20261021180000_NotificationAdministration): a nullable version on guide; nmi_guide_variable_default (name, default value — seeded with the sending/receiving application and facility as namespace^oid^type and hl7_version 2.5.1, the values NotificationMessageBuilder hard-codes today) and nmi_guide_variable (a guide's override of a default); nmi_phin_value_set and nmi_phin_unit_of_measure (value set name, concept code, preferred concept name, HL7 code, code system OID, and the value set's CDC name); nmi_condition_lab_override (condition, kind organism or test_type, item id, include); and nmi_hep_lab_group with its conditions and its test types (test type id, test group name, sort order). Survsys.Messaging: OruR01Generator writes the arbovirus guide (profile Arbo_Case_Map_v1.0) as two OBRs, PERSUBJ carrying the DEM observations and NOTF carrying the rest, under NND_ORU_v2.0, and writes an NK1 mother segment (NK1-1 = 1, NK1-3 = MTH^Mother^HL70063) from the MTH153/157/159/165/166/167/168/169 variables when any has a value, those variables no longer becoming OBX; LabOverrides keeps a lab row unless its organism or test type is excluded or falls outside the condition's defaults-plus-inclusions (a kind with no defaults and no inclusions filters nothing); HepatitisLabGrouping turns the lab rows of a condition in a hepatitis group into the HepLab dataset — the rows whose test type the group maps, in the group's sort order, each carrying hep_test_group. NotificationMessageBuilder reads rule-set value sets and units of measure from the new tables, builds the header from the guide's variables over the defaults, passes the guide's version as its profile, filters the Lab dataset through the condition's overrides (defaults: organisms the vocabulary maps to the condition, test_type code values linked to it) and adds the HepLab dataset. Survsys.Api: PHIN value sets and units of measure listed, edited, exported as CSV and imported from CSV with a preview, through the existing VocabularyTable/ReferenceImport machinery; PHIN variables listed, created, saved and deleted when no guide carries them; rule set configurations read and replaced whole (format type, value set, repeating, fields, data, value maps, expressions with conditions) and the seven rule set types listed; guides listed, created, saved and deleted, a guide's PHIN variables, linked guides and variables replaced whole, the variable defaults edited as a table, and a guide exported as JSON (name, version, PHIN variables with their rule set configurations) and imported from it, matched by name and version; a condition's organism and test-type overrides read and replaced; hepatitis lab groups listed, created, saved and deleted. Survsys.Web: Value sets, Notification guides (with guide edit and the variable defaults), PHIN variables (with the rule set editor) and Hepatitis lab setup screens, and the overrides on the condition screen. Unit tests cover each generator change against the legacy example values in NMI_XML_GENERATION.md, the new Messaging classes, the endpoint validators and the new web clients; integration tests cover the builder wiring and each new endpoint group.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/c6801e64ed3e123d102436bda41fb8e11bed0e30"><code>c6801e64ed3e123d102436bda41fb8e11bed0e30</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Notification admin data</td><td><p>Add the entities, their configurations and DbSets, and one migration with its designer and the snapshot: guide.version; nmi_guide_variable_default (seeded) and nmi_guide_variable; nmi_phin_value_set; nmi_phin_unit_of_measure; nmi_condition_lab_override; nmi_hep_lab_group, nmi_hep_lab_group_condition and nmi_hep_lab_group_test_type. Bare ids, no navigations, as the existing NMI entities are.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>git grep --untracked -q -F nmi_phin_value_set -- Survsys.Data/Migrations/20261021180000_NotificationAdministration.cs</code></td><td>yes</td></tr>
+<tr><td>Generator segments</td><td><p>OruR01Generator: the arbovirus guide's two OBRs (PERSUBJ with the DEM observations, NOTF with the rest) and the NK1 mother segment from the MTH variables when any has a value; the MTH variables are placed, not emitted as OBX. Tests in OruR01GeneratorTests against the legacy example header and values in NMI_XML_GENERATION.md.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~OruR01GeneratorTests</code></td><td>yes</td></tr>
+<tr><td>Lab grouping and overrides</td><td><p>Survsys.Messaging: LabOverrides (keep or drop a lab row by its organism and test type against the condition's defaults, inclusions and exclusions) and HepatitisLabGrouping (the HepLab dataset from the lab rows: rows whose test type the group maps, in sort order, carrying hep_test_group), each with its tests.</p></td><td></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~LabOverridesTests|FullyQualifiedName~HepatitisLabGroupingTests</code></td><td>yes</td></tr>
+<tr><td>Builder wiring</td><td><p>NotificationMessageBuilder: value sets and units of measure from the new tables, the header from the guide's variables over the defaults, the guide's version as the generator's profile, the Lab dataset through the condition's overrides, and the HepLab dataset for a condition in a hepatitis group. Integration tests for each in NotificationMessageBuilderTests.</p></td><td></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Value set api</td><td><p>PHIN value sets and units of measure as two reference tables over the existing VocabularyTable/VocabularyQueries/ReferenceImport machinery: list, create, save, delete, CSV export and CSV import previewed then confirmed. Make VocabularyEndpoints' table mapping reusable under another path rather than copying it. Validator unit tests and endpoint integration tests.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ValueSetEndpointsTests|FullyQualifiedName~VocabularyEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Phin variable and rule set api</td><td><p>PHIN variables listed, created, saved and deleted when no guide carries them; the seven rule set types listed; a rule set configuration created, read and replaced whole with its fields, data, value maps and expressions with their conditions. Validator unit tests and endpoint integration tests.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~PhinVariableEndpointsTests|FullyQualifiedName~RuleSetEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Guide api</td><td><p>Guides listed, created, saved and deleted; a guide's PHIN variables, linked guides and variables read and replaced whole; the variable defaults as an editable table; a guide exported as JSON (name, version, PHIN variables with their rule set configurations) and imported from it, matched by name and version, in one transaction. Validator unit tests and endpoint integration tests, including an export imported back changing nothing.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~GuideEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Override and hep api</td><td><p>A condition's organism and test-type overrides read and replaced (GET and PUT /api/conditions/{id}/lab-overrides); hepatitis lab groups listed, created, saved and deleted with their conditions and test types. Validator unit tests and endpoint integration tests.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ConditionEndpointsTests|FullyQualifiedName~HepLabGroupEndpointsTests</code></td><td>yes</td></tr>
+<tr><td>Value sets web</td><td><p>A Value sets admin screen: PHIN value sets and units of measure, each viewed, edited, exported as CSV and imported from CSV with a preview before confirming; its client and client tests; a menu entry.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ValueSetsClientTests</code></td><td>yes</td></tr>
+<tr><td>Guides web</td><td><p>A Notification guides admin screen (list, create, delete, JSON import, the variable defaults) and a guide edit screen (name, version, PHIN variables, linked guides, variables, JSON export); its client and client tests; a menu entry.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~GuidesClientTests</code></td><td>yes</td></tr>
+<tr><td>Phin variables web</td><td><p>A PHIN variables admin screen (list, create, save, delete, the rule set type and configuration a variable uses) and a rule set edit screen (format type, value set, repeating, fields, data, value maps, expressions and their conditions); their clients and client tests; a menu entry.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~PhinVariablesClientTests|FullyQualifiedName~RuleSetsClientTests</code></td><td>yes</td></tr>
+<tr><td>Overrides and hep web</td><td><p>The organism and test-type overrides on the condition screen, and a Hepatitis lab setup admin screen (groups, their conditions, their test types with test group name and sort order); clients and client tests; a menu entry.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ConditionsClientTests|FullyQualifiedName~HepLabGroupsClientTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No transport, batch-file, credential or export-log-retention work and no live transmission to CDC (session 91); no NETSS export of any kind.</li><li>No automatic F/C/X notification-status logic and no TB state-case-number rule.</li><li>No repeating-group table, screen or the Fields and Field Values repeating-group types: a variable still repeats per dataset through its rule set's dataSet data, and a guide's JSON carries its PHIN variables and their rule set configurations only.</li><li>A CSV import adds and saves over by key and never deletes rows the file leaves out; no 'used in' summary of value set codes.</li><li>No treatment overrides, no hepatitis lab filtering by a start date, and no NMI config-variables or NMI-users screens.</li><li>No new Playwright tests or walkthroughs; existing element ids keep working.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[12:01:19]</span> <span class="muted">run-started</span> session=090 mode=pull</div>
+<div class="line"><span class="at">[12:01:19]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[12:10:12]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[12:10:12]</span> <span class="muted">plan-accepted</span> steps=[&quot;notification-admin-data&quot;,&quot;generator-segments&quot;,&quot;lab-grouping-and-overrides&quot;,&quot;builder-wiring&quot;,&quot;value-set-api&quot;,&quot;phin-variable-and-rule-set-api&quot;,&quot;guide-api&quot;,&quot;override-and-hep-api&quot;,&quot;value-sets-web&quot;,&quot;guides-web&quot;,&quot;phin-variables-web&quot;,&quot;overrides-and-hep-web&quot;] non_goals=6</div>
+<div class="line"><span class="at">[12:10:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[12:10:13]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=notification-admin-data</div>
+<div class="line"><span class="at">[12:13:10]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:13:13]</span> <span class="muted">check-passed</span> step=notification-admin-data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[12:13:13]</span> <span class="muted">check-passed</span> step=notification-admin-data argv=[&quot;git&quot;,&quot;grep&quot;,&quot;--untracked&quot;,&quot;-q&quot;,&quot;-F&quot;,&quot;nmi_phin_value_set&quot;,&quot;--&quot;,&quot;Survsys.Data/Migrations/20261021180000_NotificationAdministration.cs&quot;]</div>
+<div class="line"><span class="at">[12:13:14]</span> <span class="muted">report-accepted</span> seq=2 step=notification-admin-data files=[] notes=Entities, configurations, DbSets and migration 20261021180000_NotificationAdministration for guide.version, guide variable defaults (seeded with the former hard-coded header) and values, PHIN value sets, units of measure, condition lab overrides and hepatitis lab groups.</div>
+<div class="line"><span class="at">[12:13:14]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=generator-segments</div>
+<div class="line"><span class="at">[12:15:01]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:15:05]</span> <span class="muted">check-passed</span> step=generator-segments argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~OruR01GeneratorTests&quot;]</div>
+<div class="line"><span class="at">[12:15:05]</span> <span class="muted">report-accepted</span> seq=3 step=generator-segments files=[] notes=OruR01Generator writes the Arbo_Case_Map_v1.0 guide as PERSUBJ and NOTF OBRs (DEM observations under PERSUBJ, set ids per OBR, NOT118 on each) and an NK1 mother segment from the MTH variables when any has a value; tests use the NMI_XML_GENERATION.md example record.</div>
+<div class="line"><span class="at">[12:15:05]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=lab-grouping-and-overrides</div>
+<div class="line"><span class="at">[12:16:02]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:16:06]</span> <span class="muted">check-passed</span> step=lab-grouping-and-overrides argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~LabOverridesTests|FullyQualifiedName~HepatitisLabGroupingTests&quot;]</div>
+<div class="line"><span class="at">[12:16:06]</span> <span class="muted">report-accepted</span> seq=4 step=lab-grouping-and-overrides files=[] notes=LabItemRule/LabOverrides filter Lab rows by organism and test type (defaults plus inclusions minus exclusions; an unconfigured rule limits nothing); HepatitisLabGrouping builds the HepLab dataset in sort order with hep_test_group.</div>
+<div class="line"><span class="at">[12:16:06]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=builder-wiring</div>
+<div class="line"><span class="at">[12:20:05]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:20:08]</span> <span class="muted">check-passed</span> step=builder-wiring argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[12:20:08]</span> <span class="muted">report-accepted</span> seq=5 step=builder-wiring files=[] notes=NotificationMessageBuilder reads value sets and units of measure from the new tables (warning on a missing one), builds MSH-3..6 and MSH-12 from the guide's variables over their defaults, passes the guide's version as the profile (Arbo -&gt; NND_ORU_v2.0), filters Lab through the condition's overrides and adds HepLab; RepeatingGroupProcessor accepts HepLab.</div>
+<div class="line"><span class="at">[12:20:08]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=value-set-api</div>
+<div class="line"><span class="at">[12:22:53]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:22:56]</span> <span class="muted">check-passed</span> step=value-set-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[12:22:59]</span> <span class="muted">check-passed</span> step=value-set-api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ValueSetEndpointsTests|FullyQualifiedName~VocabularyEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[12:23:00]</span> <span class="muted">report-accepted</span> seq=6 step=value-set-api files=[] notes=PHIN value sets and units of measure served at /api/notification-setup/{phin-value-sets,units-of-measure} through VocabularyEndpoints.MapTable (now reusable under any root) with CSV import preview; /api/notification-setup is reference data in PrivilegeRules.</div>
+<div class="line"><span class="at">[12:23:00]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=phin-variable-and-rule-set-api</div>
+<div class="line"><span class="at">[12:26:10]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:26:12]</span> <span class="muted">check-passed</span> step=phin-variable-and-rule-set-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[12:26:16]</span> <span class="muted">check-passed</span> step=phin-variable-and-rule-set-api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~PhinVariableEndpointsTests|FullyQualifiedName~RuleSetEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[12:26:16]</span> <span class="muted">report-accepted</span> seq=7 step=phin-variable-and-rule-set-api files=[] notes=PHIN variables CRUD at /api/notification-setup/phin-variables (rule set type and config resolved; delete refused while a guide carries it); rule set types listed and a rule set configuration created, read and replaced whole at /api/notification-setup/rule-sets via RuleSetQueries.</div>
+<div class="line"><span class="at">[12:26:16]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=guide-api</div>
+<div class="line"><span class="at">[12:29:19]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:29:22]</span> <span class="muted">check-passed</span> step=guide-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[12:29:25]</span> <span class="muted">check-passed</span> step=guide-api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~GuideEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[12:29:26]</span> <span class="muted">report-accepted</span> seq=8 step=guide-api files=[] notes=Guides CRUD at /api/notification-setup/guides (unique by name and version; delete refused while a condition is exported under it), PHIN variables, linked guides and header variables replaced whole, guide variable defaults as a CSV reference table, and guide JSON export/import matched by name and version in one transaction.</div>
+<div class="line"><span class="at">[12:29:26]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=override-and-hep-api</div>
+<div class="line"><span class="at">[12:32:46]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:32:49]</span> <span class="muted">check-passed</span> step=override-and-hep-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[12:32:53]</span> <span class="muted">check-passed</span> step=override-and-hep-api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ConditionEndpointsTests|FullyQualifiedName~HepLabGroupEndpointsTests&quot;]</div>
+<div class="line"><span class="at">[12:32:53]</span> <span class="muted">report-accepted</span> seq=9 step=override-and-hep-api files=[] notes=GET/PUT /api/conditions/{id}/lab-overrides (organism and test_type, resolved against master organisms and test_type codes) and /api/notification-setup/hep-lab-groups CRUD saving a group's conditions and test types whole (a condition in one group, unique names).</div>
+<div class="line"><span class="at">[12:32:53]</span> <span class="muted">instruction-issued</span> seq=10 kind=step step=value-sets-web</div>
+<div class="line"><span class="at">[12:34:50]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:34:52]</span> <span class="muted">check-passed</span> step=value-sets-web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[12:34:56]</span> <span class="muted">check-passed</span> step=value-sets-web argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ValueSetsClientTests&quot;]</div>
+<div class="line"><span class="at">[12:34:57]</span> <span class="muted">report-accepted</span> seq=10 step=value-sets-web files=[] notes=ValueSetsClient and a Value sets screen (/value-sets) with PHIN value set and unit of measure tabs: list (filter by value set), add, edit, delete, CSV export link and previewed CSV import; menu entry under reference data.</div>
+<div class="line"><span class="at">[12:34:57]</span> <span class="muted">instruction-issued</span> seq=11 kind=step step=guides-web</div>
+<div class="line"><span class="at">[12:37:30]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:37:33]</span> <span class="muted">check-passed</span> step=guides-web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[12:37:37]</span> <span class="muted">check-passed</span> step=guides-web argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~GuidesClientTests&quot;]</div>
+<div class="line"><span class="at">[12:37:37]</span> <span class="muted">report-accepted</span> seq=11 step=guides-web files=[] notes=GuidesClient, a Notification guides screen (/guides: list, add, JSON import, header variable defaults with CSV export/import) and a guide editor (/guides/{id}: name and version, PHIN variables, linked guides, header values, JSON export, delete); export routes and a menu entry.</div>
+<div class="line"><span class="at">[12:37:37]</span> <span class="muted">instruction-issued</span> seq=12 kind=step step=phin-variables-web</div>
+<div class="line"><span class="at">[12:39:46]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:39:48]</span> <span class="muted">check-passed</span> step=phin-variables-web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[12:39:52]</span> <span class="muted">check-passed</span> step=phin-variables-web argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~PhinVariablesClientTests|FullyQualifiedName~RuleSetsClientTests&quot;]</div>
+<div class="line"><span class="at">[12:39:52]</span> <span class="muted">report-accepted</span> seq=12 step=phin-variables-web files=[] notes=PhinVariablesClient and RuleSetsClient; a PHIN variables screen (/phin-variables: find, add, edit, delete, rule set type, new or edit rule set) and a rule set editor (/rule-sets/{id}: format type, value set, repeating, fields, parameters, value maps, expressions and conditions, saved whole); menu entry.</div>
+<div class="line"><span class="at">[12:39:52]</span> <span class="muted">instruction-issued</span> seq=13 kind=step step=overrides-and-hep-web</div>
+<div class="line"><span class="at">[12:42:32]</span> <span class="muted">run-resumed</span> session=090 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[12:42:34]</span> <span class="muted">check-passed</span> step=overrides-and-hep-web argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[12:42:38]</span> <span class="muted">check-passed</span> step=overrides-and-hep-web argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ConditionsClientTests|FullyQualifiedName~HepLabGroupsClientTests&quot;]</div>
+<div class="line"><span class="at">[12:42:39]</span> <span class="muted">report-accepted</span> seq=13 step=overrides-and-hep-web files=[] notes=ConditionsClient lab overrides and a lab overrides panel on the condition editor (organism or test type, include or exclude, saved whole); HepLabGroupsClient and a Hepatitis lab setup screen (/hep-lab-setup: groups, conditions, test types with test group and sort order); menu entry.</div>
+<div class="line"><span class="at">[12:42:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[12:42:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[12:42:39]</span> <span class="muted">job-started</span> name=verification pid=47688 log=.dabbler/runs/s90/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:44:10]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s90/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[12:44:10]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[12:44:10]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[12:44:10]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[12:44:10]</span> <span class="muted">job-started</span> name=run of record: unit pid=13808 log=.dabbler/runs/s90/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[12:44:17]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s90/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[12:44:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[12:44:20]</span> <span class="muted">landed</span> commit=c6801e64ed3e123d102436bda41fb8e11bed0e30</div>
+<div class="line"><span class="at">[12:44:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[12:44:20]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[12:44:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[12:44:20]</span> <span class="muted">job-started</span> name=close pid=13840 log=.dabbler/runs/s90/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:44:24]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s90/driver/jobs/close.log</div>
+<div class="line"><span class="at">[12:44:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `OruR01Generator` treats every PHIN variable beginning with `MTH` as a mother-segment variable, although the requirement names only `MTH153/157/159/165/166/167/168/169`.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Evidence:** `Survsys.Messaging/OruR01Generator.cs`, `Survsys.UnitTests/OruR01GeneratorTests.cs`</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Case to add:** With an otherwise ordinary input containing a non-empty `MTH999` and no values for the eight specified mother variables, generate the message. It should contain `MTH999` as an `OBX` and contain no `NK1`; today `IsMother` suppresses the OBX and creates an otherwise empty `NK1` because it matches the broad `MTH` prefix.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>2019</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

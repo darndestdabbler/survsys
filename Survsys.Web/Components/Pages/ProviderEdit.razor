@@ -1,0 +1,149 @@
+@* A provider's administration screen: their name, their type from the
+   provider type code list, how to reach them, and whether they are still
+   offered. One screen for both a new provider and an existing one, which it
+   is being whether the address carries an id. A provider is retired by
+   clearing Active rather than deleted. A save goes back to the providers
+   list. *@
+@page "/providers/new"
+@page "/providers/{Id:int}"
+@inject ProvidersClient Providers
+@inject NavigationManager Navigation
+
+<PageTitle>@Heading — Survsys</PageTitle>
+
+<MudText id="provider-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    @Heading
+</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular id="provider-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (failure is { } whyNot)
+    {
+        <MudAlert id="provider-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @whyNot
+        </MudAlert>
+    }
+
+    <MudPaper id="provider-form" Elevation="1" Class="pa-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="firstName" id="provider-first-name" Label="First name"
+                              Variant="Variant.Outlined" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="middleName" id="provider-middle-name" Label="Middle name"
+                              Variant="Variant.Outlined" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="lastName" id="provider-last-name" Label="Last name"
+                              Variant="Variant.Outlined" Required="true" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <CodeSelect List="@CodeLists.ProviderType" @bind-CodeId="providerTypeId" id="provider-type"
+                            Label="Provider type" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="phone" id="provider-phone" Label="Phone"
+                              Variant="Variant.Outlined" MaxLength="30" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="email" id="provider-email" Label="Email"
+                              Variant="Variant.Outlined" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudSwitch T="bool" @bind-Value="active" id="provider-active"
+                           Color="Color.Primary" Label="Active" />
+            </MudItem>
+        </MudGrid>
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton id="provider-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                Save
+            </MudButton>
+            <MudButton id="provider-cancel" Variant="Variant.Outlined" Disabled="@saving"
+                       Href="/providers">
+                Cancel
+            </MudButton>
+        </div>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>The provider being edited, or null for a new one.</summary>
+    [Parameter]
+    public int? Id { get; set; }
+
+    private string? firstName;
+
+    private string? middleName;
+
+    private string? lastName;
+
+    private int? providerTypeId;
+
+    private string? phone;
+
+    private string? email;
+
+    private bool active = true;
+
+    private bool loading = true;
+
+    private bool saving;
+
+    private string? failure;
+
+    private string Heading => Id is null ? "New provider" : "Edit provider";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id is { } id)
+        {
+            var found = await Providers.Find(id);
+
+            if (found.Value is { } provider)
+            {
+                firstName = provider.FirstName;
+                middleName = provider.MiddleName;
+                lastName = provider.LastName;
+                providerTypeId = provider.ProviderTypeId;
+                phone = provider.Phone;
+                email = provider.Email;
+                active = provider.Active;
+            }
+
+            failure = found.Failure;
+        }
+
+        loading = false;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        failure = null;
+
+        var request = new SaveProviderRequest(
+            lastName ?? "", firstName, middleName, providerTypeId, phone, email, active);
+
+        var saved = Id is { } id
+            ? await Providers.Update(id, request)
+            : await Providers.Create(request);
+
+        saving = false;
+
+        if (saved.Succeeded)
+        {
+            Navigation.NavigateTo("/providers");
+
+            return;
+        }
+
+        failure = saved.Failure;
+    }
+}

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 077 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 077 transcript</h1>
+<p class="stamp">Rendered 2026-10-19T23:55:20.673Z by dabbler-ai-router 3.21.0 at 453970725a0081722e0c9859ff94703311e87c06.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-19T19:27:20.209-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 77: The graylist, automatic assignment and the full queue</h3>
+<ol><li>Register.</li><li><code>Survsys.Data</code> and <code>Survsys.Api</code>: the remaining legacy queue states — pending, locked, QA, out of state, semi-automatic, unprocessed and the gray cluster — with their migration; a message person-matched and rule-matched with confidence assigned without a reviewer, and one without confidence sent to pending; the graylist holding a result with no case to attach to, a hosted service releasing it when a case appears and pruning it after its window.</li><li><code>Survsys.Web</code>: the queue filtered by every state, and move, delete, retry and bulk actions.</li><li><code>Survsys.IntegrationTests</code>: an automatic assignment, a graylisted message released and one pruned.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Finish the legacy EMSA queue and put automatic assignment and the graylist behind intake. Survsys.Data's MessageReviewStatus and MessageReviewStatusRules gain the remaining legacy queue states as stored codes -- locked, qa, out-of-state, semi-auto, unprocessed, and the gray cluster gray, gray-pending, gray-processed, gray-unprocessable and gray-exception -- beside entry, pending, exception, assigned and filtered; a staged message gains the case it was assigned or released to (a nullable person_condition_id), with the FullQueue migration. Survsys.Api gains MessageProcessingService, a BackgroundService off unless MessageProcessing:PollIntervalSeconds is configured, whose each pass is three public static steps over the database: Assign takes every Entry message through a pure Decide -- no condition or case-management decision, or no investigating agency, goes to pending; a patient whose state is not the configured MessageProcessing:HomeState goes to out-of-state; a case-management rule that allows no new case sends it to gray; otherwise the patient is scored with the existing PersonMatchRules, and exactly one exact match with no open case on the condition, or no exact or probable match at all (a new person from the message's demographics), is confident, so a case is opened with PersonConditionQueries.Add and the message marked assigned with that case, while anything else (several or only probable matches, or an open case already on the condition) goes to pending with why; Release moves a gray message to pending, recording the case, when a case on its condition for a person who scores exact against its patient has an event date within GraylistRules' window of its collection date; Prune moves a gray message received longer ago than MessageProcessing:GraylistRetentionDays (default 548, the legacy 18 months) to gray-unprocessable. ElrIntakeService's translation loop is lifted into a public static Translate so a retry reuses it. The queue API gains move, delete and retry over a list of message ids, each refusing what its pure WhyNot function refuses (nothing moves into or out of assigned, an assigned message is not deleted, only an exception or unprocessed, locked or gray-exception message is retried, and a retry re-translates it against the current vocabulary and rules), and promotion also accepts semi-auto and qa. Survsys.Web's Staged messages screen filters by every state and selects rows (the checkbox inside the existing id cell, so the table's headings do not change) for move, delete and retry on one or many. Integration tests cover an automatic assignment, a graylisted message released and one pruned.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/c9c5823adf7eb2c2bec3afdbc08fcae93bdd5970"><code>c9c5823adf7eb2c2bec3afdbc08fcae93bdd5970</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Queue states</td><td><p>Survsys.Data: add the remaining legacy queue states to MessageReviewStatus and MessageReviewStatusRules (a code constant for each of locked, qa, out-of-state, semi-auto, unprocessed, gray, gray-pending, gray-processed, gray-unprocessable, gray-exception, read back by Read), add StagedMessage.PersonConditionId (a bare nullable id, person_condition_id) with its configuration, and generate the FullQueue migration. Update MessageReviewStatusRulesTests for every code.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet ef migrations has-pending-model-changes --project Survsys.Data --startup-project Survsys.Api</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~MessageReviewStatusRulesTests|FullyQualifiedName~MigrationGateTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Assignment and graylist</td><td><p>Survsys.Api: lift ElrIntakeService.Receive's translation of staged messages into a public static Translate(database, messages, cancellationToken) that Receive calls. Add MessageProcessingService (BackgroundService) with MessageProcessingOptions (PollIntervalSeconds, off when unset; HomeState; GraylistRetentionDays default 548), a pure public static Decide, and public static Assign, Release and Prune passes as the task describes; register both in Program.cs and add the section, off, to appsettings.json. Unit tests for Decide in MessageProcessingServiceTests.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~MessageProcessingServiceTests|FullyQualifiedName~ElrIntakeServiceTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Queue actions</td><td><p>Survsys.Api and Survsys.Contracts: POST /api/staged-messages/move (ids and a status), /delete (ids) and /retry (ids), each refusing with its pure WhyNotMovable, WhyNotDeletable and WhyNotRetryable sentence before touching any row, and answering with how many messages it acted on; retry re-translates through ElrIntakeService.Translate. WhyNotPromotable also passes semi-auto and qa. Unit tests for each WhyNot function in MessageQueueEndpointsTests.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~MessageQueueEndpointsTests|FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Queue screen</td><td><p>Survsys.Web: the Staged messages screen's Review state filter lists every state with a unique label; each row gets a selection checkbox inside its existing id cell, and an action bar above the table moves the selected messages to a chosen state, deletes them, or retries them, showing the API's refusal or the count acted on and reloading the page. MessageQueueClient gains Move, Delete and Retry, with tests in MessageQueueClientTests.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~MessageQueueClientTests</code></td><td>yes</td></tr>
+<tr><td>Integration</td><td><p>Survsys.IntegrationTests: MessageProcessingServiceTests seeds the vocabulary, a rule allowing a new case and a sending facility, takes a message through ElrIntakeService.Receive and MessageProcessingService.Assign and asserts it is assigned to a newly opened case; seeds a graylisted message, opens a matching case for the same person and asserts Release moves it to pending with that case; and seeds an old graylisted message and asserts Prune moves it to gray-unprocessable.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --filter FullyQualifiedName~MessageProcessingServiceTests|FullyQualifiedName~ElrIntakeTests|FullyQualifiedName~MessageQueuePromotionTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No update of an existing case from a message, lab writing onto the case, whitelist rules, lab comparison, one-to-many or last-name-change checks: session 78. A confident person with an open case on the condition goes to pending.</li><li>No typed exception categories, scheduled reprocessing of exceptions, re-parsing of an unparseable message, message audit trail, notification e-mail or statistics: session 79. Retry re-translates a parsed message and nothing more; an unparseable one stays an exception.</li><li>Nothing writes locked, qa, semi-auto, unprocessed, gray-pending, gray-processed or gray-exception automatically: they are states a reviewer moves a message into and out of. No semi-automatic organism selection, interstate transmission, out-of-state copy to gray, QA by condition configuration, or use of the graylist_spool table.</li><li>No change to the review screen, the walkthroughs or the end-to-end tests, and the queue table's column headings stay as they are; no release, packaging or change to dabbler.yaml.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[23:27:20]</span> <span class="muted">run-started</span> session=077 mode=pull</div>
+<div class="line"><span class="at">[23:27:20]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[23:31:10]</span> <span class="muted">run-resumed</span> session=077 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[23:31:10]</span> <span class="muted">plan-accepted</span> steps=[&quot;queue-states&quot;,&quot;assignment-and-graylist&quot;,&quot;queue-actions&quot;,&quot;queue-screen&quot;,&quot;integration&quot;] non_goals=4</div>
+<div class="line"><span class="at">[23:31:11]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[23:31:11]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=queue-states</div>
+<div class="line"><span class="at">[23:33:08]</span> <span class="muted">run-resumed</span> session=077 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:33:11]</span> <span class="muted">check-passed</span> step=queue-states argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[23:33:16]</span> <span class="muted">check-passed</span> step=queue-states argv=[&quot;dotnet&quot;,&quot;ef&quot;,&quot;migrations&quot;,&quot;has-pending-model-changes&quot;,&quot;--project&quot;,&quot;Survsys.Data&quot;,&quot;--startup-project&quot;,&quot;Survsys.Api&quot;]</div>
+<div class="line"><span class="at">[23:33:19]</span> <span class="muted">check-passed</span> step=queue-states argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageReviewStatusRulesTests|FullyQualifiedName~MigrationGateTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[23:33:20]</span> <span class="muted">report-accepted</span> seq=2 step=queue-states files=[] notes=Ten legacy queue states added with codes and Codes list; StagedMessage.PersonConditionId and the FullQueue migration</div>
+<div class="line"><span class="at">[23:33:20]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=assignment-and-graylist</div>
+<div class="line"><span class="at">[23:37:00]</span> <span class="muted">run-resumed</span> session=077 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:37:03]</span> <span class="muted">check-passed</span> step=assignment-and-graylist argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[23:37:08]</span> <span class="muted">check-passed</span> step=assignment-and-graylist argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageProcessingServiceTests|FullyQualifiedName~ElrIntakeServiceTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[23:37:09]</span> <span class="muted">report-accepted</span> seq=3 step=assignment-and-graylist files=[] notes=ElrIntakeService.Translate lifted out of Receive; MessageProcessingService with Decide, Assign, Release and Prune, off unless configured; Decide unit-tested</div>
+<div class="line"><span class="at">[23:37:09]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=queue-actions</div>
+<div class="line"><span class="at">[23:39:25]</span> <span class="muted">run-resumed</span> session=077 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:39:28]</span> <span class="muted">check-passed</span> step=queue-actions argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[23:39:32]</span> <span class="muted">check-passed</span> step=queue-actions argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageQueueEndpointsTests|FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[23:39:33]</span> <span class="muted">report-accepted</span> seq=4 step=queue-actions files=[] notes=Move, delete and retry endpoints over a list of ids, all or nothing, with pure WhyNot rules; promotion also from semi-auto and qa</div>
+<div class="line"><span class="at">[23:39:33]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=queue-screen</div>
+<div class="line"><span class="at">[23:41:48]</span> <span class="muted">run-resumed</span> session=077 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:41:50]</span> <span class="muted">check-passed</span> step=queue-screen argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[23:41:54]</span> <span class="muted">check-passed</span> step=queue-screen argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageQueueClientTests&quot;]</div>
+<div class="line"><span class="at">[23:41:55]</span> <span class="muted">report-accepted</span> seq=5 step=queue-screen files=[] notes=Filter lists every state; row checkbox sits in the Source cell (the table has no id cell) so headings are unchanged; assigned keeps reading 'assigned' because resolve-a-duplicate asserts it; Move/Delete/Retry/Select page bar; client Move, Delete, Retry</div>
+<div class="line"><span class="at">[23:41:55]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=integration</div>
+<div class="line"><span class="at">[23:49:16]</span> <span class="muted">run-resumed</span> session=077 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[23:49:19]</span> <span class="muted">check-passed</span> step=integration argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[23:49:32]</span> <span class="muted">check-passed</span> step=integration argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageProcessingServiceTests|FullyQualifiedName~ElrIntakeTests|FullyQualifiedName~MessageQueuePromotionTests&quot;]</div>
+<div class="line"><span class="at">[23:49:32]</span> <span class="muted">report-accepted</span> seq=6 step=integration files=[] notes=MessageProcessingServiceTests: automatic assignment to a new case, a graylisted message released to pending with its case, one pruned. Full integration run 303/304; PersonConditionEndpointsTests.TheOptionsAreTheStatesMovesNarrowedToTheCallersPrivileges failed once and passed alone and beside these tests</div>
+<div class="line"><span class="at">[23:49:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[23:49:32]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[23:49:34]</span> <span class="muted">job-started</span> name=verification pid=59824 log=.dabbler/runs/s77/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:50:54]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s77/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:50:54]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[23:50:54]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[23:50:54]</span> <span class="muted">instruction-issued</span> seq=7 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[23:51:31]</span> <span class="muted">run-resumed</span> session=077 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[23:51:31]</span> <span class="muted">dispute-recorded</span> round=1 finding=0</div>
+<div class="line"><span class="at">[23:51:31]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[1,2] reject=[0] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;The plan sentence lists where each kind of message goes; it does not order the checks, and the order the finding asks for would make the out-of-state route unreachable. An agency comes only from the zip-to-agency mapping (IntakeTranslator sets AgencyId only when the zip resolves to exactly one agency, and an unmapped zip leaves it null). The mapping holds the jurisdiction's own agencies' zips, so an out-of-state patient's zip resolves to no agency. Checking the agency first would send every such patient to pending, and out-of-state, which the plan names as a route, would never be written. The order Decide uses is the legacy EMSA chain's (EMSA_MESSAGE_PIPELINE.md, addCmrProcess: the case-management rule's CMR_NO graylists the message at step 3, out of state is step 7, and the API call that needs the agency follows), and the Decide remarks say so. A message graylisted or sent out of state without an agency is never assigned without one either. Release moves a graylisted message to pending for a reviewer and opens no case, and an out-of-state message waits for a reviewer. The only path that opens a case, the assigned decision, is reached only after the agency check, so no case is ever opened without an investigating agency.&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[23:51:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[23:51:31]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[23:53:33]</span> <span class="muted">run-resumed</span> session=077 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[23:53:36]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=queue-states</div>
+<div class="line"><span class="at">[23:53:41]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;ef&quot;,&quot;migrations&quot;,&quot;has-pending-model-changes&quot;,&quot;--project&quot;,&quot;Survsys.Data&quot;,&quot;--startup-project&quot;,&quot;Survsys.Api&quot;] owner=queue-states</div>
+<div class="line"><span class="at">[23:53:44]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageReviewStatusRulesTests|FullyQualifiedName~MigrationGateTests|FullyQualifiedName~ArchitectureTests&quot;] owner=queue-states</div>
+<div class="line"><span class="at">[23:53:46]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=assignment-and-graylist</div>
+<div class="line"><span class="at">[23:53:50]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageProcessingServiceTests|FullyQualifiedName~ElrIntakeServiceTests|FullyQualifiedName~ArchitectureTests&quot;] owner=assignment-and-graylist</div>
+<div class="line"><span class="at">[23:53:55]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=queue-actions</div>
+<div class="line"><span class="at">[23:53:59]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageQueueEndpointsTests|FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~ArchitectureTests&quot;] owner=queue-actions</div>
+<div class="line"><span class="at">[23:54:01]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=queue-screen</div>
+<div class="line"><span class="at">[23:54:06]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageQueueClientTests&quot;] owner=queue-screen</div>
+<div class="line"><span class="at">[23:54:09]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=integration</div>
+<div class="line"><span class="at">[23:54:22]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MessageProcessingServiceTests|FullyQualifiedName~ElrIntakeTests|FullyQualifiedName~MessageQueuePromotionTests&quot;] owner=integration</div>
+<div class="line"><span class="at">[23:54:23]</span> <span class="muted">report-accepted</span> seq=8 step=fix-round-1 files=[] notes=Promotion records person_condition_id; move and delete are single statements that leave an assigned message alone, retry reads only still-held parsed messages; new integration MessageQueueEndpointsTests and a promotion assertion</div>
+<div class="line"><span class="at">[23:54:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[23:54:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[23:54:24]</span> <span class="muted">job-started</span> name=verification pid=68452 log=.dabbler/runs/s77/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:54:53]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s77/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[23:54:53]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[23:54:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[23:54:53]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[23:54:55]</span> <span class="muted">job-started</span> name=run of record: unit pid=10280 log=.dabbler/runs/s77/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[23:55:03]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s77/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[23:55:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[23:55:09]</span> <span class="muted">landed</span> commit=c9c5823adf7eb2c2bec3afdbc08fcae93bdd5970</div>
+<div class="line"><span class="at">[23:55:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[23:55:09]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[23:55:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[23:55:10]</span> <span class="muted">job-started</span> name=close pid=45780 log=.dabbler/runs/s77/driver/jobs/close.log</div>
+<div class="line"><span class="at">[23:55:20]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s77/driver/jobs/close.log</div>
+<div class="line"><span class="at">[23:55:20]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Automatic-assignment decision precedence contradicts the required queue routing.</td><td>disputed — The plan sentence lists where each kind of message goes; it does not order the checks, and the order the finding asks for would make the out-of-state route unreachable. An agency comes only from the zip-to-agency mapping (IntakeTranslator sets AgencyId only when the zip resolves to exactly one agency, and an unmapped zip leaves it null). The mapping holds the jurisdiction's own agencies' zips, so an out-of-state patient's zip resolves to no agency. Checking the agency first would send every such patient to pending, and out-of-state, which the plan names as a route, would never be written. The order Decide uses is the legacy EMSA chain's (EMSA_MESSAGE_PIPELINE.md, addCmrProcess: the case-management rule's CMR_NO graylists the message at step 3, out of state is step 7, and the API call that needs the agency follows), and the Decide remarks say so. A message graylisted or sent out of state without an agency is never assigned without one either. Release moves a graylisted message to pending for a reviewer and opens no case, and an out-of-state message waits for a reviewer. The only path that opens a case, the assigned decision, is reached only after the agency check, so no case is ever opened without an investigating agency.</td></tr>
+<tr><td>1</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Manual promotion leaves the promised `person_condition_id` unset.</td><td>fixed — Promotion records person_condition_id; move and delete are single statements that leave an assigned message alone, retry reads only still-held parsed messages; new integration MessageQueueEndpointsTests and a promotion assertion</td></tr>
+<tr><td>2</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>Queue action state checks are non-atomic and can move, retry, or delete a message after it has become assigned.</td><td>fixed — Promotion records person_condition_id; move and delete are single statements that leave an assigned message alone, retry reads only still-held parsed messages; new integration MessageQueueEndpointsTests and a promotion assertion</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>1654</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
