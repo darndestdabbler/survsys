@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 123 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 123 transcript</h1>
+<p class="stamp">Rendered 2026-10-28T19:20:04.333Z by dabbler-ai-router 3.23.0 at 5c8c7ce81d8f1610fcbaa40dfcb912c015e0f02f.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-28T15:03:29.260-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 123: The provider registry</h3>
+<p>*Inserted at the operator's request on 2026-10-28. A lab's ordering clinician is a bare <code>provider_id</code> into a <code>provider</code> table Survsys does not have, so the Laboratory tab can only offer a number box. The legacy application keeps a <strong>Providers</strong> registry on its admin menu (<code>../nedss/docs/functional/epitrax-core-workflows.md</code>, screen <code>24-admin-providers</code>): last name, first name, phone, email and provider type, over the legacy <code>provider</code> and <code>provider_type</code> tables. Survsys gets that registry as reference data an administrator maintains, like the facilities.*</p>
+<ol><li>Register.</li><li><code>Survsys.Data</code>: a <code>provider</code> table with the legacy columns (provider type, first, middle and last name, phone, email) and an active flag, by migration; the provider types as a <code>provider_type</code> code list on the existing Code lists mechanism rather than a table of their own, seeded with the legacy types the documents name.</li><li><code>Survsys.Api</code> and <code>Survsys.Contracts</code>: list (paged, searched by last name, readable with <code>view_cases</code>), read, create and update under <code>manage_reference_data</code>, and CSV export and import previewed before saving, as the facilities have.</li><li><code>Survsys.Web</code>: a <strong>Providers</strong> screen under <strong>Reference data</strong> in the side menu — the searchable table, an editor, and the CSV import and export — following the Facilities screen.</li><li><code>docs/walkthroughs/</code>: a *Maintain a provider* walkthrough with its end-to-end test, and its row in the README index and the testing-by-hand guide.</li><li>Cross-provider verification.</li><li>Full test suite, the end-to-end walkthrough suite included, recorded as the run of record.</li><li>Close-out.</li></ol>
+<p><strong>Non-goals:</strong> the Laboratory tab is unchanged (session 124); no provider is matched from an ELR message.</p>
+<h2>Work Plan</h2>
+<p>Give Survsys the legacy Providers registry as reference data an administrator maintains, following the facilities end to end. Survsys.Data gains a Provider entity on a new providers table (the legacy provider table's provider type, first, middle and last name, phone and email, plus an active flag; last name required), added by one migration that also seeds the provider_type code list on the existing code_values mechanism with the one legacy type the Flyway seed names (clinician, Clinician); CodeLists gains ProviderType so the Code lists screen offers it. The provider type is stored as a code_values id, as the lab's coded fields are, and the API refuses with a 400 an id that is not on the provider_type list. Survsys.Contracts gains ProviderResponse and SaveProviderRequest, and Survsys.Api a ProviderEndpoints with ProviderQueries and a ProviderTable on the existing ReferenceTable/ReferenceImport: GET /api/providers paged and ordered by last then first name, searched by a lastName prefix; GET /api/providers/{id}; POST and PUT; GET /api/providers/csv to export and POST /api/providers/csv to preview and, with confirm=true, save. PrivilegeRules reads /api/providers with view_cases and writes it with manage_reference_data. Survsys.Web gains a ProvidersClient, a /providers/export download, a Providers screen (a last-name search over the table, New provider, CSV export and the ImportPreview import) and a ProviderEdit screen (a CodeSelect for the type and an Active switch), linked as Providers under Reference data for manage_reference_data. A Maintain a provider walkthrough with its end-to-end test is added and indexed, and the user guide and technical README name the new table, screen and endpoints.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/dbc65980374211a093326968f9a792105b026fa5"><code>dbc65980374211a093326968f9a792105b026fa5</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Provider data</td><td><p>Add Survsys.Data/Provider.cs (Id, ProviderTypeId int?, FirstName, MiddleName, LastName required, Phone, Email, Active defaulting true, with a remark naming the legacy provider and provider_type tables in V0001__create.sql) and Survsys.Data/ProviderConfiguration.cs mapping it onto a providers table under snake_case column names (provider_type_id, first_name, middle_name, last_name, phone, email, active) with lengths (names 100, phone 30, email 200), an index on last_name, and provider_type_id a foreign key to code_values with DeleteBehavior.Restrict. Add the DbSet Providers to Survsys.Data/SurvsysDbContext.cs. Add CodeLists.ProviderType = &quot;provider_type&quot; to Survsys.Contracts/CodeLists.cs and to All, and to Survsys.Data/CodeValueSeed.cs the row Id 1175, provider_type, clinician, Clinician, SortOrder 1, naming V0003__init.sql in the class remarks. Generate the migration 20261028000000_Providers (the .cs, its Designer and the model snapshot) with dotnet ef. Add a test to Survsys.UnitTests/CodeValueSeedTests.cs that the provider_type list is the legacy clinician.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet ef migrations has-pending-model-changes --project Survsys.Data --startup-project Survsys.Api</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~CodeValueSeedTests</code></td><td>yes</td></tr>
+<tr><td>Provider api</td><td><p>Add Survsys.Contracts/ProviderResponse.cs and Survsys.Contracts/SaveProviderRequest.cs, and Survsys.Api/ProviderEndpoints.cs following FacilityEndpoints: ToResponse/Respond, WhyNotAProvider (last name required, lengths, an email holding an @), GET /api/providers (page, pageSize, an optional lastName prefix, ordered by last name, first name, id), GET /api/providers/{id}, POST and PUT (a provider type id not on the provider_type list is a 400), and CSV export and import through a ProviderTable on ReferenceTable with the columns id, provider_type_id, first_name, middle_name, last_name, phone, email, active (active read with ReferenceCsv.Flag and written with ReferenceCsv.YesNo). Register and map them in Survsys.Api/Program.cs. In Survsys.Api/PrivilegeRules.cs make /api/providers read with view_cases and written with manage_reference_data, and say so in its remarks. Add Survsys.UnitTests/ProviderEndpointsTests.cs, extend Survsys.UnitTests/PrivilegeRulesTests.cs for /api/providers, and add Survsys.IntegrationTests/ProviderEndpointsTests.cs covering create, read, update, the last-name search, a refused provider type, and a CSV import previewed then confirmed.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ProviderEndpointsTests|FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~ArchitectureTests</code></td><td>yes</td></tr>
+<tr><td>Provider client</td><td><p>Add Survsys.Web/ProvidersClient.cs following FacilitiesClient (Page with an optional last name, Find, Create, Update, Export, Import, each failure prefixed), register it in Survsys.Web/Program.cs with the /providers/export download beside /facilities/export, and add Survsys.UnitTests/ProvidersClientTests.cs following FacilitiesClientTests.</p></td><td></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ProvidersClientTests</code></td><td>yes</td></tr>
+<tr><td>Provider screens</td><td><p>Add Survsys.Web/Components/Pages/Providers.razor following Facilities.razor: a Last name search box, New provider, Export providers CSV and the ImportPreview import, and a table of last name (the link into its editor), first name, type (the provider_type description), phone, email and active, with stable ids and data- attributes. Add Survsys.Web/Components/Pages/ProviderEdit.razor following FacilityEdit.razor at /providers/new and /providers/{id}: first, middle and last name, a CodeSelect over CodeLists.ProviderType bound by CodeId, phone, email and an Active switch. Add the Providers link (nav-providers, /providers) after Facilities under Reference data in Survsys.Web/Components/Layout/MainLayout.razor.</p></td><td></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Walkthrough maintain a provider</td><td><p>Write docs/walkthroughs/maintain-a-provider.md, following add-a-facility.md: a surveillance administrator opens Providers, adds a clinician with name, phone and email, finds them by last name, opens them, makes them inactive and saves, and reads the change back in the list. Add Survsys.E2ETests/MaintainAProviderTests.cs performing it step by step. Add providers to WalkthroughDatabase.TablesInDeletionOrder in tools/uat/Survsys.Uat/WalkthroughDatabase.cs, among the tables the walkthroughs fill, with a sentence in its remarks. Add the walkthrough's row to docs/walkthroughs/README.md and to the reference data table of docs/walkthroughs/testing-by-hand.md.</p></td><td></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code><br><code>node -e const fs=require('fs');for(const f of ['docs/walkthroughs/README.md','docs/walkthroughs/testing-by-hand.md'])if(!fs.readFileSync(f,'utf8').includes('maintain-a-provider.md'))process.exit(1)</code></td><td>yes</td></tr>
+<tr><td>Provider docs</td><td><p>In docs/user-guide/README.md add Providers to the Reference data menu row and to what manage_reference_data changes, and describe the Providers screen beside Facilities with a link to the walkthrough. In docs/technical/README.md add the Providers migration to the migrations list, providers to the reference data tables, and /api/providers to the endpoints described.</p></td><td></td><td><code>node -e const fs=require('fs');if(!fs.readFileSync('docs/user-guide/README.md','utf8').includes('/providers'))process.exit(1);const t=fs.readFileSync('docs/technical/README.md','utf8');if(!t.includes('Providers')||!t.includes('providers'))process.exit(1)</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>The Laboratory tab is unchanged: its Provider box stays a number box until session 124.</li><li>No provider is matched or created from an ELR or eCR message.</li><li>No delete of a provider: a provider no longer in use is made inactive.</li><li>No provider type table of its own and no new types beyond the legacy clinician; administrators add more on the Code lists screen.</li><li>No release in this session.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[19:03:29]</span> <span class="muted">run-started</span> session=123 mode=pull</div>
+<div class="line"><span class="at">[19:03:29]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[19:06:32]</span> <span class="muted">run-resumed</span> session=123 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[19:06:32]</span> <span class="muted">plan-accepted</span> steps=[&quot;provider-data&quot;,&quot;provider-api&quot;,&quot;provider-client&quot;,&quot;provider-screens&quot;,&quot;walkthrough-maintain-a-provider&quot;,&quot;provider-docs&quot;] non_goals=5</div>
+<div class="line"><span class="at">[19:06:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[19:06:34]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=provider-data</div>
+<div class="line"><span class="at">[19:08:19]</span> <span class="muted">run-resumed</span> session=123 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:08:23]</span> <span class="muted">check-passed</span> step=provider-data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[19:08:28]</span> <span class="muted">check-passed</span> step=provider-data argv=[&quot;dotnet&quot;,&quot;ef&quot;,&quot;migrations&quot;,&quot;has-pending-model-changes&quot;,&quot;--project&quot;,&quot;Survsys.Data&quot;,&quot;--startup-project&quot;,&quot;Survsys.Api&quot;]</div>
+<div class="line"><span class="at">[19:08:32]</span> <span class="muted">check-passed</span> step=provider-data argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CodeValueSeedTests&quot;]</div>
+<div class="line"><span class="at">[19:08:32]</span> <span class="muted">report-accepted</span> seq=2 step=provider-data files=[] notes=providers table and provider_type code list (clinician) by migration 20261028000000_Providers</div>
+<div class="line"><span class="at">[19:08:32]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=provider-api</div>
+<div class="line"><span class="at">[19:11:31]</span> <span class="muted">run-resumed</span> session=123 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:11:34]</span> <span class="muted">check-passed</span> step=provider-api argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[19:11:38]</span> <span class="muted">check-passed</span> step=provider-api argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ProviderEndpointsTests|FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[19:11:39]</span> <span class="muted">report-accepted</span> seq=3 step=provider-api files=[] notes=provider endpoints with last-name search, CSV import and export; reads need view_cases; integration ProviderEndpointsTests run by hand, 3 passed</div>
+<div class="line"><span class="at">[19:11:39]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=provider-client</div>
+<div class="line"><span class="at">[19:12:40]</span> <span class="muted">run-resumed</span> session=123 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:12:43]</span> <span class="muted">check-passed</span> step=provider-client argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[19:12:48]</span> <span class="muted">check-passed</span> step=provider-client argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ProvidersClientTests&quot;]</div>
+<div class="line"><span class="at">[19:12:49]</span> <span class="muted">report-accepted</span> seq=4 step=provider-client files=[] notes=ProvidersClient with last-name search, registered, /providers/export download</div>
+<div class="line"><span class="at">[19:12:49]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=provider-screens</div>
+<div class="line"><span class="at">[19:13:39]</span> <span class="muted">run-resumed</span> session=123 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:13:42]</span> <span class="muted">check-passed</span> step=provider-screens argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[19:13:43]</span> <span class="muted">report-accepted</span> seq=5 step=provider-screens files=[] notes=Providers screen with last-name search, CSV export and import; ProviderEdit; Providers link under Reference data</div>
+<div class="line"><span class="at">[19:13:43]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=walkthrough-maintain-a-provider</div>
+<div class="line"><span class="at">[19:15:32]</span> <span class="muted">run-resumed</span> session=123 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:15:35]</span> <span class="muted">check-passed</span> step=walkthrough-maintain-a-provider argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[19:15:36]</span> <span class="muted">check-passed</span> step=walkthrough-maintain-a-provider argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');for(const f of ['docs/walkthroughs/README.md','docs/walkthroughs/testing-by-hand.md'])if(!fs.readFileSync(f,'utf8').includes('maintain-a-provider.md'))process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[19:15:36]</span> <span class="muted">report-accepted</span> seq=6 step=walkthrough-maintain-a-provider files=[] notes=Maintain a provider walkthrough and E2E test (run by hand, passed), providers cleared by the harness, indexed in README and testing-by-hand</div>
+<div class="line"><span class="at">[19:15:36]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=provider-docs</div>
+<div class="line"><span class="at">[19:16:06]</span> <span class="muted">run-resumed</span> session=123 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[19:16:08]</span> <span class="muted">check-passed</span> step=provider-docs argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');if(!fs.readFileSync('docs/user-guide/README.md','utf8').includes('/providers'))process.exit(1);const t=fs.readFileSync('docs/technical/README.md','utf8');if(!t.includes('Providers')||!t.includes('providers'))process.exit(1)&quot;]</div>
+<div class="line"><span class="at">[19:16:08]</span> <span class="muted">report-accepted</span> seq=7 step=provider-docs files=[] notes=user guide and technical README name the Providers screen, table, migration, endpoints and privileges</div>
+<div class="line"><span class="at">[19:16:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[19:16:08]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[19:16:09]</span> <span class="muted">job-started</span> name=verification pid=360 log=.dabbler/runs/s123/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:17:12]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s123/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:17:12]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[19:17:12]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[19:17:13]</span> <span class="muted">instruction-issued</span> seq=8 kind=rejection reasons=2</div>
+<div class="line"><span class="at">[19:17:27]</span> <span class="muted">run-resumed</span> session=123 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[19:17:27]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[0,1] reject=[] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[19:17:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[19:17:27]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[19:18:28]</span> <span class="muted">run-resumed</span> session=123 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[19:18:31]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=provider-data</div>
+<div class="line"><span class="at">[19:18:36]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;ef&quot;,&quot;migrations&quot;,&quot;has-pending-model-changes&quot;,&quot;--project&quot;,&quot;Survsys.Data&quot;,&quot;--startup-project&quot;,&quot;Survsys.Api&quot;] owner=provider-data</div>
+<div class="line"><span class="at">[19:18:40]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~CodeValueSeedTests&quot;] owner=provider-data</div>
+<div class="line"><span class="at">[19:18:43]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=provider-api</div>
+<div class="line"><span class="at">[19:18:47]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ProviderEndpointsTests|FullyQualifiedName~PrivilegeRulesTests|FullyQualifiedName~ArchitectureTests&quot;] owner=provider-api</div>
+<div class="line"><span class="at">[19:18:50]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;] owner=provider-client</div>
+<div class="line"><span class="at">[19:18:54]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ProvidersClientTests&quot;] owner=provider-client</div>
+<div class="line"><span class="at">[19:18:56]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;] owner=provider-screens</div>
+<div class="line"><span class="at">[19:18:58]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;] owner=walkthrough-maintain-a-provider</div>
+<div class="line"><span class="at">[19:18:59]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');for(const f of ['docs/walkthroughs/README.md','docs/walkthroughs/testing-by-hand.md'])if(!fs.readFileSync(f,'utf8').includes('maintain-a-provider.md'))process.exit(1)&quot;] owner=walkthrough-maintain-a-provider</div>
+<div class="line"><span class="at">[19:18:59]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;node&quot;,&quot;-e&quot;,&quot;const fs=require('fs');if(!fs.readFileSync('docs/user-guide/README.md','utf8').includes('/providers'))process.exit(1);const t=fs.readFileSync('docs/technical/README.md','utf8');if(!t.includes('Providers')||!t.includes('providers'))process.exit(1)&quot;] owner=provider-docs</div>
+<div class="line"><span class="at">[19:19:00]</span> <span class="muted">report-accepted</span> seq=9 step=fix-round-1 files=[] notes=Providers list pages with Previous and Next, a new search back to page 1; user guide counts 30 code lists</div>
+<div class="line"><span class="at">[19:19:00]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[19:19:00]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[19:19:01]</span> <span class="muted">job-started</span> name=verification pid=19224 log=.dabbler/runs/s123/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:19:24]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s123/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[19:19:24]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[19:19:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[19:19:24]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[19:19:25]</span> <span class="muted">job-started</span> name=run of record: unit pid=65592 log=.dabbler/runs/s123/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[19:19:44]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s123/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[19:19:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[19:19:50]</span> <span class="muted">landed</span> commit=dbc65980374211a093326968f9a792105b026fa5</div>
+<div class="line"><span class="at">[19:19:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[19:19:51]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[19:19:51]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[19:19:52]</span> <span class="muted">job-started</span> name=close pid=34756 log=.dabbler/runs/s123/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:20:04]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s123/driver/jobs/close.log</div>
+<div class="line"><span class="at">[19:20:04]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>2 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The Providers UI exposes only the first API page; administrators cannot move to later pages.</td><td>fixed — Providers list pages with Previous and Next, a new search back to page 1; user guide counts 30 code lists</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** `docs/user-guide/README.md` now says Code lists contains “the 29 reference code lists,” but `Survsys.Contracts/CodeLists.cs` contains 30 entries after `ProviderType` was added. Update the documented count to 30.</td><td>fixed — Providers list pages with Previous and Next, a new search back to page 1; user guide counts 30 code lists</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>18s</td><td>2317</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
