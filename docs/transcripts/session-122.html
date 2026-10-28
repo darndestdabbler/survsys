@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 122 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 122 transcript</h1>
+<p class="stamp">Rendered 2026-10-28T18:49:59.637Z by dabbler-ai-router 3.23.0 at 3d41005d37b6bc6211c8762735849fcbb1bd7d15.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-28T14:34:45.926-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 122: Choosing related records on the Laboratory tab and the reference screens</h3>
+<p>*Inserted with session 121, from the same sweep. The Laboratory tab takes its lab, diagnostic and reporting facilities as typed ids and its test's LOINC as a typed code; the outbreak editor takes its authors as typed user ids; a notification guide's PHIN variables and a rule set's value set and its conditions' fields are typed by name. Each is chosen from what the application already holds.*</p>
+<ol><li>Register.</li><li><code>Survsys.Web/Components/LaboratoryTab.razor</code>: <strong>Lab facility</strong>, <strong>Diagnostic facility</strong> and <strong>Reporting facility</strong> become searchable lists over the facilities, reusing the facility list the Vocabulary screen's lab codes already use (moved to a shared component if both need it). A test's <strong>LOINC code</strong> becomes a searchable picker over the master LOINC vocabulary, showing code and concept name, that still accepts a code the vocabulary does not hold. The specimens table shows the facilities' names and the specimen source's description. The stale comments in <code>Survsys.Data/Lab.cs</code> saying the facility table does not exist are corrected.</li><li><code>Survsys.Web/Components/Pages/OutbreakEdit.razor</code>: both <strong>Author (user id)</strong> boxes go; the API tier records the signed-in user, as session 121 does for notes.</li><li><code>Survsys.Web/Components/Pages/GuideEdit.razor</code>: <strong>PHIN variable</strong> becomes a searchable list over the PHIN variables not already on the guide. <code>Survsys.Web/Components/Pages/RuleSetEdit.razor</code>: <strong>Value set</strong> becomes a list over the value sets, and each condition's <strong>Field</strong> a list over the fields the rule set names.</li><li><code>docs/walkthroughs/</code>: *Enter a laboratory result*, *Open an outbreak and link cases*, *Configure a notification guide* and any other walkthrough that typed one of these updated to choose instead, with their end-to-end tests.</li><li>Cross-provider verification.</li><li>Full test suite, the end-to-end walkthrough suite included, recorded as the run of record.</li><li>Close-out.</li></ol>
+<p><strong>Non-goals:</strong> the <strong>Provider</strong> box, which has no table to choose from (sessions 123 and 124); an agency's jurisdiction zip codes and a parent/guardian's name stay free text.</p>
+<h2>Work Plan</h2>
+<p>Stop the Laboratory tab, the outbreak editor and the notification setup screens asking for typed ids and names. A new shared FacilitySelect component, a searchable MudAutocomplete over the facilities (FacilitiesClient.Page) showing each facility's name and short name and keeping a stored id the list does not hold, replaces the Vocabulary screen's own sending-lab select and the Laboratory tab's Lab facility, Diagnostic facility and Reporting facility number boxes. A test's LOINC code becomes a searchable picker over the master LOINC vocabulary (VocabularyClient.MasterLoincs) showing code and concept name, which still accepts a typed code the vocabulary does not hold. The specimens table shows the facilities' names and the specimen source's description, and the stale comments in LaboratoryTab.razor and Survsys.Data/Lab.cs saying the facility table does not exist are corrected. On the outbreak editor both Author (user id) boxes go: SaveOutbreakReportSectionRequest and AddOutbreakUpdateRequest lose UserId and the API tier records the signed-in caller, as session 121 did for notes, and the activity log's Author column shows the user's display name (from the existing /api/investigators) rather than an id. The notification guide's PHIN variable box becomes a searchable list over the catalogued PHIN variables not already on the guide; a rule set's Value set becomes a list over the value set names on file, and each condition's Field a list over the fields the rule set names, each keeping a stored value the list does not hold. The walkthroughs Enter a laboratory result, Maintain a LOINC mapping, Open an outbreak and link cases and Configure a notification guide, and their end-to-end tests, choose instead of typing.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/9cf31f74f31fad8a10ef52a99171d63f8903a68a"><code>9cf31f74f31fad8a10ef52a99171d63f8903a68a</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Facility select component</td><td><p>Add Survsys.Web/Components/FacilitySelect.razor: a MudAutocomplete&lt;int?&gt; bound through Value/ValueChanged to a facility id, loading the facilities once through FacilitiesClient.Page(1, 200), searching by name and short name, each shown as 'Name (SHORT)', a stored id the list does not hold shown as '#id' so opening and saving never loses it, Clearable, with Label, Margin and Required parameters and any other attribute (such as id) passed through, as CodeSelect passes them. In Survsys.Web/Components/Pages/Vocabulary.razor replace the private FacilitySelect fragment with the component (keeping the ids child-loinc-lab and {category}-child-lab and the label Sending lab); the page's own facility list stays for FacilityName in its tables.</p></td><td><span class="mono">Survsys.Web/Components/FacilitySelect.razor</span><br><span class="mono">Survsys.Web/Components/Pages/Vocabulary.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Lab tab facilities</td><td><p>In Survsys.Web/Components/LaboratoryTab.razor replace the Lab facility, Diagnostic facility and Reporting facility number boxes with FacilitySelect (keeping their ids lab-entry-lab-facility-id, lab-entry-diagnostic-facility-id and lab-entry-reporting-facility-id). The specimens table shows each facility by name (short name where it has one, read once through FacilitiesClient.Page) and the specimen source by its code list description (CodesClient for CodeLists.SpecimenSource), falling back to the stored id where a lookup finds nothing. Rewrite the tab's opening comment so it no longer says the coded fields and facilities are plain boxes holding legacy ids (the provider alone still is). In Survsys.Data/Lab.cs correct the comments on the class, LabFacilityId, DiagnosticFacilityId and ReportingFacilityId that say the facility table does not exist.</p></td><td><span class="mono">Survsys.Web/Components/LaboratoryTab.razor</span><br><span class="mono">Survsys.Data/Lab.cs</span></td><td><code>dotnet build Survsys.sln</code></td><td>yes</td></tr>
+<tr><td>Lab tab loinc</td><td><p>In LaboratoryTab.razor replace each test's LOINC code box with a MudAutocomplete&lt;string&gt; (keeping the id lab-entry-test-{n}-loinc-code) over the master LOINC rows read once through VocabularyClient.List&lt;VocabMasterLoincRow&gt;(VocabularyClient.MasterLoincs), searching code and concept name, each shown as 'code concept name', the chosen value being the code; it coerces typed text so a code the vocabulary does not hold is still accepted.</p></td><td><span class="mono">Survsys.Web/Components/LaboratoryTab.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Outbreak author is signed in user</td><td><p>Remove UserId from Survsys.Contracts/SaveOutbreakReportSectionRequest.cs and Survsys.Contracts/AddOutbreakUpdateRequest.cs (and their docs, saying the author is the signed-in caller). In Survsys.Api/OutbreakEndpoints.cs the report-section save and the activity add take the ClaimsPrincipal and record AccountEndpoints.UserIdOf(user) as the author, dropping the unknown-user check and NotAUser where nothing else uses it. In Survsys.Web/Components/Pages/OutbreakEdit.razor remove both Author (user id) boxes and their fields, and show the activity log's Author as the user's display name from UsersClient.Investigators(), falling back to the id. Update Survsys.UnitTests/OutbreaksClientTests.cs and Survsys.IntegrationTests/OutbreakEndpointsTests.cs: requests carry no author, a written section and an added entry are recorded under the signed-in caller, and any test of the unknown-user refusal goes.</p></td><td><span class="mono">Survsys.Contracts/SaveOutbreakReportSectionRequest.cs</span><br><span class="mono">Survsys.Contracts/AddOutbreakUpdateRequest.cs</span><br><span class="mono">Survsys.Api/OutbreakEndpoints.cs</span><br><span class="mono">Survsys.Web/Components/Pages/OutbreakEdit.razor</span><br><span class="mono">Survsys.UnitTests/OutbreaksClientTests.cs</span><br><span class="mono">Survsys.IntegrationTests/OutbreakEndpointsTests.cs</span></td><td><code>dotnet build Survsys.sln</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~OutbreaksClientTests</code></td><td>yes</td></tr>
+<tr><td>Guide phin variable list</td><td><p>In Survsys.Web/Components/Pages/GuideEdit.razor replace the PHIN variable text box (keeping the id guide-phin-variable-add) with a MudAutocomplete&lt;string&gt; over the catalogue read once through PhinVariablesClient.List(), offering only the variables not already on the guide, searching identifier and description, each shown as 'PHINVAR description', the value being the variable; Add adds the chosen one and clears the choice. Update the page's opening comment where it describes the box.</p></td><td><span class="mono">Survsys.Web/Components/Pages/GuideEdit.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Rule set lists</td><td><p>In Survsys.Web/Components/Pages/RuleSetEdit.razor replace the Value set box (keeping the id rule-set-value-set) with a MudSelect over the distinct value set names on file, read through ValueSetsClient.List for the PHIN value sets and the units of measure, with a (none) item, and each condition's Field box (keeping rule-set-condition-field-{at}-{index}) with a MudSelect over the fields the form's Fields box names, one MudSelectItem per value; each keeps a stored value its list does not hold as an item of its own.</p></td><td><span class="mono">Survsys.Web/Components/Pages/RuleSetEdit.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Walkthroughs laboratory</td><td><p>Update docs/walkthroughs/enter-a-laboratory-result.md so the reader chooses the lab facility from its searchable list and the test's LOINC code from the picker (typing a code the vocabulary does not hold where the walkthrough's code is not on file), the lines saying the facilities take a legacy identifier go (the provider still does), and the specimens table is read with the facility's name and the source's description. Update docs/walkthroughs/maintain-a-loinc-mapping.md where choosing the Sending lab now means typing into the searchable list. Their tests, Survsys.E2ETests/EnterALaboratoryResultTests.cs and Survsys.E2ETests/MaintainALoincMappingTests.cs, follow the documents step for step.</p></td><td><span class="mono">docs/walkthroughs/enter-a-laboratory-result.md</span><br><span class="mono">docs/walkthroughs/maintain-a-loinc-mapping.md</span><br><span class="mono">Survsys.E2ETests/EnterALaboratoryResultTests.cs</span><br><span class="mono">Survsys.E2ETests/MaintainALoincMappingTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code></td><td>yes</td></tr>
+<tr><td>Walkthroughs outbreak and guide</td><td><p>Update docs/walkthroughs/open-an-outbreak-and-link-cases.md so that, on the outbreak's screen, the reader adds an activity log entry with no author to type and reads it listed under their own name, adjusting the line that says the activity log is not part of the walkthrough. Update docs/walkthroughs/configure-a-notification-guide.md so the guide's PHIN variable is chosen from the list of catalogued variables rather than typed. Their tests, Survsys.E2ETests/OpenAnOutbreakAndLinkCasesTests.cs and Survsys.E2ETests/ConfigureANotificationGuideTests.cs, follow.</p></td><td><span class="mono">docs/walkthroughs/open-an-outbreak-and-link-cases.md</span><br><span class="mono">docs/walkthroughs/configure-a-notification-guide.md</span><br><span class="mono">Survsys.E2ETests/OpenAnOutbreakAndLinkCasesTests.cs</span><br><span class="mono">Survsys.E2ETests/ConfigureANotificationGuideTests.cs</span></td><td><code>dotnet build Survsys.E2ETests/Survsys.E2ETests.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>The Laboratory tab's Provider box stays a number box: there is no provider table to choose from (sessions 123 and 124).</li><li>An agency's jurisdiction zip codes and a parent/guardian's name stay free text.</li><li>No change to how a specimen, a test, a guide or a rule set is stored, and no new API endpoint: the pickers read the existing reference-data lists, and the outbreak authors' names come from the existing /api/investigators.</li><li>No rule set walkthrough is written: none exists that types a value set or a field.</li><li>No release in this session.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[18:34:45]</span> <span class="muted">run-started</span> session=122 mode=pull</div>
+<div class="line"><span class="at">[18:34:45]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[18:37:33]</span> <span class="muted">run-resumed</span> session=122 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[18:37:33]</span> <span class="muted">plan-accepted</span> steps=[&quot;facility-select-component&quot;,&quot;lab-tab-facilities&quot;,&quot;lab-tab-loinc&quot;,&quot;outbreak-author-is-signed-in-user&quot;,&quot;guide-phin-variable-list&quot;,&quot;rule-set-lists&quot;,&quot;walkthroughs-laboratory&quot;,&quot;walkthroughs-outbreak-and-guide&quot;] non_goals=5</div>
+<div class="line"><span class="at">[18:37:33]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[18:37:33]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=facility-select-component</div>
+<div class="line"><span class="at">[18:38:21]</span> <span class="muted">run-resumed</span> session=122 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:38:24]</span> <span class="muted">check-passed</span> step=facility-select-component argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[18:38:25]</span> <span class="muted">report-accepted</span> seq=2 step=facility-select-component files=[&quot;Survsys.Web/Components/FacilitySelect.razor&quot;,&quot;Survsys.Web/Components/Pages/Vocabulary.razor&quot;] notes=FacilitySelect: searchable MudAutocomplete over the facilities, keeping an unknown id as #id; Vocabulary's sending-lab selects use it</div>
+<div class="line"><span class="at">[18:38:25]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=lab-tab-facilities</div>
+<div class="line"><span class="at">[18:39:22]</span> <span class="muted">run-resumed</span> session=122 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:39:29]</span> <span class="muted">check-passed</span> step=lab-tab-facilities argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[18:39:29]</span> <span class="muted">report-accepted</span> seq=3 step=lab-tab-facilities files=[&quot;Survsys.Web/Components/LaboratoryTab.razor&quot;,&quot;Survsys.Data/Lab.cs&quot;] notes=Lab tab's three facilities use FacilitySelect; specimens table names facilities and the specimen source; stale comments corrected</div>
+<div class="line"><span class="at">[18:39:29]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=lab-tab-loinc</div>
+<div class="line"><span class="at">[18:40:11]</span> <span class="muted">run-resumed</span> session=122 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:40:14]</span> <span class="muted">check-passed</span> step=lab-tab-loinc argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[18:40:14]</span> <span class="muted">report-accepted</span> seq=4 step=lab-tab-loinc files=[&quot;Survsys.Web/Components/LaboratoryTab.razor&quot;] notes=Test LOINC code is a MudAutocomplete over the master LOINC codes (code and concept shown), coercing a typed code the vocabulary does not hold</div>
+<div class="line"><span class="at">[18:40:14]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=outbreak-author-is-signed-in-user</div>
+<div class="line"><span class="at">[18:42:53]</span> <span class="muted">run-resumed</span> session=122 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:42:56]</span> <span class="muted">check-passed</span> step=outbreak-author-is-signed-in-user argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;]</div>
+<div class="line"><span class="at">[18:43:00]</span> <span class="muted">check-passed</span> step=outbreak-author-is-signed-in-user argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~OutbreaksClientTests&quot;]</div>
+<div class="line"><span class="at">[18:43:01]</span> <span class="muted">report-accepted</span> seq=5 step=outbreak-author-is-signed-in-user files=[&quot;Survsys.Contracts/SaveOutbreakReportSectionRequest.cs&quot;,&quot;Survsys.Contracts/AddOutbreakUpdateRequest.cs&quot;,&quot;Survsys.Api/OutbreakEndpoints.cs&quot;,&quot;Survsys.Web/Components/Pages/OutbreakEdit.razor&quot;,&quot;Survsys.UnitTests/OutbreaksClientTests.cs&quot;,&quot;Survsys.IntegrationTests/OutbreakEndpointsTests.cs&quot;] notes=Outbreak report sections and activity entries are recorded under the signed-in caller (Unauthorized without one); author boxes gone; activity log names authors from /api/investigators. OutbreakEndpointsTests integration class run by hand: 15 passed</div>
+<div class="line"><span class="at">[18:43:01]</span> <span class="muted">instruction-issued</span> seq=6 kind=step step=guide-phin-variable-list</div>
+<div class="line"><span class="at">[18:43:28]</span> <span class="muted">run-resumed</span> session=122 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:43:31]</span> <span class="muted">check-passed</span> step=guide-phin-variable-list argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[18:43:31]</span> <span class="muted">report-accepted</span> seq=6 step=guide-phin-variable-list files=[&quot;Survsys.Web/Components/Pages/GuideEdit.razor&quot;] notes=Guide PHIN variable is a MudAutocomplete over the catalogue, offering only variables not already on the guide, each shown with its description</div>
+<div class="line"><span class="at">[18:43:31]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=rule-set-lists</div>
+<div class="line"><span class="at">[18:44:23]</span> <span class="muted">run-resumed</span> session=122 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:44:27]</span> <span class="muted">check-passed</span> step=rule-set-lists argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[18:44:28]</span> <span class="muted">report-accepted</span> seq=7 step=rule-set-lists files=[&quot;Survsys.Web/Components/Pages/RuleSetEdit.razor&quot;] notes=Rule set Value set is a select over the value set names on file (PHIN value sets and units of measure); each condition Field a select over the rule set's fields; stored values not listed are kept</div>
+<div class="line"><span class="at">[18:44:28]</span> <span class="muted">instruction-issued</span> seq=8 kind=step step=walkthroughs-laboratory</div>
+<div class="line"><span class="at">[18:46:11]</span> <span class="muted">run-resumed</span> session=122 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:46:14]</span> <span class="muted">check-passed</span> step=walkthroughs-laboratory argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[18:46:14]</span> <span class="muted">report-accepted</span> seq=8 step=walkthroughs-laboratory files=[&quot;docs/walkthroughs/enter-a-laboratory-result.md&quot;,&quot;docs/walkthroughs/maintain-a-loinc-mapping.md&quot;,&quot;Survsys.E2ETests/EnterALaboratoryResultTests.cs&quot;,&quot;Survsys.E2ETests/MaintainALoincMappingTests.cs&quot;] notes=Lab walkthrough: facilities described as searchable lists but left empty (the main E2E harness seeds no facility, and adding one would break the add-a-facility count), LOINC 20575-7 typed and kept as no master code is on file, Source reads Serum. The facility search is performed by maintain-a-loinc-mapping (types ARUP, chooses ARUP Laboratories). Both E2E tests run by hand: 2 passed</div>
+<div class="line"><span class="at">[18:46:14]</span> <span class="muted">instruction-issued</span> seq=9 kind=step step=walkthroughs-outbreak-and-guide</div>
+<div class="line"><span class="at">[18:47:57]</span> <span class="muted">run-resumed</span> session=122 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[18:48:01]</span> <span class="muted">check-passed</span> step=walkthroughs-outbreak-and-guide argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;]</div>
+<div class="line"><span class="at">[18:48:01]</span> <span class="muted">report-accepted</span> seq=9 step=walkthroughs-outbreak-and-guide files=[&quot;docs/walkthroughs/open-an-outbreak-and-link-cases.md&quot;,&quot;docs/walkthroughs/configure-a-notification-guide.md&quot;,&quot;Survsys.E2ETests/OpenAnOutbreakAndLinkCasesTests.cs&quot;,&quot;Survsys.E2ETests/ConfigureANotificationGuideTests.cs&quot;] notes=Outbreak walkthrough gains step 19: an activity entry added with no author and read under the signed-in name; guide walkthrough chooses INV169 Condition from the PHIN variable list. Both E2E tests run by hand: 2 passed</div>
+<div class="line"><span class="at">[18:48:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[18:48:01]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[18:48:02]</span> <span class="muted">job-started</span> name=verification pid=65396 log=.dabbler/runs/s122/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[18:49:21]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s122/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[18:49:21]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[18:49:21]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[18:49:21]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[18:49:22]</span> <span class="muted">job-started</span> name=run of record: unit pid=63796 log=.dabbler/runs/s122/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[18:49:44]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s122/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[18:49:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[18:49:49]</span> <span class="muted">landed</span> commit=9cf31f74f31fad8a10ef52a99171d63f8903a68a</div>
+<div class="line"><span class="at">[18:49:49]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[18:49:50]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[18:49:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[18:49:51]</span> <span class="muted">job-started</span> name=close pid=65764 log=.dabbler/runs/s122/driver/jobs/close.log</div>
+<div class="line"><span class="at">[18:49:59]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s122/driver/jobs/close.log</div>
+<div class="line"><span class="at">[18:49:59]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>The plan requires that “the specimens table shows the facilities’ names,” but `FacilityName` prefers `ShortName` over `Name`.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>`FacilitySelect` loads only `FacilitiesClient.Page(1, 200)`, although it is described and required as a searchable list “over the facilities.”</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>The task requires a searchable master-LOINC picker “showing code and concept name,” while the updated walkthrough intentionally uses a database with no master LOINCs and only asserts that typed `20575-7` remains in the field.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>20s</td><td>2286</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

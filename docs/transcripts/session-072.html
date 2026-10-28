@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 072 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 072 transcript</h1>
+<p class="stamp">Rendered 2026-10-19T18:00:39.311Z by dabbler-ai-router 3.21.0 at 3e093aee8e6676f1c86dfaacf5aab4076feb92ac.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-19T13:48:35.542-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 72: Phase 9 walkthroughs</h3>
+<ol><li>Register.</li><li><code>docs/walkthroughs/</code>: three documents — find a person by a former name, record a person's address history, merge duplicate persons.</li><li><code>Survsys.E2ETests</code>: the three Playwright tests named after them.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Write the three Phase 9 walkthroughs and the Playwright test named after each. docs/walkthroughs gains find-a-person-by-a-former-name.md (an investigator changes a person's name on the Demographics tab, the old name is kept as a former name, and person search finds the person by that former name and shows them on the person screen with the former name listed), record-a-persons-address-history.md (an investigator records a person's current address and an earlier one with their beginning and ending dates on the Demographics tab, saves, and reads both back on the person screen's Addresses, normalised as stored) and merge-duplicate-persons.md (a user with the merge-persons privilege opens the duplicates screen, finds a candidate pair with its score, opens the side-by-side merge screen, chooses the person to keep, merges, and finds the merged-away person's case under the kept person). Each is written in the form of the existing walkthroughs (user story inferred from the legacy documentation under ../nedss/, Before you start, numbered steps, What you should see), and Survsys.E2ETests gains FindAPersonByAFormerNameTests.cs, RecordAPersonsAddressHistoryTests.cs and MergeDuplicatePersonsTests.cs, each performing its document's steps in their written order through the existing SurvsysHarness and asserting what the document promises. docs/walkthroughs/README.md indexes each one, and its count of walkthroughs becomes thirty-two.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/ed986264b80a1a46ded36b876fa1fbe688123fb2"><code>ed986264b80a1a46ded36b876fa1fbe688123fb2</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Find a person by a former name</td><td><p>Write docs/walkthroughs/find-a-person-by-a-former-name.md: on a case whose person is known by one name, an investigator changes the person's last name on the report's Demographics tab and saves; the tab lists the old name under Former names; the investigator then searches for a person by the former name, finds them in the results, opens the person screen and reads the current name with the former name listed. Write Survsys.E2ETests/FindAPersonByAFormerNameTests.cs performing those steps in order, creating the case the way the existing tests do. Add its row to docs/walkthroughs/README.md and update the count of walkthroughs.</p></td><td><span class="mono">docs/walkthroughs/find-a-person-by-a-former-name.md</span><br><span class="mono">Survsys.E2ETests/FindAPersonByAFormerNameTests.cs</span><br><span class="mono">docs/walkthroughs/README.md</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests</code><br><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~FindAPersonByAFormerNameTests</code></td><td>yes</td></tr>
+<tr><td>Record a persons address history</td><td><p>Write docs/walkthroughs/record-a-persons-address-history.md: an investigator opens a case's Demographics tab, enters the person's current address and adds an earlier address with its beginning and ending dates (one entered in lower case with a nine-digit zip to show normalisation), saves, and reads both addresses back on the person screen's Addresses table, the earlier one historic by its dates and both stored normalised. Write Survsys.E2ETests/RecordAPersonsAddressHistoryTests.cs performing those steps in order. Add its row to docs/walkthroughs/README.md and update the count of walkthroughs.</p></td><td><span class="mono">docs/walkthroughs/record-a-persons-address-history.md</span><br><span class="mono">Survsys.E2ETests/RecordAPersonsAddressHistoryTests.cs</span><br><span class="mono">docs/walkthroughs/README.md</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests</code><br><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~RecordAPersonsAddressHistoryTests</code></td><td>yes</td></tr>
+<tr><td>Merge duplicate persons</td><td><p>Write docs/walkthroughs/merge-duplicate-persons.md: with two cases entered for the same person under two person records, a user holding the merge-persons privilege opens the duplicates screen, finds the pair with its score, opens it on the side-by-side merge screen, chooses the person to keep, merges, and reads both cases under the kept person on the person screen. Write Survsys.E2ETests/MergeDuplicatePersonsTests.cs performing those steps in order, following the pair's link rather than navigating by address. Add its row to docs/walkthroughs/README.md and update the count of walkthroughs.</p></td><td><span class="mono">docs/walkthroughs/merge-duplicate-persons.md</span><br><span class="mono">Survsys.E2ETests/MergeDuplicatePersonsTests.cs</span><br><span class="mono">docs/walkthroughs/README.md</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~WalkthroughContractTests</code><br><code>dotnet test Survsys.E2ETests/Survsys.E2ETests.csproj --filter FullyQualifiedName~MergeDuplicatePersonsTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to the application tiers (Survsys.Api, Survsys.Web, Survsys.Data, Survsys.Messaging) or to any API route: a walkthrough step the application cannot perform is reported blocked, for a repair session to be inserted into the plan, never worked around in the test or the document.</li><li>No change to the existing twenty-nine walkthroughs or their tests, resolve-a-duplicate and find-a-person included.</li><li>No new walkthroughs beyond these three, no unit or integration tests beyond what the walkthrough contract already asserts, and no release packaging, publishing or packaging block in dabbler.yaml (session 73 is the release).</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[17:48:35]</span> <span class="muted">run-started</span> session=072 mode=pull</div>
+<div class="line"><span class="at">[17:48:35]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[17:49:28]</span> <span class="muted">run-resumed</span> session=072 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[17:49:28]</span> <span class="muted">plan-accepted</span> steps=[&quot;find-a-person-by-a-former-name&quot;,&quot;record-a-persons-address-history&quot;,&quot;merge-duplicate-persons&quot;] non_goals=3</div>
+<div class="line"><span class="at">[17:49:28]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[17:49:29]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=find-a-person-by-a-former-name</div>
+<div class="line"><span class="at">[17:55:04]</span> <span class="muted">run-resumed</span> session=072 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:55:10]</span> <span class="muted">check-passed</span> step=find-a-person-by-a-former-name argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;]</div>
+<div class="line"><span class="at">[17:55:23]</span> <span class="muted">check-passed</span> step=find-a-person-by-a-former-name argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~FindAPersonByAFormerNameTests&quot;]</div>
+<div class="line"><span class="at">[17:55:23]</span> <span class="muted">report-accepted</span> seq=2 step=find-a-person-by-a-former-name files=[&quot;docs/walkthroughs/find-a-person-by-a-former-name.md&quot;,&quot;Survsys.E2ETests/FindAPersonByAFormerNameTests.cs&quot;,&quot;docs/walkthroughs/README.md&quot;] notes=Walkthrough and test written; the test reseeds before and after since it renames a seeded person. Pre-existing, unrelated: FindAPersonTests step 6 fails since session 70 added Score/Why columns.</div>
+<div class="line"><span class="at">[17:55:24]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=record-a-persons-address-history</div>
+<div class="line"><span class="at">[17:56:51]</span> <span class="muted">run-resumed</span> session=072 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:56:55]</span> <span class="muted">check-passed</span> step=record-a-persons-address-history argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;]</div>
+<div class="line"><span class="at">[17:57:09]</span> <span class="muted">check-passed</span> step=record-a-persons-address-history argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~RecordAPersonsAddressHistoryTests&quot;]</div>
+<div class="line"><span class="at">[17:57:09]</span> <span class="muted">report-accepted</span> seq=3 step=record-a-persons-address-history files=[&quot;docs/walkthroughs/record-a-persons-address-history.md&quot;,&quot;Survsys.E2ETests/RecordAPersonsAddressHistoryTests.cs&quot;,&quot;docs/walkthroughs/README.md&quot;] notes=Walkthrough and test written; dates read back on the Demographic tab (the person screen shows no dates), normalised values on both; test reseeds before and after.</div>
+<div class="line"><span class="at">[17:57:09]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=merge-duplicate-persons</div>
+<div class="line"><span class="at">[17:58:57]</span> <span class="muted">run-resumed</span> session=072 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[17:59:01]</span> <span class="muted">check-passed</span> step=merge-duplicate-persons argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~WalkthroughContractTests&quot;]</div>
+<div class="line"><span class="at">[17:59:15]</span> <span class="muted">check-passed</span> step=merge-duplicate-persons argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.E2ETests/Survsys.E2ETests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~MergeDuplicatePersonsTests&quot;]</div>
+<div class="line"><span class="at">[17:59:15]</span> <span class="muted">report-accepted</span> seq=4 step=merge-duplicate-persons files=[&quot;docs/walkthroughs/merge-duplicate-persons.md&quot;,&quot;Survsys.E2ETests/MergeDuplicatePersonsTests.cs&quot;,&quot;docs/walkthroughs/README.md&quot;] notes=Walkthrough and test written: a middle-initial search creates a second Paul Zimmerman, the pair scores 80 Probable, the record on file is kept and holds both cases; test reseeds before and after.</div>
+<div class="line"><span class="at">[17:59:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[17:59:15]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[17:59:17]</span> <span class="muted">job-started</span> name=verification pid=45864 log=.dabbler/runs/s72/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[18:00:14]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s72/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[18:00:14]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[18:00:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[18:00:14]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[18:00:15]</span> <span class="muted">job-started</span> name=run of record: unit pid=46336 log=.dabbler/runs/s72/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[18:00:23]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s72/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[18:00:23]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[18:00:29]</span> <span class="muted">landed</span> commit=ed986264b80a1a46ded36b876fa1fbe688123fb2</div>
+<div class="line"><span class="at">[18:00:29]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[18:00:29]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[18:00:29]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[18:00:30]</span> <span class="muted">job-started</span> name=close pid=50728 log=.dabbler/runs/s72/driver/jobs/close.log</div>
+<div class="line"><span class="at">[18:00:39]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s72/driver/jobs/close.log</div>
+<div class="line"><span class="at">[18:00:39]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td>0</td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>6s</td><td>1481</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

@@ -1,0 +1,273 @@
+@* The agency board: an agency's whole work queue, including the cases shared
+   read-only to it, and the two actions that shape a queue — assigning a report
+   to an agency, which enters it into that agency's queue at the
+   assigned-to-LHD start, and sharing a report read-only with another agency,
+   which puts it on that agency's board to be seen and not edited.
+
+   The board is read-only in what it shows. Each row carries Assign and Share,
+   which open the agency choice for that row's report, so nobody types a
+   report's id; the panel stays open on its answer, which names the report by
+   its record number. This tier has no per-agency authorization, and a
+   refused action is shown as the client's message. *@
+@page "/queue/agency"
+@inject AgenciesClient Agencies
+@inject PersonConditionsClient Reports
+@inject WorkQueueClient WorkQueue
+
+<PageTitle>Agency board — Survsys</PageTitle>
+
+<MudText id="agency-queue-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Agency board
+</MudText>
+
+<MudText id="agency-queue-lead-in" Typo="Typo.body2" Class="mb-4">
+    Choose an agency to see its whole queue — the cases it investigates and the
+    cases shared read-only to it — and assign or share a report from its row.
+</MudText>
+
+@if (failure is { } whyNot)
+{
+    <MudAlert id="agency-queue-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+<MudSelect T="int?" @bind-Value="boardAgency" id="agency-queue-select" Label="Agency"
+           Variant="Variant.Outlined" Class="mb-4">
+    @foreach (var agency in agencies)
+    {
+        <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
+    }
+</MudSelect>
+
+<WorkQueuePanel AgencyId="@(boardAgency ?? 0)" Actions="false" IncludeShared="true"
+                RefreshToken="@refreshToken" RowActions="@AssignOrShare" />
+
+@if (assigning is { } toAssign)
+{
+    <MudPaper id="agency-queue-assign" Elevation="1" Class="pa-4 my-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Assign report @toAssign.RecordNumber</MudText>
+
+        @if (assignSaved is { } saved)
+        {
+            <MudAlert id="agency-queue-assign-saved" Severity="Severity.Success" Class="mb-4">@saved</MudAlert>
+        }
+
+        @if (assignError is { } failedAssign)
+        {
+            <MudAlert id="agency-queue-assign-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                @failedAssign
+            </MudAlert>
+        }
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int?" @bind-Value="assignAgency" id="agency-queue-assign-agency"
+                           Label="Assign to agency" Variant="Variant.Outlined">
+                    @foreach (var agency in agencies)
+                    {
+                        <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" Class="d-flex align-center gap-2">
+                <MudButton id="agency-queue-assign-save" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@busy" OnClick="@(() => Assign(toAssign))">
+                    Assign
+                </MudButton>
+                <MudButton id="agency-queue-assign-close" Variant="Variant.Outlined" Disabled="@busy"
+                           OnClick="@Close">
+                    Close
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+}
+
+@if (sharing is { } toShare)
+{
+    <MudPaper id="agency-queue-share" Elevation="1" Class="pa-4 my-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Share report @toShare.RecordNumber read-only</MudText>
+
+        @if (shareSaved is { } sharedOut)
+        {
+            <MudAlert id="agency-queue-share-saved" Severity="Severity.Success" Class="mb-4">@sharedOut</MudAlert>
+        }
+
+        @if (shareError is { } failedShare)
+        {
+            <MudAlert id="agency-queue-share-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                @failedShare
+            </MudAlert>
+        }
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int?" @bind-Value="shareAgency" id="agency-queue-share-agency"
+                           Label="Share with agency" Variant="Variant.Outlined">
+                    @foreach (var agency in agencies)
+                    {
+                        <MudSelectItem T="int?" Value="@agency.Id">@agency.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" Class="d-flex align-center gap-2">
+                <MudButton id="agency-queue-share-save" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@busy" OnClick="@(() => Share(toShare))">
+                    Share
+                </MudButton>
+                <MudButton id="agency-queue-share-close" Variant="Variant.Outlined" Disabled="@busy"
+                           OnClick="@Close">
+                    Close
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+}
+
+@code {
+    private IReadOnlyList<AgencyResponse> agencies = [];
+
+    private int? boardAgency;
+
+    private string? failure;
+
+    private int refreshToken;
+
+    /// <summary>The report the Assign panel is open for, or null when it is closed.</summary>
+    private WorkQueueItemResponse? assigning;
+
+    private int? assignAgency;
+
+    private string? assignSaved;
+
+    private string? assignError;
+
+    /// <summary>The report the Share panel is open for, or null when it is closed.</summary>
+    private WorkQueueItemResponse? sharing;
+
+    private int? shareAgency;
+
+    private string? shareSaved;
+
+    private string? shareError;
+
+    private bool busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var listed = await Agencies.All();
+
+        agencies = listed.Value?.Items ?? [];
+        failure = listed.Failure;
+    }
+
+    /// <summary>What each row of the board offers: assigning its report, and sharing it.</summary>
+    private RenderFragment<WorkQueueItemResponse> AssignOrShare => row =>
+        @<text>
+            <MudButton id="@($"queue-row-{row.Id}-assign")" Size="Size.Small" Variant="Variant.Outlined"
+                       Disabled="@busy" OnClick="@(() => OpenAssign(row))">
+                Assign
+            </MudButton>
+            <MudButton id="@($"queue-row-{row.Id}-share")" Size="Size.Small" Variant="Variant.Outlined"
+                       Disabled="@busy" OnClick="@(() => OpenShare(row))">
+                Share
+            </MudButton>
+        </text>;
+
+    /// <summary>Opens the Assign panel for a row's report, closing whatever was open.</summary>
+    private void OpenAssign(WorkQueueItemResponse row)
+    {
+        Close();
+        assigning = row;
+    }
+
+    /// <summary>Opens the Share panel for a row's report, closing whatever was open.</summary>
+    private void OpenShare(WorkQueueItemResponse row)
+    {
+        Close();
+        sharing = row;
+    }
+
+    private void Close()
+    {
+        assigning = null;
+        assignAgency = null;
+        assignSaved = null;
+        assignError = null;
+        sharing = null;
+        shareAgency = null;
+        shareSaved = null;
+        shareError = null;
+    }
+
+    private async Task Assign(WorkQueueItemResponse row)
+    {
+        assignSaved = null;
+        assignError = null;
+
+        if (assignAgency is not { } agencyId)
+        {
+            assignError = "Choose the agency to assign the report to.";
+
+            return;
+        }
+
+        busy = true;
+
+        try
+        {
+            // Assigning a report to an agency is the workflow's route move,
+            // which starts it at assigned-to-LHD in that agency's queue.
+            var assigned = await Reports.Transition(row.Id, new WorkflowTransitionRequest("route", AgencyId: agencyId));
+
+            if (assigned.Value is { } report)
+            {
+                assignSaved = $"Report {report.RecordNumber} is assigned, at the assigned-to-LHD start.";
+                refreshToken++;
+            }
+            else
+            {
+                assignError = assigned.Failure;
+            }
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task Share(WorkQueueItemResponse row)
+    {
+        shareSaved = null;
+        shareError = null;
+
+        if (shareAgency is not { } agencyId)
+        {
+            shareError = "Choose the agency to share the report with.";
+
+            return;
+        }
+
+        busy = true;
+
+        try
+        {
+            var shared = await WorkQueue.Share(row.Id, new ShareReportRequest(agencyId));
+
+            if (shared.Value is { } agency)
+            {
+                shareSaved = $"Report {row.RecordNumber} is shared read-only with {agency.Name}.";
+                refreshToken++;
+            }
+            else
+            {
+                shareError = shared.Failure;
+            }
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

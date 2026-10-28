@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 036 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 036 transcript</h1>
+<p class="stamp">Rendered 2026-10-17T07:40:45.892Z by dabbler-ai-router 3.21.0 at af3835264a9ac5f848454af775dbc5c87a7bb786.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-17T03:26:21.135-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 36: <code>Survsys.Messaging</code> and HL7 intake parsing</h3>
+<ol><li>Register.</li><li>Create <code>Survsys.Messaging</code>, the cut session 2 decided and left to the session that first needs it: a new <code>.csproj</code> added to <code>Survsys.sln</code>, referencing nHapi and <code>Survsys.Contracts</code> and never EF Core, referenced by <code>Survsys.Api</code>; and a third architecture test in <code>Survsys.UnitTests</code> asserting that fence.</li><li><code>Survsys.Messaging</code>: <code>ORU^R01</code> parsing and preprocessing with nHapi, Mirth absorbed rather than kept.</li><li><code>Survsys.UnitTests</code>: the parser's tests named after it, over legacy message fixtures from <code>../nedss/docs/</code>, including a message that fails to parse.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Session 036 creates Survsys.Messaging -- the module session 2 cut and left to the session that first needs it -- and gives it ORU^R01 lab-result intake parsing with nHapi. The project is a new net10.0 class library added to Survsys.sln, referencing the nHapi packages and Survsys.Contracts and nothing of the database: never Microsoft.EntityFrameworkCore and never Survsys.Data. Survsys.Api gains a project reference to it, and Survsys.UnitTests gains a third architecture test asserting that fence off the built Survsys.Messaging assembly, alongside the two it already holds. The module parses a raw ER7 HL7 v2.5.1 ORU^R01 message into Survsys.Contracts intake records -- the person from PID as a CreatePersonRequest, the specimen, tests and results from OBR/OBX/SPM as a CreateLabRequest with its nested tests and results -- absorbing the Mirth preprocessing the legacy pipeline performed on the way in (escaped-newline and line-ending normalisation and the documented ER7 cleanup) inline rather than keeping Mirth as a stage, so there is no integration engine, no master XML and no transport. Its tests live in Survsys.UnitTests in the file named after the parser, over HL7 fixtures derived from the legacy message documented under ../nedss/docs/, including one malformed message the parser refuses.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/1927c0cdb245c43318149a3608cf7873b8959ef7"><code>1927c0cdb245c43318149a3608cf7873b8959ef7</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Messaging project and fence</td><td><p>Create the Survsys.Messaging class library and assert its fence. Write Survsys.Messaging/Survsys.Messaging.csproj targeting net10.0 with ImplicitUsings and Nullable enabled, carrying a PackageReference to the nHapi base package and the nHapi HL7 v2.5.1 model package and a ProjectReference to Survsys.Contracts, and referencing no other sibling and no Entity Framework Core package. Add the project to Survsys.sln at the repository root. Add a ProjectReference to Survsys.Messaging in Survsys.Api/Survsys.Api.csproj, since the session plan makes Survsys.Messaging a module Survsys.Api references. Add a ProjectReference to Survsys.Messaging in Survsys.UnitTests/Survsys.UnitTests.csproj so the architecture test can load its assembly. Add a third architecture test method to Survsys.UnitTests/ArchitectureTests.cs, named for the fact it proves, that reads the Survsys.Messaging assembly's reachable assemblies with the existing ReachableFrom helper and asserts it reaches neither Survsys.Data nor any Microsoft.EntityFrameworkCore assembly, with a message explaining that the messaging module parses to Survsys.Contracts types and must never reach the database. Write no parser code in this step; the library compiles empty.</p></td><td><span class="mono">Survsys.Messaging/Survsys.Messaging.csproj</span><br><span class="mono">Survsys.sln</span><br><span class="mono">Survsys.Api/Survsys.Api.csproj</span><br><span class="mono">Survsys.UnitTests/Survsys.UnitTests.csproj</span><br><span class="mono">Survsys.UnitTests/ArchitectureTests.cs</span></td><td><code>dotnet build Survsys.sln --nologo</code><br><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~ArchitectureTests --blame-hang-timeout 5m --nologo</code></td><td>yes</td></tr>
+<tr><td>Oru r01 parser</td><td><p>Implement ORU^R01 intake parsing in Survsys.Messaging. Write Survsys.Messaging/OruR01Parser.cs: a public parser that takes a raw ER7 HL7 v2.5.1 message as text, absorbs the Mirth inbound preprocessing the legacy pipeline performed before nHapi saw a message -- convert escaped newlines (\015) and bare newlines to the CR segment separator nHapi requires, trim surrounding whitespace, and drop the empty segments the documented ARUP cleanup removed -- then parses the result with nHapi's PipeParser as an ORU_R01 message and maps it into the existing Survsys.Contracts intake records: the person from PID (name parts, birth date, birth gender) as a CreatePersonRequest, and the specimen with its tests and results from OBR/OBX/SPM as a CreateLabRequest carrying CreateLabTestRequest and CreateLabTestResultRequest, filling LOINC code, collection and test dates, result value, units, reference range and the coded result from the message and leaving the reference-table ids null exactly as those records document for fields whose lookup tables do not exist yet. Return both in one small result type the parser owns (Survsys.Messaging/OruR01ParseResult.cs). A message that is not a well-formed ORU^R01 -- a missing or wrong message type, or an unparseable structure -- is refused by throwing a parse exception the parser defines (Survsys.Messaging/Hl7ParseException.cs) rather than returning a half-filled result. Keep the preprocessing to what the documented message needs; do not build a per-lab preprocessing pipeline.</p></td><td><span class="mono">Survsys.Messaging/OruR01Parser.cs</span><br><span class="mono">Survsys.Messaging/OruR01ParseResult.cs</span><br><span class="mono">Survsys.Messaging/Hl7ParseException.cs</span></td><td><code>dotnet build Survsys.Messaging/Survsys.Messaging.csproj --nologo</code></td><td>yes</td></tr>
+<tr><td>Oru r01 parser tests</td><td><p>Add the parser's tests and the fixtures they read. Derive two HL7 fixtures from the ORU^R01 message documented in ../nedss/docs/functional/emsa-pipeline-testing.md and the field structure in ../nedss/docs/business-logic/HL7_FIELD_MAPPINGS.md, and commit them under Survsys.UnitTests: Survsys.UnitTests/Fixtures/Hl7/oru-r01-chlamydia.hl7, a complete and well-formed ORU^R01 ELR message for the documented Chlamydia result (LOINC 11585-7, SNOMED 260373001 Detected, the Utah patient), and Survsys.UnitTests/Fixtures/Hl7/oru-r01-malformed.hl7, a message the parser must refuse. Add &lt;None Include&gt; items to Survsys.UnitTests/Survsys.UnitTests.csproj copying the Fixtures/Hl7 files to the test output directory so the tests can read them beside the assembly. Write Survsys.UnitTests/OruR01ParserTests.cs, the test file named after OruR01Parser.cs: it parses the well-formed fixture and asserts the person and the lab the parser produced carry the values the message states (the patient's name and birth date, the LOINC code, the collection date, the coded result), and it asserts the malformed fixture makes the parser throw the parse exception it defines. Do not change the parser in this step.</p></td><td><span class="mono">Survsys.UnitTests/OruR01ParserTests.cs</span><br><span class="mono">Survsys.UnitTests/Survsys.UnitTests.csproj</span><br><span class="mono">Survsys.UnitTests/Fixtures/Hl7/oru-r01-chlamydia.hl7</span><br><span class="mono">Survsys.UnitTests/Fixtures/Hl7/oru-r01-malformed.hl7</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~OruR01ParserTests --blame-hang-timeout 5m --nologo</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No outbound pipeline: the NMI XML-to-HL7 generation of MIRTH_REPLACEMENT_SPEC.md section 3 is not built; this session parses inbound ORU^R01 only.</li><li>No transport, listener or automation: no MLLP/SFTP/HTTP listener, no BackgroundService, no polling of system_original_messages, no SOAP-to-EpiTrax call and no batch-retry or graylist jobs -- Mirth is absorbed, meaning its preprocessing is folded into the parse and its channel architecture is not recreated.</li><li>No configurable lab-specific preprocessing engine: only the preprocessing the documented ORU^R01 message needs to parse is absorbed, not a per-lab IMessagePreprocessor pipeline.</li><li>No new Survsys.Api endpoint and no wiring of the parser into a request: Survsys.Api only gains the project reference the session plan names.</li><li>No change to Survsys.Contracts: the parser maps into the existing intake records and the shared leaf is not widened.</li><li>No reference from Survsys.Messaging to Microsoft.EntityFrameworkCore or to Survsys.Data, and no database access of any kind from the new module.</li><li>No vocabulary or LOINC/SNOMED code matching: that is session 37's work; the parser carries codes through as the text the message gives.</li><li>The session does not perform cross-provider verification, run or record the full suite, or close out: those are the framework's own work between instructions.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[07:26:21]</span> <span class="muted">run-started</span> session=036 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[07:26:21]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[07:26:21]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[07:31:03]</span> <span class="muted">engine-session</span> id=fff369f6-f384-4380-bba3-fb7211281d75</div>
+<div class="line"><span class="at">[07:31:03]</span> <span class="muted">engine-returned</span> seq=1 exit=<span class="good">0</span> seconds=283 transcript=.dabbler/runs/s36/driver/engine-01.log</div>
+<div class="line"><span class="at">[07:31:03]</span> <span class="muted">plan-accepted</span> steps=[&quot;messaging-project-and-fence&quot;,&quot;oru-r01-parser&quot;,&quot;oru-r01-parser-tests&quot;] non_goals=8</div>
+<div class="line"><span class="at">[07:31:03]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[07:31:04]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=messaging-project-and-fence</div>
+<div class="line"><span class="at">[07:31:04]</span> <span class="muted">engine-invoked</span> seq=2 invocation=2/24 first=false output=stream</div>
+<div class="line"><span class="at">[07:32:50]</span> <span class="muted">engine-returned</span> seq=2 exit=<span class="good">0</span> seconds=106 transcript=.dabbler/runs/s36/driver/engine-02.log</div>
+<div class="line"><span class="at">[07:32:52]</span> <span class="muted">check-passed</span> step=messaging-project-and-fence argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.sln&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:32:55]</span> <span class="muted">check-passed</span> step=messaging-project-and-fence argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~ArchitectureTests&quot;,&quot;--blame-hang-timeout&quot;,&quot;5m&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:32:56]</span> <span class="muted">report-accepted</span> seq=2 step=messaging-project-and-fence files=[&quot;Survsys.Messaging/Survsys.Messaging.csproj&quot;,&quot;Survsys.sln&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;Survsys.UnitTests/ArchitectureTests.cs&quot;] notes=Created Survsys.Messaging (nHapi + Contracts, no EF/Data), added to sln, referenced by Api and UnitTests, with a third architecture test asserting the fence; library compiles empty.</div>
+<div class="line"><span class="at">[07:32:56]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=oru-r01-parser</div>
+<div class="line"><span class="at">[07:32:56]</span> <span class="muted">engine-invoked</span> seq=3 invocation=3/24 first=false output=stream</div>
+<div class="line"><span class="at">[07:37:23]</span> <span class="muted">engine-returned</span> seq=3 exit=<span class="good">0</span> seconds=267 transcript=.dabbler/runs/s36/driver/engine-03.log</div>
+<div class="line"><span class="at">[07:37:24]</span> <span class="muted">check-passed</span> step=oru-r01-parser argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Messaging/Survsys.Messaging.csproj&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:37:25]</span> <span class="muted">report-accepted</span> seq=3 step=oru-r01-parser files=[&quot;Survsys.Messaging/OruR01Parser.cs&quot;,&quot;Survsys.Messaging/OruR01ParseResult.cs&quot;,&quot;Survsys.Messaging/Hl7ParseException.cs&quot;] notes=ORU^R01 parser: preprocess (CR normalization, trim, drop empty segments) then nHapi PipeParser, mapping PID to CreatePersonRequest and OBR/OBX/SPM to CreateLabRequest with nested tests/results; wrong type or unparseable throws Hl7ParseException.</div>
+<div class="line"><span class="at">[07:37:25]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=oru-r01-parser-tests</div>
+<div class="line"><span class="at">[07:37:25]</span> <span class="muted">engine-invoked</span> seq=4 invocation=4/24 first=false output=stream</div>
+<div class="line"><span class="at">[07:39:23]</span> <span class="muted">engine-returned</span> seq=4 exit=<span class="good">0</span> seconds=119 transcript=.dabbler/runs/s36/driver/engine-04.log</div>
+<div class="line"><span class="at">[07:39:27]</span> <span class="muted">check-passed</span> step=oru-r01-parser-tests argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~OruR01ParserTests&quot;,&quot;--blame-hang-timeout&quot;,&quot;5m&quot;,&quot;--nologo&quot;]</div>
+<div class="line"><span class="at">[07:39:27]</span> <span class="muted">report-accepted</span> seq=4 step=oru-r01-parser-tests files=[&quot;Survsys.UnitTests/OruR01ParserTests.cs&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;Survsys.UnitTests/Fixtures/Hl7/oru-r01-chlamydia.hl7&quot;,&quot;Survsys.UnitTests/Fixtures/Hl7/oru-r01-malformed.hl7&quot;] notes=Two HL7 fixtures derived from the documented Chlamydia ORU^R01 and a malformed message, copied to test output; OruR01ParserTests asserts the parsed person/lab values and that the malformed message throws Hl7ParseException. Both tests pass.</div>
+<div class="line"><span class="at">[07:39:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[07:39:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[07:39:27]</span> <span class="muted">job-started</span> name=verification pid=42452 log=.dabbler/runs/s36/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:40:31]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s36/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[07:40:31]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[07:40:31]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[07:40:31]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[07:40:31]</span> <span class="muted">job-started</span> name=run of record: unit pid=16084 log=.dabbler/runs/s36/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[07:40:36]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s36/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[07:40:36]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[07:40:40]</span> <span class="muted">landed</span> commit=1927c0cdb245c43318149a3608cf7873b8959ef7</div>
+<div class="line"><span class="at">[07:40:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[07:40:40]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[07:40:40]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[07:40:40]</span> <span class="muted">job-started</span> name=close pid=41660 log=.dabbler/runs/s36/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:40:45]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s36/driver/jobs/close.log</div>
+<div class="line"><span class="at">[07:40:45]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>16 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `ParsesTheDocumentedChlamydiaResultIntoPersonAndLab` in `Survsys.UnitTests/OruR01ParserTests.cs` drives a message that contains `OBR|1|ORD001^TEST_LAB|OBR001^TEST_LAB|...`, for which `OruR01Parser.ReadLab` populates `AccessionNo` from `OBR-3.1` (`&quot;OBR001&quot;`), but the test never asserts `result.Lab.AccessionNo`.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Precondition:** A new `OruR01Parser` instance and the existing `oru-r01-chlamydia.hl7` fixture.</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Input:** `new OruR01Parser().Parse(ReadFixture(&quot;oru-r01-chlamydia.hl7&quot;))`.</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Expectation:** `Assert.Equal(&quot;OBR001&quot;, result.Lab.AccessionNo)` passes; without this assertion, dropping the `obr.FillerOrderNumber.EntityIdentifier.Value` mapping in `ReadLab` would leave the test green.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Nit:** `OruR01Parser.Preprocess` specifically handles Mirth's `\015` escaped carriage-return replacement (`.Replace(&quot;\\015&quot;, &quot;\r&quot;, StringComparison.Ordinal)`), segment whitespace trimming, and empty-segment filtering, but `OruR01ParserTests` only feeds newline-delimited fixtures and never exercises `\015`-delimited input.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Precondition:** A new `OruR01Parser` instance and the contents of `oru-r01-chlamydia.hl7` joined onto a single line with literal `\015` and padded whitespace between segments (e.g., `string.Join(@&quot; \015 \015 &quot;, File.ReadAllLines(Path.Combine(FixtureRoot, &quot;oru-r01-chlamydia.hl7&quot;)))`).</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Input:** `new OruR01Parser().Parse(singleLineWithEscapedCr)`.</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Expectation:** Returns an `OruR01ParseResult` identical to the multi-line fixture parse (`Person.LastName == &quot;DOE&quot;`, single test with `LoincCode == &quot;11585-7&quot;`), whereas removing `.Replace(&quot;\\015&quot;, &quot;\r&quot;, ...)` would leave the entire message inside the `MSH` segment and fail the parse or miss `PID`/`OBR`/`OBX`.</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>**Nit:** `OruR01Parser.Parse` has dedicated branches for whitespace-only input (`if (er7.Length == 0)`) and valid HL7 v2 messages that are not `ORU_R01` (`if (message is not ORU_R01 oru)`), neither of which is exercised in `Survsys.UnitTests/OruR01ParserTests.cs` (`oru-r01-malformed.hl7` fails earlier inside `_parser.Parse(er7)` with `HL7Exception` because `MSH-9` and `MSH-12` are missing).</td><td>not answered</td></tr>
+<tr><td>9</td><td><strong>minor</strong></td><td>**Precondition:** A new `OruR01Parser` instance.</td><td>not answered</td></tr>
+<tr><td>10</td><td><strong>minor</strong></td><td>**Input:** (1) `&quot;\r\n  \\015 \n&quot;` and (2) `&quot;MSH|^~\\&amp;|LAB|FAC|EMSA|DPH|20260312120000||ADT^A01^ADT_A01|MSG00001|P|2.5.1\rPID|1||PAT1||DOE^JANE\r&quot;`.</td><td>not answered</td></tr>
+<tr><td>11</td><td><strong>minor</strong></td><td>**Expectation:** Both inputs throw `Hl7ParseException` — the first with message containing `&quot;empty once preprocessed&quot;` and the second with message containing `&quot;Expected an ORU^R01 message but the message parsed as ADT_A01&quot;`.</td><td>not answered</td></tr>
+<tr><td>12</td><td><strong>minor</strong></td><td>**Nit:** `OruR01Parser.ReadObservationValue` and `ReadUnits` handle non-`CWE` primitive `OBX-5` values (`IPrimitive`), `OBX-6` units, and `OBX-7` reference ranges, none of which appear in `oru-r01-chlamydia.hl7`.</td><td>not answered</td></tr>
+<tr><td>13</td><td><strong>minor</strong></td><td>**Precondition:** A new `OruR01Parser` instance.</td><td>not answered</td></tr>
+<tr><td>14</td><td><strong>minor</strong></td><td>**Input:** An `ORU^R01` string whose `OBX` segment uses numeric value type, units, and reference range: `&quot;OBX|1|NM|11585-7^Titer^LN||1.45|mg/dL^milligrams per deciliter^UCUM|0.00-0.99|H|||F&quot;`.</td><td>not answered</td></tr>
+<tr><td>15</td><td><strong>minor</strong></td><td>**Expectation:** `labResult.ResultValue == &quot;1.45&quot;`, `labResult.TestResult == null`, `labResult.Units == &quot;mg/dL&quot;`, and `test.ReferenceRange == &quot;0.00-0.99&quot;`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>5s</td><td>795</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

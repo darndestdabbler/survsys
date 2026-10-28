@@ -1,0 +1,166 @@
+@* The provider registry, for its administration: the providers in name
+   order, fifty to a page with Previous and Next where there are more,
+   searched by the start of their last name, with each provider's
+   type by its description, each last name the way into its edit screen, and
+   New provider for an empty one. Every provider exports as CSV and imports
+   from it, previewed before it is saved: a row with a blank id is added and
+   one with an id saves over that provider. *@
+@page "/providers"
+@inject ProvidersClient Client
+@inject CodesClient Codes
+
+<PageTitle>Providers — Survsys</PageTitle>
+
+<MudText id="providers-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    Providers
+</MudText>
+
+<div class="d-flex gap-4 align-start mb-4">
+    <MudButton id="providers-new" Variant="Variant.Filled" Color="Color.Primary" Href="/providers/new">
+        New provider
+    </MudButton>
+    <MudButton id="providers-export" Variant="Variant.Outlined" Href="/providers/export" Target="_blank">
+        Export providers CSV
+    </MudButton>
+    <div>
+        <ImportPreview Prefix="providers-import" Label="Import providers CSV"
+                       Import="@((csv, confirm) => Client.Import(csv, confirm))" Imported="@Load" />
+    </div>
+</div>
+
+<div class="d-flex gap-2 align-center mb-4">
+    <MudTextField @bind-Value="lastName" id="providers-last-name" Label="Last name"
+                  Variant="Variant.Outlined" Margin="Margin.Dense" OnKeyUp="@OnKey" />
+    <MudButton id="providers-search" Variant="Variant.Outlined" OnClick="@Search">Search</MudButton>
+</div>
+
+@if (asked is null)
+{
+    <MudProgressCircular id="providers-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } result && failure is null)
+{
+    <MudText id="providers-total" Typo="Typo.body2" Class="mb-4">
+        @result.TotalCount provider(s), showing @result.Items.Count.
+    </MudText>
+
+    <MudPaper Elevation="1">
+        <MudSimpleTable id="providers-table" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Last name</th>
+                    <th>First name</th>
+                    <th>Type</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Active</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var provider in result.Items)
+                {
+                    <tr data-provider="@provider.LastName">
+                        <td data-provider-last-name>
+                            <MudLink Href="@($"/providers/{provider.Id}")">@provider.LastName</MudLink>
+                        </td>
+                        <td data-provider-first-name>@(provider.FirstName ?? "—")</td>
+                        <td data-provider-type>@TypeName(provider.ProviderTypeId)</td>
+                        <td data-provider-phone>@(provider.Phone ?? "—")</td>
+                        <td data-provider-email>@(provider.Email ?? "—")</td>
+                        <td data-provider-active>@(provider.Active ? "Yes" : "No")</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+
+    @if (result.TotalCount > PageSize || page > 1)
+    {
+        <div class="d-flex align-center gap-4 mt-2">
+            <MudButton id="providers-prev" Variant="Variant.Outlined" Size="Size.Small"
+                       Disabled="@(page <= 1)" OnClick="PreviousPage">
+                Previous
+            </MudButton>
+            <MudText id="providers-page" Typo="Typo.body2">Page @(page) of @LastPage</MudText>
+            <MudButton id="providers-next" Variant="Variant.Outlined" Size="Size.Small"
+                       Disabled="@(page >= LastPage)" OnClick="NextPage">
+                Next
+            </MudButton>
+        </div>
+    }
+}
+else
+{
+    <MudAlert id="providers-error" Severity="Severity.Error" Variant="Variant.Filled">
+        @failure
+    </MudAlert>
+}
+
+@code {
+    private Asked<PagedResult<ProviderResponse>>? asked;
+
+    private Dictionary<int, string> typeNames = [];
+
+    private string? lastName;
+
+    private string? failure;
+
+    /// <summary>How many providers one page of this screen holds.</summary>
+    private const int PageSize = 50;
+
+    private int page = 1;
+
+    private int LastPage => Math.Max(1, ((asked?.Value?.TotalCount ?? 0) + PageSize - 1) / PageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var types = await Codes.List(CodeLists.ProviderType, inactive: true);
+        typeNames = types.Value?.ToDictionary(code => code.Id, code => code.Description ?? code.Code) ?? [];
+
+        await Load();
+
+        failure ??= types.Failure;
+    }
+
+    private async Task Load()
+    {
+        asked = await Client.Page(page, PageSize, lastName);
+        failure = asked.Failure;
+    }
+
+    /// <summary>A new search starts again from its first page.</summary>
+    private async Task Search()
+    {
+        page = 1;
+        await Load();
+    }
+
+    private async Task OnKey(KeyboardEventArgs key)
+    {
+        if (key.Key is "Enter")
+        {
+            await Search();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (page > 1)
+        {
+            page--;
+            await Load();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (page < LastPage)
+        {
+            page++;
+            await Load();
+        }
+    }
+
+    private string TypeName(int? typeId) =>
+        typeId is not { } id ? "—" : typeNames.TryGetValue(id, out var name) ? name : $"type {id}";
+}

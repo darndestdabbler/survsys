@@ -1,0 +1,99 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The walkthroughs, through a browser. It launches Survsys.Web and
+       Survsys.Api as processes and references neither: a project reference
+       here would make the reference graph the architecture tests read no
+       longer the whole truth. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <!-- Playwright, and its xUnit base classes: a browser and a page per
+         test, disposed with the test. A stable release, as the solution
+         plan's standing rule requires of anything inside the gate that
+         guarantees the releases. -->
+    <PackageReference Include="Microsoft.Playwright.Xunit" Version="1.63.0" />
+    <!-- Seeding the condition rows, which is raw SQL and not persistence:
+         this project does not model the schema, it fills a table the API
+         tier has already migrated into existence. -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
+    <!-- Lifts the vulnerable 9.0.x that Microsoft.Data.SqlClient brings in
+         transitively (NU1902 and NU1903, GHSA-2fmv-rv2c-59x7 and
+         GHSA-846f-f764-76mx), as Survsys.Data does for the same reason. Not
+         a dependency of this project's own, and it goes when SqlClient's
+         graph no longer needs it. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The same seven rows the integration suite uses, linked rather than
+         copied: two fixtures drifting apart would mean the walkthroughs and
+         the integration tests describing different data while both claim to
+         describe the legacy seed. -->
+    <Content Include="..\Survsys.IntegrationTests\Fixtures\conditions.sql"
+             Link="Fixtures\conditions.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <!-- The same seven people, linked for the same reason: the phase 1
+         walkthroughs name the people the integration suite round-trips, and
+         one fixture is what keeps them naming the same ones. -->
+    <Content Include="..\Survsys.IntegrationTests\Fixtures\persons.sql"
+             Link="Fixtures\persons.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <!-- The staged messages the phase 5 ELR walkthroughs review, promote and
+         find a duplicate of, linked for the same reason: the queue the review
+         screen shows and the message the promotion opens are the same rows
+         whether a person performs the walkthrough or its test does. -->
+    <Content Include="..\Survsys.IntegrationTests\Fixtures\staged-messages.sql"
+             Link="Fixtures\staged-messages.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <!-- The intake walkthroughs' own reference data and the messages they
+         drop, this suite's alone: no integration test runs the intake over
+         them, so there is nothing to link them from. -->
+    <Content Include="Fixtures\elr-intake.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <!-- The notification guide the CDC walkthroughs send under, this suite's
+         alone for the same reason: the export log those walkthroughs read is
+         written by the queue worker, not seeded. -->
+    <Content Include="Fixtures\notification-guide.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\Hl7\*.hl7"
+             CopyToOutputDirectory="PreserveNewest" />
+    <!-- The eCR walkthroughs' condition mapping and person, and the eICRs and
+         RRs they drop, this suite's alone for the same reason. -->
+    <Content Include="Fixtures\ecr-intake.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\Cda\*.xml"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Survsys.Contracts\Survsys.Contracts.csproj" />
+    <!-- The clearing and seeding, which the kit for performing the
+         walkthroughs by hand runs too: one copy, so the database a person
+         walks through is the one these tests walk through. -->
+    <ProjectReference Include="..\tools\uat\Survsys.Uat\Survsys.Uat.csproj" />
+  </ItemGroup>
+
+  <!-- The two tiers the harness launches, built when this project builds.
+
+       This is a build-order dependency and deliberately not a
+       <ProjectReference>: nothing of either tier is compiled against or
+       loaded into this assembly, so the reference graph the architecture
+       tests read stays the whole truth. What it buys is that `dotnet test
+       Survsys.E2ETests/Survsys.E2ETests.csproj`, the e2e suite's command,
+       as dabbler.yaml declares it, is self-sufficient, and that no test
+       here ever starts a build of its own. -->
+  <Target Name="BuildTiersTheHarnessLaunches" BeforeTargets="Build">
+    <MSBuild Projects="..\Survsys.Api\Survsys.Api.csproj;..\Survsys.Web\Survsys.Web.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)" />
+  </Target>
+
+</Project>

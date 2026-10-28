@@ -1,0 +1,350 @@
+@* The Notes tab of a case morbidity report: the report's notes, newest
+   first, and an inline panel that records a new one.
+
+   ../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md
+   records the legacy Notes tab as three sections — Attachments, Notes and
+   Tasks. This is the Notes section, with the other two beside it: the
+   AttachmentsPanel above and the shared TasksPanel below.
+
+   The note list shows what the legacy list shows — Creator, Note type,
+   Created and a Strikethrough checkbox — and the "+ Note" panel opens inline
+   rather than as a dialog, as the legacy one does.
+
+   Strikethrough is the soft delete: ticking the box calls the API and the row
+   stays, shown struck. There is no edit and no delete here, because there is
+   no endpoint for either — a note is what somebody wrote, and what it says is
+   not rewritten afterwards.
+
+   The note text is a plain text area where the legacy is a rich text editor:
+   this release stores the text, which round-trips through the same column
+   without this tier having to decide what HTML it trusts.
+
+   There is no Creator box: the API tier records a note under the signed-in
+   user who wrote it, as it files an attachment under its uploader.
+
+   The Tasks section below the notes is the shared TasksPanel, with this
+   report in hand so a task can be added here; the task list screen shows the
+   same panel for every report.
+
+   A row in a list carries its position in its identifier, so a walkthrough
+   can name it: notes-note-0, notes-note-0-strikethrough and so on. *@
+@using System.Globalization
+@inject NotesClient Api
+@inject ExposuresClient Exposures
+@inject IDialogService Dialogs
+
+<AttachmentsPanel ReportId="@ReportId" />
+
+@if (listFailure is { } whyNoList)
+{
+    <MudAlert id="notes-list-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNoList
+    </MudAlert>
+}
+
+@if (saved is { } stored)
+{
+    <MudAlert id="notes-entry-saved" Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+        @stored
+    </MudAlert>
+}
+
+@if (entryFailure is { } whyNot)
+{
+    <MudAlert id="notes-entry-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (complaint is { } whyNotYet)
+{
+    <MudAlert id="notes-entry-complaint" Severity="Severity.Warning" Class="mb-4">
+        @whyNotYet
+    </MudAlert>
+}
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Notes</MudText>
+    @if (notes.Count == 0)
+    {
+        <MudText id="notes-none" Typo="Typo.body2">No notes found.</MudText>
+    }
+    else
+    {
+        <MudSimpleTable id="notes-notes" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Creator</th>
+                    <th>Note type</th>
+                    <th>Created</th>
+                    <th>Note</th>
+                    <th>Strikethrough</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var n = 0; n < notes.Count; n++)
+                {
+                    var noteAt = n;
+                    var note = notes[noteAt];
+                    <tr id="@($"notes-note-{noteAt}")" @key="note.Id">
+                        <td id="@($"notes-note-{noteAt}-user")">@Shown(note.UserId)</td>
+                        <td id="@($"notes-note-{noteAt}-note-type")">
+                            @Shown(note.NoteType)
+                            @if (note.Private)
+                            {
+                                <em id="@($"notes-note-{noteAt}-private")"> (private)</em>
+                            }
+                        </td>
+                        <td id="@($"notes-note-{noteAt}-created-at")">@Written(note.CreatedAt)</td>
+                        <td id="@($"notes-note-{noteAt}-text")"
+                            style="@(note.Struckthrough ? "text-decoration: line-through" : null)">
+                            @Shown(note.Text)
+                        </td>
+                        <td>
+                            <MudCheckBox T="bool" id="@($"notes-note-{noteAt}-strikethrough")"
+                                         Value="@note.Struckthrough" Disabled="@striking"
+                                         ValueChanged="@(struck => Strike(noteAt, struck))" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudPaper>
+
+<MudPaper id="notes-entry" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Add a note</MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <MudSelect T="string" @bind-Value="noteForm.NoteType" id="notes-entry-note-type"
+                       Label="Note type" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelectItem T="string" Value="@Clinical">Clinical</MudSelectItem>
+                <MudSelectItem T="string" Value="@Administrative">Administrative</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect T="int?" @bind-Value="noteForm.ExposureId" id="notes-entry-exposure"
+                       Label="Exposure" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelectItem T="int?" Value="@((int?)null)">None</MudSelectItem>
+                @foreach (var exposure in exposures)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)exposure.Id)">@ExposureShown(exposure)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4" Class="d-flex align-center">
+            @* A private note is listed to its author alone. *@
+            <MudCheckBox T="bool" @bind-Value="noteForm.Private" id="notes-entry-private"
+                         Label="Private" />
+        </MudItem>
+        <MudItem xs="12">
+            <MudTextField @bind-Value="noteForm.Text" id="notes-entry-text"
+                          Label="Note" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Lines="4" />
+        </MudItem>
+    </MudGrid>
+
+    <div class="d-flex gap-2 mt-4">
+        <MudButton id="notes-entry-record" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@recording" OnClick="@Record">
+            Add note
+        </MudButton>
+    </div>
+</MudPaper>
+
+<TasksPanel ReportId="@ReportId" Adding="true" />
+
+@code {
+    /// <summary>The report whose notes this tab lists and records against.</summary>
+    [Parameter, EditorRequired]
+    public int ReportId { get; set; }
+
+    /// <summary>
+    /// The note type codes the API tier records, as its vocabulary holds
+    /// them. Named here as constants rather than typed into the markup twice,
+    /// because the select writes the same code the API validates.
+    /// </summary>
+    private const string Clinical = "clinical";
+
+    /// <summary>The administrative note type code.</summary>
+    private const string Administrative = "administrative";
+
+    /// <summary>
+    /// How this tier writes the moment a note was written: the day, as every
+    /// other date on a report's screens is written.
+    /// </summary>
+    private const string DateForm = "yyyy-MM-dd";
+
+    private List<NoteResponse> notes = [];
+
+    /// <summary>
+    /// The report's exposures, which a note may be about; empty where they
+    /// could not be read, and a note is then about the report itself.
+    /// </summary>
+    private IReadOnlyList<ExposureResponse> exposures = [];
+
+    private NoteForm noteForm = new();
+
+    private bool recording;
+
+    private bool striking;
+
+    private string? listFailure;
+
+    private string? saved;
+
+    private string? entryFailure;
+
+    private string? complaint;
+
+    protected override async Task OnInitializedAsync()
+    {
+        exposures = (await Exposures.All(ReportId)).Value ?? [];
+
+        // Every note of the report, however many pages the API tier lists
+        // them over: the client walks the pages, so none is left off the end
+        // of the list. Struck-through notes are among them.
+        var listed = await Api.All(ReportId);
+
+        if (listed.Value is not { } written)
+        {
+            listFailure = listed.Failure;
+
+            return;
+        }
+
+        notes = [.. written];
+    }
+
+    private async Task Record()
+    {
+        // The one thing checked here is that there is something to record: a
+        // note with nothing in it is nothing to send, and the note type and
+        // everything else the API tier refuses is shown as the entry error
+        // rather than re-checked here.
+        if (string.IsNullOrWhiteSpace(noteForm.Text))
+        {
+            complaint = "Write the note before adding it.";
+
+            return;
+        }
+
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+        recording = true;
+
+        try
+        {
+            var answered = await Api.Record(ReportId, new CreateNoteRequest(
+                Text: noteForm.Text.Trim(),
+                NoteType: noteForm.NoteType,
+                ExposureId: noteForm.ExposureId,
+                Private: noteForm.Private));
+
+            if (answered.Value is { } recorded)
+            {
+                // The new note goes to the top of the list, which is where the
+                // API tier's own newest-first ordering would put it.
+                notes.Insert(0, recorded);
+                noteForm = new NoteForm();
+                saved = "The note has been added.";
+            }
+            else
+            {
+                entryFailure = answered.Failure;
+            }
+        }
+        finally
+        {
+            recording = false;
+        }
+    }
+
+    /// <summary>
+    /// Strikes a note through, or restores one, and puts back what the API
+    /// tier says the note now is.
+    /// </summary>
+    /// <remarks>
+    /// The row stays either way: this is the soft delete, and a struck note is
+    /// shown struck rather than removed. A failure leaves the list as the API
+    /// tier last described it, so the box goes back to what is stored rather
+    /// than to what was clicked.
+    /// </remarks>
+    private async Task Strike(int at, bool struckthrough)
+    {
+        // Striking a note through is this tab's delete, so it is confirmed
+        // first, like the Laboratory and Contacts tabs' deletes. Restoring a
+        // struck note is not a delete and asks nothing. Where the operator
+        // cancels, nothing is sent and the box goes back to the stored state
+        // it was ticked away from.
+        if (struckthrough && !await ConfirmStrike())
+        {
+            StateHasChanged();
+
+            return;
+        }
+
+        entryFailure = null;
+        saved = null;
+        striking = true;
+
+        try
+        {
+            var answered = await Api.Strike(notes[at].Id, struckthrough);
+
+            if (answered.Value is { } struck)
+            {
+                notes[at] = struck;
+            }
+            else
+            {
+                entryFailure = answered.Failure;
+            }
+        }
+        finally
+        {
+            striking = false;
+        }
+    }
+
+    /// <summary>
+    /// Asks the operator to confirm striking a note through before it is sent,
+    /// so the soft delete is never one click away. True only where they chose
+    /// to go ahead.
+    /// </summary>
+    private async Task<bool> ConfirmStrike() =>
+        await Dialogs.ShowMessageBoxAsync(
+            "Strike this note through?",
+            "The note will be struck through. You can restore it afterwards.",
+            yesText: "Strike through",
+            cancelText: "Cancel") == true;
+
+    /// <summary>A value as the list shows it, or a dash for what nobody has recorded.</summary>
+    private static string Shown(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "—" : value;
+
+    /// <summary>An identifier as the list shows it, or a dash where none is recorded.</summary>
+    private static string Shown(int? value) =>
+        value is { } id ? id.ToString(CultureInfo.InvariantCulture) : "—";
+
+    /// <summary>An exposure as the Exposure list offers it: its name and the day it started.</summary>
+    private static string ExposureShown(ExposureResponse exposure) =>
+        $"{Shown(exposure.Name)}, {exposure.ExposureStart?.ToString(DateForm, CultureInfo.InvariantCulture) ?? "no start date"}";
+
+    /// <summary>The local day a note was written, in the report screens' date form.</summary>
+    public static string Written(DateTimeOffset written) =>
+        written.ToLocalTime().ToString(DateForm, CultureInfo.InvariantCulture);
+
+    /// <summary>One note as its boxes hold it.</summary>
+    private sealed class NoteForm
+    {
+        public string? Text { get; set; }
+
+        public string? NoteType { get; set; } = Clinical;
+
+        public int? ExposureId { get; set; }
+
+        public bool Private { get; set; }
+    }
+}
