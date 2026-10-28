@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 110 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 110 transcript</h1>
+<p class="stamp">Rendered 2026-10-23T09:43:53.219Z by dabbler-ai-router 3.23.0 at b25298e88a7b53151c9e405783eb1ec6024a4889.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-23T05:41:06.750-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 110: Attachment and note dates in local time</h3>
+<p>*Inserted after session 109. Its walkthrough regression, run at 20:55 in Connecticut, failed <code>attach-a-document.md</code> step 13: the <strong>Attachments</strong> table read tomorrow's date. <code>AttachmentEndpoints</code> stores <code>CreatedAt</code> as <code>DateTimeOffset.UtcNow</code>, and <code>AttachmentsPanel.razor</code>'s <code>Attached</code> writes it as <code>yyyy-MM-dd</code> without converting it, so from 20:00 (19:00 in winter) until midnight every attachment is dated the next day. <code>NotesTab.razor</code>'s <code>Written</code> does the same with a note's date. The Administrative tab, the edit lock and the print view already convert with <code>ToLocalTime()</code>. A walkthrough that fails by the clock is a defect of the release, so this comes before it.*</p>
+<ol><li>Register.</li><li><code>Survsys.Web</code>: <code>AttachmentsPanel.razor</code>'s <code>Attached</code> and <code>NotesTab.razor</code>'s <code>Written</code> show the moment's date in local time, by <code>ToLocalTime()</code> as the Administrative tab does. Nothing stored changes, and every element id stays unchanged.</li><li><code>Survsys.UnitTests</code>: the two dates, for a moment late in the evening local time whose UTC date is the next day.</li><li>Cross-provider verification.</li><li>Full test suite, the end-to-end walkthrough suite included, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Show an attachment's and a note's date in local time. AttachmentsPanel.razor's Attached and NotesTab.razor's Written convert the stored DateTimeOffset with ToLocalTime() before writing it as yyyy-MM-dd, as the Administrative tab does, so a file attached or a note written late in the evening is no longer dated the next day. The two helpers become public static so Survsys.UnitTests can reach them, and AttachmentsPanelTests and NotesTabTests prove each for a moment late in the evening local time expressed in UTC. Nothing stored changes and every element id stays the same.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/1a974c9e3c508e3bfb24422472410148699de35c"><code>1a974c9e3c508e3bfb24422472410148699de35c</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Local dates</td><td><p>In AttachmentsPanel.razor make Attached public static and write attached.ToLocalTime() as yyyy-MM-dd; in NotesTab.razor make Written public static and write written.ToLocalTime() as yyyy-MM-dd. Change nothing else.</p></td><td><span class="mono">Survsys.Web/Components/AttachmentsPanel.razor</span><br><span class="mono">Survsys.Web/Components/NotesTab.razor</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code></td><td>yes</td></tr>
+<tr><td>Local date tests</td><td><p>Add Survsys.UnitTests/AttachmentsPanelTests.cs and Survsys.UnitTests/NotesTabTests.cs: for 23:30 local time on a fixed day, given as its UTC moment (whose UTC date is the next day wherever local time is behind UTC), Attached and Written return that local day.</p></td><td><span class="mono">Survsys.UnitTests/AttachmentsPanelTests.cs</span><br><span class="mono">Survsys.UnitTests/NotesTabTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~AttachmentsPanelTests|FullyQualifiedName~NotesTabTests</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No change to how CreatedAt is stored or sent by AttachmentEndpoints or the notes endpoints</li><li>No change to any element id, column, or other date on the report screens</li><li>No component-rendering test framework (bUnit) is added</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[09:41:06]</span> <span class="muted">run-started</span> session=110 mode=pull</div>
+<div class="line"><span class="at">[09:41:06]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[09:41:50]</span> <span class="muted">run-resumed</span> session=110 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[09:41:50]</span> <span class="muted">plan-accepted</span> steps=[&quot;local-dates&quot;,&quot;local-date-tests&quot;] non_goals=3</div>
+<div class="line"><span class="at">[09:41:50]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[09:41:51]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=local-dates</div>
+<div class="line"><span class="at">[09:42:19]</span> <span class="muted">run-resumed</span> session=110 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:42:22]</span> <span class="muted">check-passed</span> step=local-dates argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[09:42:22]</span> <span class="muted">report-accepted</span> seq=2 step=local-dates files=[&quot;Survsys.Web/Components/AttachmentsPanel.razor&quot;,&quot;Survsys.Web/Components/NotesTab.razor&quot;] notes=Attached and Written convert with ToLocalTime() and are public static for the unit tests</div>
+<div class="line"><span class="at">[09:42:22]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=local-date-tests</div>
+<div class="line"><span class="at">[09:42:53]</span> <span class="muted">run-resumed</span> session=110 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[09:42:57]</span> <span class="muted">check-passed</span> step=local-date-tests argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~AttachmentsPanelTests|FullyQualifiedName~NotesTabTests&quot;]</div>
+<div class="line"><span class="at">[09:42:58]</span> <span class="muted">report-accepted</span> seq=3 step=local-date-tests files=[&quot;Survsys.UnitTests/AttachmentsPanelTests.cs&quot;,&quot;Survsys.UnitTests/NotesTabTests.cs&quot;] notes=23:30 local on 2026-10-22 given as UTC is written as 2026-10-22 by Attached and Written</div>
+<div class="line"><span class="at">[09:42:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[09:42:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[09:42:58]</span> <span class="muted">job-started</span> name=verification pid=54104 log=.dabbler/runs/s110/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:43:03]</span> <span class="muted">run-resumed</span> session=110 phase=<span class="milestone">verify</span> mode=pull</div>
+<div class="line"><span class="at">[09:43:03]</span> <span class="muted">lease-lost</span> phase=<span class="milestone">verify</span> seq=3 epoch=4</div>
+<div class="line"><span class="at">[09:43:20]</span> <span class="muted">run-resumed</span> session=110 phase=<span class="milestone">verify</span> mode=pull</div>
+<div class="line"><span class="at">[09:43:20]</span> <span class="muted">lease-lost</span> phase=<span class="milestone">verify</span> seq=3 epoch=5</div>
+<div class="line"><span class="at">[09:43:24]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s110/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[09:43:24]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[09:43:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[09:43:24]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[09:43:24]</span> <span class="muted">job-started</span> name=run of record: unit pid=740 log=.dabbler/runs/s110/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[09:43:44]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s110/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[09:43:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[09:43:47]</span> <span class="muted">landed</span> commit=1a974c9e3c508e3bfb24422472410148699de35c</div>
+<div class="line"><span class="at">[09:43:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[09:43:47]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[09:43:47]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[09:43:47]</span> <span class="muted">job-started</span> name=close pid=48908 log=.dabbler/runs/s110/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:43:53]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s110/driver/jobs/close.log</div>
+<div class="line"><span class="at">[09:43:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** The two tests are timezone-dependent and do not guarantee their stated precondition that the stored UTC moment is on the next calendar day. On a UTC test runner, `new DateTimeOffset(evening).ToUniversalTime()` remains `2026-10-22`, so the former UTC-formatting implementation would also pass. A stronger test would run under a fixed Connecticut/Eastern local timezone with input `2026-10-23T03:30:00+00:00` and assert `&quot;2026-10-22&quot;`; the current implementation would pass and the prior implementation would return `&quot;2026-10-23&quot;`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>19s</td><td>2262</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

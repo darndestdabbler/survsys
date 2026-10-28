@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ClinicalDocument xmlns="urn:hl7-org:v3">
+  <realmCode code="US" />
+  <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040" />
+  <templateId root="2.16.840.1.113883.10.20.15.2.1.2" extension="2017-04-01" />
+  <id root="2.16.840.1.113883.9.9.9.9.8" extension="e2e-link-rr" />
+  <code code="88085-6" codeSystem="2.16.840.1.113883.6.1" displayName="Reportability response report Document Public health" />
+  <title>Reportability Response</title>
+  <effectiveTime value="20260315120000-0700" />
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25" />
+  <languageCode code="en-US" />
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.15.2.2.5" extension="2017-04-01" />
+          <code code="88085-6" codeSystem="2.16.840.1.113883.6.1" />
+          <title>Reportability Response Information</title>
+          <text>Giardiasis is reportable to Utah Department of Health within 24 hours.</text>
+          <entry>
+            <act classCode="ACT" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.10" extension="2017-04-01" />
+              <id root="2.16.840.1.113883.9.9.9.9.9" extension="e2e-link-eicr" />
+              <code code="RR5" codeSystem="2.16.840.1.114222.4.5.274" displayName="Received eICR Information" />
+            </act>
+          </entry>
+          <entry>
+            <observation classCode="OBS" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.15.2.3.12" extension="2017-04-01" />
+              <code code="64572001" codeSystem="2.16.840.1.113883.6.96" displayName="Condition" />
+              <value code="58265007" codeSystem="2.16.840.1.113883.6.96" displayName="Giardiasis" />
+              <entryRelationship typeCode="COMP">
+                <organizer classCode="CLUSTER" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.15.2.3.13" extension="2017-04-01" />
+                  <code code="RRVS7" codeSystem="2.16.840.1.114222.4.5.274" displayName="Both patient home address and provider facility address" />
+                  <statusCode code="completed" />
+                  <participant typeCode="LOC">
+                    <templateId root="2.16.840.1.113883.10.20.15.2.4.2" extension="2017-04-01" />
+                    <participantRole>
+                      <id root="2.16.840.1.113883.4.6" extension="8000000001" />
+                      <code code="RR8" codeSystem="2.16.840.1.114222.4.5.232" displayName="Responsible Agency" />
+                      <playingEntity>
+                        <name>Utah Department of Health</name>
+                      </playingEntity>
+                    </participantRole>
+                  </participant>
+                  <component typeCode="COMP">
+                    <observation classCode="OBS" moodCode="EVN">
+                      <templateId root="2.16.840.1.113883.10.20.15.2.3.19" extension="2017-04-01" />
+                      <code code="RR1" codeSystem="2.16.840.1.114222.4.5.232" displayName="Determination of reportability" />
+                      <value code="RRVS1" codeSystem="2.16.840.1.114222.4.5.274" displayName="Reportable" />
+                    </observation>
+                  </component>
+                  <component typeCode="COMP">
+                    <observation classCode="OBS" moodCode="EVN">
+                      <templateId root="2.16.840.1.113883.10.20.15.2.3.14" extension="2017-04-01" />
+                      <code code="RR4" codeSystem="2.16.840.1.114222.4.5.232" displayName="Timeframe to report (urgency)" />
+                      <value value="24" unit="h" />
+                    </observation>
+                  </component>
+                </organizer>
+              </entryRelationship>
+            </observation>
+          </entry>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>

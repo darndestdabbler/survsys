@@ -1,0 +1,355 @@
+@* The Attachments section of a case morbidity report's Notes tab: the files
+   attached to the report, newest first, and an inline panel that attaches
+   another.
+
+   ../nedss/docs/functional/session-012-investigation-admin-contacts-notes.md
+   records the legacy Notes tab as three sections — Attachments, Notes and
+   Tasks — and this is the first of them, which session 26 left for this one.
+   The legacy panel shows "No attachments found" until something is attached
+   and opens its upload dialog from a "+ Attachment" button; this opens
+   inline, as the note entry panel does, because a dialog here would be a
+   mechanism the tab has nowhere else.
+
+   The category select offers the attachment_category code list, seeded with
+   the five the legacy dialog offers under the legacy's own labels and codes;
+   the API tier accepts what that list holds.
+
+   The file picker is Blazor's own InputFile and not a component that hides
+   it, so the input a walkthrough types a path into is the input this markup
+   names. The accept list and the size ceiling are this tier's convenience:
+   what may be attached is the API tier's to say, and it says so by refusing.
+
+   A file's name downloads it: a plain link to this tier's
+   /attachments/{id}/content, which asks the API tier for the bytes under the
+   signed-in person's token and hands them to the browser as a file. A user
+   holding edit_cases, the privilege the API tier asks of the delete, gets a
+   Delete button on each row, which asks first.
+
+   A row in a list carries its position in its identifier, so a walkthrough
+   can name it: attachments-file-0, attachments-file-0-filename and so on.
+
+   The same panel serves an outbreak's attachments on the outbreak screen,
+   given an OutbreakId in place of a ReportId. *@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Forms
+@inject AttachmentsClient Api
+@inject IDialogService Dialogs
+
+@if (deleteFailure is { } whyNotDeleted)
+{
+    <MudAlert id="attachments-delete-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNotDeleted
+    </MudAlert>
+}
+
+@if (listFailure is { } whyNoList)
+{
+    <MudAlert id="attachments-list-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNoList
+    </MudAlert>
+}
+
+@if (saved is { } stored)
+{
+    <MudAlert id="attachments-entry-saved" Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+        @stored
+    </MudAlert>
+}
+
+@if (entryFailure is { } whyNot)
+{
+    <MudAlert id="attachments-entry-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        @whyNot
+    </MudAlert>
+}
+
+@if (complaint is { } whyNotYet)
+{
+    <MudAlert id="attachments-entry-complaint" Severity="Severity.Warning" Class="mb-4">
+        @whyNotYet
+    </MudAlert>
+}
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Attachments</MudText>
+    @if (attachments.Count == 0)
+    {
+        <MudText id="attachments-none" Typo="Typo.body2">No attachments found.</MudText>
+    }
+    else
+    {
+        <MudSimpleTable id="attachments-files" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>File</th>
+                    <th>Category</th>
+                    <th>Size</th>
+                    <th>Type</th>
+                    <th>Attached</th>
+                    @if (mayEditCases)
+                    {
+                        <th></th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @for (var a = 0; a < attachments.Count; a++)
+                {
+                    var attachment = attachments[a];
+                    <tr id="@($"attachments-file-{a}")" @key="attachment.Id">
+                        <td id="@($"attachments-file-{a}-filename")">
+                            <MudLink Href="@($"/attachments/{attachment.Id}/content")">@attachment.Filename</MudLink>
+                        </td>
+                        <td id="@($"attachments-file-{a}-category")">@Labelled(attachment.Category)</td>
+                        <td id="@($"attachments-file-{a}-size")">@Sized(attachment.Size)</td>
+                        <td id="@($"attachments-file-{a}-content-type")">@attachment.ContentType</td>
+                        <td id="@($"attachments-file-{a}-created-at")">@Attached(attachment.CreatedAt)</td>
+                        @if (mayEditCases)
+                        {
+                            <td>
+                                <MudButton id="@($"attachments-file-{a}-delete")" Variant="Variant.Text"
+                                           Color="Color.Error" Size="Size.Small" OnClick="@(() => Delete(attachment))">
+                                    Delete
+                                </MudButton>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudPaper>
+
+<MudPaper id="attachments-entry" Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Add an attachment</MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <CodeSelect List="@CodeLists.AttachmentCategory" @bind-Value="category" id="attachments-entry-category"
+                        Label="Category" Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="8" Class="d-flex align-center">
+            <InputFile id="attachments-entry-file" OnChange="Chosen" accept="@Accepted" />
+        </MudItem>
+        <MudItem xs="12">
+            <MudText id="attachments-entry-chosen" Typo="Typo.body2">
+                @(chosen is { } file ? $"{file.Name} ({Sized(file.Size)})" : "No file chosen.")
+            </MudText>
+        </MudItem>
+    </MudGrid>
+
+    <div class="d-flex gap-2 mt-4">
+        <MudButton id="attachments-entry-upload" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@uploading" OnClick="@Upload">
+            Attach file
+        </MudButton>
+    </div>
+</MudPaper>
+
+@code {
+    /// <summary>The report whose attachments this panel lists and attaches to, where it serves a report.</summary>
+    [Parameter]
+    public int? ReportId { get; set; }
+
+    /// <summary>The outbreak whose attachments this panel lists and attaches to, where it serves one.</summary>
+    [Parameter]
+    public int? OutbreakId { get; set; }
+
+    /// <summary>
+    /// The seeded category codes: the one a new attachment starts under, and
+    /// the legacy labels the list of attachments shows them by.
+    /// </summary>
+    private const string Correspondence = "correspondence";
+
+    /// <summary>The code laboratory results are filed under.</summary>
+    private const string Lab = "lab";
+
+    /// <summary>The code a letter is filed under.</summary>
+    private const string Letter = "letter";
+
+    /// <summary>The code an x-ray is filed under.</summary>
+    private const string XRay = "x-ray";
+
+    /// <summary>The code anything else is filed under.</summary>
+    private const string Other = "other";
+
+    /// <summary>
+    /// What the file dialog offers to open, which is the list of types the API
+    /// tier stores.
+    /// </summary>
+    /// <remarks>
+    /// A convenience and not a check: a browser is free to ignore it, and the
+    /// API tier refuses a type it does not store whatever was chosen here.
+    /// </remarks>
+    private const string Accepted =
+        "application/pdf,text/plain,text/csv,application/msword,"
+        + "application/vnd.openxmlformats-officedocument.wordprocessingml.document,"
+        + "image/png,image/jpeg,image/gif,image/tiff";
+
+    /// <summary>
+    /// How this tier writes the moment a file was attached: the day, as every
+    /// other date on a report's screens is written.
+    /// </summary>
+    private const string DateForm = "yyyy-MM-dd";
+
+    private List<AttachmentResponse> attachments = [];
+
+    private string? category = Correspondence;
+
+    private IBrowserFile? chosen;
+
+    private bool uploading;
+
+    private string? listFailure;
+
+    private string? saved;
+
+    private string? entryFailure;
+
+    private string? complaint;
+
+    private string? deleteFailure;
+
+    private bool mayEditCases;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = AuthenticationState is { } state ? (await state).User : null;
+        mayEditCases = user?.HasClaim(AccountClient.PrivilegeClaim, Privileges.EditCases) == true;
+
+        // Every attachment of the report, however many pages the API tier
+        // lists them over: the client walks the pages, so none is left off the
+        // end of the list. Metadata only -- no file is read to show this.
+        var listed = OutbreakId is { } outbreakId
+            ? await Api.AllForOutbreak(outbreakId)
+            : await Api.All(ReportId ?? 0);
+
+        if (listed.Value is not { } filed)
+        {
+            listFailure = listed.Failure;
+
+            return;
+        }
+
+        attachments = [.. filed];
+    }
+
+    /// <summary>What the file picker now holds, which is at most one file.</summary>
+    private void Chosen(InputFileChangeEventArgs chose)
+    {
+        chosen = chose.FileCount > 0 ? chose.File : null;
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+    }
+
+    private async Task Upload()
+    {
+        // The two things checked here are the two a user can put right without
+        // sending anything: that a file was chosen at all, and that it is not
+        // larger than the API tier will take. The type, the category and
+        // everything else that tier refuses is shown as the entry error rather
+        // than re-checked here.
+        if (chosen is not { } file)
+        {
+            complaint = "Choose a file before attaching it.";
+
+            return;
+        }
+
+        if (file.Size > AttachmentsClient.MaxBytes)
+        {
+            complaint =
+                $"{file.Name} is {Sized(file.Size)}, and the largest file this system stores "
+                + $"is {Sized(AttachmentsClient.MaxBytes)}. Attach a smaller file.";
+
+            return;
+        }
+
+        complaint = null;
+        entryFailure = null;
+        saved = null;
+        uploading = true;
+
+        try
+        {
+            await using var content = file.OpenReadStream(AttachmentsClient.MaxBytes);
+
+            var answered = OutbreakId is { } outbreakId
+                ? await Api.AttachToOutbreak(outbreakId, file.Name, file.ContentType, category, content)
+                : await Api.Attach(ReportId ?? 0, file.Name, file.ContentType, category, content);
+
+            if (answered.Value is { } stored)
+            {
+                // The new attachment goes to the top of the list, which is
+                // where the API tier's own newest-first ordering would put it.
+                attachments.Insert(0, stored);
+                saved = $"{stored.Filename} has been attached.";
+
+                // The picker still holds the file it sent, and nothing here
+                // can empty it; forgetting it is what stops a second press of
+                // the button attaching the same file twice.
+                chosen = null;
+            }
+            else
+            {
+                entryFailure = answered.Failure;
+            }
+        }
+        finally
+        {
+            uploading = false;
+        }
+    }
+
+    /// <summary>Deletes an attachment and its file once the user has said yes.</summary>
+    private async Task Delete(AttachmentResponse attachment)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync(
+            "Delete this attachment?",
+            $"{attachment.Filename} and its file are removed, and cannot be restored.",
+            yesText: "Delete",
+            cancelText: "Cancel") == true;
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        deleteFailure = await Api.Delete(attachment.Id);
+
+        if (deleteFailure is null)
+        {
+            attachments.Remove(attachment);
+        }
+    }
+
+    /// <summary>A category as the legacy dialog labels it, or the code itself
+    /// where this tier has no label for it.</summary>
+    private static string Labelled(string category) => category switch
+    {
+        Correspondence => "Correspondence",
+        Lab => "Laboratory results",
+        Letter => "Letter",
+        XRay => "X-ray",
+        Other => "Other",
+        _ => category,
+    };
+
+    /// <summary>
+    /// A file's size as a list shows it: bytes under a kilobyte, and a round
+    /// number of the largest unit that fits above it.
+    /// </summary>
+    private static string Sized(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024} KB",
+        _ => ((double)bytes / (1024 * 1024)).ToString("0.0", CultureInfo.InvariantCulture) + " MB",
+    };
+
+    /// <summary>The local day a file was attached, in the report screens' date form.</summary>
+    public static string Attached(DateTimeOffset attached) =>
+        attached.ToLocalTime().ToString(DateForm, CultureInfo.InvariantCulture);
+}
