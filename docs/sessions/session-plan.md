@@ -2139,3 +2139,16 @@ run neither into the bar nor into each other.*
 4. Cross-provider verification.
 5. Full test suite, recorded as the run of record.
 6. Close-out.
+
+### Session 120: Release 1.0.2 (release: 1.0.2)
+
+*A patch release: session 119 colours the side menu's group headings and
+changes nothing the application does, so the build the walkthroughs are
+performed against by hand carries the styled menu.*
+
+1. Before anything is published, the integration suite run whole in a
+   container, with `SURVSYS_SQLSERVER` unset:
+   `dotnet test Survsys.IntegrationTests/Survsys.IntegrationTests.csproj --blame-hang-timeout 5m`,
+   and the whole end-to-end walkthrough suite. Both must be green. A red run
+   stops the release: the step is reported blocked with the failures, and a
+   repair session is planned before a new release session.
