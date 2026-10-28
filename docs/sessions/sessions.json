@@ -2462,9 +2462,9 @@
     {
       "number": 119,
       "title": "The side menu's group headings in the primary colour",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-28T12:19:30.970000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-28T12:23:36.221000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
