@@ -1,0 +1,137 @@
+@* The eCR data quality figures: the eICRs and RRs received over a range of
+   days — the last thirty by default — on one feed or both, by sender and
+   condition, with their validation errors and warnings, the eICRs' receipt
+   latency, and the eICRs no RR answers and the RRs whose eICR is not on file.
+   An RR is counted under its eICR's sender, and under no sender where its
+   eICR is not on file; an eICR under each condition its RRs keep.
+
+   Every element a later walkthrough will name carries an identifier of its
+   own — `ecr-quality-heading`, the feed, the two dates, the show button,
+   `ecr-quality-loading`, `ecr-quality-error`, `ecr-quality-none` and the
+   table. *@
+@page "/ecr/quality"
+@using System.Globalization
+@inject EcrClient Client
+
+<PageTitle>eCR data quality — Survsys</PageTitle>
+
+<MudText id="ecr-quality-heading" HtmlTag="h1" Typo="Typo.h4" GutterBottom="true">
+    eCR data quality
+</MudText>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    The eICRs and reportability responses received, by sender and condition.
+</MudText>
+
+<div class="d-flex align-center gap-4 mb-4">
+    <MudSelect id="ecr-quality-feed" T="string" Label="Feed" @bind-Value="feed" Dense="true"
+               Style="max-width: 20rem;">
+        <MudSelectItem T="string" Value="@AllFeeds">All feeds</MudSelectItem>
+        <MudSelectItem T="string" Value="@("production")">Production</MudSelectItem>
+        <MudSelectItem T="string" Value="@("test")">Test</MudSelectItem>
+    </MudSelect>
+    <MudTextField @bind-Value="from" id="ecr-quality-from" Label="From"
+                  Variant="Variant.Outlined" InputType="InputType.Date" />
+    <MudTextField @bind-Value="to" id="ecr-quality-to" Label="To"
+                  Variant="Variant.Outlined" InputType="InputType.Date" />
+    <MudButton id="ecr-quality-show" Variant="Variant.Filled" Color="Color.Primary" OnClick="Load">
+        Show
+    </MudButton>
+</div>
+
+@if (why is not null)
+{
+    <MudAlert id="ecr-quality-error" Severity="Severity.Error" Variant="Variant.Filled">@why</MudAlert>
+}
+else if (asked is null)
+{
+    <MudProgressCircular id="ecr-quality-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else if (asked.Value is { } rows)
+{
+    @if (rows.Count == 0)
+    {
+        <MudText id="ecr-quality-none" Typo="Typo.body2">No eCR documents were received in these days.</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudSimpleTable id="ecr-quality-table" Dense="true" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>Sender</th>
+                        <th>Condition</th>
+                        <th>eICRs</th>
+                        <th>RRs</th>
+                        <th>Errors</th>
+                        <th>Warnings</th>
+                        <th>Average latency (min)</th>
+                        <th>Longest latency (min)</th>
+                        <th>eICRs with no RR</th>
+                        <th>RRs with no eICR</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in rows)
+                    {
+                        <tr data-ecr-quality-sender="@row.Sender" data-ecr-quality-condition="@row.Condition">
+                            <td>@(row.Sender is null ? (row.Eicrs == 0 ? "No eICR" : "No sender") : row.SenderName ?? row.Sender)</td>
+                            <td>@(row.Condition ?? "None")</td>
+                            <td data-ecr-quality-eicrs>@row.Eicrs</td>
+                            <td data-ecr-quality-rrs>@row.Rrs</td>
+                            <td>@row.Errors</td>
+                            <td>@row.Warnings</td>
+                            <td>@(row.AverageLatencyMinutes?.ToString("0.#", CultureInfo.InvariantCulture) ?? "—")</td>
+                            <td>@(row.LongestLatencyMinutes?.ToString("0.#", CultureInfo.InvariantCulture) ?? "—")</td>
+                            <td data-ecr-quality-no-rr>@row.EicrsWithoutRr</td>
+                            <td data-ecr-quality-no-eicr>@row.RrsWithoutEicr</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
+}
+else
+{
+    <MudAlert id="ecr-quality-error" Severity="Severity.Error" Variant="Variant.Filled">@asked.Failure</MudAlert>
+}
+
+@code {
+    /// <summary>The value the feed filter holds for "every feed".</summary>
+    private const string AllFeeds = "";
+
+    private const string DateForm = "yyyy-MM-dd";
+
+    private string feed = AllFeeds;
+
+    private string? from;
+
+    private string? to;
+
+    private string? why;
+
+    private Asked<IReadOnlyList<EcrQualityRowResponse>>? asked;
+
+    protected override Task OnInitializedAsync()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        to = today.ToString(DateForm, CultureInfo.InvariantCulture);
+        from = today.AddDays(-29).ToString(DateForm, CultureInfo.InvariantCulture);
+        return Load();
+    }
+
+    private async Task Load()
+    {
+        why = null;
+        if (!DateOnly.TryParseExact(from, DateForm, CultureInfo.InvariantCulture, DateTimeStyles.None, out var start)
+            || !DateOnly.TryParseExact(to, DateForm, CultureInfo.InvariantCulture, DateTimeStyles.None, out var end))
+        {
+            why = "Choose a day to count from and a day to count to.";
+            return;
+        }
+
+        asked = null;
+        asked = await Client.Quality(string.IsNullOrEmpty(feed) ? null : feed, start, end);
+    }
+}

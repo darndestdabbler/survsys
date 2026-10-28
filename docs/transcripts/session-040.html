@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 040 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 040 transcript</h1>
+<p class="stamp">Rendered 2026-10-17T08:57:58.921Z by dabbler-ai-router 3.21.0 at 21774b521804861ae15ac12da919a000f6c23900.</p>
+<p class="stamp">Engine claude-code, last phase <span class="milestone">log</span>, started 2026-10-17T04:33:41.250-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 40: ELR review screens and promotion to a case</h3>
+<ol><li>Register.</li><li><code>Survsys.Web</code>: the staged-message queue and the message review screen, with QA flags and exceptions visible.</li><li><code>Survsys.Api</code> and <code>Survsys.Web</code>: semi-automated case creation that requires human review, and batch notifications.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Put the ELR review and promotion workflow in front of the operator and let a reviewed message become a case. In Survsys.Web, add a MessageQueueClient that reads the existing GET /api/staged-messages and GET /api/staged-messages/{id} endpoints, a staged-message queue screen that lists the intake queue paged and filterable by review state with each message's QA flag and exception detail shown, and a message review screen that reads one message whole and shows its raw HL7, its QA flag, its exception detail and its review state resolved to a label on the Web side as the other status-code screens do, each element carrying a stable identifier and the queue reachable from the main navigation. In Survsys.Data, extend the staged-message review vocabulary with the terminal Assigned state the earlier session left to the session that promotes, a pure code-only addition to MessageReviewStatusRules that needs no migration because the review status is a string column. In Survsys.Api, add a human-reviewed promotion endpoint, POST /api/staged-messages/{id}/case, that takes the reviewer's confirmed decision — the person, the condition, the agency and the first-reported date — refuses a message that is not in a promotable state, opens a case morbidity report by reusing the existing person-condition creation, transitions the message to Assigned, and answers with the created report together with the batch notification the promotion raises. In Survsys.Web, the review screen gains the promote action that builds that reviewed decision from the existing person, condition and agency screens and shows the created case and the notification it raised. An integration test carries a staged message through promotion to a case against the shared SQL Server fixture, asserting the report is written with a record number and the message moves to Assigned.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/cf44a4fd812c03271044154eaf6f9dcfd59dc521"><code>cf44a4fd812c03271044154eaf6f9dcfd59dc521</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Staged message screens</td><td><p>Put the inbound ELR intake queue and a single message in front of the operator, read-only over the endpoints session 39 exposed. Add Survsys.Web/MessageQueueClient.cs: the application tier's reader of the staged-message queue, speaking HTTP to GET /api/staged-messages (paged and filterable by review state, carried in the query string as ConditionsClient carries its page) and GET /api/staged-messages/{id} (one message whole), with failure handling through ApiAsk as WorkQueueClient's is and its own failure-message prefixes. Add Survsys.Web/Components/Pages/StagedMessages.razor at /staged-messages: the queue list over the client, one page of rows oldest first, filterable by review state, each row showing where the message came from, when it arrived, its review state resolved to a label on the Web side as the other status-code screens do, whether it is QA-flagged and its exception detail where it has one, with a stable identifier on every element a later walkthrough will name (a heading, the table, the total, the loading and error states, and one row per message keyed by its id) and each row linking into the message review screen. Add Survsys.Web/Components/Pages/StagedMessageReview.razor at /staged-messages/{id:int}: one message whole over the detail endpoint, showing its queue summary, its QA flag, its exception detail and the raw HL7 text it arrived as, read-only in this step, with the same stable-identifier discipline. Register the client in Survsys.Web/Program.cs beside the other AddHttpClient registrations with the ApiTokenHandler, and add a nav button to Survsys.Web/Components/Layout/MainLayout.razor reaching /staged-messages, keyed nav-staged-messages, beside the existing queue links. Add Survsys.UnitTests/MessageQueueClientTests.cs proving the client's reads against a stubbed message handler — the queue page requested with its status filter and paging, and one message read back — named after the client as WorkQueueClientTests is.</p></td><td><span class="mono">Survsys.Web/MessageQueueClient.cs</span><br><span class="mono">Survsys.Web/Components/Pages/StagedMessages.razor</span><br><span class="mono">Survsys.Web/Components/Pages/StagedMessageReview.razor</span><br><span class="mono">Survsys.Web/Components/Layout/MainLayout.razor</span><br><span class="mono">Survsys.Web/Program.cs</span><br><span class="mono">Survsys.UnitTests/MessageQueueClientTests.cs</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code><br><code>dotnet build Survsys.UnitTests/Survsys.UnitTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Promote to case</td><td><p>Add the human-reviewed promotion of a staged message to a case, and the batch notification it raises, in the API tier. In Survsys.Data/MessageReviewStatusRules.cs, add the terminal Assigned state the class's own remark left to the session that promotes — the legacy ASSIGNED queue (14) — as an AssignedCode const and an Assigned enum member read by Read like the other three; this is a code-only addition, needing no migration because the review status is a string column, and it leaves intake's Entry and Exception states untouched. In Survsys.Contracts, add PromoteMessageRequest.cs carrying the reviewer's confirmed decision — the person, the condition, the agency (nullable) and the first-reported-to-public-health date (nullable) — the same four things a case morbidity report is opened from, and PromoteMessageResponse.cs carrying the created PersonConditionResponse together with the batch notification the promotion raised as a human-readable line a reviewer reads (naming the record number and the condition). In Survsys.Api/MessageQueueEndpoints.cs, add POST /api/staged-messages/{id}/case mapped inside MapMessageQueue: a pure WhyNotPromotable(string reviewStatus) the unit suite proves, returning why a message in Exception (it never parsed) or already Assigned (it is already a case) may not be promoted and null for Entry or Pending; a handler that reads the message's current state, refuses a missing message with 404 and an unpromotable one with 409, validates the decision by reusing PersonConditionEndpoints.WhyNotAReport, the agency lookup and PersonConditionQueries.WhyNotOnFile, opens the report with the existing PersonConditionQueries.Add, then transitions the message to Assigned and reads back the condition name to build the notification through a new MessageQueueQueries.MarkPromoted; and document, in the file's voice, that the report write and the status transition are two saves rather than one, the same accepted window the record-number race already is. Update Survsys.UnitTests/MessageReviewStatusRulesTests.cs to read the Assigned code and Survsys.UnitTests/MessageQueueEndpointsTests.cs to prove WhyNotPromotable over each review state alongside the existing projection test.</p></td><td><span class="mono">Survsys.Data/MessageReviewStatusRules.cs</span><br><span class="mono">Survsys.Contracts/PromoteMessageRequest.cs</span><br><span class="mono">Survsys.Contracts/PromoteMessageResponse.cs</span><br><span class="mono">Survsys.Api/MessageQueueEndpoints.cs</span><br><span class="mono">Survsys.UnitTests/MessageReviewStatusRulesTests.cs</span><br><span class="mono">Survsys.UnitTests/MessageQueueEndpointsTests.cs</span></td><td><code>dotnet build Survsys.Api/Survsys.Api.csproj</code><br><code>dotnet build Survsys.UnitTests/Survsys.UnitTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Promotion screen</td><td><p>Let the reviewer promote the message on its review screen and see the case it became. In Survsys.Web/MessageQueueClient.cs, add a Promote method posting a PromoteMessageRequest to api/staged-messages/{id}/case and answering with a PromoteMessageResponse, with its own failure-message prefix through ApiAsk as the client's reads are. In Survsys.Web/Components/Pages/StagedMessageReview.razor, add the promote action to the read screen from the previous step: the reviewer confirms the person, the condition and the agency through the existing person-search, conditions and agencies screens or clients, submits the decision, and on success the screen shows the created case morbidity report with a link to it and the batch notification the promotion raised, or shows the refusal where the message was not promotable; the action and its result carry stable identifiers of their own, and the action is absent for a message already in the Assigned state. Update Survsys.UnitTests/MessageQueueClientTests.cs to prove the Promote call against the stubbed handler alongside the reads it already proves.</p></td><td><span class="mono">Survsys.Web/MessageQueueClient.cs</span><br><span class="mono">Survsys.Web/Components/Pages/StagedMessageReview.razor</span><br><span class="mono">Survsys.UnitTests/MessageQueueClientTests.cs</span></td><td><code>dotnet build Survsys.Web/Survsys.Web.csproj</code><br><code>dotnet build Survsys.UnitTests/Survsys.UnitTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Promotion integration test</td><td><p>Add Survsys.IntegrationTests/MessageQueuePromotionTests.cs in the shared SQL Server collection, carrying a staged message through promotion to a case against the real host, as ElrIntakeTests carries one to queued-for-review. Seed a staged message in a promotable review state and a person and condition it can be promoted to — through the DbContext against the SqlServerFixture, its seeded data echoing db-snapshots/session-013 as the intake test's does — then POST the reviewer's decision to /api/staged-messages/{id}/case and assert the response carries a created report with an assigned record number and the notification line, that the staged message's review status reads Assigned afterwards, and that a second promotion of the same message is refused because it is already a case. The suite does not skip when SQL Server is absent; the fixture fails it loudly instead.</p></td><td><span class="mono">Survsys.IntegrationTests/MessageQueuePromotionTests.cs</span></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No new staged-message table, column or migration: promotion transitions the existing review-status string column and writes into the existing person-condition tables, adding only a code to the review vocabulary.</li><li>No automatic promotion: a case is created only from a reviewer's confirmed decision through the promotion endpoint, never derived from the message without human review.</li><li>No outbound CDC / NMI notification pipeline: notification guides, PHIN variable mapping, rule sets, ORU^R01 generation and direct transmission are Phase 6 (sessions 43 onward) and are out of scope.</li><li>No e-mail delivery, SMTP, per-condition bn_rules notification configuration or persisted notification log: the batch notification raised at promotion is surfaced to the reviewer, standing in for the legacy batch_notifications e-mail without sending or storing one.</li><li>No message review Playwright end-to-end tests or walkthroughs: the three Phase 5 walkthroughs and their recorded E2E tests are session 41's work.</li><li>No change to the authorization rules: the staged-message reads and the promotion write fall under the existing /api fallback policy, so PrivilegeRules is left untouched.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[08:33:41]</span> <span class="muted">run-started</span> session=040 engine=claude-code max_invocations=24</div>
+<div class="line"><span class="at">[08:33:41]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[08:33:41]</span> <span class="muted">engine-invoked</span> seq=1 invocation=1/24 first=true output=stream</div>
+<div class="line"><span class="at">[08:43:16]</span> <span class="muted">engine-session</span> id=75ea4279-820b-4596-9087-7a207c07f311</div>
+<div class="line"><span class="at">[08:43:16]</span> <span class="muted">engine-returned</span> seq=1 exit=<span class="good">0</span> seconds=576 transcript=.dabbler/runs/s40/driver/engine-01.log</div>
+<div class="line"><span class="at">[08:43:16]</span> <span class="muted">plan-accepted</span> steps=[&quot;staged-message-screens&quot;,&quot;promote-to-case&quot;,&quot;promotion-screen&quot;,&quot;promotion-integration-test&quot;] non_goals=6</div>
+<div class="line"><span class="at">[08:43:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[08:43:17]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=staged-message-screens</div>
+<div class="line"><span class="at">[08:43:17]</span> <span class="muted">engine-invoked</span> seq=2 invocation=2/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:46:53]</span> <span class="muted">engine-returned</span> seq=2 exit=<span class="good">0</span> seconds=216 transcript=.dabbler/runs/s40/driver/engine-02.log</div>
+<div class="line"><span class="at">[08:46:55]</span> <span class="muted">check-passed</span> step=staged-message-screens argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[08:46:56]</span> <span class="muted">check-passed</span> step=staged-message-screens argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;]</div>
+<div class="line"><span class="at">[08:46:56]</span> <span class="muted">report-accepted</span> seq=2 step=staged-message-screens files=[&quot;Survsys.Web/MessageQueueClient.cs&quot;,&quot;Survsys.Web/Components/Pages/StagedMessages.razor&quot;,&quot;Survsys.Web/Components/Pages/StagedMessageReview.razor&quot;,&quot;Survsys.Web/Components/Layout/MainLayout.razor&quot;,&quot;Survsys.Web/Program.cs&quot;,&quot;Survsys.UnitTests/MessageQueueClientTests.cs&quot;] notes=Read-only staged-message queue and review screens over the session 39 endpoints, with a MessageQueueClient and its tests; nav link and client registration added.</div>
+<div class="line"><span class="at">[08:46:56]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=promote-to-case</div>
+<div class="line"><span class="at">[08:46:56]</span> <span class="muted">engine-invoked</span> seq=3 invocation=3/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:51:13]</span> <span class="muted">engine-returned</span> seq=3 exit=<span class="good">0</span> seconds=257 transcript=.dabbler/runs/s40/driver/engine-03.log</div>
+<div class="line"><span class="at">[08:51:15]</span> <span class="muted">check-passed</span> step=promote-to-case argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Api/Survsys.Api.csproj&quot;]</div>
+<div class="line"><span class="at">[08:51:17]</span> <span class="muted">check-passed</span> step=promote-to-case argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;]</div>
+<div class="line"><span class="at">[08:51:17]</span> <span class="muted">report-accepted</span> seq=3 step=promote-to-case files=[&quot;Survsys.Data/MessageReviewStatusRules.cs&quot;,&quot;Survsys.Contracts/PromoteMessageRequest.cs&quot;,&quot;Survsys.Contracts/PromoteMessageResponse.cs&quot;,&quot;Survsys.Api/MessageQueueEndpoints.cs&quot;,&quot;Survsys.UnitTests/MessageReviewStatusRulesTests.cs&quot;,&quot;Survsys.UnitTests/MessageQueueEndpointsTests.cs&quot;] notes=Added the terminal Assigned review state, promotion contracts, and POST /api/staged-messages/{id}/case that reuses person-condition creation, transitions the message and raises a batch notification; WhyNotPromotable and the Assigned code are unit-proven.</div>
+<div class="line"><span class="at">[08:51:17]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=promotion-screen</div>
+<div class="line"><span class="at">[08:51:17]</span> <span class="muted">engine-invoked</span> seq=4 invocation=4/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:54:27]</span> <span class="muted">engine-returned</span> seq=4 exit=<span class="good">0</span> seconds=190 transcript=.dabbler/runs/s40/driver/engine-04.log</div>
+<div class="line"><span class="at">[08:54:29]</span> <span class="muted">check-passed</span> step=promotion-screen argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Web/Survsys.Web.csproj&quot;]</div>
+<div class="line"><span class="at">[08:54:31]</span> <span class="muted">check-passed</span> step=promotion-screen argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;]</div>
+<div class="line"><span class="at">[08:54:31]</span> <span class="muted">report-accepted</span> seq=4 step=promotion-screen files=[&quot;Survsys.Web/MessageQueueClient.cs&quot;,&quot;Survsys.Web/Components/Pages/StagedMessageReview.razor&quot;,&quot;Survsys.UnitTests/MessageQueueClientTests.cs&quot;] notes=Added the Promote client method and a promote action on the review screen reusing the person-search panel and the conditions and agencies clients; success shows the created case and its notification, refusal shows the API message, and the action is absent once the message is assigned.</div>
+<div class="line"><span class="at">[08:54:31]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=promotion-integration-test</div>
+<div class="line"><span class="at">[08:54:31]</span> <span class="muted">engine-invoked</span> seq=5 invocation=5/24 first=false output=stream</div>
+<div class="line"><span class="at">[08:56:21]</span> <span class="muted">engine-returned</span> seq=5 exit=<span class="good">0</span> seconds=110 transcript=.dabbler/runs/s40/driver/engine-05.log</div>
+<div class="line"><span class="at">[08:56:23]</span> <span class="muted">check-passed</span> step=promotion-integration-test argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[08:56:24]</span> <span class="muted">report-accepted</span> seq=5 step=promotion-integration-test files=[&quot;Survsys.IntegrationTests/MessageQueuePromotionTests.cs&quot;] notes=Added an integration test carrying a staged message through promotion to a case against real SQL Server: it asserts the created report record number and notification line, the message moving to Assigned, and a second promotion refused with 409 and no second report.</div>
+<div class="line"><span class="at">[08:56:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[08:56:24]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[08:56:24]</span> <span class="muted">job-started</span> name=verification pid=3480 log=.dabbler/runs/s40/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:57:44]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s40/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[08:57:44]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[08:57:44]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[08:57:44]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[08:57:44]</span> <span class="muted">job-started</span> name=run of record: unit pid=13788 log=.dabbler/runs/s40/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:57:49]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s40/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[08:57:49]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[08:57:53]</span> <span class="muted">landed</span> commit=cf44a4fd812c03271044154eaf6f9dcfd59dc521</div>
+<div class="line"><span class="at">[08:57:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[08:57:53]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[08:57:53]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[08:57:53]</span> <span class="muted">job-started</span> name=close pid=42916 log=.dabbler/runs/s40/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:57:58]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s40/driver/jobs/close.log</div>
+<div class="line"><span class="at">[08:57:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="good">VERIFIED</span></td><td>gemini-4-argon</td><td>google</td><td>api</td><td><details><summary>10 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.Web/Components/Pages/StagedMessageReview.razor` (`Label`) and `Survsys.Web/Components/Pages/StagedMessages.razor` (`States` / `Label`), only `&quot;entry&quot;`, `&quot;pending&quot;`, and `&quot;exception&quot;` are mapped to human-readable labels (`&quot;Queued for review&quot;`, `&quot;Held for review&quot;`, `&quot;Exception&quot;`), while `&quot;assigned&quot;` falls through to the raw stored code `&quot;assigned&quot;`. Adding `(&quot;assigned&quot;, &quot;Assigned&quot;)` (or `&quot;Promoted to a case&quot;`) would keep the status display consistent when viewing an already-promoted message or browsing the unfiltered queue.</td><td>not answered</td></tr>
+<tr><td>1</td><td><strong>minor</strong></td><td>**Nit:** Stale pre-promotion comments remain in `Survsys.Web/MessageQueueClient.cs` (lines 25–27: *&quot;Read-only: this slice shows the queue and a message on its own. The promote action a reviewer takes from the review screen is a later step's...&quot;*), `Survsys.Web/Components/Pages/StagedMessageReview.razor` (lines 2–3), and `Survsys.Data/MessageReviewStatusRules.cs` (line 50 `&lt;summary&gt;`: *&quot;into one of the three states&quot;*).</td><td>not answered</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.IntegrationTests/MessageQueuePromotionTests.cs`, only the happy path (`Entry` -&gt; `Assigned`) and the subsequent re-promotion conflict (`Assigned` -&gt; `409 Conflict`) are exercised over HTTP. A case worth adding:</td><td>not answered</td></tr>
+<tr><td>3</td><td><strong>minor</strong></td><td>**Precondition:** Seed a `StagedMessage` row in `SqlServerFixture` with `ReviewStatus = MessageReviewStatusRules.ExceptionCode`, `QaFlagged = true`, and `ExceptionDetail = &quot;MSH segment missing.&quot;`, with no `PersonConditions` rows present.</td><td>not answered</td></tr>
+<tr><td>4</td><td><strong>minor</strong></td><td>**Input:** `POST /api/staged-messages/{id}/case` with a valid `PromoteMessageRequest(PersonId: person, ConditionId: condition)`.</td><td>not answered</td></tr>
+<tr><td>5</td><td><strong>minor</strong></td><td>**Expectation:** The endpoint returns `409 Conflict` (`application/problem+json`) whose `detail` contains `&quot;exception&quot;`, `context.PersonConditions.CountAsync()` remains `0`, and `ReviewStatusOf(id)` remains `MessageReviewStatus.Exception` (verifying over the wire that an exceptioned message neither opens a report nor transitions to `Assigned`, which is currently only unit-tested on `WhyNotPromotable` in isolation).</td><td>not answered</td></tr>
+<tr><td>6</td><td><strong>minor</strong></td><td>**Nit:** In `Survsys.UnitTests/MessageQueueClientTests.cs`, `TheDecisionIsPostedAndTheCaseAndNotificationComeBack` passes `FirstReportedPhDate: null` (default) and only asserts `personId` and `conditionId` in the serialized request body. A case worth adding:</td><td>not answered</td></tr>
+<tr><td>7</td><td><strong>minor</strong></td><td>**Precondition:** `MessageQueueClient` backed by `StubTransport` capturing the request body string.</td><td>not answered</td></tr>
+<tr><td>8</td><td><strong>minor</strong></td><td>**Input:** `await client.Promote(11, new PromoteMessageRequest(PersonId: 13, ConditionId: 74, AgencyId: 1, FirstReportedPhDate: new DateOnly(2026, 3, 12)))`.</td><td>not answered</td></tr>
+<tr><td>9</td><td><strong>minor</strong></td><td>**Expectation:** Assert `body` contains `&quot;\&quot;agencyId\&quot;:1&quot;` and `&quot;\&quot;firstReportedPhDate\&quot;:\&quot;2026-03-12\&quot;&quot;` so all four fields of `PromoteMessageRequest` are pinned on the wire.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>4s</td><td>845</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>

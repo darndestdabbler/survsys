@@ -1,0 +1,330 @@
+@* The Forms tab of a case morbidity report: the supplemental forms assigned to
+   the case, to complete. The assigned forms are listed; opening one shows it as
+   its sections and questions with an input per question — a text box for a text
+   question and a choice of the question's options for a coded one — pre-filled
+   with the case's answers so far, and Save sends the answers whole.
+
+   A form is assigned to the case by its condition's auto-assign rule when the
+   case is opened, or by hand here: the Assign form list offers the forms for
+   the case's condition not already assigned to it. The
+   required-answer and coded-choice rules stay the API tier's; an answer it
+   refuses is shown as the client's message rather than re-checked here.
+
+   Every element carries a stable identifier: the open button for an assignment
+   is forms-tab-open-{assignmentId}, and the input for a question is
+   forms-tab-question-{questionId}. *@
+@inject FormsClient Api
+
+@if (assignments is null)
+{
+    <MudProgressCircular id="forms-tab-loading" Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @if (listFailure is { } badList)
+    {
+        <MudAlert id="forms-tab-list-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @badList
+        </MudAlert>
+    }
+
+    <MudPaper id="forms-tab-list" Elevation="1" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">Assigned forms</MudText>
+
+        <MudSimpleTable id="forms-tab-table" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>Form</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (assignments.Count == 0)
+                {
+                    <tr id="forms-tab-empty">
+                        <td colspan="2">No forms are assigned to this case.</td>
+                    </tr>
+                }
+                @foreach (var assignment in assignments)
+                {
+                    <tr data-assignment="@assignment.Id">
+                        <td data-assignment-name>@assignment.FormName</td>
+                        <td>
+                            @* Opening a form only shows it, so it stays enabled on a
+                               report opened read-only; its answers stay disabled. *@
+                            <CascadingValue Name="ParentDisabled" Value="false">
+                                <MudButton id="@($"forms-tab-open-{assignment.Id}")" Variant="Variant.Text"
+                                           Color="Color.Primary" Size="Size.Small"
+                                           OnClick="@(() => Open(assignment.Id))">
+                                    Open
+                                </MudButton>
+                            </CascadingValue>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+
+        @if (assignFailure is { } notAssigned)
+        {
+            <MudAlert id="forms-tab-assign-error" Severity="Severity.Error" Variant="Variant.Filled" Class="mt-4">
+                @notAssigned
+            </MudAlert>
+        }
+
+        <div class="d-flex align-center gap-2 mt-4">
+            <MudSelect T="int?" @bind-Value="formToAssign" id="forms-tab-assign-form"
+                       Label="Assign form" Variant="Variant.Outlined" Margin="Margin.Dense"
+                       Style="max-width: 24rem">
+                @foreach (var unassigned in Assignable)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)unassigned.Id)">@unassigned.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudButton id="forms-tab-assign" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(assigning || formToAssign is null)" OnClick="@Assign">
+                Assign
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    @if (openForm is { } form)
+    {
+        <MudPaper id="forms-tab-form" Elevation="1" Class="pa-4 mb-4">
+            <div class="d-flex align-center mb-2">
+                <MudText Typo="Typo.h6">@form.FormName</MudText>
+                <MudSpacer />
+                <CascadingValue Name="ParentDisabled" Value="false">
+                    <MudButton id="forms-tab-close" Variant="Variant.Text" Size="Size.Small" OnClick="@Close">
+                        Close
+                    </MudButton>
+                </CascadingValue>
+            </div>
+
+            @if (saved is { } ok)
+            {
+                <MudAlert id="forms-tab-saved" Severity="Severity.Success" Class="mb-2">@ok</MudAlert>
+            }
+            @if (saveFailure is { } bad)
+            {
+                <MudAlert id="forms-tab-error" Severity="Severity.Error" Class="mb-2">@bad</MudAlert>
+            }
+
+            @foreach (var formSection in form.Sections)
+            {
+                <MudText Typo="Typo.subtitle1" Class="mt-3">@formSection.Title</MudText>
+
+                @foreach (var question in formSection.Questions)
+                {
+                    var answer = Answer(question.Id);
+
+                    <div class="mb-3" data-question="@question.Id">
+                        @if (question.AnswerType == CodedType)
+                        {
+                            <MudSelect T="string" Value="@answer.Code"
+                                       ValueChanged="@(code => answer.Code = code)"
+                                       id="@($"forms-tab-question-{question.Id}")"
+                                       Label="@QuestionLabel(question)" Variant="Variant.Outlined"
+                                       Clearable="true">
+                                @foreach (var option in question.Options)
+                                {
+                                    <MudSelectItem T="string" Value="@option.Code">@option.Label</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                        else
+                        {
+                            <MudTextField @bind-Value="answer.TextAnswer"
+                                          id="@($"forms-tab-question-{question.Id}")"
+                                          Label="@QuestionLabel(question)" Variant="Variant.Outlined"
+                                          HelperText="@question.HelpText" />
+                        }
+                    </div>
+                }
+            }
+
+            <MudButton id="forms-tab-save" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@saving" OnClick="@Save">
+                Save answers
+            </MudButton>
+        </MudPaper>
+    }
+}
+
+@code {
+    /// <summary>The case these forms are assigned to, from the shell.</summary>
+    [Parameter, EditorRequired]
+    public int ReportId { get; set; }
+
+    /// <summary>The case's condition, whose forms the Assign form list offers.</summary>
+    [Parameter, EditorRequired]
+    public int ConditionId { get; set; }
+
+    private const int CodedType = 1;
+
+    /// <summary>Every form on file; empty where they could not be read, and nothing is offered.</summary>
+    private IReadOnlyList<FormResponse> forms = [];
+
+    private int? formToAssign;
+
+    private bool assigning;
+
+    private string? assignFailure;
+
+    /// <summary>The forms for the case's condition not already assigned to it.</summary>
+    private IEnumerable<FormResponse> Assignable =>
+        forms.Where(form => form.ConditionId == ConditionId
+            && assignments?.Any(assignment => assignment.FormId == form.Id) != true);
+
+    private List<FormAssignmentResponse>? assignments;
+
+    private string? listFailure;
+
+    private CaseFormResponse? openForm;
+
+    private readonly Dictionary<int, AnswerEdit> answers = [];
+
+    private bool saving;
+
+    private string? saved;
+
+    private string? saveFailure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        forms = (await Api.All()).Value?.Items ?? [];
+
+        var asked = await Api.CaseForms(ReportId);
+        assignments = asked.Value ?? [];
+        listFailure = asked.Failure;
+    }
+
+    /// <summary>
+    /// Assigns the chosen form to the case and adds it to the assigned list,
+    /// or shows why the API tier refused it.
+    /// </summary>
+    private async Task Assign()
+    {
+        if (formToAssign is not { } formId)
+        {
+            return;
+        }
+
+        assignFailure = null;
+        assigning = true;
+
+        try
+        {
+            var assigned = await Api.Assign(ReportId, formId);
+
+            if (assigned.Value is { } assignment)
+            {
+                assignments = [.. assignments ?? [], assignment];
+                formToAssign = null;
+            }
+            else
+            {
+                assignFailure = assigned.Failure;
+            }
+        }
+        finally
+        {
+            assigning = false;
+        }
+    }
+
+    private async Task Open(int assignmentId)
+    {
+        saved = null;
+        saveFailure = null;
+
+        var asked = await Api.CaseForm(assignmentId);
+
+        if (asked.Value is { } form)
+        {
+            Load(form);
+
+            return;
+        }
+
+        saveFailure = asked.Failure;
+    }
+
+    private void Load(CaseFormResponse form)
+    {
+        openForm = form;
+        answers.Clear();
+
+        foreach (var section in form.Sections)
+        {
+            foreach (var question in section.Questions)
+            {
+                answers[question.Id] = new AnswerEdit
+                {
+                    AnswerType = question.AnswerType,
+                    TextAnswer = question.TextAnswer,
+                    Code = question.Code,
+                };
+            }
+        }
+    }
+
+    private void Close()
+    {
+        openForm = null;
+        answers.Clear();
+        saved = null;
+        saveFailure = null;
+    }
+
+    private AnswerEdit Answer(int questionId) =>
+        answers.TryGetValue(questionId, out var edit) ? edit : new AnswerEdit();
+
+    private async Task Save()
+    {
+        if (openForm is not { } form)
+        {
+            return;
+        }
+
+        saving = true;
+        saved = null;
+        saveFailure = null;
+
+        var request = new SaveFormAnswersRequest(answers
+            .Select(pair => new FormAnswerInput(
+                pair.Key,
+                pair.Value.AnswerType == CodedType ? null : Blank(pair.Value.TextAnswer),
+                pair.Value.AnswerType == CodedType ? Blank(pair.Value.Code) : null))
+            .ToList());
+
+        var answered = await Api.SaveAnswers(form.AssignmentId, request);
+
+        saving = false;
+
+        if (answered.Value is { } stored)
+        {
+            Load(stored);
+            saved = "The answers have been saved.";
+
+            return;
+        }
+
+        saveFailure = answered.Failure;
+    }
+
+    private static string QuestionLabel(CaseFormQuestionResponse question) =>
+        question.IsRequired ? $"{question.Text} *" : question.Text;
+
+    private static string? Blank(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private sealed class AnswerEdit
+    {
+        public int AnswerType { get; set; }
+
+        public string? TextAnswer { get; set; }
+
+        public string? Code { get; set; }
+    }
+}

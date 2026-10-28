@@ -1,0 +1,193 @@
+@* The frame every screen is drawn in. MudThemeProvider has to be somewhere
+   above every MudBlazor component or none of them is styled, and the layout
+   is the place it is above all of them.
+
+   The app bar carries the application's name and, since session 14, the
+   navigation between the screens there now are: the conditions catalogue, the
+   people on file, a new case morbidity report, and — since session 21 — the
+   work queue and the agency board, the two faces of the legacy EVENTS work
+   surface, and — since session 26 — the task list. The legacy application's
+   own main navigation, which
+   ../nedss/docs/functional/epitrax-cmr-workflow.md records, is NEW CMR,
+   EVENTS, OUTBREAKS, FACILITIES, CMR SEARCH, EXPORTS, PEOPLE, ADMIN,
+   SETTINGS, LOGOUT. The rest arrive with the screens they open.
+
+   Since session 32 an entry is shown only to a person holding the privilege
+   its screen needs, read from the claims this tier's cookie carries: the
+   conditions catalogue to anyone signed in, because reading reference data
+   needs nothing more; the case screens — and, since session 33, the saved
+   views and their exports — to view_cases, and a new report to
+   edit_cases; the duplicate persons, since session 71, to merge_persons;
+   the reference data administration to manage_reference_data;
+   and the users and roles to manage_users. The API tier enforces the same
+   privileges whatever the menu shows. The signed-in person's name and Sign
+   out close the bar, and a person not signed in sees neither, nor the menu.
+
+   Each link carries an identifier of its own, as every element a walkthrough
+   names does. The bar still reads Survsys, which the conditions walkthrough
+   says it does.
+
+   Since session 117 the links are in a side drawer rather than the bar.
+   Session 73 had let the bar wrap its buttons onto further lines, and by 38
+   screens an administrator saw three rows of undifferentiated links above
+   every page. The drawer groups them by area — Cases, Intake, Notifications,
+   Reference data and Administration — open by default and every group
+   expanded, so each link is one click away as it was; the button at the
+   bar's start hides and shows it. A group none of whose links a person may
+   see is not shown at all, and the bar is back to one line: the
+   application's name, the drawer's button, the signed-in person and Sign
+   out.
+
+   Since session 119 each group's heading takes the bar's primary colour,
+   through the theme's own variables so it follows the bar, because in the
+   drawer's plain text it read as one more link; a small gap keeps the first
+   heading off the bar and the groups off each other. *@
+@inherits LayoutComponentBase
+
+<style>
+    #nav-drawer .mud-nav-group {
+        margin-top: 8px;
+    }
+
+    #nav-drawer .mud-nav-group > .mud-nav-link,
+    #nav-drawer .mud-nav-group > .mud-nav-link:hover {
+        background-color: var(--mud-palette-primary);
+        color: var(--mud-palette-primary-text);
+    }
+
+    #nav-drawer .mud-nav-group > .mud-nav-link .mud-nav-link-expand-icon {
+        color: var(--mud-palette-primary-text);
+        fill: var(--mud-palette-primary-text);
+    }
+</style>
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        @if (user?.Identity?.IsAuthenticated == true)
+        {
+            <MudIconButton id="nav-drawer-toggle" Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
+                           Edge="Edge.Start" aria-label="Menu" OnClick="@(() => drawerOpen = !drawerOpen)" />
+        }
+        <MudText Typo="Typo.h6" Class="ml-2">Survsys</MudText>
+        @if (user?.Identity?.IsAuthenticated == true)
+        {
+            <MudSpacer />
+            <MudText id="nav-signed-in-as" Typo="Typo.body2" Class="mr-2">
+                @user.FindFirst(AccountClient.DisplayNameClaim)?.Value
+            </MudText>
+            <form method="post" action="/account/sign-out">
+                <AntiforgeryToken />
+                <MudButton id="nav-sign-out" ButtonType="ButtonType.Submit" Color="Color.Inherit">
+                    Sign out
+                </MudButton>
+            </form>
+        }
+    </MudAppBar>
+    @if (user?.Identity?.IsAuthenticated == true)
+    {
+        <MudDrawer id="nav-drawer" @bind-Open="drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="1">
+            <MudNavMenu>
+                @if (Holds(Privileges.ViewCases) || Holds(Privileges.EditCases)
+                     || Holds(Privileges.RunReports) || Holds(Privileges.MergePersons))
+                {
+                    <MudNavGroup id="nav-group-cases" Title="Cases" Expanded="true">
+                        @if (Holds(Privileges.ViewCases))
+                        {
+                            <MudNavLink id="nav-people" Href="/people">People</MudNavLink>
+                            <MudNavLink id="nav-events" Href="/events">Events</MudNavLink>
+                        }
+                        @if (Holds(Privileges.EditCases))
+                        {
+                            <MudNavLink id="nav-new-report" Href="/morbidity/create">New CMR</MudNavLink>
+                        }
+                        @if (Holds(Privileges.ViewCases))
+                        {
+                            <MudNavLink id="nav-queue" Href="/queue" Match="NavLinkMatch.All">Work queue</MudNavLink>
+                            <MudNavLink id="nav-agency-queue" Href="/queue/agency">Agency board</MudNavLink>
+                            <MudNavLink id="nav-outbreaks" Href="/outbreaks">Outbreaks</MudNavLink>
+                            <MudNavLink id="nav-tasks" Href="/tasks">Tasks</MudNavLink>
+                            <MudNavLink id="nav-saved-views" Href="/saved-views">Saved views</MudNavLink>
+                        }
+                        @if (Holds(Privileges.RunReports))
+                        {
+                            <MudNavLink id="nav-reports" Href="/reports">Reports</MudNavLink>
+                        }
+                        @if (Holds(Privileges.MergePersons))
+                        {
+                            <MudNavLink id="nav-duplicate-persons" Href="/persons/duplicates">Duplicate persons</MudNavLink>
+                        }
+                    </MudNavGroup>
+                }
+                @if (Holds(Privileges.ViewCases))
+                {
+                    <MudNavGroup id="nav-group-intake" Title="Intake" Expanded="true">
+                        <MudNavLink id="nav-staged-messages" Href="/staged-messages" Match="NavLinkMatch.All">Staged messages</MudNavLink>
+                        <MudNavLink id="nav-message-statistics" Href="/staged-messages/statistics">Intake statistics</MudNavLink>
+                        <MudNavLink id="nav-ecr" Href="/ecr" Match="NavLinkMatch.All">eCR</MudNavLink>
+                        <MudNavLink id="nav-ecr-quality" Href="/ecr/quality">eCR quality</MudNavLink>
+                    </MudNavGroup>
+                    <MudNavGroup id="nav-group-notifications" Title="Notifications" Expanded="true">
+                        <MudNavLink id="nav-notification-queue" Href="/notification-queue">Notifications</MudNavLink>
+                        <MudNavLink id="nav-export-log" Href="/export-log">Export log</MudNavLink>
+                        <MudNavLink id="nav-reconciliation-cutoff" Href="/reconciliation-cutoff">Reconciliation</MudNavLink>
+                    </MudNavGroup>
+                }
+                <MudNavGroup id="nav-group-reference-data" Title="Reference data" Expanded="true">
+                    <MudNavLink id="nav-conditions" Href="/conditions">Conditions</MudNavLink>
+                    @if (Holds(Privileges.ManageReferenceData))
+                    {
+                        <MudNavLink id="nav-agencies" Href="/agencies">Agencies</MudNavLink>
+                        <MudNavLink id="nav-facilities" Href="/facilities">Facilities</MudNavLink>
+                        <MudNavLink id="nav-providers" Href="/providers">Providers</MudNavLink>
+                        <MudNavLink id="nav-core-elements" Href="/core-elements">Field visibility</MudNavLink>
+                        <MudNavLink id="nav-forms" Href="/forms">Forms</MudNavLink>
+                        <MudNavLink id="nav-treatments" Href="/treatments">Treatments</MudNavLink>
+                        <MudNavLink id="nav-codes" Href="/codes">Code lists</MudNavLink>
+                        <MudNavLink id="nav-vocabulary" Href="/vocabulary">Vocabulary</MudNavLink>
+                        <MudNavLink id="nav-ecr-condition-mappings" Href="/ecr/condition-mappings">eCR conditions</MudNavLink>
+                        <MudNavLink id="nav-ecr-senders" Href="/ecr/senders">eCR senders</MudNavLink>
+                        <MudNavLink id="nav-places" Href="/places">Towns and zip codes</MudNavLink>
+                        <MudNavLink id="nav-vaccines" Href="/vaccines">Vaccines</MudNavLink>
+                        <MudNavLink id="nav-guides" Href="/guides">Notification guides</MudNavLink>
+                        <MudNavLink id="nav-phin-variables" Href="/phin-variables">PHIN variables</MudNavLink>
+                        <MudNavLink id="nav-value-sets" Href="/value-sets">Value sets</MudNavLink>
+                        <MudNavLink id="nav-hep-lab-setup" Href="/hep-lab-setup">Hepatitis lab setup</MudNavLink>
+                    }
+                </MudNavGroup>
+                @if (Holds(Privileges.ManageUsers))
+                {
+                    <MudNavGroup id="nav-group-administration" Title="Administration" Expanded="true">
+                        <MudNavLink id="nav-users" Href="/users">Users</MudNavLink>
+                        <MudNavLink id="nav-roles" Href="/roles">Roles</MudNavLink>
+                        <MudNavLink id="nav-audit" Href="/audit">Audit</MudNavLink>
+                        <MudNavLink id="nav-access-audit" Href="/access-audit">Access audit</MudNavLink>
+                    </MudNavGroup>
+                }
+            </MudNavMenu>
+        </MudDrawer>
+    }
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="my-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private System.Security.Claims.ClaimsPrincipal? user;
+
+    private bool drawerOpen = true;
+
+    protected override async Task OnParametersSetAsync() =>
+        user = AuthenticationState is { } state ? (await state).User : null;
+
+    private bool Holds(string privilege) => user?.HasClaim(AccountClient.PrivilegeClaim, privilege) == true;
+}

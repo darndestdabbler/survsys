@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 104 transcript</title>
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --faint: #e4e4e4;
+  --panel: #f6f6f6;
+  --tone-milestone: #2a5db0;
+  --tone-good: #256029;
+  --tone-warn: #8a6100;
+  --tone-bad: #a31515;
+  --tone-muted: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --ink: #d4d4d4;
+    --faint: #3a3a3a;
+    --panel: #252526;
+  --tone-milestone: #3874db;
+  --tone-good: #54a33b;
+  --tone-warn: #b79427;
+  --tone-bad: #f14c4c;
+  --tone-muted: #8c8c8c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px 64px;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; border-bottom: 1px solid var(--faint); padding-bottom: .3rem; }
+.stamp { color: var(--tone-muted); font-size: .85rem; margin: 0 0 .25rem; }
+.mono, pre, code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.lines { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.line { white-space: pre-wrap; word-break: break-word; padding-left: 10.5ch; text-indent: -10.5ch; }
+.at { color: var(--tone-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--faint); vertical-align: top; }
+th { color: var(--tone-muted); font-weight: 600; }
+details { margin: .5rem 0; }
+summary { cursor: pointer; }
+td details { margin: 0; }
+tr:has(details:not([open])) + tr.findings { display: none; }
+tr.findings > td { padding: 0 0 .5rem 1.5rem; }
+pre { background: var(--panel); padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+.stop, .cancelled { border-left: 3px solid var(--tone-bad); background: var(--panel); padding: .6rem .9rem; }
+.milestone { color: var(--tone-milestone); }
+.good { color: var(--tone-good); }
+.warn { color: var(--tone-warn); }
+.bad { color: var(--tone-bad); }
+.muted { color: var(--tone-muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>Session 104 transcript</h1>
+<p class="stamp">Rendered 2026-10-22T16:41:14.650Z by dabbler-ai-router 3.23.0 at 52d353ab14920b4ad1571164cc716cb13421c569.</p>
+<p class="stamp">Engine cli, last phase <span class="milestone">log</span>, started 2026-10-22T12:14:25.512-04:00.</p>
+<h2>Session Plan</h2>
+<h3>Session 104: Cases from eCR</h3>
+<ol><li>Register.</li><li><code>Survsys.Api</code>: a reportable eICR's patient matched by phase 9's matcher, linked to the open case on that person and condition — including one opened from ELR — or opening a new one, by the reviewer where the match is not confident.</li><li><code>Survsys.Api</code>: the eICR's demographics, encounter, problems, medications as treatments, pregnancy, travel and occupation written to the case, its labs only for senders set to update lab data, each value recording the eICR id and version it came from; a later version updating what an earlier one wrote and nothing a user has edited. The eICR's county is stored as a county or a county equivalent according to the <code>ecr</code> setting from session 81, with the other filled from the town.</li><li><code>Survsys.IntegrationTests</code>: a new case, a linked case, and a second version.</li><li>Cross-provider verification.</li><li>Full test suite, recorded as the run of record.</li><li>Close-out.</li></ol>
+<h2>Work Plan</h2>
+<p>Turn a reportable eICR into a case. Survsys.Data gets two tables in one migration, EcrCases: ecr_case_link (an eICR version, the case it was written to, when; unique on the pair) and ecr_case_value, owned by a link (the table written, the row id, a key -- the field name for a value on a row the eICR did not create, the row's natural key for a row it did -- and the value as written, as text), so each value records the eICR id and version it came from through its link; ecr_document gains a case status ('linked' or 'review', null until decided) and the reason for a review. A static EcrCaseWriter in Survsys.Api takes an eICR once it and an RR with a reportable condition (RRVS1, mapped to a catalogue condition, as EcrReportability routes it) are both on file -- EcrIntakeService calls it after storing either -- and for each reportable condition: a later version of a set already linked goes to the case its earlier version was written to; otherwise the patient is matched by phase 9's matcher (PersonMatchQueries): one exact candidate and no probable one is that person, no candidate at all is a new person made from the eICR's demographics, and anything else sets the document to review with why. On the person, the open case on that condition -- including one opened from ELR -- is linked, or a new case opened. A reviewer settles a review through POST /api/ecr-documents/{id}/case naming the person (or none, for a new person) and optionally the case, behind the privilege staged-message promotion uses, and GET /api/ecr-documents/{id}/person-matches lists the candidates; the document detail carries its case status, reason and linked cases. The writer then writes the eICR onto the case: for a person it created, the demographics; the patient's address as ELR adds one, its county stored as the county or the county equivalent as the CountyPrograms ecr setting names, the other filled from the town by AddressRules.FillConnecticutCounties; the encounter as an Encounter; each problem as a case note of type eCR, and the earliest trigger problem's onset as the disease onset date; each medication as a PersonTreatment (the treatment found by name, added to the catalogue where none is); pregnancy as the case's pregnant answer; each travel entry as an Exposure; the first occupation as the case's occupation; and, only where the eICR's custodian is listed in the new EcrIntakeOptions.LabSenders, its results as a lab. A later version updates each value and row its earlier version wrote whose current value still equals what was written, adds rows with new keys, removes unedited rows its predecessor wrote that it no longer carries, and leaves alone everything a user has changed and every value it did not write; a lab is added once by its key and never updated. Integration tests against SQL Server prove a new case, a link to an ELR-opened case, and a second version.</p>
+<p>Landed <a href="https://github.com/darndestdabbler/survsys/commit/844ea1914dd3f4808f6b4c354350d9660524b851"><code>844ea1914dd3f4808f6b4c354350d9660524b851</code></a>.</p>
+<table>
+<tr><th>Step</th><th>Ask</th><th>Files</th><th>Checks</th><th>Accepted</th></tr>
+<tr><td>Ecr case data</td><td><p>In Survsys.Data add EcrCaseLink (id, EcrDocumentId to the eICR version's ecr_document, PersonConditionId, CreatedAt; unique on document and case; deleted with its document) mapped to ecr_case_link, and EcrCaseValue (id, owning link, Target table name, TargetId, Key, Written text) mapped to ecr_case_value and deleted with its link, indexed on target and target id; EcrDocument gains CaseStatus ('linked' or 'review', with constants) and CaseReason, and a CaseLinks collection; the DbSets, and the migration EcrCases with the model snapshot updated.</p></td><td></td><td><code>dotnet build Survsys.Data/Survsys.Data.csproj</code></td><td>yes</td></tr>
+<tr><td>Ecr case linking</td><td><p>Add EcrCaseWriter to Survsys.Api: Process(eicr) finds the eICR's reportable conditions through its paired RRs, sends a later version of a linked set to its predecessor's cases, else matches the patient with PersonMatchQueries and decides through a pure public Decide(candidates) -- one exact and no probable is that person, none is a new person, anything else is review with a reason -- then links the person's open case on each condition or opens one (PersonConditionQueries.Add, the person by PersonQueries.Add where new), recording an EcrCaseLink and setting the document's case status, all in one transaction. Link(eicr, personId?, personConditionId?) does the same for a reviewer's decision, refusing a case not open on that person and condition and a document with no reportable condition. EcrIntakeService calls Process after storing an eICR, or an RR whose eICR is on file. EcrEndpoints gains POST /api/ecr-documents/{id}/case (LinkEcrCaseRequest) and GET /api/ecr-documents/{id}/person-matches, under the staged-message promotion privilege in PrivilegeRules, and the detail response gains CaseStatus, CaseReason and the linked case ids. Unit tests: EcrCaseWriterTests cover Decide; EcrEndpointsTests and PrivilegeRulesTests cover the new members and routes.</p></td><td><span class="mono">Survsys.Api/EcrCaseWriter.cs</span><br><span class="mono">Survsys.Api/EcrIntakeService.cs</span><br><span class="mono">Survsys.Api/EcrEndpoints.cs</span><br><span class="mono">Survsys.Contracts/EcrDocumentDetailResponse.cs</span><br><span class="mono">Survsys.Contracts/LinkEcrCaseRequest.cs</span><br><span class="mono">Survsys.UnitTests/EcrCaseWriterTests.cs</span><br><span class="mono">Survsys.UnitTests/PrivilegeRulesTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrCaseWriterTests|FullyQualifiedName~Survsys.UnitTests.EcrEndpointsTests|FullyQualifiedName~Survsys.UnitTests.PrivilegeRulesTests|FullyQualifiedName~Survsys.UnitTests.ArchitectureTests</code><br><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+<tr><td>Ecr case values</td><td><p>EcrCaseWriter writes the eICR onto each linked case, recording an EcrCaseValue for every value and row it writes: a new person's demographics; the address, its county by the CountyPrograms ecr setting and the other from the town; the encounter; problems as eCR notes and the earliest trigger onset as the disease onset date; medications as treatments; pregnancy as the pregnant answer (Yes, or No where negated); travel as exposures; the first occupation; and the results as a lab only where the custodian is in the new EcrIntakeOptions.LabSenders (empty in appsettings.json). A later version updates what its predecessor wrote where the current value still equals the written text, adds rows with new keys, removes unedited rows it no longer carries, and leaves anything edited or not its own; a lab is added once by key. The pure parts -- the written text of a value and whether it was edited -- are public and unit-tested in EcrCaseWriterTests.</p></td><td><span class="mono">Survsys.Api/EcrCaseWriter.cs</span><br><span class="mono">Survsys.Api/EcrIntakeService.cs</span><br><span class="mono">Survsys.Api/EcrEndpoints.cs</span><br><span class="mono">Survsys.Api/appsettings.json</span><br><span class="mono">Survsys.UnitTests/EcrCaseWriterTests.cs</span></td><td><code>dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --filter FullyQualifiedName~Survsys.UnitTests.EcrCaseWriterTests|FullyQualifiedName~Survsys.UnitTests.EcrIntakeServiceTests</code></td><td>yes</td></tr>
+<tr><td>Ecr case integration tests</td><td><p>Add Survsys.IntegrationTests/EcrCaseWriterTests against SQL Server, taking in the eICR R3.1.1 sample with an RR whose RRVS1 condition is mapped: a new case (new person, case opened, the values written with their links, the county per the ecr setting and the other from the town, no lab for a sender not listed and a lab for one listed); a linked case (an ELR-opened open case on the matched person is linked rather than a second opened); an uncertain match left in review and settled by POST /api/ecr-documents/{id}/case; and a second version updating unedited values and leaving an edited one. Update the integration EcrIntakeServiceTests where the intake's new behaviour touches them.</p></td><td><span class="mono">Survsys.IntegrationTests/EcrCaseWriterTests.cs</span><br><span class="mono">Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</span></td><td><code>dotnet build Survsys.IntegrationTests/Survsys.IntegrationTests.csproj</code></td><td>yes</td></tr>
+</table>
+<p>Non-goals:</p>
+<ul><li>No eCR sender table, onboarding stage or sender settings screen, and no data-quality screen (session 105): the senders whose labs are written are a configuration list, EcrIntakeOptions.LabSenders.</li><li>No Survsys.Web change: no screen for the review, the person candidates or the linked cases; no walkthroughs or Playwright tests (session 106).</li><li>No case from an RR condition routed to review (RRVS2 or unmapped) and no re-processing when a mapping is saved later; only RRVS1 conditions mapped to a catalogue condition open or link cases, and a reviewer may settle a document only once one is reportable.</li><li>No backfill of documents stored before this session, and no change to CdaParser, CdaValidator, EcrReportability's routing or the stored raw XML.</li><li>No change to the ELR path, the person matcher's scoring, or PersonMatchRules; no update of a person who existed before the eICR beyond adding the address, and no update of a lab once written.</li></ul>
+<h2>What the framework said</h2>
+<div class="lines"><div class="line"><span class="at">[16:14:25]</span> <span class="muted">run-started</span> session=104 mode=pull</div>
+<div class="line"><span class="at">[16:14:25]</span> <span class="muted">instruction-issued</span> seq=1 kind=step step=plan</div>
+<div class="line"><span class="at">[16:16:58]</span> <span class="muted">run-resumed</span> session=104 phase=<span class="milestone">plan</span> mode=pull</div>
+<div class="line"><span class="at">[16:16:58]</span> <span class="muted">plan-accepted</span> steps=[&quot;ecr-case-data&quot;,&quot;ecr-case-linking&quot;,&quot;ecr-case-values&quot;,&quot;ecr-case-integration-tests&quot;] non_goals=5</div>
+<div class="line"><span class="at">[16:16:58]</span> <span class="milestone">phase</span> phase=<span class="milestone">work</span></div>
+<div class="line"><span class="at">[16:16:59]</span> <span class="muted">instruction-issued</span> seq=2 kind=step step=ecr-case-data</div>
+<div class="line"><span class="at">[16:18:21]</span> <span class="muted">run-resumed</span> session=104 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[16:18:23]</span> <span class="muted">check-passed</span> step=ecr-case-data argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;]</div>
+<div class="line"><span class="at">[16:18:24]</span> <span class="muted">report-accepted</span> seq=2 step=ecr-case-data files=[] notes=ecr_case_link and ecr_case_value tables, case status and reason on ecr_document, migration EcrCases</div>
+<div class="line"><span class="at">[16:18:24]</span> <span class="muted">instruction-issued</span> seq=3 kind=step step=ecr-case-linking</div>
+<div class="line"><span class="at">[16:21:52]</span> <span class="muted">run-resumed</span> session=104 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[16:21:53]</span> <span class="muted">step-file-unchanged</span> step=ecr-case-linking file=Survsys.Api/PrivilegeRules.cs</div>
+<div class="line"><span class="at">[16:21:53]</span> <span class="muted">step-file-unchanged</span> step=ecr-case-linking file=Survsys.UnitTests/EcrEndpointsTests.cs</div>
+<div class="line"><span class="at">[16:21:57]</span> <span class="muted">check-passed</span> step=ecr-case-linking argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrCaseWriterTests|FullyQualifiedName~Survsys.UnitTests.EcrEndpointsTests|FullyQualifiedName~Survsys.UnitTests.PrivilegeRulesTests|FullyQualifiedName~Survsys.UnitTests.ArchitectureTests&quot;]</div>
+<div class="line"><span class="at">[16:21:59]</span> <span class="muted">check-passed</span> step=ecr-case-linking argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[16:21:59]</span> <span class="muted">report-accepted</span> seq=3 step=ecr-case-linking files=[&quot;Survsys.Api/EcrCaseWriter.cs&quot;,&quot;Survsys.Api/EcrIntakeService.cs&quot;,&quot;Survsys.Api/EcrEndpoints.cs&quot;,&quot;Survsys.Contracts/EcrDocumentDetailResponse.cs&quot;,&quot;Survsys.Contracts/LinkEcrCaseRequest.cs&quot;,&quot;Survsys.UnitTests/EcrCaseWriterTests.cs&quot;,&quot;Survsys.UnitTests/PrivilegeRulesTests.cs&quot;] notes=EcrCaseWriter Decide/Process/Link, intake hands stored documents to it, review endpoints; PrivilegeRules needed no change (POST under /api is EditCases, GET ViewCases) so only its tests changed, and EcrEndpointsTests had no public member to add</div>
+<div class="line"><span class="at">[16:21:59]</span> <span class="muted">instruction-issued</span> seq=4 kind=step step=ecr-case-values</div>
+<div class="line"><span class="at">[16:26:25]</span> <span class="muted">run-resumed</span> session=104 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[16:26:41]</span> <span class="muted">check-passed</span> step=ecr-case-values argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrCaseWriterTests|FullyQualifiedName~Survsys.UnitTests.EcrIntakeServiceTests&quot;]</div>
+<div class="line"><span class="at">[16:26:41]</span> <span class="muted">report-accepted</span> seq=4 step=ecr-case-values files=[&quot;Survsys.Api/EcrCaseWriter.cs&quot;,&quot;Survsys.Api/EcrIntakeService.cs&quot;,&quot;Survsys.Api/EcrEndpoints.cs&quot;,&quot;Survsys.Api/appsettings.json&quot;,&quot;Survsys.UnitTests/EcrCaseWriterTests.cs&quot;] notes=EcrCaseWriter writes demographics, address (ecr county setting), encounter, problems as notes and trigger onset, treatments, pregnancy, exposures, occupation and labs for EcrIntakeOptions.LabSenders, each recorded as an EcrCaseValue; later versions update unedited values; addresses, exposures and labs are never removed. EcrEndpoints.cs added by plan amend to pass the settings</div>
+<div class="line"><span class="at">[16:26:41]</span> <span class="muted">instruction-issued</span> seq=5 kind=step step=ecr-case-integration-tests</div>
+<div class="line"><span class="at">[16:31:25]</span> <span class="muted">run-resumed</span> session=104 phase=<span class="milestone">work</span> mode=pull</div>
+<div class="line"><span class="at">[16:31:25]</span> <span class="muted">step-file-unchanged</span> step=ecr-case-integration-tests file=Survsys.IntegrationTests/EcrIntakeServiceTests.cs</div>
+<div class="line"><span class="at">[16:31:27]</span> <span class="muted">check-passed</span> step=ecr-case-integration-tests argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;]</div>
+<div class="line"><span class="at">[16:31:27]</span> <span class="muted">report-accepted</span> seq=5 step=ecr-case-integration-tests files=[&quot;Survsys.IntegrationTests/EcrCaseWriterTests.cs&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;] notes=Integration EcrCaseWriterTests: new person and case with values and county, RR-first with no labs for an unlisted sender, linking an open case, review settled by POST, second version; the R3.1.1 sample linked as content (plan amended); EcrIntakeServiceTests needed no change. 25 eCR and MessageCaseWriter integration tests pass on SQL Server</div>
+<div class="line"><span class="at">[16:31:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[16:31:27]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[16:31:28]</span> <span class="muted">job-started</span> name=verification pid=41944 log=.dabbler/runs/s104/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[16:32:56]</span> <span class="muted">job-finished</span> name=verification exit=<span class="bad">4</span> log=.dabbler/runs/s104/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[16:32:56]</span> <span class="muted">verification-blocking</span></div>
+<div class="line"><span class="at">[16:32:56]</span> <span class="milestone">phase</span> phase=<span class="milestone">dispositions</span></div>
+<div class="line"><span class="at">[16:32:56]</span> <span class="muted">instruction-issued</span> seq=6 kind=rejection reasons=3</div>
+<div class="line"><span class="at">[16:34:42]</span> <span class="muted">run-resumed</span> session=104 phase=<span class="milestone">dispositions</span> mode=pull</div>
+<div class="line"><span class="at">[16:34:42]</span> <span class="muted">dispute-recorded</span> round=1 finding=0</div>
+<div class="line"><span class="at">[16:34:42]</span> <span class="muted">dispositions-accepted</span> round=1 fix=[1,2] reject=[0] answers=[{&quot;finding&quot;:0,&quot;action&quot;:&quot;reject&quot;,&quot;reason&quot;:&quot;A note's type is a fixed two-value vocabulary, clinical or administrative, which the notes API enforces on every save (NoteEndpoints.ClinicalNoteType / AdministrativeNoteType, and the offered-code check that refuses anything else); Note.NoteType documents it as that fixed vocabulary. A note typed 'eCR' would be a value no screen offers and that the notes API refuses when a user next saves the note, so the plan's 'note of type eCR' cannot be met through note_type without breaking the notes slice. The note is marked as eCR's by its text ('Problem reported by eICR: ...') and, more exactly, by the ecr_case_value row that records it under the eICR version's link -- which is the session's provenance mechanism. The finding does expose a real defect beside it: the constant reads 'Clinical' where the vocabulary is lower-case 'clinical'; the fix step for finding 2, which changes EcrCaseWriter.cs, will make ProblemNoteType NoteEndpoints.ClinicalNoteType and the integration test assert the literal 'clinical'.&quot;},{&quot;finding&quot;:1,&quot;action&quot;:&quot;fix&quot;},{&quot;finding&quot;:2,&quot;action&quot;:&quot;fix&quot;}]</div>
+<div class="line"><span class="at">[16:34:42]</span> <span class="milestone">phase</span> phase=<span class="milestone">fix</span></div>
+<div class="line"><span class="at">[16:34:42]</span> <span class="muted">instruction-issued</span> seq=7 kind=step step=fix-round-1</div>
+<div class="line"><span class="at">[16:39:52]</span> <span class="muted">run-resumed</span> session=104 phase=<span class="milestone">fix</span> mode=pull</div>
+<div class="line"><span class="at">[16:39:54]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.Data/Survsys.Data.csproj&quot;] owner=ecr-case-data</div>
+<div class="line"><span class="at">[16:39:58]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrCaseWriterTests|FullyQualifiedName~Survsys.UnitTests.EcrEndpointsTests|FullyQualifiedName~Survsys.UnitTests.PrivilegeRulesTests|FullyQualifiedName~Survsys.UnitTests.ArchitectureTests&quot;] owner=ecr-case-linking</div>
+<div class="line"><span class="at">[16:40:00]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;] owner=ecr-case-linking</div>
+<div class="line"><span class="at">[16:40:15]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;test&quot;,&quot;Survsys.UnitTests/Survsys.UnitTests.csproj&quot;,&quot;--filter&quot;,&quot;FullyQualifiedName~Survsys.UnitTests.EcrCaseWriterTests|FullyQualifiedName~Survsys.UnitTests.EcrIntakeServiceTests&quot;] owner=ecr-case-values</div>
+<div class="line"><span class="at">[16:40:17]</span> <span class="muted">check-passed</span> step=fix-round-1 argv=[&quot;dotnet&quot;,&quot;build&quot;,&quot;Survsys.IntegrationTests/Survsys.IntegrationTests.csproj&quot;] owner=ecr-case-integration-tests</div>
+<div class="line"><span class="at">[16:40:17]</span> <span class="muted">report-accepted</span> seq=7 step=fix-round-1 files=[&quot;Survsys.Api/EcrCaseWriter.cs&quot;,&quot;Survsys.IntegrationTests/EcrCaseWriterTests.cs&quot;] notes=[1] the linked-case test now opens the case through ElrIntakeService.Receive and MessageProcessingService.Assign on the ELR fixture and proves the eICR links that exact case; [2] labs are deduplicated against every lab key any version wrote on the case, with a v1-listed, v2-unlisted, v3-listed test; ProblemNoteType is now NoteEndpoints.ClinicalNoteType and asserted as the literal clinical, as the round-1 dispute said</div>
+<div class="line"><span class="at">[16:40:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">preverify</span></div>
+<div class="line"><span class="at">[16:40:17]</span> <span class="milestone">phase</span> phase=<span class="milestone">verify</span></div>
+<div class="line"><span class="at">[16:40:17]</span> <span class="muted">job-started</span> name=verification pid=54544 log=.dabbler/runs/s104/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[16:40:46]</span> <span class="muted">job-finished</span> name=verification exit=<span class="good">0</span> log=.dabbler/runs/s104/driver/jobs/verification.log</div>
+<div class="line"><span class="at">[16:40:46]</span> <span class="muted">verification-passed</span></div>
+<div class="line"><span class="at">[16:40:46]</span> <span class="milestone">phase</span> phase=<span class="milestone">run-of-record</span></div>
+<div class="line"><span class="at">[16:40:47]</span> <span class="muted">run-of-record</span> suite=unit stage=final-full why=unit declares no select command=dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</div>
+<div class="line"><span class="at">[16:40:47]</span> <span class="muted">job-started</span> name=run of record: unit pid=28012 log=.dabbler/runs/s104/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[16:41:04]</span> <span class="muted">job-finished</span> name=run of record: unit exit=<span class="good">0</span> log=.dabbler/runs/s104/driver/jobs/run-of-record-unit.log</div>
+<div class="line"><span class="at">[16:41:04]</span> <span class="milestone">phase</span> phase=<span class="milestone">land</span></div>
+<div class="line"><span class="at">[16:41:09]</span> <span class="muted">landed</span> commit=844ea1914dd3f4808f6b4c354350d9660524b851</div>
+<div class="line"><span class="at">[16:41:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">publish</span></div>
+<div class="line"><span class="at">[16:41:09]</span> <span class="muted">publish-skipped</span> reason=an ordinary session never publishes</div>
+<div class="line"><span class="at">[16:41:09]</span> <span class="milestone">phase</span> phase=<span class="milestone">close</span></div>
+<div class="line"><span class="at">[16:41:09]</span> <span class="muted">job-started</span> name=close pid=29808 log=.dabbler/runs/s104/driver/jobs/close.log</div>
+<div class="line"><span class="at">[16:41:14]</span> <span class="muted">job-finished</span> name=close exit=<span class="good">0</span> log=.dabbler/runs/s104/driver/jobs/close.log</div>
+<div class="line"><span class="at">[16:41:14]</span> <span class="milestone">phase</span> phase=<span class="milestone">log</span></div></div>
+<h2>Verification</h2>
+<table>
+<tr><th>Round</th><th>Phase</th><th>Verdict</th><th>Reviewer</th><th>Provider</th><th>Transport</th><th>Findings</th></tr>
+<tr><td>1</td><td>full</td><td><span class="bad">ISSUES_FOUND</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details open><summary>3 findings</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>eICR problem notes are written with the wrong note type.</td><td>disputed — A note's type is a fixed two-value vocabulary, clinical or administrative, which the notes API enforces on every save (NoteEndpoints.ClinicalNoteType / AdministrativeNoteType, and the offered-code check that refuses anything else); Note.NoteType documents it as that fixed vocabulary. A note typed 'eCR' would be a value no screen offers and that the notes API refuses when a user next saves the note, so the plan's 'note of type eCR' cannot be met through note_type without breaking the notes slice. The note is marked as eCR's by its text ('Problem reported by eICR: ...') and, more exactly, by the ecr_case_value row that records it under the eICR version's link -- which is the session's provenance mechanism. The finding does expose a real defect beside it: the constant reads 'Clinical' where the vocabulary is lower-case 'clinical'; the fix step for finding 2, which changes EcrCaseWriter.cs, will make ProblemNoteType NoteEndpoints.ClinicalNoteType and the integration test assert the literal 'clinical'.</td></tr>
+<tr><td>1</td><td><strong>major</strong> <span class="bad">blocking</span></td><td>The promised integration test for linking an ELR-opened case was not delivered.</td><td>fixed — [1] the linked-case test now opens the case through ElrIntakeService.Receive and MessageProcessingService.Assign on the ELR fixture and proves the eICR links that exact case; [2] labs are deduplicated against every lab key any version wrote on the case, with a v1-listed, v2-unlisted, v3-listed test; ProblemNoteType is now NoteEndpoints.ClinicalNoteType and asserted as the literal clinical, as the round-1 dispute said — (Survsys.Api/EcrCaseWriter.cs, Survsys.IntegrationTests/EcrCaseWriterTests.cs)</td></tr>
+<tr><td>2</td><td><strong>minor</strong></td><td>**Nit:** Add the omitted/reintroduced-lab version case. **Precondition:** version 1 writes sender-authorized lab key `A`; version 2 is linked to the same case but carries no `A`. **Input:** process version 3 carrying `A` again. **Expectation:** the case still has one lab for `A`, because “a lab is added once by its key and never updated”; today `PreviousValues` reads only version 2’s values, finds no `A`, and `LabsOf` creates a duplicate.</td><td>fixed — [1] the linked-case test now opens the case through ElrIntakeService.Receive and MessageProcessingService.Assign on the ELR fixture and proves the eICR links that exact case; [2] labs are deduplicated against every lab key any version wrote on the case, with a v1-listed, v2-unlisted, v3-listed test; ProblemNoteType is now NoteEndpoints.ClinicalNoteType and asserted as the literal clinical, as the round-1 dispute said — (Survsys.Api/EcrCaseWriter.cs, Survsys.IntegrationTests/EcrCaseWriterTests.cs)</td></tr>
+</table></td></tr>
+<tr><td>2</td><td>fix-delta</td><td><span class="good">VERIFIED</span></td><td>gpt-5.6-terra</td><td>openai</td><td>api</td><td><details><summary>1 finding</summary></details></td></tr><tr class="findings"><td colspan="7"><table>
+<tr><th>#</th><th>Severity</th><th>Finding</th><th>Response</th></tr>
+<tr><td>0</td><td><strong>minor</strong></td><td>**Nit:** `ALabAVersionLeftOutIsNotAddedAgainWhenALaterOneBringsItBack` does not literally test an omitted lab version: `Eicr(2)` still contains the fixture’s orders and is processed with an unlisted sender instead. Add a case with version 1 from a listed sender containing lab key `A`, version 2 from that same listed sender with `A` removed from the CDA, and version 3 containing `A`; assert the case has exactly one lab for `A`.</td><td>not answered</td></tr>
+</table></td></tr>
+</table>
+<h2>Test runs</h2>
+<table>
+<tr><th>Suite</th><th>Stage</th><th>Outcome</th><th>Duration</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Command</th></tr>
+<tr><td>unit</td><td>final-full</td><td><span class="good">passed</span></td><td>17s</td><td>2228</td><td>0</td><td>0</td><td><span class="mono">dotnet test Survsys.UnitTests/Survsys.UnitTests.csproj --blame-hang-timeout 5m</span></td></tr>
+</table>
+<h2>Jobs</h2>
+<div><strong>close</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>run-of-record-unit</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+<div><strong>verification</strong> exit <span class="good">0</span> <span class="muted">(passed -- output not carried; dabbler transcript --full carries it)</span></div>
+</main>
+</body>
+</html>
