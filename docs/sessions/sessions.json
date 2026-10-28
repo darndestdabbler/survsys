@@ -2542,9 +2542,9 @@
     {
       "number": 123,
       "title": "The provider registry",
-      "status": "in-progress",
+      "status": "complete",
       "startedAt": "2026-10-28T15:03:19.401000-04:00",
-      "completedAt": null,
+      "completedAt": "2026-10-28T15:19:58.248000-04:00",
       "orchestrator": {
         "engine": "claude-code",
         "provider": "anthropic",
