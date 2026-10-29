@@ -136,7 +136,7 @@ The numbered sessions are declared from `session-plan.md`; each one's task is wh
 | 122 | Choosing related records on the Laboratory tab and the reference screens | no | 2026-10-28 |
 | 123 | The provider registry | no | 2026-10-28 |
 | 124 | The ordering clinician chosen from the registry | no | 2026-10-28 |
-| 125 | Release 1.1.0 (release: 1.1.0) | — | not declared |
+| 125 | Release 1.1.0 (release: 1.1.0) | yes | 2026-10-29 |
 
 ### Session 1 — Author or import the solution plan
 
@@ -1076,3 +1076,9 @@ Give Survsys the legacy Providers registry as reference data an administrator ma
 **Releasable: no.**
 
 Make a lab's ordering clinician a provider chosen from the registry session 123 added. Survsys.Data's Lab gains a foreign key from provider_id to providers (no navigation, DeleteBehavior.Restrict), added by one migration, LabProvider, that creates the constraint WITH NOCHECK: a lab already on file whose provider_id names no provider is left as it is, and is reported by that constraint's check (DBCC CHECKCONSTRAINTS on labs) rather than changed or nulled. The API tier refuses with a 400, as it refuses an unknown person on a contact, a POST /api/person-conditions/{id}/labs or PUT /api/labs/{id} whose providerId is not a provider on file. On the Laboratory tab the Provider number box becomes Ordering clinician, a searchable list over the registry by last name as you type (ProvidersClient.Page with the typed text), each entry showing the provider as 'Last, First'; when nothing matches, a user holding manage_reference_data is offered New clinician, a small inline form (last name required, first name) that records the provider through POST /api/providers and chooses them. The specimens table's Provider column becomes Ordering clinician and shows the clinician's name. The Enter a laboratory result walkthrough and its end-to-end test add a clinician this way and read their name back in the table; the user guide's Laboratory tab paragraph and the technical README's migration list follow.
+
+### Session 125 — Release 1.1.0 (release: 1.1.0)
+
+**Releasable: yes.**
+
+Release 1.1.0: the framework packs and publishes what is on the trunk.
